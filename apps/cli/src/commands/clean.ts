@@ -1,14 +1,16 @@
+import { Command } from "clipanion";
 import fs from "fs-extra";
 import { BaseCommand } from "../baseCommand.js";
 
-export default class Clean extends BaseCommand<typeof Clean> {
-    static summary = "Clean build artifacts of application.";
+export default class Clean extends BaseCommand {
+    static paths = [["clean"]];
 
-    static description = "Deletes all cached build artifacts of application.";
+    static usage = Command.Usage({
+        description: "Clean build artifacts of application.",
+        details: "Deletes all cached build artifacts of application.",
+    });
 
-    static examples = ["<%= config.bin %> <%= command.id %>"];
-
-    public async run(): Promise<void> {
+    public async execute(): Promise<void> {
         await fs.emptyDir(this.getContextPath());
     }
 }

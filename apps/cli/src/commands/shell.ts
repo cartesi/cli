@@ -1,33 +1,23 @@
-import { Args, Flags } from "@oclif/core";
+import { Command, Option } from "clipanion";
 import { execa } from "execa";
 import fs from "fs-extra";
 import { lookpath } from "lookpath";
 import path from "path";
 import { BaseCommand } from "../baseCommand.js";
 
-export default class Shell extends BaseCommand<typeof Shell> {
-    static description = "Start a shell in cartesi machine of application";
+export default class Shell extends BaseCommand {
+    static paths = [["shell"]];
 
-    static examples = ["<%= config.bin %> <%= command.id %>"];
+    static usage = Command.Usage({
+        description: "Start a shell in cartesi machine of application",
+        details: "Start a shell in cartesi machine of application",
+    });
 
-    static args = {
-        image: Args.string({
-            description: "image ID|name",
-            required: false,
-        }),
-    };
+    runAsRoot = Option.Boolean("--run-as-root", {
+        description: "run as root user",
+    });
 
-    static flags = {
-        "run-as-root": Flags.boolean({
-            description: "run as root user",
-            default: false,
-        }),
-    };
-
-    private async startShell(
-        ext2Path: string,
-        runAsRoot: boolean,
-    ): Promise<void> {
+    private async startShell(ext2Path: string): Promise<void> {
         const containerDir = "/mnt";
         const bind = `${path.resolve(path.dirname(ext2Path))}:${containerDir}`;
         const ext2 = path.join(containerDir, path.basename(ext2Path));
@@ -47,8 +37,8 @@ export default class Shell extends BaseCommand<typeof Shell> {
             `--flash-drive=label:${driveLabel},filename:${ext2}`,
         ];
 
-        if (runAsRoot) {
-            args.push("--append-init=USER=root");
+        if (this.runAsRoot) {
+            args.push("--append-rom-bootargs='single=yes'");
         }
 
         if (!(await lookpath("stty"))) {
@@ -62,18 +52,14 @@ export default class Shell extends BaseCommand<typeof Shell> {
         });
     }
 
-    public async run(): Promise<void> {
-        const { flags } = await this.parse(Shell);
-
+    public async execute(): Promise<void> {
         // use pre-existing image or build dapp image
         const ext2Path = this.getContextPath("image.ext2");
         if (!fs.existsSync(ext2Path)) {
-            throw new Error(
-                `machine not built, run '${this.config.bin} build'`,
-            );
+            throw new Error(`machine not built, run 'build'`);
         }
 
         // execute the machine and save snapshot
-        await this.startShell(ext2Path, flags["run-as-root"]);
+        await this.startShell(ext2Path);
     }
 }

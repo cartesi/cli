@@ -1,11 +1,16 @@
+import { Command } from "clipanion";
 import { execa } from "execa";
 import semver from "semver";
 import { BaseCommand } from "../baseCommand.js";
 
-export default class DoctorCommand extends BaseCommand<typeof DoctorCommand> {
-    static description = "Verify the minimal sytem requirements";
+export default class DoctorCommand extends BaseCommand {
+    static paths = [["doctor"]];
 
-    static examples = ["<%= config.bin %> <%= command.id %>"];
+    static usage = Command.Usage({
+        description: "Verify the minimal system requirements.",
+        details:
+            "Check if Docker is installed and if it meets the minimum version required",
+    });
 
     private static MINIMUM_DOCKER_VERSION = "23.0.0"; // Replace with our minimum required Docker version
     private static MINIMUM_DOCKER_COMPOSE_VERSION = "2.21.0"; // Replace with our minimum required Docker Compose version
@@ -124,16 +129,16 @@ export default class DoctorCommand extends BaseCommand<typeof DoctorCommand> {
         return true;
     }
 
-    public async run(): Promise<void> {
+    public async execute(): Promise<void> {
         try {
             if (await this.checkDocker()) {
                 await this.checkCompose();
                 await this.checkBuildx();
             }
         } catch (e: unknown) {
-            this.error(e as Error);
+            this.context.stderr.write(e as Error);
         }
 
-        this.log("Your system is ready.");
+        this.context.stdout.write("Your system is ready.");
     }
 }

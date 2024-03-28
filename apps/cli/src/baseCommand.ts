@@ -1,5 +1,5 @@
-import { Command, Interfaces } from "@oclif/core";
 import chalk from "chalk";
+import { Command, Option } from "clipanion";
 import { execa } from "execa";
 import fs from "fs";
 import path from "path";
@@ -22,11 +22,6 @@ import {
 } from "./contracts.js";
 import { PsResponse } from "./types/docker.js";
 
-export type Flags<T extends typeof Command> = Interfaces.InferredFlags<
-    (typeof BaseCommand)["baseFlags"] & T["flags"]
->;
-export type Args<T extends typeof Command> = Interfaces.InferredArgs<T["args"]>;
-
 export type AddressBook = Record<string, Address>;
 export interface DApp {
     address: Address;
@@ -35,9 +30,8 @@ export interface DApp {
     transactionHash: Address;
 }
 
-export abstract class BaseCommand<T extends typeof Command> extends Command {
-    protected flags!: Flags<T>;
-    protected args!: Args<T>;
+export abstract class BaseCommand extends Command {
+    jsonEnabled = Option.Boolean("--json", { description: "output as json" });
 
     protected async getServiceState(
         projectName: string,
@@ -74,7 +68,9 @@ export abstract class BaseCommand<T extends typeof Command> extends Command {
     }
 
     protected logPrompt({ title, value }: { title: string; value: string }) {
-        this.log(`${chalk.green("?")} ${title} ${chalk.cyan(value)}`);
+        this.context.stdout.write(
+            `${chalk.green("?")} ${title} ${chalk.cyan(value)}\n`,
+        );
     }
 
     protected async getApplicationAddress(): Promise<Address | undefined> {
@@ -106,18 +102,5 @@ export abstract class BaseCommand<T extends typeof Command> extends Command {
             contracts["CartesiDApp"] = applicationAddress;
         }
         return contracts;
-    }
-
-    public async init(): Promise<void> {
-        await super.init();
-        const { args, flags } = await this.parse({
-            flags: this.ctor.flags,
-            baseFlags: (super.ctor as typeof BaseCommand).baseFlags,
-            args: this.ctor.args,
-            enableJsonFlag: this.ctor.enableJsonFlag,
-            strict: this.ctor.strict,
-        });
-        this.flags = flags as Flags<T>;
-        this.args = args as Args<T>;
     }
 }

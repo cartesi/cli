@@ -1,16 +1,12 @@
-import { Flags } from "@oclif/core";
 import bytes from "bytes";
+import { Command, Option, UsageError } from "clipanion";
 import { execa } from "execa";
 import fs from "fs-extra";
 import semver from "semver";
 import tmp from "tmp";
 
-import { BaseCommand } from "../baseCommand.js";
-import { DEFAULT_TEMPLATES_BRANCH } from "./create.js";
-
-type ImageBuildOptions = {
-    target?: string;
-};
+import { BaseCommand } from "../baseCommand";
+import { DEFAULT_TEMPLATES_BRANCH } from "./create";
 
 type ImageInfo = {
     cmd: string[];
@@ -30,46 +26,38 @@ const CARTESI_DEFAULT_RAM_SIZE = "128Mi";
 const CARTESI_LABEL_SDK_VERSION = `${CARTESI_LABEL_PREFIX}.sdk_version`;
 const CARTESI_DEFAULT_SDK_VERSION = "0.6.0";
 
-export default class BuildApplication extends BaseCommand<
-    typeof BuildApplication
-> {
-    static summary = "Build application.";
+export default class BuildApplication extends BaseCommand {
+    static paths = [["build"]];
 
-    static description =
-        "Build application starting from a Dockerfile and ending with a snapshot of the corresponding Cartesi Machine already booted and yielded for the first time. This snapshot can be used to start a Cartesi node for the application using `run`. The process can also start from a Docker image built by the developer using `docker build` using the option `--from-image`";
+    static usage = Command.Usage({
+        description: "Build application.",
+        details:
+            "Build application starting from a Dockerfile and ending with a snapshot of the corresponding Cartesi Machine already booted and yielded for the first time. This snapshot can be used to start a Cartesi node for the application using `run`. The process can also start from a Docker image built by the developer using `docker build` using the option `--from-image`",
+        examples: [
+            ["Basic usage", "$0 build"],
+            ["From existing Docker image", "$0 build --from-image <image_id>"],
+        ],
+    });
 
-    static examples = [
-        "<%= config.bin %> <%= command.id %>",
-        "<%= config.bin %> <%= command.id %> --from-image my-app",
-    ];
-
-    static args = {};
-
-    static flags = {
-        "from-image": Flags.string({
-            summary: "skip docker build and start from this image.",
-            description:
-                "if the build process of the application Dockerfile needs more control the developer can build the image using the `docker build` command, and then start the build process of the Cartesi machine starting from that image.",
-        }),
-        target: Flags.string({
-            summary: "target of docker multi-stage build.",
-            description:
-                "if the application Dockerfile uses a multi-stage strategy, and stage of the image to be exported as a Cartesi machine is not the last stage, use this parameter to specify the target stage.",
-        }),
-    };
+    fromImage = Option.String("--from-image", {
+        description: "skip docker build and start from this image.",
+    });
+    target = Option.String("--target", {
+        description: "target of docker multi-stage build.",
+    });
 
     /**
      * Build DApp image (linux/riscv64). Returns image id.
      * @param directory path of context containing Dockerfile
      */
-    private async buildImage(options: ImageBuildOptions): Promise<string> {
+    private async buildImage(): Promise<string> {
         const buildResult = tmp.tmpNameSync();
-        this.debug(
-            `building docker image and writing result to ${buildResult}`,
+        this.context.stderr.write(
+            `building docker image and writing result to ${buildResult}\n`,
         );
         const args = ["buildx", "build", "--load", "--iidfile", buildResult];
-        if (options.target) {
-            args.push("--target", options.target);
+        if (this.target) {
+            args.push("--target", this.target);
         }
 
         await execa("docker", [...args, process.cwd()], { stdio: "inherit" });
@@ -111,27 +99,27 @@ export default class BuildApplication extends BaseCommand<
 
         // fail if using unsupported sdk version
         if (!semver.valid(info.sdkVersion)) {
-            this.warn("sdk version is not a valid semver");
+            this.context.stderr.write("sdk version is not a valid semver\n");
         } else if (semver.lt(info.sdkVersion, CARTESI_DEFAULT_SDK_VERSION)) {
-            throw new Error(`Unsupported sdk version: ${info.sdkVersion} (used) < ${CARTESI_DEFAULT_SDK_VERSION} (minimum).
+            throw new UsageError(`Unsupported sdk version.
 Update your application Dockerfile using one of the templates at https://github.com/cartesi/application-templates/tree/${DEFAULT_TEMPLATES_BRANCH}
 `);
         }
 
         // warn for using default values
         info.sdkVersion ||
-            this.warn(
-                `Undefined ${CARTESI_LABEL_SDK_VERSION} label, defaulting to ${CARTESI_DEFAULT_SDK_VERSION}`,
+            this.context.stderr.write(
+                `Undefined ${CARTESI_LABEL_SDK_VERSION} label, defaulting to ${CARTESI_DEFAULT_SDK_VERSION}\n`,
             );
 
         info.ramSize ||
-            this.warn(
-                `Undefined ${CARTESI_LABEL_RAM_SIZE} label, defaulting to ${CARTESI_DEFAULT_RAM_SIZE}`,
+            this.context.stderr.write(
+                `Undefined ${CARTESI_LABEL_RAM_SIZE} label, defaulting to ${CARTESI_DEFAULT_RAM_SIZE}\n`,
             );
 
         // validate data size value
         if (bytes(info.dataSize) === null) {
-            throw new Error(
+            throw new UsageError(
                 `Invalid ${CARTESI_LABEL_DATA_SIZE} value: ${info.dataSize}`,
             );
         }
@@ -147,13 +135,7 @@ Update your application Dockerfile using one of the templates at https://github.
         outputFilePath: string,
     ): Promise<void> {
         // create docker tarball from app image
-        const { stdout: appCid } = await execa("docker", [
-            "image",
-            "save",
-            image,
-            "-o",
-            outputFilePath,
-        ]);
+        await execa("docker", ["image", "save", image, "-o", outputFilePath]);
     }
 
     // this wraps the call to the sdk image with a one-shot approach
@@ -255,9 +237,7 @@ Update your application Dockerfile using one of the templates at https://github.
         ];
     }
 
-    public async run(): Promise<void> {
-        const { flags } = await this.parse(BuildApplication);
-
+    public async execute(): Promise<void> {
         const snapshotPath = this.getContextPath("image");
         const tarPath = this.getContextPath("image.tar");
         const gnuTarPath = this.getContextPath("image.gnutar");
@@ -267,7 +247,7 @@ Update your application Dockerfile using one of the templates at https://github.
         tmp.setGracefulCleanup();
 
         // use pre-existing image or build dapp image
-        const appImage = flags["from-image"] || (await this.buildImage(flags));
+        const appImage = this.fromImage || (await this.buildImage());
 
         // prepare context directory
         await fs.emptyDir(this.getContextPath()); // XXX: make it less error prone
