@@ -1,0 +1,14 @@
+#!/bin/busybox sh
+
+# cgroups2 config
+busybox mount -o nosuid,nodev,noexec -t cgroup2 cgroup2 /sys/fs/cgroup
+busybox echo "+cpu +pids +memory" > /sys/fs/cgroup/cgroup.subtree_control
+
+# give user group access to /cruntime
+UID=$(busybox id -u ${USER:-dapp})
+GID=$(busybox id -g ${USER:-dapp})
+
+[ -d /run ] && busybox mkdir -p /run/crun
+[ -d /run ] && busybox mkdir -p /run/cruntime
+[ -d /run/crun ] && busybox chown -R $UID:$GID /run/crun
+[ -d /run/cruntime ] && busybox chown -R $UID:$GID /run/cruntime
