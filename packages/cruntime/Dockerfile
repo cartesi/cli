@@ -1,0 +1,124 @@
+# (c) Cartesi and individual authors (see AUTHORS)
+# SPDX-License-Identifier: Apache-2.0 (see LICENSE)
+
+# syntax=docker.io/docker/dockerfile:1
+ARG IMAGE_REGISTRY
+ARG IMAGE_NAMESPACE
+ARG IMAGE_NAME
+ARG IMAGE_TAG
+ARG TARGETARCH
+
+###############################################################################
+# STAGE: base-image
+#
+# This stage creates a base-image with apt repository cache and ca-certificates
+# to be used by later stages.
+FROM ${IMAGE_REGISTRY}/${IMAGE_NAMESPACE}/${IMAGE_NAME}:$IMAGE_TAG AS base-image
+ARG DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
+
+
+###############################################################################
+# STAGE: chisel
+#
+# Build the chiselled filesystem based on the desired slices.
+# This image should have the machine-emulator-tools and crun dependencies
+# installed.
+#
+#FIXME: replace the image with the official one when it's available
+#       from: docker.io/risv64/ubuntu to: docker.io/library/ubuntu
+FROM base-image AS chisel
+ARG TARGETARCH
+
+WORKDIR /rootfs
+
+# Extract machine-emulator-tools into the chiselled filesystem
+ARG MACHINE_EMULATOR_TOOLS_VERSION
+ADD https://github.com/cartesi/machine-emulator-tools/releases/download/v${MACHINE_EMULATOR_TOOLS_VERSION}/machine-emulator-tools-v${MACHINE_EMULATOR_TOOLS_VERSION}.deb /
+RUN dpkg -x /machine-emulator-tools-v${MACHINE_EMULATOR_TOOLS_VERSION}.deb /rootfs
+
+# Get chisel binary
+ARG CHISEL_VERSION
+ADD "https://github.com/canonical/chisel/releases/download/v${CHISEL_VERSION}/chisel_v${CHISEL_VERSION}_linux_${TARGETARCH}.tar.gz" chisel.tar.gz
+RUN tar -xvf chisel.tar.gz -C /usr/bin/
+
+# Extract crun dependencies into the chiselled filesystem
+# FIXME: remove this when crun's dependecies slices are upstream
+ADD https://github.com/endersonmaia/chisel-releases.git#0ce6657c093a38267d65e7d9275a45e22b162942 /chisel-22.04
+RUN chisel cut \
+    --release /chisel-22.04 \
+    --root /rootfs \
+    --arch=${TARGETARCH} \
+    base-files_base \
+    base-files_release-info \
+    base-passwd_data \
+    busybox-static_bins \
+    libc6_libs \
+    libcap2_libs \
+    libgcc-s1_libs \
+    libseccomp2_libs \
+    libstdc++6_libs \
+    libyajl2_libs \
+    uidmap_bins
+
+# Prepare the chiselled filesystem with the necessary configuration
+# some directories, dapp user and root's shell
+RUN <<EOF
+set -e
+ln -s /bin/busybox bin/sh
+mkdir -p proc sys dev run/cruntime mnt
+echo "dapp:x:1000:1000::/home/dapp:/bin/sh" >> etc/passwd
+echo "dapp:x:1000:" >> etc/group
+mkdir home/dapp
+chown 1000:1000 home/dapp
+sed -i '/^root/s/bash/sh/g' etc/passwd
+EOF
+###############################################################################
+# STAGE: crun-builder
+#
+# Build most recent version of the crun binary to be used at final image.
+#
+FROM base-image AS crun-builder
+ARG DEBIAN_FRONTEND=noninteractive
+RUN <<EOF
+set -e
+apt-get install -y \
+    autoconf \
+    automake \
+    build-essential \
+    gcc \
+    git \
+    go-md2man \
+    libcap-dev \
+    libprotobuf-c-dev \
+    libseccomp-dev \
+    libtool \
+    libyajl-dev \
+    make \
+    pkgconf \
+    python3
+EOF
+
+WORKDIR /usr/local/src
+# crun:v1.4.4 -> a220ca661ce078f2c37b38c92e66cf66c012d9c1
+ADD --keep-git-dir https://github.com/containers/crun.git#a220ca661ce078f2c37b38c92e66cf66c012d9c1 /usr/local/src
+RUN <<EOF
+set -e
+./autogen.sh
+./configure \
+    --disable-systemd \
+    --disable-criu
+make
+EOF
+
+###############################################################################
+# STAGE: final image
+#
+# This stage creates the final image with the crun binary and the chiselled filesystem.
+#
+FROM scratch
+COPY --chown=root:root --chmod=644 skel/etc/subgid /etc/subgid
+COPY --chown=root:root --chmod=644 skel/etc/subuid /etc/subuid
+COPY --chown=root:root --chmod=755 etc/cartesi-init.d/cruntime-init /etc/cartesi-init.d/cruntime-init
+COPY --from=chisel /rootfs /
+COPY --from=crun-builder /usr/local/src/crun /usr/bin/
