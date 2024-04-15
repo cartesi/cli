@@ -141,32 +141,19 @@ Update your application Dockerfile using one of the templates at https://github.
         return info;
     }
 
-    // creates a rootfs tarball from the image
-    // this process is not always fully reproducible
-    // FIXME: we could use the image and create a flat rootfs without
-    //        `docker container create` (use undocker, umoci, a native typescript implementation, etc.)
+    // saves the OCI Image to a tarball
     private async createTarball(
         image: string,
         outputFilePath: string,
     ): Promise<void> {
         // create docker tarball from app image
         const { stdout: appCid } = await execa("docker", [
-            "container",
-            "create",
-            "--platform",
-            "linux/riscv64",
+            "image",
+            "save",
             image,
-        ]);
-
-        await execa("docker", [
-            "container",
-            "export",
             "-o",
             outputFilePath,
-            appCid,
         ]);
-
-        await execa("docker", ["container", "rm", appCid]);
     }
 
     // this wraps the call to the sdk image with a one-shot approach
@@ -201,15 +188,24 @@ Update your application Dockerfile using one of the templates at https://github.
         await execa("docker", ["container", "rm", cid]);
     }
 
-    // returns the command to create rootfs from a tarball
+    // returns the command to create rootfs tarball from an OCI Image tarball
     private static createRootfsTarCommand(): string[] {
-        return [
+        const cmd = [
+            "cat",
+            "/tmp/input",
+            "|",
+            "crane",
+            "export",
+            "-", // OCI Image from stdin
+            "-", // rootfs tarball to stdout
+            "|",
             "bsdtar",
             "-cf",
             "/tmp/output",
             "--format=gnutar",
-            "@/tmp/input",
+            "@/dev/stdin", // rootfs tarball from stdin
         ];
+        return ["/usr/bin/env", "bash", "-c", cmd.join(" ")];
     }
 
     // returns the command to create ext2 from a rootfs
