@@ -65,6 +65,9 @@ importers:
       lookpath:
         specifier: ^1.2.2
         version: 1.2.2
+      nanotar:
+        specifier: ^0.1.1
+        version: 0.1.1
       open:
         specifier: ^10.1.0
         version: 10.1.0
@@ -162,6 +165,8 @@ importers:
       vitest:
         specifier: ^1.4.0
         version: 1.4.0(@types/node@20.11.30)
+
+  packages/cruntime: {}
 
   packages/devnet:
     dependencies:
@@ -8483,6 +8488,10 @@ packages:
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
     hasBin: true
     dev: true
+
+  /nanotar@0.1.1:
+    resolution: {integrity: sha512-AiJsGsSF3O0havL1BydvI4+wR76sKT+okKRwWIaK96cZUnXqH0uNBOsHlbwZq3+m2BR1VKqHDVudl3gO4mYjpQ==}
+    dev: false
 
   /natural-compare-lite@1.4.0:
     resolution: {integrity: sha512-Tj+HTDSJJKaZnfiuw+iaF9skdPpTo2GtEly5JHnWV/hfv2Qj/9RKsGISQtLh2ox3l5EAGw487hnBee0sIJ6v2g==}
