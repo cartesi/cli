@@ -2,17 +2,19 @@ import { Flags } from "@oclif/core";
 import bytes from "bytes";
 import { execa } from "execa";
 import fs from "fs-extra";
+import { createTar } from "nanotar";
 import semver from "semver";
 import tmp from "tmp";
 
 import { BaseCommand } from "../baseCommand.js";
+import { createConfig } from "../runc.js";
 import { DEFAULT_TEMPLATES_BRANCH } from "./create.js";
 
 type ImageBuildOptions = {
     target?: string;
 };
 
-type ImageInfo = {
+export type ImageInfo = {
     cmd: string[];
     dataSize: string;
     entrypoint: string[];
@@ -29,6 +31,9 @@ const CARTESI_DEFAULT_RAM_SIZE = "128Mi";
 
 const CARTESI_LABEL_SDK_VERSION = `${CARTESI_LABEL_PREFIX}.sdk_version`;
 const CARTESI_DEFAULT_SDK_VERSION = "0.6.0";
+
+const CARTESI_CRUNTIME_VERSION = "0.1.0";
+const CARTESI_CRUNTIME_IMAGE = `cartesi/cruntime:${CARTESI_CRUNTIME_VERSION}`;
 
 export default class BuildApplication extends BaseCommand<
     typeof BuildApplication
@@ -166,17 +171,18 @@ Update your application Dockerfile using one of the templates at https://github.
     private async sdkRun(
         sdkImage: string,
         cmd: string[],
-        inputPath: string,
+        inputPath: string[],
         outputPath: string,
     ): Promise<void> {
-        const { stdout: cid } = await execa("docker", [
-            "container",
-            "create",
-            "--volume",
-            `./${inputPath}:/tmp/input`,
-            sdkImage,
-            ...cmd,
-        ]);
+        const volumes = inputPath.map(
+            (path, i) => `--volume=${path}:/tmp/input${i}`,
+        );
+
+        const createCmd = ["container", "create", ...volumes, sdkImage, ...cmd];
+
+        console.log(createCmd);
+
+        const { stdout: cid } = await execa("docker", createCmd);
 
         await execa("docker", ["container", "start", "-a", cid], {
             stdio: "inherit",
@@ -197,7 +203,7 @@ Update your application Dockerfile using one of the templates at https://github.
     private static createRootfsTarCommand(): string[] {
         const cmd = [
             "cat",
-            "/tmp/input",
+            "/tmp/input0",
             "|",
             "crane",
             "export",
@@ -222,7 +228,7 @@ Update your application Dockerfile using one of the templates at https://github.
         return [
             "xgenext2fs",
             "--tarball",
-            "/tmp/input",
+            "/tmp/input0",
             "--block-size",
             blockSize.toString(),
             "--faketime",
@@ -234,39 +240,145 @@ Update your application Dockerfile using one of the templates at https://github.
 
     private static createMachineSnapshotCommand(info: ImageInfo): string[] {
         const ramSize = info.ramSize;
-        const driveLabel = "root"; // XXX: does this need to be customizable?
+        const entrypoint = [
+            "rollup-init",
+            "crun",
+            "run",
+            "--config",
+            "/run/cruntime/config/config.json",
+            "--bundle",
+            "/run/cruntime",
+            "app",
+        ].join(" ");
+        const cwd = "--append-init=WORKDIR=/run/cruntime";
 
-        // list of environment variables of docker image
-        const envs = info.env.map(
-            (variable) => `--append-entrypoint=export ${variable}`,
-        );
+        const flashDriveArgs: string[] = [
+            `--flash-drive=label:root,filename:/tmp/input0`,
+            `--flash-drive=label:config,filename:/tmp/input1,mount:/run/cruntime/config`,
+            `--flash-drive=label:dapp,filename:/tmp/input2,mount:/run/cruntime/rootfs`,
+        ];
 
-        // ENTRYPOINT and CMD as a space separated string
-        const entrypoint = [...info.entrypoint, ...info.cmd].join(" ");
-
-        // command to change working directory if WORKDIR is defined
-        const cwd = info.workdir ? `--append-init=WORKDIR=${info.workdir}` : "";
-        return [
+        const result = [
             "cartesi-machine",
             "--assert-rolling-template",
             `--ram-length=${ramSize}`,
-            `--flash-drive=label:${driveLabel},filename:/tmp/input`,
+            ...flashDriveArgs,
             "--final-hash",
-            `--store=/tmp/output`,
+            "--store=/tmp/output",
             "--append-bootargs=no4lvl",
+            "--append-init=/bin/sh /etc/cartesi-init.d/cruntime-init",
             cwd,
-            ...envs,
             `--append-entrypoint=${entrypoint}`,
         ];
+
+        return result;
+    }
+
+    private async createCruntimeDrive(
+        image: string,
+        imageInfo: ImageInfo,
+        sdkImage: string,
+    ): Promise<void> {
+        const cruntimeTarPath = this.getContextPath("cruntime.tar");
+        const cruntimeGnutarPath = this.getContextPath("cruntime.gnutar");
+        const cruntimeDrivePath = this.getContextPath("cruntime.ext2");
+
+        try {
+            await this.createTarball(image, cruntimeTarPath);
+
+            await this.sdkRun(
+                sdkImage,
+                BuildApplication.createRootfsTarCommand(),
+                [cruntimeTarPath],
+                cruntimeGnutarPath,
+            );
+
+            await this.sdkRun(
+                sdkImage,
+                BuildApplication.createExt2Command(
+                    bytes.parse(imageInfo.dataSize),
+                ),
+                [cruntimeGnutarPath],
+                cruntimeDrivePath,
+            );
+        } finally {
+            await fs.remove(cruntimeGnutarPath);
+            await fs.remove(cruntimeTarPath);
+        }
+    }
+
+    private async createOCIConfigeDrive(
+        imageInfo: ImageInfo,
+        sdkImage: string,
+    ): Promise<void> {
+        const ociConfigTarPath = this.getContextPath("ociconfig.tar");
+        const ociConfigDrivePath = this.getContextPath("ociconfig.ext2");
+
+        try {
+            const configTar = createTar([
+                {
+                    name: "config.json",
+                    data: JSON.stringify(createConfig(imageInfo)),
+                },
+            ]);
+            fs.writeFileSync(ociConfigTarPath, configTar);
+
+            await this.sdkRun(
+                sdkImage,
+                BuildApplication.createExt2Command(
+                    bytes.parse(imageInfo.dataSize),
+                ),
+                [ociConfigTarPath],
+                ociConfigDrivePath,
+            );
+        } finally {
+            await fs.remove(ociConfigTarPath);
+        }
+    }
+
+    private async createAppDrive(
+        image: string,
+        imageInfo: ImageInfo,
+        sdkImage: string,
+    ): Promise<void> {
+        const appTarPath = this.getContextPath("app.tar");
+        const appGnutarPath = this.getContextPath("app.gnutar");
+        const appDrivePath = this.getContextPath("app.ext2");
+        try {
+            // create OCI Image tarball
+            await this.createTarball(image, appTarPath);
+
+            // create rootfs tar
+            await this.sdkRun(
+                sdkImage,
+                BuildApplication.createRootfsTarCommand(),
+                [appTarPath],
+                appGnutarPath,
+            );
+
+            // create ext2
+            await this.sdkRun(
+                sdkImage,
+                BuildApplication.createExt2Command(
+                    bytes.parse(imageInfo.dataSize),
+                ),
+                [appGnutarPath],
+                appDrivePath,
+            );
+        } finally {
+            await fs.remove(appGnutarPath);
+            await fs.remove(appTarPath);
+        }
     }
 
     public async run(): Promise<void> {
         const { flags } = await this.parse(BuildApplication);
 
-        const snapshotPath = this.getContextPath("image");
         const tarPath = this.getContextPath("image.tar");
-        const gnuTarPath = this.getContextPath("image.gnutar");
-        const ext2Path = this.getContextPath("image.ext2");
+        const snapshotPath = this.getContextPath("image");
+        const cruntimeDrivePath = this.getContextPath("cruntime.ext2");
+        const ociConfigDrivePath = this.getContextPath("ociconfig.ext2");
+        const appDrivePath = this.getContextPath("app.ext2");
 
         // clean up temp files we create along the process
         tmp.setGracefulCleanup();
@@ -287,35 +399,31 @@ Update your application Dockerfile using one of the templates at https://github.
             // create docker tarball for image specified
             await this.createTarball(appImage, tarPath);
 
-            // create rootfs tar
-            await this.sdkRun(
+            // create cruntime drive
+            await this.createCruntimeDrive(
+                CARTESI_CRUNTIME_IMAGE,
+                imageInfo,
                 sdkImage,
-                BuildApplication.createRootfsTarCommand(),
-                tarPath,
-                gnuTarPath,
             );
 
-            // create ext2
-            await this.sdkRun(
-                sdkImage,
-                BuildApplication.createExt2Command(
-                    bytes.parse(imageInfo.dataSize),
-                ),
-                gnuTarPath,
-                ext2Path,
-            );
+            // create oci config drive
+            await this.createOCIConfigeDrive(imageInfo, sdkImage);
+
+            // create app drive
+            await this.createAppDrive(appImage, imageInfo, sdkImage);
 
             // create machine snapshot
-            await this.sdkRun(
-                sdkImage,
-                BuildApplication.createMachineSnapshotCommand(imageInfo),
-                ext2Path,
-                snapshotPath,
-            );
-            await fs.chmod(snapshotPath, 0o755);
-        } finally {
-            await fs.remove(gnuTarPath);
-            await fs.remove(tarPath);
+            if (!flags["skip-snapshot"]) {
+                await this.sdkRun(
+                    sdkImage,
+                    BuildApplication.createMachineSnapshotCommand(imageInfo),
+                    [cruntimeDrivePath, ociConfigDrivePath, appDrivePath],
+                    snapshotPath,
+                );
+                await fs.chmod(snapshotPath, 0o755);
+            }
+        } catch (e: unknown) {
+            this.error(e as Error);
         }
     }
 }
