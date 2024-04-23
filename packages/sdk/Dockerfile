@@ -70,6 +70,7 @@ apt-get install -y --no-install-recommends \
     jq \
     libarchive-tools \
     locales \
+    squashfs-tools \
     xxd \
     xz-utils
 rm -rf /var/lib/apt/lists/*
