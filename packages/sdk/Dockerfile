@@ -1,8 +1,8 @@
 # syntax=docker.io/docker/dockerfile:1
 ARG BASE_IMAGE
-ARG SERVER_MANAGER_REGISTRY
-ARG SERVER_MANAGER_ORG
-ARG SERVER_MANAGER_VERSION
+ARG MACHINE_EMULATOR_REGISTRY
+ARG MACHINE_EMULATOR_ORG
+ARG MACHINE_EMULATOR_VERSION
 ARG CARTESI_IMAGE_KERNEL_VERSION
 ARG LINUX_KERNEL_VERSION
 
@@ -52,10 +52,10 @@ ARG DEVNET_VERSION
 RUN npm install -g @cartesi/devnet@${DEVNET_VERSION}
 
 # sdk image
-FROM $SERVER_MANAGER_REGISTRY/$SERVER_MANAGER_ORG/server-manager:$SERVER_MANAGER_VERSION
-ARG SERVER_MANAGER_REGISTRY
-ARG SERVER_MANAGER_ORG
-ARG SERVER_MANAGER_VERSION
+FROM $MACHINE_EMULATOR_REGISTRY/$MACHINE_EMULATOR_ORG/machine-emulator:$MACHINE_EMULATOR_VERSION
+ARG MACHINE_EMULATOR_REGISTRY
+ARG MACHINE_EMULATOR_ORG
+ARG MACHINE_EMULATOR_VERSION
 ARG CARTESI_IMAGE_KERNEL_VERSION
 ARG LINUX_KERNEL_VERSION
 
@@ -114,12 +114,12 @@ COPY --from=devnet /usr/local/lib/node_modules/@cartesi/devnet/build/anvil_state
 RUN mkdir -p /tmp/.cartesi && chmod 1777 /tmp/.cartesi
 
 ADD --chmod=644 \
-    --checksum=sha256:1dc36e05bf04d3fff097e51408556cef4d5ac09792e245b37c470d9188a4c173 \
+    --checksum=sha256:65dd100ff6204346ac2f50f772721358b5c1451450ceb39a154542ee27b4c947 \
     https://github.com/cartesi/image-kernel/releases/download/v${CARTESI_IMAGE_KERNEL_VERSION}/linux-${LINUX_KERNEL_VERSION}.bin \
     /usr/share/cartesi-machine/images/linux.bin
 
 ADD --chmod=644 \
-    --checksum=sha256:58d1b232e6c2ed735f362ef0454802ae72a39798d472c0253cabec041703a16a \
+    --checksum=sha256:4a4714bfa8c0028cb443db2036fad4f8da07065c1cb4ac8e0921a259fddd731b \
     https://github.com/cartesi/image-kernel/releases/download/v$CARTESI_IMAGE_KERNEL_VERSION/linux-headers-$LINUX_KERNEL_VERSION.tar.xz \
     /usr/share/cartesi-machine/images/linux-headers.tar.xz
 RUN tar -xJf /usr/share/cartesi-machine/images/linux-headers.tar.xz -C / && \
