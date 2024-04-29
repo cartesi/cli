@@ -24,6 +24,8 @@ export type ImageInfo = {
     workdir: string;
 };
 
+type DriveType = "ext2" | "sqfs";
+
 const CARTESI_LABEL_PREFIX = "io.cartesi.rollups";
 const CARTESI_LABEL_RAM_SIZE = `${CARTESI_LABEL_PREFIX}.ram_size`;
 const CARTESI_LABEL_DATA_SIZE = `${CARTESI_LABEL_PREFIX}.data_size`;
@@ -65,6 +67,13 @@ export default class BuildApplication extends BaseCommand<
             summary: "skip machine snapshot creation.",
             description:
                 "if the developer is only interested in building the ext2 image to run sunodo shell and does not want to create the machine snapshot, this flag can be used to skip the last step of the process.",
+        }),
+        "drive-type": Flags.string({
+            summary: "cartesi-machine flash drive type",
+            description:
+                "defines which drive type will be used as cartesi amchine flash-drives",
+            options: ["ext2", "sqfs"],
+            default: "ext2",
         }),
     };
 
@@ -238,7 +247,48 @@ Update your application Dockerfile using one of the templates at https://github.
         ];
     }
 
-    private static createMachineSnapshotCommand(info: ImageInfo): string[] {
+    private static createSquashfsCommand(): string[] {
+        const cmd = [
+            "cat",
+            "/tmp/input0",
+            "|",
+            "mksquashfs",
+            "-",
+            "/tmp/output",
+            "-tar",
+            "-mkfs-time",
+            "0",
+            "-all-time",
+            "0",
+            "-all-root",
+            "-noappend",
+            "-no-exports",
+            "-comp",
+            "lzo",
+            "-quiet",
+            "-no-progress",
+        ];
+        return ["/usr/bin/env", "bash", "-c", cmd.join(" ")];
+    }
+
+    private static createDriveCommand(
+        type: DriveType,
+        extraBytes: number,
+    ): string[] {
+        switch (type) {
+            case "ext2":
+                return BuildApplication.createExt2Command(extraBytes);
+            case "sqfs":
+                return BuildApplication.createSquashfsCommand();
+        }
+    }
+
+    private async createMachineSnapshotCommand(
+        info: ImageInfo,
+    ): Promise<string[]> {
+        const { flags } = await this.parse(BuildApplication);
+        const driveType = flags["drive-type"] as DriveType;
+
         const ramSize = info.ramSize;
         const entrypoint = [
             "rollup-init",
@@ -270,6 +320,9 @@ Update your application Dockerfile using one of the templates at https://github.
             `--append-entrypoint=${entrypoint}`,
         ];
 
+        if (driveType === "sqfs")
+            result.push("--append-bootargs=rootfstype=squashfs");
+
         return result;
     }
 
@@ -278,9 +331,12 @@ Update your application Dockerfile using one of the templates at https://github.
         imageInfo: ImageInfo,
         sdkImage: string,
     ): Promise<void> {
+        const { flags } = await this.parse(BuildApplication);
+        const driveType = flags["drive-type"] as DriveType;
+
         const cruntimeTarPath = this.getContextPath("cruntime.tar");
         const cruntimeGnutarPath = this.getContextPath("cruntime.gnutar");
-        const cruntimeDrivePath = this.getContextPath("cruntime.ext2");
+        const cruntimeDrivePath = this.getContextPath("cruntime.drive");
 
         try {
             await this.createTarball(image, cruntimeTarPath);
@@ -294,7 +350,8 @@ Update your application Dockerfile using one of the templates at https://github.
 
             await this.sdkRun(
                 sdkImage,
-                BuildApplication.createExt2Command(
+                BuildApplication.createDriveCommand(
+                    driveType,
                     bytes.parse(imageInfo.dataSize),
                 ),
                 [cruntimeGnutarPath],
@@ -310,8 +367,11 @@ Update your application Dockerfile using one of the templates at https://github.
         imageInfo: ImageInfo,
         sdkImage: string,
     ): Promise<void> {
+        const { flags } = await this.parse(BuildApplication);
+        const driveType = flags["drive-type"] as DriveType;
+
         const ociConfigTarPath = this.getContextPath("ociconfig.tar");
-        const ociConfigDrivePath = this.getContextPath("ociconfig.ext2");
+        const ociConfigDrivePath = this.getContextPath("ociconfig.drive");
 
         try {
             const configTar = createTar([
@@ -324,7 +384,8 @@ Update your application Dockerfile using one of the templates at https://github.
 
             await this.sdkRun(
                 sdkImage,
-                BuildApplication.createExt2Command(
+                BuildApplication.createDriveCommand(
+                    driveType,
                     bytes.parse(imageInfo.dataSize),
                 ),
                 [ociConfigTarPath],
@@ -340,9 +401,13 @@ Update your application Dockerfile using one of the templates at https://github.
         imageInfo: ImageInfo,
         sdkImage: string,
     ): Promise<void> {
+        const { flags } = await this.parse(BuildApplication);
+        const driveType = flags["drive-type"] as DriveType;
+
         const appTarPath = this.getContextPath("app.tar");
         const appGnutarPath = this.getContextPath("app.gnutar");
-        const appDrivePath = this.getContextPath("app.ext2");
+        const appDrivePath = this.getContextPath("app.drive");
+
         try {
             // create OCI Image tarball
             await this.createTarball(image, appTarPath);
@@ -355,10 +420,11 @@ Update your application Dockerfile using one of the templates at https://github.
                 appGnutarPath,
             );
 
-            // create ext2
+            // create drive
             await this.sdkRun(
                 sdkImage,
-                BuildApplication.createExt2Command(
+                BuildApplication.createDriveCommand(
+                    driveType,
                     bytes.parse(imageInfo.dataSize),
                 ),
                 [appGnutarPath],
@@ -374,9 +440,9 @@ Update your application Dockerfile using one of the templates at https://github.
         const { flags } = await this.parse(BuildApplication);
 
         const snapshotPath = this.getContextPath("image");
-        const cruntimeDrivePath = this.getContextPath("cruntime.ext2");
-        const ociConfigDrivePath = this.getContextPath("ociconfig.ext2");
-        const appDrivePath = this.getContextPath("app.ext2");
+        const cruntimeDrivePath = this.getContextPath("cruntime.drive");
+        const ociConfigDrivePath = this.getContextPath("ociconfig.drive");
+        const appDrivePath = this.getContextPath("app.drive");
 
         // clean up temp files we create along the process
         tmp.setGracefulCleanup();
@@ -411,7 +477,7 @@ Update your application Dockerfile using one of the templates at https://github.
             if (!flags["skip-snapshot"]) {
                 await this.sdkRun(
                     sdkImage,
-                    BuildApplication.createMachineSnapshotCommand(imageInfo),
+                    await this.createMachineSnapshotCommand(imageInfo),
                     [cruntimeDrivePath, ociConfigDrivePath, appDrivePath],
                     snapshotPath,
                 );
