@@ -3,7 +3,7 @@ import chalk from "chalk";
 import type { TemplateProvider } from "giget";
 import { DownloadTemplateResult, downloadTemplate } from "giget";
 import ora from "ora";
-import { BaseCommand } from "../baseCommand";
+import { BaseCommand } from "../baseCommand.js";
 
 export const DEFAULT_TEMPLATES_BRANCH = "sdk-0.4";
 

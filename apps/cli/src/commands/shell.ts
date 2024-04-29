@@ -3,7 +3,7 @@ import { execa } from "execa";
 import fs from "fs-extra";
 import { lookpath } from "lookpath";
 import path from "path";
-import { BaseCommand } from "../baseCommand";
+import { BaseCommand } from "../baseCommand.js";
 
 export default class Shell extends BaseCommand<typeof Shell> {
     static description = "Start a shell in cartesi machine of application";

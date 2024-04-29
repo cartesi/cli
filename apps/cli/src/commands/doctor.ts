@@ -1,6 +1,6 @@
 import { execa } from "execa";
 import semver from "semver";
-import { BaseCommand } from "../baseCommand";
+import { BaseCommand } from "../baseCommand.js";
 
 export default class DoctorCommand extends BaseCommand<typeof DoctorCommand> {
     static description = "Verify the minimal sytem requirements";

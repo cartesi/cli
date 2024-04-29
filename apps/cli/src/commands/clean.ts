@@ -1,5 +1,5 @@
 import fs from "fs-extra";
-import { BaseCommand } from "../baseCommand";
+import { BaseCommand } from "../baseCommand.js";
 
 export default class Clean extends BaseCommand<typeof Clean> {
     static summary = "Clean build artifacts of application.";
