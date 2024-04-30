@@ -17,9 +17,9 @@
         "tsc": "tsc"
     },
     "devDependencies": {
-        "@nomicfoundation/hardhat-viem": "^2.0.1",
-        "@safe-global/safe-singleton-factory": "^1.0.23",
         "@cartesi/rollups": "^1.4.0",
+        "@nomicfoundation/hardhat-viem": "^2.0.1",
+        "@safe-global/safe-singleton-factory": "^1.0.24",
         "hardhat": "^2.22.3",
         "hardhat-abi-exporter": "^2",
         "hardhat-deploy": "^0.12.4",
