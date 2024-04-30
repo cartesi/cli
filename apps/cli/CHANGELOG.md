@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.14.0
+
+### Minor Changes
+
+- aa088e9: bump to cartesi/sdk:0.6.0 in build and shell
+- 9e21c32: use cartesi/sdk for devnet
+- 9b527cc: bump default sdk in create to 0.6
+
+### Patch Changes
+
+- 5cf5187: fixed checking docker and docker compose in doctor command
+- e1acf89: use crane to build rootfs tarball
+
 ## 0.13.1
 
 ### Patch Changes
