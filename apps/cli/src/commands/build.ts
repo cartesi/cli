@@ -2,17 +2,19 @@ import { Flags } from "@oclif/core";
 import bytes from "bytes";
 import { execa } from "execa";
 import fs from "fs-extra";
+import { createTar } from "nanotar";
 import semver from "semver";
 import tmp from "tmp";
 
 import { BaseCommand } from "../baseCommand.js";
+import { createConfig } from "../runc.js";
 import { DEFAULT_TEMPLATES_BRANCH } from "./create.js";
 
 type ImageBuildOptions = {
     target?: string;
 };
 
-type ImageInfo = {
+export type ImageInfo = {
     cmd: string[];
     dataSize: string;
     entrypoint: string[];
@@ -22,6 +24,8 @@ type ImageInfo = {
     workdir: string;
 };
 
+type DriveType = "ext2" | "sqfs";
+
 const CARTESI_LABEL_PREFIX = "io.cartesi.rollups";
 const CARTESI_LABEL_RAM_SIZE = `${CARTESI_LABEL_PREFIX}.ram_size`;
 const CARTESI_LABEL_DATA_SIZE = `${CARTESI_LABEL_PREFIX}.data_size`;
@@ -29,6 +33,9 @@ const CARTESI_DEFAULT_RAM_SIZE = "128Mi";
 
 const CARTESI_LABEL_SDK_VERSION = `${CARTESI_LABEL_PREFIX}.sdk_version`;
 const CARTESI_DEFAULT_SDK_VERSION = "0.4.0";
+
+const CARTESI_CRUNTIME_VERSION = "0.4.0";
+const CARTESI_CRUNTIME_IMAGE = `cartesi/cruntime:${CARTESI_CRUNTIME_VERSION}`;
 
 export default class BuildApplication extends BaseCommand<
     typeof BuildApplication
@@ -55,6 +62,18 @@ export default class BuildApplication extends BaseCommand<
             summary: "target of docker multi-stage build.",
             description:
                 "if the application Dockerfile uses a multi-stage strategy, and stage of the image to be exported as a Cartesi machine is not the last stage, use this parameter to specify the target stage.",
+        }),
+        "skip-snapshot": Flags.boolean({
+            summary: "skip machine snapshot creation.",
+            description:
+                "if the developer is only interested in building the ext2 image to run sunodo shell and does not want to create the machine snapshot, this flag can be used to skip the last step of the process.",
+        }),
+        "drive-type": Flags.string({
+            summary: "cartesi-machine flash drive type",
+            description:
+                "defines which drive type will be used as cartesi amchine flash-drives",
+            options: ["ext2", "sqfs"],
+            default: "ext2",
         }),
     };
 
@@ -141,32 +160,19 @@ Update your application Dockerfile using one of the templates at https://github.
         return info;
     }
 
-    // creates a rootfs tarball from the image
-    // this process is not always fully reproducible
-    // FIXME: we could use the image and create a flat rootfs without
-    //        `docker container create` (use undocker, umoci, a native typescript implementation, etc.)
+    // saves the OCI Image to a tarball
     private async createTarball(
         image: string,
         outputFilePath: string,
     ): Promise<void> {
         // create docker tarball from app image
         const { stdout: appCid } = await execa("docker", [
-            "container",
-            "create",
-            "--platform",
-            "linux/riscv64",
+            "image",
+            "save",
             image,
-        ]);
-
-        await execa("docker", [
-            "container",
-            "export",
             "-o",
             outputFilePath,
-            appCid,
         ]);
-
-        await execa("docker", ["container", "rm", appCid]);
     }
 
     // this wraps the call to the sdk image with a one-shot approach
@@ -174,17 +180,18 @@ Update your application Dockerfile using one of the templates at https://github.
     private async sdkRun(
         sdkImage: string,
         cmd: string[],
-        inputPath: string,
+        inputPath: string[],
         outputPath: string,
     ): Promise<void> {
-        const { stdout: cid } = await execa("docker", [
-            "container",
-            "create",
-            "--volume",
-            `./${inputPath}:/tmp/input`,
-            sdkImage,
-            ...cmd,
-        ]);
+        const volumes = inputPath.map(
+            (path, i) => `--volume=${path}:/tmp/input${i}`,
+        );
+
+        const createCmd = ["container", "create", ...volumes, sdkImage, ...cmd];
+
+        console.log(createCmd);
+
+        const { stdout: cid } = await execa("docker", createCmd);
 
         await execa("docker", ["container", "start", "-a", cid], {
             stdio: "inherit",
@@ -201,15 +208,24 @@ Update your application Dockerfile using one of the templates at https://github.
         await execa("docker", ["container", "rm", cid]);
     }
 
-    // returns the command to create rootfs from a tarball
+    // returns the command to create rootfs tarball from an OCI Image tarball
     private static createRootfsTarCommand(): string[] {
-        return [
+        const cmd = [
+            "cat",
+            "/tmp/input0",
+            "|",
+            "crane",
+            "export",
+            "-", // OCI Image from stdin
+            "-", // rootfs tarball to stdout
+            "|",
             "bsdtar",
             "-cf",
             "/tmp/output",
             "--format=gnutar",
-            "@/tmp/input",
+            "@/dev/stdin", // rootfs tarball from stdin
         ];
+        return ["/usr/bin/env", "bash", "-c", cmd.join(" ")];
     }
 
     // returns the command to create ext2 from a rootfs
@@ -221,7 +237,7 @@ Update your application Dockerfile using one of the templates at https://github.
         return [
             "xgenext2fs",
             "--tarball",
-            "/tmp/input",
+            "/tmp/input0",
             "--block-size",
             blockSize.toString(),
             "--faketime",
@@ -231,41 +247,202 @@ Update your application Dockerfile using one of the templates at https://github.
         ];
     }
 
-    private static createMachineSnapshotCommand(info: ImageInfo): string[] {
+    private static createSquashfsCommand(): string[] {
+        const cmd = [
+            "cat",
+            "/tmp/input0",
+            "|",
+            "mksquashfs",
+            "-",
+            "/tmp/output",
+            "-tar",
+            "-mkfs-time",
+            "0",
+            "-all-time",
+            "0",
+            "-all-root",
+            "-noappend",
+            "-no-exports",
+            "-comp",
+            "lzo",
+            "-quiet",
+            "-no-progress",
+        ];
+        return ["/usr/bin/env", "bash", "-c", cmd.join(" ")];
+    }
+
+    private static createDriveCommand(
+        type: DriveType,
+        extraBytes: number,
+    ): string[] {
+        switch (type) {
+            case "ext2":
+                return BuildApplication.createExt2Command(extraBytes);
+            case "sqfs":
+                return BuildApplication.createSquashfsCommand();
+        }
+    }
+
+    private async createMachineSnapshotCommand(
+        info: ImageInfo,
+    ): Promise<string[]> {
+        const { flags } = await this.parse(BuildApplication);
+        const driveType = flags["drive-type"] as DriveType;
+
         const ramSize = info.ramSize;
-        const driveLabel = "root"; // XXX: does this need to be customizable?
+        const entrypoint = [
+            "rollup-init",
+            "crun",
+            "run",
+            "--config",
+            "/crun/cruntime/config/config.json",
+            "--bundle",
+            "/crun/cruntime",
+            "app",
+        ].join(" ");
+        const cwd = "--append-init=WORKDIR=/run/cruntime";
 
-        // list of environment variables of docker image
-        const envs = info.env.map(
-            (variable) => `--append-entrypoint=export ${variable}`,
-        );
+        const flashDriveArgs: string[] = [
+            `--flash-drive=label:root,filename:/tmp/input0`,
+            `--flash-drive=label:root,filename:/tmp/input1,mount:/run/cruntime/config`,
+            `--flash-drive=label:dapp,filename:/tmp/input2,mount:/run/cruntime/rootfs`,
+        ];
 
-        // ENTRYPOINT and CMD as a space separated string
-        const entrypoint = [...info.entrypoint, ...info.cmd].join(" ");
-
-        // command to change working directory if WORKDIR is defined
-        const cwd = info.workdir ? `--append-init=WORKDIR=${info.workdir}` : "";
-        return [
+        const result = [
             "cartesi-machine",
             "--assert-rolling-template",
             `--ram-length=${ramSize}`,
-            `--flash-drive=label:${driveLabel},filename:/tmp/input`,
+            ...flashDriveArgs,
             "--final-hash",
-            `--store=/tmp/output`,
+            "--store=/tmp/output",
             "--append-bootargs=no4lvl",
             cwd,
-            ...envs,
             `--append-entrypoint=${entrypoint}`,
         ];
+
+        if (driveType === "sqfs")
+            result.push("--append-bootargs=rootfstype=squashfs");
+
+        return result;
+    }
+
+    private async createCruntimeDrive(
+        image: string,
+        imageInfo: ImageInfo,
+        sdkImage: string,
+    ): Promise<void> {
+        const { flags } = await this.parse(BuildApplication);
+        const driveType = flags["drive-type"] as DriveType;
+
+        const cruntimeTarPath = this.getContextPath("cruntime.tar");
+        const cruntimeGnutarPath = this.getContextPath("cruntime.gnutar");
+        const cruntimeDrivePath = this.getContextPath("cruntime.drive");
+
+        try {
+            await this.createTarball(image, cruntimeTarPath);
+
+            await this.sdkRun(
+                sdkImage,
+                BuildApplication.createRootfsTarCommand(),
+                [cruntimeTarPath],
+                cruntimeGnutarPath,
+            );
+
+            await this.sdkRun(
+                sdkImage,
+                BuildApplication.createDriveCommand(
+                    driveType,
+                    bytes.parse(imageInfo.dataSize),
+                ),
+                [cruntimeGnutarPath],
+                cruntimeDrivePath,
+            );
+        } finally {
+            await fs.remove(cruntimeGnutarPath);
+            await fs.remove(cruntimeTarPath);
+        }
+    }
+
+    private async createOCIConfigeDrive(
+        imageInfo: ImageInfo,
+        sdkImage: string,
+    ): Promise<void> {
+        const { flags } = await this.parse(BuildApplication);
+        const driveType = flags["drive-type"] as DriveType;
+
+        const ociConfigTarPath = this.getContextPath("ociconfig.tar");
+        const ociConfigDrivePath = this.getContextPath("ociconfig.drive");
+
+        try {
+            const configTar = createTar([
+                {
+                    name: "config.json",
+                    data: JSON.stringify(createConfig(imageInfo)),
+                },
+            ]);
+            fs.writeFileSync(ociConfigTarPath, configTar);
+
+            await this.sdkRun(
+                sdkImage,
+                BuildApplication.createDriveCommand(
+                    driveType,
+                    bytes.parse(imageInfo.dataSize),
+                ),
+                [ociConfigTarPath],
+                ociConfigDrivePath,
+            );
+        } finally {
+            await fs.remove(ociConfigTarPath);
+        }
+    }
+
+    private async createAppDrive(
+        image: string,
+        imageInfo: ImageInfo,
+        sdkImage: string,
+    ): Promise<void> {
+        const { flags } = await this.parse(BuildApplication);
+        const driveType = flags["drive-type"] as DriveType;
+
+        const appTarPath = this.getContextPath("app.tar");
+        const appGnutarPath = this.getContextPath("app.gnutar");
+        const appDrivePath = this.getContextPath("app.drive");
+
+        try {
+            // create OCI Image tarball
+            await this.createTarball(image, appTarPath);
+
+            // create rootfs tar
+            await this.sdkRun(
+                sdkImage,
+                BuildApplication.createRootfsTarCommand(),
+                [appTarPath],
+                appGnutarPath,
+            );
+
+            // create drive
+            await this.sdkRun(
+                sdkImage,
+                BuildApplication.createDriveCommand(
+                    driveType,
+                    bytes.parse(imageInfo.dataSize),
+                ),
+                [appGnutarPath],
+                appDrivePath,
+            );
+        } finally {
+            await fs.remove(appGnutarPath);
+            await fs.remove(appTarPath);
+        }
     }
 
     public async run(): Promise<void> {
         const { flags } = await this.parse(BuildApplication);
 
         const snapshotPath = this.getContextPath("image");
-        const tarPath = this.getContextPath("image.tar");
-        const gnuTarPath = this.getContextPath("image.gnutar");
-        const ext2Path = this.getContextPath("image.ext2");
+        const cruntimeDrivePath = this.getContextPath("cruntime.drive");
+        const ociConfigDrivePath = this.getContextPath("ociconfig.drive");
+        const appDrivePath = this.getContextPath("app.drive");
 
         // clean up temp files we create along the process
         tmp.setGracefulCleanup();
@@ -283,38 +460,31 @@ Update your application Dockerfile using one of the templates at https://github.
         const sdkImage = `cartesi/sdk:${imageInfo.sdkVersion}`;
 
         try {
-            // create docker tarball for image specified
-            await this.createTarball(appImage, tarPath);
-
-            // create rootfs tar
-            await this.sdkRun(
+            // create cruntime drive
+            await this.createCruntimeDrive(
+                CARTESI_CRUNTIME_IMAGE,
+                imageInfo,
                 sdkImage,
-                BuildApplication.createRootfsTarCommand(),
-                tarPath,
-                gnuTarPath,
             );
 
-            // create ext2
-            await this.sdkRun(
-                sdkImage,
-                BuildApplication.createExt2Command(
-                    bytes.parse(imageInfo.dataSize),
-                ),
-                gnuTarPath,
-                ext2Path,
-            );
+            // create oci config drive
+            await this.createOCIConfigeDrive(imageInfo, sdkImage);
+
+            // create app drive
+            await this.createAppDrive(appImage, imageInfo, sdkImage);
 
             // create machine snapshot
-            await this.sdkRun(
-                sdkImage,
-                BuildApplication.createMachineSnapshotCommand(imageInfo),
-                ext2Path,
-                snapshotPath,
-            );
-            await fs.chmod(snapshotPath, 0o755);
-        } finally {
-            await fs.remove(gnuTarPath);
-            await fs.remove(tarPath);
+            if (!flags["skip-snapshot"]) {
+                await this.sdkRun(
+                    sdkImage,
+                    await this.createMachineSnapshotCommand(imageInfo),
+                    [cruntimeDrivePath, ociConfigDrivePath, appDrivePath],
+                    snapshotPath,
+                );
+                await fs.chmod(snapshotPath, 0o755);
+            }
+        } catch (e: unknown) {
+            this.error(e as Error);
         }
     }
 }
