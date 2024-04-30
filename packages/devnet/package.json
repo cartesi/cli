@@ -22,7 +22,7 @@
         "@cartesi/rollups": "^1.4.0",
         "hardhat": "^2.22.3",
         "hardhat-abi-exporter": "^2",
-        "hardhat-deploy": "^0.12.2",
+        "hardhat-deploy": "^0.12.4",
         "npm-run-all": "^4",
         "rimraf": "^5",
         "tsconfig": "workspace:*",
