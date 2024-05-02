@@ -203,13 +203,7 @@ Update your application Dockerfile using one of the templates at https://github.
             "crane",
             "export",
             "-", // OCI Image from stdin
-            "-", // rootfs tarball to stdout
-            "|",
-            "bsdtar",
-            "-cf",
-            "/tmp/output",
-            "--format=gnutar",
-            "@/dev/stdin", // rootfs tarball from stdin
+            "/tmp/output", // rootfs tarball
         ];
         return ["/usr/bin/env", "bash", "-c", cmd.join(" ")];
     }
