@@ -11,5 +11,6 @@ target "default" {
     CARTESI_IMAGE_KERNEL_VERSION  = "0.19.1"
     DEVNET_VERSION                = "1.6.0"
     LINUX_KERNEL_VERSION          = "6.5.9-ctsi-1-v0.19.1"
+    XGENEXT2_VERSION              = "1.5.5"
   }
 }
