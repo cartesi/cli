@@ -105,6 +105,18 @@ export const createConfig = (imageInfo: ImageInfo) => {
                 source: "cgroup",
                 options: ["nosuid", "noexec", "nodev", "relatime", "ro"],
             },
+            {
+                destination: "/tmp",
+                type: "tmpfs",
+                source: "tmpfs",
+                options: ["nosuid", "strictatime", "mode=1777", "size=65536k"],
+            },
+            {
+                destination: "/var/tmp",
+                type: "tmpfs",
+                source: "tmpfs",
+                options: ["nosuid", "strictatime", "mode=1777", "size=65536k"],
+            },
         ],
         linux: {
             resources: {
