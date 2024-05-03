@@ -189,8 +189,6 @@ Update your application Dockerfile using one of the templates at https://github.
 
         const createCmd = ["container", "create", ...volumes, sdkImage, ...cmd];
 
-        console.log(createCmd);
-
         const { stdout: cid } = await execa("docker", createCmd);
 
         await execa("docker", ["container", "start", "-a", cid], {
