@@ -40,72 +40,33 @@ RUN tar -xvf chisel.tar.gz -C /usr/bin/
 
 # Extract crun dependencies into the chiselled filesystem
 # FIXME: remove this when crun's dependecies slices are upstream
-ADD https://github.com/endersonmaia/chisel-releases.git#0ce6657c093a38267d65e7d9275a45e22b162942 /chisel-22.04
+ADD https://github.com/endersonmaia/chisel-releases.git#14cd0571ac7646c0e2b70e3dc41855b70805d7eb /chisel-24.04
 RUN chisel cut \
-    --release /chisel-22.04 \
+    --release /chisel-24.04 \
     --root /rootfs \
     --arch=riscv64 \
+    # base rootfs dependencies
     base-files_base \
     base-files_release-info \
     base-passwd_data \
+    # machine-emulator-tools dependencies
     busybox-static_bins \
-    libc6_libs \
-    libcap2_libs \
     libgcc-s1_libs \
-    libseccomp2_libs \
-    libstdc++6_libs \
-    libyajl2_libs \
+    # cruntime dependencies
+    crun_bins \
     uidmap_bins
 
 # Prepare the chiselled filesystem with the necessary configuration
 # some directories, dapp user and root's shell
 RUN <<EOF
 set -e
-ln -s /bin/busybox bin/sh
+ln -s /usr/bin/busybox bin/sh
 mkdir -p proc sys dev run/cruntime mnt
 echo "dapp:x:1000:1000::/home/dapp:/bin/sh" >> etc/passwd
 echo "dapp:x:1000:" >> etc/group
 mkdir home/dapp
 chown 1000:1000 home/dapp
 sed -i '/^root/s/bash/sh/g' etc/passwd
-EOF
-
-###############################################################################
-# STAGE: crun-builder
-#
-# Build most recent version of the crun binary to be used at final image.
-#
-FROM base-image AS crun-builder
-ARG DEBIAN_FRONTEND=noninteractive
-RUN <<EOF
-set -e
-apt-get install -y \
-    autoconf \
-    automake \
-    build-essential \
-    gcc \
-    git \
-    go-md2man \
-    libcap-dev \
-    libprotobuf-c-dev \
-    libseccomp-dev \
-    libtool \
-    libyajl-dev \
-    make \
-    pkgconf \
-    python3
-EOF
-
-WORKDIR /usr/local/src
-# crun:v1.4.4 -> a220ca661ce078f2c37b38c92e66cf66c012d9c1
-ADD --keep-git-dir https://github.com/containers/crun.git#a220ca661ce078f2c37b38c92e66cf66c012d9c1 /usr/local/src
-RUN <<EOF
-set -e
-./autogen.sh
-./configure \
-    --disable-systemd \
-    --disable-criu
-make
 EOF
 
 ###############################################################################
@@ -118,4 +79,3 @@ COPY --chown=root:root --chmod=644 skel/etc/subgid /etc/subgid
 COPY --chown=root:root --chmod=644 skel/etc/subuid /etc/subuid
 COPY --chown=root:root --chmod=755 skel/etc/cartesi-init.d/cruntime-init /etc/cartesi-init.d/cruntime-init
 COPY --from=chisel /rootfs /
-COPY --from=crun-builder /usr/local/src/crun /usr/bin/
