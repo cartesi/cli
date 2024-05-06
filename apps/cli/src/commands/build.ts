@@ -2,8 +2,9 @@ import { Flags } from "@oclif/core";
 import bytes from "bytes";
 import { execa } from "execa";
 import fs from "fs-extra";
-import { createTar } from "nanotar";
+import path from "path";
 import semver from "semver";
+import tar from "tar-stream";
 import tmp from "tmp";
 
 import { BaseCommand } from "../baseCommand.js";
@@ -166,13 +167,7 @@ Update your application Dockerfile using one of the templates at https://github.
         outputFilePath: string,
     ): Promise<void> {
         // create docker tarball from app image
-        const { stdout: appCid } = await execa("docker", [
-            "image",
-            "save",
-            image,
-            "-o",
-            outputFilePath,
-        ]);
+        await execa("docker", ["image", "save", image, "-o", outputFilePath]);
     }
 
     // this wraps the call to the sdk image with a one-shot approach
@@ -284,26 +279,13 @@ Update your application Dockerfile using one of the templates at https://github.
     private async createMachineSnapshotCommand(
         info: ImageInfo,
     ): Promise<string[]> {
-        const { flags } = await this.parse(BuildApplication);
-        const driveType = flags["drive-type"] as DriveType;
-
         const ramSize = info.ramSize;
-        const entrypoint = [
-            "rollup-init",
-            "crun",
-            "run",
-            "--config",
-            "/run/cruntime/config/config.json",
-            "--bundle",
-            "/run/cruntime",
-            "app",
-        ].join(" ");
+        const entrypoint = ["rollup-init", "crun", "run", "app"].join(" ");
         const cwd = "--append-init=WORKDIR=/run/cruntime";
 
         const flashDriveArgs: string[] = [
             `--flash-drive=label:root,filename:/tmp/input0`,
-            `--flash-drive=label:config,filename:/tmp/input1,mount:/run/cruntime/config`,
-            `--flash-drive=label:dapp,filename:/tmp/input2,mount:/run/cruntime/rootfs`,
+            `--flash-drive=label:dapp,filename:/tmp/input1,mount:/run/cruntime`,
         ];
 
         const result = [
@@ -314,25 +296,21 @@ Update your application Dockerfile using one of the templates at https://github.
             "--final-hash",
             "--store=/tmp/output",
             "--append-bootargs=no4lvl",
+            "--append-bootargs=rootfstype=squashfs",
             "--append-init=/bin/sh /etc/cartesi-init.d/cruntime-init",
             cwd,
             `--append-entrypoint=${entrypoint}`,
         ];
 
-        if (driveType === "sqfs")
-            result.push("--append-bootargs=rootfstype=squashfs");
-
         return result;
     }
 
+    //TODO: embedd cruntime.sqfs into cartesi/sdk image
+    // move the packages/cruntime code to packages/sdk
     private async createCruntimeDrive(
         image: string,
-        imageInfo: ImageInfo,
         sdkImage: string,
     ): Promise<void> {
-        const { flags } = await this.parse(BuildApplication);
-        const driveType = flags["drive-type"] as DriveType;
-
         const cruntimeTarPath = this.getContextPath("cruntime.tar");
         const cruntimeGnutarPath = this.getContextPath("cruntime.gnutar");
         const cruntimeDrivePath = this.getContextPath("cruntime.drive");
@@ -349,10 +327,7 @@ Update your application Dockerfile using one of the templates at https://github.
 
             await this.sdkRun(
                 sdkImage,
-                BuildApplication.createDriveCommand(
-                    driveType,
-                    bytes.parse(imageInfo.dataSize),
-                ),
+                BuildApplication.createDriveCommand("sqfs", 0),
                 [cruntimeGnutarPath],
                 cruntimeDrivePath,
             );
@@ -362,40 +337,7 @@ Update your application Dockerfile using one of the templates at https://github.
         }
     }
 
-    private async createOCIConfigeDrive(
-        imageInfo: ImageInfo,
-        sdkImage: string,
-    ): Promise<void> {
-        const { flags } = await this.parse(BuildApplication);
-        const driveType = flags["drive-type"] as DriveType;
-
-        const ociConfigTarPath = this.getContextPath("ociconfig.tar");
-        const ociConfigDrivePath = this.getContextPath("ociconfig.drive");
-
-        try {
-            const configTar = createTar([
-                {
-                    name: "config.json",
-                    data: JSON.stringify(createConfig(imageInfo)),
-                },
-            ]);
-            fs.writeFileSync(ociConfigTarPath, configTar);
-
-            await this.sdkRun(
-                sdkImage,
-                BuildApplication.createDriveCommand(
-                    driveType,
-                    bytes.parse(imageInfo.dataSize),
-                ),
-                [ociConfigTarPath],
-                ociConfigDrivePath,
-            );
-        } finally {
-            await fs.remove(ociConfigTarPath);
-        }
-    }
-
-    private async createAppDrive(
+    private async createAppOCIBundle(
         image: string,
         imageInfo: ImageInfo,
         sdkImage: string,
@@ -405,6 +347,7 @@ Update your application Dockerfile using one of the templates at https://github.
 
         const appTarPath = this.getContextPath("app.tar");
         const appGnutarPath = this.getContextPath("app.gnutar");
+        const appOCIBundlePath = this.getContextPath("app.ocibundle.tar");
         const appDrivePath = this.getContextPath("app.drive");
 
         try {
@@ -419,6 +362,38 @@ Update your application Dockerfile using one of the templates at https://github.
                 appGnutarPath,
             );
 
+            // prepare OCI Bundle
+            const extract = tar.extract();
+            const pack = tar.pack();
+            const appGnuTarStream = fs.createReadStream(appGnutarPath);
+            const appOCIBundleStream = fs.createWriteStream(appOCIBundlePath);
+            const ociConfigJSON = JSON.stringify(createConfig(imageInfo));
+
+            // add config.json
+            pack.entry({ name: "config.json" }, ociConfigJSON, function (err) {
+                if (err) throw err;
+                console.log("ERROR config.json");
+                pack.finalize();
+            });
+
+            // add rootfs/ prefix
+            extract.on("entry", function (header, stream, callback) {
+                header.name = path.join("rootfs", header.name);
+                stream.pipe(pack.entry(header, callback));
+            });
+
+            // save tarball for OCI Bundle
+            appGnuTarStream.pipe(extract);
+            pack.pipe(appOCIBundleStream);
+
+            // appOCIBundleStream.on("close", function () {
+            //     console.log(path + " has been written");
+            // });
+
+            // extract.on("finish", function () {
+            //     pack.finalize();
+            // });
+
             // create drive
             await this.sdkRun(
                 sdkImage,
@@ -426,22 +401,21 @@ Update your application Dockerfile using one of the templates at https://github.
                     driveType,
                     bytes.parse(imageInfo.dataSize),
                 ),
-                [appGnutarPath],
+                [appOCIBundlePath],
                 appDrivePath,
             );
         } finally {
-            await fs.remove(appGnutarPath);
-            await fs.remove(appTarPath);
+            //await fs.remove(appTarPath);
+            //await fs.remove(appGnutarPath);
+            //await fs.remove(appOCIBundlePath);
         }
     }
 
     public async run(): Promise<void> {
         const { flags } = await this.parse(BuildApplication);
 
-        const tarPath = this.getContextPath("image.tar");
         const snapshotPath = this.getContextPath("image");
         const cruntimeDrivePath = this.getContextPath("cruntime.drive");
-        const ociConfigDrivePath = this.getContextPath("ociconfig.drive");
         const appDrivePath = this.getContextPath("app.drive");
 
         // clean up temp files we create along the process
@@ -460,28 +434,18 @@ Update your application Dockerfile using one of the templates at https://github.
         const sdkImage = `cartesi/sdk:${imageInfo.sdkVersion}`;
 
         try {
-            // create docker tarball for image specified
-            await this.createTarball(appImage, tarPath);
-
             // create cruntime drive
-            await this.createCruntimeDrive(
-                CARTESI_CRUNTIME_IMAGE,
-                imageInfo,
-                sdkImage,
-            );
-
-            // create oci config drive
-            await this.createOCIConfigeDrive(imageInfo, sdkImage);
+            await this.createCruntimeDrive(CARTESI_CRUNTIME_IMAGE, sdkImage);
 
             // create app drive
-            await this.createAppDrive(appImage, imageInfo, sdkImage);
+            await this.createAppOCIBundle(appImage, imageInfo, sdkImage);
 
             // create machine snapshot
             if (!flags["skip-snapshot"]) {
                 await this.sdkRun(
                     sdkImage,
                     await this.createMachineSnapshotCommand(imageInfo),
-                    [cruntimeDrivePath, ociConfigDrivePath, appDrivePath],
+                    [cruntimeDrivePath, appDrivePath],
                     snapshotPath,
                 );
                 await fs.chmod(snapshotPath, 0o755);
