@@ -1,5 +1,11 @@
 # sdk
 
+## 0.6.1
+
+### Patch Changes
+
+- e999bd5: bump xgenext2fs to 1.5.6
+
 ## 0.6.0
 
 ### Minor Changes
