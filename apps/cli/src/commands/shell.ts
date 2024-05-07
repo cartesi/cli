@@ -57,7 +57,7 @@ export default class Shell extends BaseCommand<typeof Shell> {
             args.push("-it");
         }
 
-        await execa("docker", [...args, "--", "/bin/bash"], {
+        await execa("docker", [...args, "--", "/bin/sh"], {
             stdio: "inherit",
         });
     }
