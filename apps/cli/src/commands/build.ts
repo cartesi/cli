@@ -365,34 +365,36 @@ Update your application Dockerfile using one of the templates at https://github.
             // prepare OCI Bundle
             const extract = tar.extract();
             const pack = tar.pack();
-            const appGnuTarStream = fs.createReadStream(appGnutarPath);
+            const appGnutarStream = fs.createReadStream(appGnutarPath);
             const appOCIBundleStream = fs.createWriteStream(appOCIBundlePath);
             const ociConfigJSON = JSON.stringify(createConfig(imageInfo));
+            const rootfsPrefix = "rootfs/";
 
             // add config.json
             pack.entry({ name: "config.json" }, ociConfigJSON, function (err) {
                 if (err) throw err;
-                console.log("ERROR config.json");
-                pack.finalize();
             });
+            // add rootfs/ directory
+            pack.entry({ name: rootfsPrefix, type: "directory" });
 
             // add rootfs/ prefix
             extract.on("entry", function (header, stream, callback) {
-                header.name = path.join("rootfs", header.name);
+                header.name = path.join(rootfsPrefix, header.name);
                 stream.pipe(pack.entry(header, callback));
             });
 
+            extract.on("finish", function () {
+                pack.finalize();
+                console.log('extract.on("finish") -> pack.finilize()');
+            });
+
+            appOCIBundleStream.on("close", function () {
+                console.log(path + " has been written");
+            });
+
             // save tarball for OCI Bundle
-            appGnuTarStream.pipe(extract);
+            appGnutarStream.pipe(extract);
             pack.pipe(appOCIBundleStream);
-
-            // appOCIBundleStream.on("close", function () {
-            //     console.log(path + " has been written");
-            // });
-
-            // extract.on("finish", function () {
-            //     pack.finalize();
-            // });
 
             // create drive
             await this.sdkRun(
