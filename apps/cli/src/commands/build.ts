@@ -28,7 +28,7 @@ const CARTESI_LABEL_DATA_SIZE = `${CARTESI_LABEL_PREFIX}.data_size`;
 const CARTESI_DEFAULT_RAM_SIZE = "128Mi";
 
 const CARTESI_LABEL_SDK_VERSION = `${CARTESI_LABEL_PREFIX}.sdk_version`;
-const CARTESI_DEFAULT_SDK_VERSION = "0.6.0";
+const CARTESI_DEFAULT_SDK_VERSION = "0.6.1";
 
 export default class BuildApplication extends BaseCommand<
     typeof BuildApplication
@@ -197,13 +197,7 @@ Update your application Dockerfile using one of the templates at https://github.
             "crane",
             "export",
             "-", // OCI Image from stdin
-            "-", // rootfs tarball to stdout
-            "|",
-            "bsdtar",
-            "-cf",
-            "/tmp/output",
-            "--format=gnutar",
-            "@/dev/stdin", // rootfs tarball from stdin
+            "/tmp/output", // rootfs tarball
         ];
         return ["/usr/bin/env", "bash", "-c", cmd.join(" ")];
     }
