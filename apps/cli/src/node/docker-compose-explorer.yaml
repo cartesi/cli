@@ -10,7 +10,7 @@ services:
             PGDATABASE: ${PGDATABASE:-postgres}
 
     explorer_api:
-        image: cartesi/rollups-explorer-api:0.4.0
+        image: cartesi/rollups-explorer-api:0.5.0
         environment:
             DB_NAME: ${PGDATABASE:-squid}
             DB_PORT: ${PGPORT:-5432}
@@ -25,10 +25,12 @@ services:
                 condition: service_completed_successfully
 
     squid_processor:
-        image: cartesi/rollups-explorer-api:0.4.0
+        image: cartesi/rollups-explorer-api:0.5.0
         environment:
             CHAIN_ID: ${CHAIN_ID:-31337}
             RPC_URL_31337: ${RPC_URL:-http://anvil:8545}
+            BLOCK_CONFIRMATIONS_31337: 0
+            GENESIS_BLOCK_31337: 22
             DB_NAME: ${PGDATABASE:-squid}
             DB_PORT: ${PGPORT:-5432}
             DB_HOST: ${PGHOST:-database}
@@ -39,7 +41,7 @@ services:
                 condition: service_completed_successfully
 
     explorer:
-        image: cartesi/rollups-explorer:0.9.0
+        image: cartesi/rollups-explorer:0.12.0
         expose:
             - 3000
         depends_on:
