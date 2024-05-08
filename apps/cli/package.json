@@ -32,6 +32,7 @@
         "fs-extra": "^11",
         "giget": "^1.2.3",
         "lookpath": "^1.2.2",
+        "nanotar": "^0.1.1",
         "open": "^10.1.0",
         "ora": "^8.0.1",
         "progress-stream": "^2.0",
