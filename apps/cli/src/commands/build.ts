@@ -362,13 +362,20 @@ Update your application Dockerfile using one of the templates at https://github.
                 appGnutarPath,
             );
 
-            // prepare OCI Bundle
-            const extract = tar.extract();
-            const pack = tar.pack();
-            const appGnutarStream = fs.createReadStream(appGnutarPath);
-            const appOCIBundleStream = fs.createWriteStream(appOCIBundlePath);
             const ociConfigJSON = JSON.stringify(createConfig(imageInfo));
             const rootfsPrefix = "rootfs/";
+
+            // extract pipe
+            const extract = tar.extract();
+            extract.on("error", (err: Error) => {
+                throw err;
+            });
+
+            // pack pipe
+            const pack = tar.pack();
+            pack.on("error", (err: Error) => {
+                throw err;
+            });
 
             // add config.json
             pack.entry({ name: "config.json" }, ociConfigJSON, function (err) {
@@ -377,7 +384,19 @@ Update your application Dockerfile using one of the templates at https://github.
             // add rootfs/ directory
             pack.entry({ name: rootfsPrefix, type: "directory" });
 
-            // add rootfs/ prefix
+            // readStream for appGnutarPath
+            const appGnutarStream = fs.createReadStream(appGnutarPath);
+            appGnutarStream.on("error", (err: Error) => {
+                throw err;
+            });
+
+            // writeStream for appOCIBundlePath
+            const appOCIBundleStream = fs.createWriteStream(appOCIBundlePath);
+            appOCIBundleStream.on("error", (err: Error) => {
+                throw err;
+            });
+
+            // for every entry on extract add rootfs/ prefix into pack
             extract.on("entry", function (header, stream, callback) {
                 header.name = path.join(rootfsPrefix, header.name);
                 stream.pipe(pack.entry(header, callback));
