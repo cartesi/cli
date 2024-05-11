@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.15.0
+
+### Minor Changes
+
+- Add capability for picking SDK through sdk_name
+
 ## 0.14.1
 
 ### Patch Changes

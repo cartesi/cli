@@ -1,5 +1,11 @@
 # sdk
 
+## 0.7.0
+
+### Minor Changes
+
+- Add capability for picking SDK through sdk_name
+
 ## 0.6.1
 
 ### Patch Changes
