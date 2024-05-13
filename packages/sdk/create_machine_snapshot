@@ -1,0 +1,82 @@
+#!/bin/bash
+set -e
+
+# Define function to display usage
+usage() {
+    echo "Usage: $0 [options]"
+    echo "Options:"
+    echo "  -r, --ram-length <size>        Specify RAM size"
+    echo "  -d, --drive-label <label>      Specify drive label, filename for input"
+    echo "  -m, --drive-filename <path>    Specify raw drive image filename"
+    echo "  -o, --output <path>            Specify output directory"
+    echo "  -w, --workdir <path>           Set the working directory"
+    echo "  -e, --entrypoint <cmd>         Set the entrypoint command"
+    echo "  -v, --env <var=value>          Add an environment variable"
+    echo "  -h, --help                     Display this help and exit"
+}
+
+# Initialize variables with default values
+ram_length=""
+drive_label=""
+drive_filename=""
+output_path=""
+workdir=""
+entrypoint=""
+declare -a env_vars
+
+# Parse command line options using getopt
+TEMP=$(getopt -o r:d:m:o:w:e:v:h --long ram-length:,drive-label:,drive-filename:,output:,workdir:,entrypoint:,env:,help -- "$@")
+eval set -- "$TEMP"
+
+# Extract options and their arguments into variables.
+while true ; do
+    case "$1" in
+        -r|--ram-length)
+            ram_length="$2"
+            shift 2 ;;
+        -d|--drive-label)
+            drive_label="$2"
+            shift 2 ;;
+        -m|--drive-filename)
+            drive_filename="$2"
+            shift 2 ;;
+        -o|--output)
+            output_path="$2"
+            shift 2 ;;
+        -w|--workdir)
+            workdir="$2"
+            shift 2 ;;
+        -e|--entrypoint)
+            entrypoint="$2"
+            shift 2 ;;
+        -v|--env)
+            env_vars+=("$2")
+            shift 2 ;;
+        --)
+            shift ; break ;;
+        -h|--help)
+            usage
+            exit 0 ;;
+        *)
+            echo "Invalid option: $1" >&2
+            usage
+            exit 1 ;;
+    esac
+done
+
+# Construct the command line for cartesi-machine
+cmd=("cartesi-machine")
+for env_var in "${env_vars[@]}"; do
+    cmd+=("--append-entrypoint=export $env_var")
+done
+[[ -n "$ram_length" ]] && cmd+=("--ram-length=$ram_length")
+[[ -n "$drive_label" ]] && [[ -n $drive_filename ]] && cmd+=("--flash-drive=label:$drive_label,filename:$drive_filename")
+[[ -n "$output_path" ]] && cmd+=("--store=$output_path")
+[[ -n "$workdir" ]] && cmd+=("--append-init=WORKDIR=$workdir")
+[[ -n "$entrypoint" ]] && cmd+=("--append-entrypoint=$entrypoint")
+cmd+=("--append-bootargs=no4lvl")
+cmd+=("--assert-rolling-template")
+cmd+=("--final-hash")
+
+# Execute the command
+"${cmd[@]}"
