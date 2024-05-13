@@ -105,6 +105,7 @@ COPY devnet /usr/local/bin
 COPY eth_isready /usr/local/bin
 COPY eth_dump /usr/local/bin
 COPY eth_load /usr/local/bin
+COPY create_machine_snapshot /usr/local/bin
 
 COPY entrypoint.sh /usr/local/bin/
 COPY --from=su-exec /usr/local/src/su-exec /usr/local/bin/
