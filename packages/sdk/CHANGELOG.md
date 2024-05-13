@@ -1,5 +1,11 @@
 # sdk
 
+## 0.6.2
+
+### Patch Changes
+
+- 183029f: feat: script to generate a machine
+
 ## 0.6.1
 
 ### Patch Changes
