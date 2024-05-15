@@ -19,6 +19,7 @@ type ImageInfo = {
     env: string[];
     ramSize: string;
     sdkVersion: string;
+    sdkName: string;
     workdir: string;
 };
 
@@ -28,7 +29,8 @@ const CARTESI_LABEL_DATA_SIZE = `${CARTESI_LABEL_PREFIX}.data_size`;
 const CARTESI_DEFAULT_RAM_SIZE = "128Mi";
 
 const CARTESI_LABEL_SDK_VERSION = `${CARTESI_LABEL_PREFIX}.sdk_version`;
-const CARTESI_DEFAULT_SDK_VERSION = "0.6.0";
+const CARTESI_LABEL_SDK_NAME = `${CARTESI_LABEL_PREFIX}.sdk_name`;
+const CARTESI_DEFAULT_SDK_VERSION = "0.6.2";
 
 export default class BuildApplication extends BaseCommand<
     typeof BuildApplication
@@ -99,6 +101,7 @@ export default class BuildApplication extends BaseCommand<
             entrypoint: imageInfo["Config"]["Entrypoint"] ?? [],
             env: imageInfo["Config"]["Env"] || [],
             ramSize: labels[CARTESI_LABEL_RAM_SIZE] ?? CARTESI_DEFAULT_RAM_SIZE,
+            sdkName: labels[CARTESI_LABEL_SDK_NAME] ?? "cartesi/sdk",
             sdkVersion:
                 labels[CARTESI_LABEL_SDK_VERSION] ??
                 CARTESI_DEFAULT_SDK_VERSION,
@@ -112,7 +115,10 @@ export default class BuildApplication extends BaseCommand<
         // fail if using unsupported sdk version
         if (!semver.valid(info.sdkVersion)) {
             this.warn("sdk version is not a valid semver");
-        } else if (semver.lt(info.sdkVersion, CARTESI_DEFAULT_SDK_VERSION)) {
+        } else if (
+            info.sdkName == "cartesi/sdk" &&
+            semver.lt(info.sdkVersion, CARTESI_DEFAULT_SDK_VERSION)
+        ) {
             throw new Error(`Unsupported sdk version: ${info.sdkVersion} (used) < ${CARTESI_DEFAULT_SDK_VERSION} (minimum).
 Update your application Dockerfile using one of the templates at https://github.com/cartesi/application-templates/tree/${DEFAULT_TEMPLATES_BRANCH}
 `);
@@ -232,26 +238,22 @@ Update your application Dockerfile using one of the templates at https://github.
         const driveLabel = "root"; // XXX: does this need to be customizable?
 
         // list of environment variables of docker image
-        const envs = info.env.map(
-            (variable) => `--append-entrypoint=export ${variable}`,
-        );
+        const envs = info.env.map((variable) => `--env=${variable}`);
 
         // ENTRYPOINT and CMD as a space separated string
         const entrypoint = [...info.entrypoint, ...info.cmd].join(" ");
 
         // command to change working directory if WORKDIR is defined
-        const cwd = info.workdir ? `--append-init=WORKDIR=${info.workdir}` : "";
+        const cwd = info.workdir ? `--workdir=${info.workdir}` : "";
         return [
-            "cartesi-machine",
-            "--assert-rolling-template",
+            "create_machine_snapshot",
             `--ram-length=${ramSize}`,
-            `--flash-drive=label:${driveLabel},filename:/tmp/input`,
-            "--final-hash",
-            `--store=/tmp/output`,
-            "--append-bootargs=no4lvl",
+            `--drive-label=${driveLabel}`,
+            `--drive-filename=/tmp/input`,
+            `--output=/tmp/output`,
             cwd,
             ...envs,
-            `--append-entrypoint=${entrypoint}`,
+            `--entrypoint=${entrypoint}`,
         ];
     }
 
