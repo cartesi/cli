@@ -153,13 +153,7 @@ Update your application Dockerfile using one of the templates at https://github.
         outputFilePath: string,
     ): Promise<void> {
         // create docker tarball from app image
-        const { stdout: appCid } = await execa("docker", [
-            "image",
-            "save",
-            image,
-            "-o",
-            outputFilePath,
-        ]);
+        await execa("docker", ["image", "save", image, "-o", outputFilePath]);
     }
 
     // this wraps the call to the sdk image with a one-shot approach
