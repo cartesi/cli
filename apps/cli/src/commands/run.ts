@@ -73,21 +73,6 @@ export default class Run extends BaseCommand<typeof Run> {
 
     public async run(): Promise<void> {
         const { flags } = await this.parse(Run);
-        let projectName: string;
-
-        if (flags["no-backend"]) {
-            projectName = "cartesi-node";
-        } else {
-            // get machine hash
-            const hash = this.getMachineHash();
-            // Check if snapshot exists
-            if (!hash) {
-                throw new Error(
-                    `Cartesi machine snapshot not found, run '${this.config.bin} build'`,
-                );
-            }
-            projectName = hash.substring(2, 10);
-        }
 
         // path of the tool instalation
         const binPath = path.join(
@@ -118,11 +103,18 @@ export default class Run extends BaseCommand<typeof Run> {
             CARTESI_VALIDATOR_MEMORY: flags.memory?.toString(),
         };
 
+        // cartesi project name
+        const composeFiles = ["docker-compose-cartesi.yaml"];
+
         // validator
-        const composeFiles = ["docker-compose-validator.yaml"];
+        composeFiles.push("docker-compose-validator.yaml");
+
+        // limit cpu
         if (flags.cpus) {
             composeFiles.push("docker-compose-validator-cpus.yaml");
         }
+
+        // limit memory
         if (flags.memory) {
             composeFiles.push("docker-compose-validator-memory.yaml");
         }
@@ -171,14 +163,7 @@ export default class Run extends BaseCommand<typeof Run> {
             .map((f) => ["--file", path.join(binPath, "node", f)])
             .flat();
 
-        const compose_args = [
-            "compose",
-            ...files,
-            "--project-directory",
-            ".",
-            "--project-name",
-            projectName,
-        ];
+        const compose_args = ["compose", ...files, "--project-directory", "."];
 
         const up_args = [];
 
