@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.14.2
+
+### Patch Changes
+
+- 65fb9fd: feat: allow to select sdk with .sdk_name label
+
 ## 0.14.1
 
 ### Patch Changes

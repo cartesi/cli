@@ -1,5 +1,11 @@
 # sdk
 
+## 0.7.0
+
+### Minor Changes
+
+- 5c5adda: add squashfs-tools package
+
 ## 0.6.2
 
 ### Patch Changes
