@@ -3,7 +3,7 @@ import chalk from "chalk";
 import { execa } from "execa";
 import fs from "fs";
 import path from "path";
-import { Address, Hash, isHash } from "viem";
+import { Address, Hash, getAddress, isHash } from "viem";
 
 import {
     authorityHistoryPairFactoryAddress,
@@ -77,15 +77,18 @@ export abstract class BaseCommand<T extends typeof Command> extends Command {
         this.log(`${chalk.green("?")} ${title} ${chalk.cyan(value)}`);
     }
 
-    protected async getApplicationAddress(): Promise<Address | undefined> {
+    protected async getApplicationAddress(): Promise<Address> {
         // fixed value, as we do deterministic deployment with a zero hash
-        return "0xab7528bb862fb57e8a2bcd567a2e929a0be56a5e";
+        return getAddress("0xab7528bb862fb57e8a2bcd567a2e929a0be56a5e");
     }
 
     protected async getAddressBook(): Promise<AddressBook> {
+        const applicationAddress = await this.getApplicationAddress();
+
         // build rollups contracts address book
         const contracts: AddressBook = {
             AuthorityHistoryPairFactory: authorityHistoryPairFactoryAddress,
+            CartesiDApp: applicationAddress,
             CartesiDAppFactory: cartesiDAppFactoryAddress,
             DAppAddressRelay: dAppAddressRelayAddress,
             EntryPointV06: "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
@@ -110,11 +113,6 @@ export abstract class BaseCommand<T extends typeof Command> extends Command {
             VerifyingPaymasterV07: "0xc5c97885C67F7361aBAfD2B95067a5bBdA603608",
         };
 
-        // get dapp address
-        const applicationAddress = await this.getApplicationAddress();
-        if (applicationAddress) {
-            contracts["CartesiDApp"] = applicationAddress;
-        }
         return contracts;
     }
 
