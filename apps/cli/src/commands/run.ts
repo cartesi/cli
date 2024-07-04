@@ -17,9 +17,9 @@ export default class Run extends BaseCommand<typeof Run> {
             description: "interval between blocks (in seconds)",
             default: 5,
         }),
-        "epoch-duration": Flags.integer({
-            description: "duration of an epoch (in seconds)",
-            default: 3600,
+        "epoch-length": Flags.integer({
+            description: "length of an epoch (in blocks)",
+            default: 720,
         }),
         "no-backend": Flags.boolean({
             description:
@@ -64,13 +64,13 @@ export default class Run extends BaseCommand<typeof Run> {
 
         // setup the environment variable used in docker compose
         const blockInterval = flags["block-time"];
-        const epochDuration = flags["epoch-duration"];
+        const epochLength = flags["epoch-length"];
         const listenPort = flags["listen-port"];
         const env: NodeJS.ProcessEnv = {
             ANVIL_VERBOSITY: flags.verbose ? "--steps-tracing" : "--silent",
             BLOCK_TIME: blockInterval.toString(),
             BLOCK_TIMEOUT: (blockInterval + 3).toString(),
-            CARTESI_EPOCH_DURATION: epochDuration.toString(),
+            CARTESI_EPOCH_LENGTH: epochLength.toString(),
             CARTESI_EXPERIMENTAL_DISABLE_CONFIG_LOG: flags.verbose
                 ? "false"
                 : "true",
