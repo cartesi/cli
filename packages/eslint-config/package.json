@@ -11,7 +11,7 @@
         "eslint-config-prettier": "^9",
         "eslint-config-turbo": "^2.0.6",
         "eslint-plugin-only-warn": "^1",
-        "typescript": "^5.4.5"
+        "typescript": "^5.5.3"
     },
     "files": [
         "library.js",
