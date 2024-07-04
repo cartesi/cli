@@ -16,7 +16,7 @@
         "@changesets/cli": "^2",
         "@cartesi/eslint-config": "workspace:*",
         "prettier": "^3",
-        "turbo": "^1.13.3"
+        "turbo": "^2.0.6"
     },
     "engines": {
         "node": ">=18.0.0"
