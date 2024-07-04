@@ -1,6 +1,6 @@
 services:
     validator:
-        image: cartesi/rollups-node:1.4.0
+        image: cartesi/rollups-node:1.5.0
         depends_on:
             dapp_deployer:
                 condition: service_completed_successfully
