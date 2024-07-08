@@ -45,11 +45,6 @@ const config: HardhatUserConfig = {
         hardhat: mnemonic ? { accounts: { mnemonic } } : {},
         localhost: {
             url: process.env.RPC_URL || "http://127.0.0.1:8545",
-            accounts: mnemonic
-                ? { mnemonic }
-                : {
-                      mnemonic: DEFAULT_DEVNET_MNEMONIC,
-                  },
         },
     },
     external: external(["localhost"], ["@cartesi/util", "@cartesi/rollups"]),
