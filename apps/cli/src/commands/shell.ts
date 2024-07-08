@@ -33,7 +33,7 @@ export default class Shell extends BaseCommand<typeof Shell> {
         const ext2 = path.join(containerDir, path.basename(ext2Path));
         const ramSize = "128Mi";
         const driveLabel = "root";
-        const sdkImage = "cartesi/sdk:0.6.0"; // XXX: how to resolve sdk version?
+        const sdkImage = "cartesi/sdk:0.9.0"; // XXX: how to resolve sdk version?
         const args = [
             "run",
             "--interactive",
