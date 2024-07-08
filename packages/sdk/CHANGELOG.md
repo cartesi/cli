@@ -1,5 +1,11 @@
 # sdk
 
+## 0.8.0
+
+### Minor Changes
+
+-   a64d858: bump devnet and anvil
+
 ## 0.7.0
 
 ### Minor Changes
