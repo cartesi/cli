@@ -23,9 +23,11 @@ const deploy = async (
     fs.mkdirSync(path.dirname(exportFile), { recursive: true });
 
     // run anvil
-    const anvil = spawn("anvil", ["--dump-state", dumpFile], {
-        stdio: silent ? "pipe" : "inherit",
-    });
+    const args = ["--dump-state", dumpFile];
+    if (silent) {
+        args.push("--silent");
+    }
+    const anvil = spawn("anvil", args, { stdio: "inherit" });
 
     try {
         // run deployment
