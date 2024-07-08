@@ -18,13 +18,14 @@
     },
     "devDependencies": {
         "@cartesi/rollups": "^1.4.0",
-        "@nomicfoundation/hardhat-viem": "^2.0.1",
-        "@safe-global/safe-singleton-factory": "^1.0.24",
-        "hardhat": "^2.22.3",
+        "@nomicfoundation/hardhat-viem": "^2.0.3",
+        "@safe-global/safe-singleton-factory": "^1.0.28",
+        "@types/node": "^20.14.10",
+        "hardhat": "^2.22.6",
         "hardhat-abi-exporter": "^2",
         "hardhat-deploy": "^0.12.4",
         "npm-run-all": "^4",
-        "rimraf": "^5",
+        "rimraf": "^5.0.8",
         "tsconfig": "workspace:*",
         "typescript": "^5.5.3"
     },
