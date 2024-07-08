@@ -13,8 +13,8 @@
         "preinstall": "npx only-allow pnpm"
     },
     "devDependencies": {
-        "@changesets/cli": "^2",
         "@cartesi/eslint-config": "workspace:*",
+        "@changesets/cli": "^2.27.7",
         "prettier": "^3.3.2",
         "turbo": "^2.0.6"
     },
