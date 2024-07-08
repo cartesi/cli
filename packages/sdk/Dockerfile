@@ -97,7 +97,7 @@ ENV LANG en_US.UTF-8
 ENV LANGUAGE en_US:en
 
 # download anvil pre-compiled binaries
-ARG ANVIL_VERSION=f625d0fa7c51e65b4bf1e8f7931cd1c6e2e285e9
+ARG ANVIL_VERSION=8b694bbcabaedffc0337bf8dea9a135da5694ef9
 RUN curl -sSL https://github.com/foundry-rs/foundry/releases/download/nightly-${ANVIL_VERSION}/foundry_nightly_linux_$(dpkg --print-architecture).tar.gz | \
     tar -zx -C /usr/local/bin
 
