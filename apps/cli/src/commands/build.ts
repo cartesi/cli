@@ -278,7 +278,7 @@ Update your application Dockerfile using one of the templates at https://github.
         const imageInfo = await this.getImageInfo(appImage);
 
         // resolve sdk version
-        const sdkImage = `cartesi/sdk:${imageInfo.sdkVersion}`;
+        const sdkImage = `${imageInfo.sdkName}:${imageInfo.sdkVersion}`;
 
         try {
             // create docker tarball for image specified
