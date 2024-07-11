@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.14.3
+
+### Patch Changes
+
+-   f934a42: fix: actually use sdk_name
+
 ## 0.14.2
 
 ### Patch Changes
