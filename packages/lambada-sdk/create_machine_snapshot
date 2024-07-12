@@ -95,3 +95,4 @@ ipfs dag export `cat /tmp/cid.sample` > $output_path/sample.car
 
 mv /tmp/cid $output_path/machine.car.cid
 mv /tmp/cid.sample $output_path/sample.car.cid
+rm -rf /data/ipfs
