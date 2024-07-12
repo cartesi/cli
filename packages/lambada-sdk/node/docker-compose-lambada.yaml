@@ -1,0 +1,13 @@
+services:
+    validator:
+        image: ghcr.io/zippiehq/cartesi-lambada:latest
+        expose:
+            - "3033"
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost:3033/health"]
+            interval: 10s
+            timeout: 1s
+            retries: 5
+        environment:
+            EVM_DA_URL: "http://anvil:8545"
+            AUTOMATIC_SUBSCRIBE: "${AUTOMATIC_SUBSCRIBE}"

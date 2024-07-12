@@ -1,0 +1,4 @@
+services:
+    validator:
+        env_file:
+            - ./.cartesi.env

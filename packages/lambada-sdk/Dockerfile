@@ -106,6 +106,8 @@ COPY eth_load /usr/local/bin
 COPY create_machine_snapshot /usr/local/bin
 
 COPY entrypoint.sh /usr/local/bin/
+COPY run /run-node
+COPY node /node
 COPY --from=su-exec /usr/local/src/su-exec /usr/local/bin/
 COPY --from=crane /usr/local/bin/crane /usr/local/bin/
 COPY --from=devnet /usr/local/lib/node_modules/@cartesi/devnet/export/abi/localhost.json /usr/share/cartesi/
