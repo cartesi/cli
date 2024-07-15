@@ -1,8 +1,11 @@
 services:
     validator:
         image: ghcr.io/zippiehq/cartesi-lambada:latest
-        expose:
-            - "3033"
+        ports:
+            - "127.0.0.1:3033:3033"
+            - "127.0.0.1:5001:5001"
+            - "127.0.0.1:8080:8080"
+
         healthcheck:
             test: ["CMD", "curl", "-f", "http://localhost:3033/health"]
             interval: 10s

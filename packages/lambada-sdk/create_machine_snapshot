@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "Making machine snapshot.."
+echo "Making machine snapshot for Lambada"
 
 # Define function to display usage
 usage() {
