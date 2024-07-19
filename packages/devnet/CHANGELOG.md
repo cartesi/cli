@@ -1,5 +1,11 @@
 # devnet
 
+## 1.8.0
+
+### Minor Changes
+
+-   79b860d: deployment of ERC-4337 smart contracts
+
 ## 1.7.0
 
 ### Minor Changes
