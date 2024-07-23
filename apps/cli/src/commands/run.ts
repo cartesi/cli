@@ -101,6 +101,9 @@ export default class Run extends BaseCommand<typeof Run> {
         // explorer
         composeFiles.push("docker-compose-explorer.yaml");
 
+        // account abstraction
+        composeFiles.push("docker-compose-aa.yaml");
+
         // load the no-backend compose file
         if (flags["no-backend"]) {
             composeFiles.push("docker-compose-host.yaml");
