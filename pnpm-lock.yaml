@@ -81,8 +81,8 @@ importers:
         specifier: ^0.2.3
         version: 0.2.3
       viem:
-        specifier: ^2.9.29
-        version: 2.17.1(typescript@5.5.3)(zod@3.23.8)
+        specifier: ^2.17.10
+        version: 2.17.10(typescript@5.5.3)(zod@3.23.8)
     devDependencies:
       '@cartesi/devnet':
         specifier: workspace:*
@@ -121,8 +121,8 @@ importers:
         specifier: ^0.2
         version: 0.2.6
       '@wagmi/cli':
-        specifier: ^2.1.4
-        version: 2.1.13(typescript@5.5.3)
+        specifier: ^2.1.15
+        version: 2.1.15(typescript@5.5.3)
       copyfiles:
         specifier: ^2
         version: 2.4.1
@@ -2239,8 +2239,8 @@ packages:
   '@vitest/utils@1.6.0':
     resolution: {integrity: sha512-21cPiuGMoMZwiOHa2i4LXkMkMkCGzA+MVFV70jRwHo95dL4x/ts5GZhML1QWuy7yfp3WzK3lRvZi3JnXTYqrBw==}
 
-  '@wagmi/cli@2.1.13':
-    resolution: {integrity: sha512-0lQILHXj7IZfivMa5yEN1OWu5dF17iCgIHOKaPNMMcB9uem+2oEumJEaj0EezZZXLZLNN/lbI7A4TCXNYuoEDg==}
+  '@wagmi/cli@2.1.15':
+    resolution: {integrity: sha512-mtTxbuCDRRSd/2tPAklM+4vFOq5E/0zS5OfLE3Ax2KcUWciOnjLJ0m6BAQ6HzqY9YfWo8DXa7UqxzUBkvPYltg==}
     hasBin: true
     peerDependencies:
       typescript: '>=5.0.4'
@@ -5647,8 +5647,8 @@ packages:
     resolution: {integrity: sha512-YuKoXDAhBYxY7SfOKxHBDoSyENFeW5VvIIQp2TGQuit8gpK6MnWaQelBKxso72DoxTZfZdcP3W90LqpSkgPzLQ==}
     engines: {node: ^14.17.0 || ^16.13.0 || >=18.0.0}
 
-  viem@2.17.1:
-    resolution: {integrity: sha512-iLwFAfn7aWfvc1KY176YNTJQpPdepRhvaltae6TomZ+DU5M7LdASP2ywdAHw/rezdEmrH/ytwG2WWnjWioE0fA==}
+  viem@2.17.10:
+    resolution: {integrity: sha512-nubTeRBI3wsmYGemlg9PsbhunTSJSYUlq8VjzIQkbowCSPSd1bqzVeUU0qEOXsGtgRiFfBzXkkxFknZtBOAx/Q==}
     peerDependencies:
       typescript: '>=5.0.4'
     peerDependenciesMeta:
@@ -9195,7 +9195,7 @@ snapshots:
       loupe: 2.3.7
       pretty-format: 29.7.0
 
-  '@wagmi/cli@2.1.13(typescript@5.5.3)':
+  '@wagmi/cli@2.1.15(typescript@5.5.3)':
     dependencies:
       abitype: 1.0.5(typescript@5.5.3)(zod@3.23.8)
       bundle-require: 4.0.2(esbuild@0.19.12)
@@ -9215,7 +9215,7 @@ snapshots:
       picocolors: 1.0.0
       picomatch: 3.0.1
       prettier: 3.3.2
-      viem: 2.17.1(typescript@5.5.3)(zod@3.23.8)
+      viem: 2.17.10(typescript@5.5.3)(zod@3.23.8)
       zod: 3.23.8
     optionalDependencies:
       typescript: 5.5.3
@@ -13269,7 +13269,7 @@ snapshots:
     dependencies:
       builtins: 5.0.1
 
-  viem@2.17.1(typescript@5.5.3)(zod@3.23.8):
+  viem@2.17.10(typescript@5.5.3)(zod@3.23.8):
     dependencies:
       '@adraffy/ens-normalize': 1.10.0
       '@noble/curves': 1.4.0
