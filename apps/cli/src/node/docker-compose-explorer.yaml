@@ -30,7 +30,6 @@ services:
             CHAIN_ID: ${CHAIN_ID:-31337}
             RPC_URL_31337: ${RPC_URL:-http://anvil:8545}
             BLOCK_CONFIRMATIONS_31337: 0
-            GENESIS_BLOCK_31337: 22
             DB_NAME: ${PGDATABASE:-squid}
             DB_PORT: ${PGPORT:-5432}
             DB_HOST: ${PGHOST:-database}
