@@ -64,7 +64,7 @@
         "tsconfig": "workspace:*",
         "tslib": "^2.6.3",
         "typescript": "^5.5.3",
-        "vitest": "^1.5.3"
+        "vitest": "^2.0.4"
     },
     "oclif": {
         "bin": "cartesi",
