@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.15.0
+
+### Minor Changes
+
+-   5274d0c: bump node to 1.5.0, change epoch duration semantics and option name
+-   8b52ba8: bump sdk to 0.9.0 (new anvil version)
+
 ## 0.14.3
 
 ### Patch Changes
