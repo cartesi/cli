@@ -37,7 +37,7 @@
         "progress-stream": "^2.0",
         "semver": "^7.5",
         "tmp": "^0.2.3",
-        "viem": "^2.9.29"
+        "viem": "^2.18.2"
     },
     "devDependencies": {
         "@cartesi/devnet": "workspace:*",
@@ -52,7 +52,7 @@
         "@types/prompts": "^2.4",
         "@types/semver": "^7.5.8",
         "@types/tmp": "^0.2",
-        "@wagmi/cli": "^2.1.4",
+        "@wagmi/cli": "^2.1.15",
         "copyfiles": "^2",
         "eslint": "^8.57.0",
         "eslint-config-oclif": "^5.1.3",
