@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.15.1
+
+### Patch Changes
+
+-   d796cd2: Update SDK version for project scaffold from 0.6 to 0.9
+
 ## 0.15.0
 
 ### Minor Changes
