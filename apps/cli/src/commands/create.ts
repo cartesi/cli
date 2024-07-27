@@ -5,7 +5,7 @@ import { DownloadTemplateResult, downloadTemplate } from "giget";
 import ora from "ora";
 import { BaseCommand } from "../baseCommand.js";
 
-export const DEFAULT_TEMPLATES_BRANCH = "sdk-0.6";
+export const DEFAULT_TEMPLATES_BRANCH = "sdk-0.9";
 
 export default class CreateCommand extends BaseCommand<typeof CreateCommand> {
     static description = "Create application";
