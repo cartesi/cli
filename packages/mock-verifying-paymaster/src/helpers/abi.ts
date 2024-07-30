@@ -101,6 +101,19 @@ export const VERIFYING_PAYMASTER_V07_ABI = [
         stateMutability: "nonpayable",
     },
     {
+        inputs: [],
+        name: "getDeposit",
+        outputs: [
+            {
+                internalType: "uint256",
+                name: "",
+                type: "uint256",
+            },
+        ],
+        stateMutability: "view",
+        type: "function",
+    },
+    {
         type: "function",
         name: "getHash",
         inputs: [

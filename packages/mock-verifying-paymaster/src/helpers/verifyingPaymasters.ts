@@ -47,14 +47,6 @@ export const setupVerifyingPaymasterV07 = async (
         chain: await getChain(),
     });
 
-    await walletClient
-        .sendTransaction({
-            to: DETERMINISTIC_DEPLOYER,
-            data,
-        })
-        .then((hash) => publicClient.waitForTransactionReceipt({ hash }))
-        .then(() => console.log("deployed VerifyingPaymaster v0.7"));
-
     const address = getContractAddress({
         opcode: "CREATE2",
         from: DETERMINISTIC_DEPLOYER,
@@ -62,17 +54,31 @@ export const setupVerifyingPaymasterV07 = async (
         bytecode: slice(data, 32),
     });
 
+    if ((await publicClient.getCode({ address })) === undefined) {
+        await walletClient
+            .sendTransaction({
+                to: DETERMINISTIC_DEPLOYER,
+                data,
+            })
+            .then((hash) => publicClient.waitForTransactionReceipt({ hash }))
+            .then(() => console.log("deployed VerifyingPaymaster v0.7"));
+    }
+
     const verifyingPaymaster = getContract({
         address,
         abi: VERIFYING_PAYMASTER_V07_ABI,
         client: walletClient,
     });
 
-    await verifyingPaymaster.write
-        .deposit({
-            value: parseEther("50"),
-        })
-        .then(() => console.log("Funded VerifyingPaymaster V0.7"));
+    const requiredDeposit = parseEther("50");
+    const currentDeposit = await verifyingPaymaster.read.getDeposit();
+    if (currentDeposit < requiredDeposit) {
+        await verifyingPaymaster.write
+            .deposit({
+                value: requiredDeposit - currentDeposit,
+            })
+            .then(() => console.log("Funded VerifyingPaymaster V0.7"));
+    }
 
     return verifyingPaymaster;
 };
@@ -87,14 +93,6 @@ export const setupVerifyingPaymasterV06 = async (
         chain: await getChain(),
     });
 
-    await walletClient
-        .sendTransaction({
-            to: DETERMINISTIC_DEPLOYER,
-            data,
-        })
-        .then((hash) => publicClient.waitForTransactionReceipt({ hash }))
-        .then(() => console.log("deployed VerifyingPaymaster v0.6"));
-
     const address = getContractAddress({
         opcode: "CREATE2",
         from: DETERMINISTIC_DEPLOYER,
@@ -102,17 +100,31 @@ export const setupVerifyingPaymasterV06 = async (
         bytecode: slice(data, 32),
     });
 
+    if ((await publicClient.getCode({ address })) === undefined) {
+        await walletClient
+            .sendTransaction({
+                to: DETERMINISTIC_DEPLOYER,
+                data,
+            })
+            .then((hash) => publicClient.waitForTransactionReceipt({ hash }))
+            .then(() => console.log("deployed VerifyingPaymaster v0.6"));
+    }
+
     const verifyingPaymaster = getContract({
         address,
         abi: VERIFYING_PAYMASTER_V06_ABI,
         client: walletClient,
     });
 
-    await verifyingPaymaster.write
-        .deposit({
-            value: parseEther("50"),
-        })
-        .then(() => console.log("Funded VerifyingPaymaster V0.6"));
+    const requiredDeposit = parseEther("50");
+    const currentDeposit = await verifyingPaymaster.read.getDeposit();
+    if (currentDeposit < requiredDeposit) {
+        await verifyingPaymaster.write
+            .deposit({
+                value: requiredDeposit - currentDeposit,
+            })
+            .then(() => console.log("Funded VerifyingPaymaster V0.6"));
+    }
 
     return verifyingPaymaster;
 };
