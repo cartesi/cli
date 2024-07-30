@@ -1,5 +1,11 @@
 # sdk
 
+## 0.10.0
+
+### Minor Changes
+
+-   5e7b918: add paymaster to SDK
+
 ## 0.9.0
 
 ### Minor Changes
