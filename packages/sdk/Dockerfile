@@ -65,6 +65,7 @@ ARG SERVER_MANAGER_VERSION
 ARG CARTESI_IMAGE_KERNEL_VERSION
 ARG LINUX_KERNEL_VERSION
 ARG XGENEXT2_VERSION
+ARG PAYMASTER_VERSION
 
 USER root
 ARG DEBIAN_FRONTEND=noninteractive
@@ -78,6 +79,7 @@ apt-get install -y --no-install-recommends \
     libarchive-tools \
     locales \
     nodejs \
+    npm \
     squashfs-tools \
     xxd \
     xz-utils
@@ -96,6 +98,11 @@ curl -sSL https://github.com/cartesi/genext2fs/releases/download/v${XGENEXT2_VER
 dpkg -i ./xgenext2fs.deb
 rm ./xgenext2fs.deb
 xgenext2fs --version
+EOF
+
+# Install mock-verifying-paymaster
+RUN <<EOF
+npm install -g @cartesi/mock-verifying-paymaster@${PAYMASTER_VERSION}
 EOF
 
 ENV LC_ALL en_US.UTF-8
