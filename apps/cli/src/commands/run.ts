@@ -140,6 +140,13 @@ export default class Run extends BaseCommand<typeof Run> {
         process.on("SIGINT", () => {});
 
         try {
+            // mask .env
+            if (fs.existsSync("./.env")) {
+                this.warn(
+                    "Ignoring .env file. You should create a .cartesi.env if you want to set environment variables for the rollups-node.",
+                );
+                await fs.rename(".env", ".masked.env");
+            }
             // run compose environment
             await execa("docker", [...compose_args, "up", ...up_args], {
                 env,
@@ -156,6 +163,10 @@ export default class Run extends BaseCommand<typeof Run> {
                 env,
                 stdio: "inherit",
             });
+            // unmask .env
+            if (fs.existsSync("./.masked.env")) {
+                await fs.rename(".masked.env", ".env");
+            }
         }
     }
 }
