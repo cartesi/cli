@@ -24,6 +24,8 @@ export default class DeployBuild extends BaseCommand<typeof DeployBuild> {
         }),
     };
 
+    public static enableJsonFlag = true;
+
     private async buildRollupsImage(platform?: string) {
         const buildResult = tmpNameSync();
         const imagePath = this.getContextPath("image");
@@ -53,7 +55,7 @@ export default class DeployBuild extends BaseCommand<typeof DeployBuild> {
         return fs.readFileSync(buildResult, "utf8");
     }
 
-    public async run(): Promise<string> {
+    public async run() {
         const { flags } = await this.parse(DeployBuild);
 
         // print machine hash
@@ -75,6 +77,6 @@ export default class DeployBuild extends BaseCommand<typeof DeployBuild> {
             value: image,
         });
 
-        return image;
+        return { image };
     }
 }
