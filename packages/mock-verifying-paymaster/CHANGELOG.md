@@ -1,5 +1,11 @@
 # @cartesi/mock-verifying-paymaster
 
+## 0.2.1
+
+### Patch Changes
+
+-   6d6babd: printing contract address on startup
+
 ## 0.2.0
 
 ### Minor Changes
