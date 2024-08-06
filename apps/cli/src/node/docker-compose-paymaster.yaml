@@ -1,0 +1,33 @@
+services:
+    mock-verifying-paymaster:
+        image: cartesi/sdk:0.10.0
+        command: "mock-verifying-paymaster"
+        environment:
+            - ALTO_RPC=http://alto:4337
+            - ANVIL_RPC=http://anvil:8545
+
+    prompt:
+        image: debian:bookworm-slim
+        environment:
+            PROMPT_TXT_07_PAYMASTER: "Paymaster running at http://localhost:${CARTESI_LISTEN_PORT}/paymaster/"
+
+    traefik-config-generator:
+        environment:
+            TRAEFIK_CONFIG_PAYMASTER: |
+                http:
+                    routers:
+                        paymaster:
+                            rule: "PathPrefix(`/paymaster`)"
+                            middlewares:
+                                - "remove-paymaster-prefix"
+                            service: paymaster
+                    middlewares:
+                        remove-paymaster-prefix:
+                            replacePathRegex:
+                                regex: "^/paymaster/(.*)"
+                                replacement: "/$1"
+                    services:
+                        paymaster:
+                            loadBalancer:
+                                servers:
+                                    - url: "http://mock-verifying-paymaster:3000"

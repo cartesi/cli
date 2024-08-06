@@ -2,6 +2,9 @@ services:
     database_creator:
         image: postgres:15-alpine
         command: ["createdb", "squid"]
+        depends_on:
+            database:
+                condition: service_healthy
         environment:
             PGHOST: ${PGHOST:-database}
             PGPORT: ${PGPORT:-5432}
