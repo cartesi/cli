@@ -17,6 +17,24 @@ export default class Run extends BaseCommand<typeof Run> {
             description: "interval between blocks (in seconds)",
             default: 5,
         }),
+        "disable-explorer": Flags.boolean({
+            default: false,
+            description:
+                "disable local explorer service to save machine resources",
+            summary: "disable explorer service",
+        }),
+        "disable-bundler": Flags.boolean({
+            default: false,
+            description:
+                "disable local bundler service to save machine resources",
+            summary: "disable bundler service",
+        }),
+        "disable-paymaster": Flags.boolean({
+            default: false,
+            description:
+                "disable local paymaster service to save machine resources",
+            summary: "disable paymaster service",
+        }),
         "epoch-length": Flags.integer({
             description: "length of an epoch (in blocks)",
             default: 720,
@@ -99,10 +117,18 @@ export default class Run extends BaseCommand<typeof Run> {
         composeFiles.push("docker-compose-anvil.yaml");
 
         // explorer
-        composeFiles.push("docker-compose-explorer.yaml");
+        if (!flags["disable-explorer"]) {
+            composeFiles.push("docker-compose-explorer.yaml");
+        }
 
         // account abstraction
-        composeFiles.push("docker-compose-aa.yaml");
+        if (!flags["disable-bundler"]) {
+            composeFiles.push("docker-compose-bundler.yaml");
+        }
+        if (!flags["disable-paymaster"] && !flags["disable-bundler"]) {
+            // only add paymaster if bundler is enabled
+            composeFiles.push("docker-compose-paymaster.yaml");
+        }
 
         // load the no-backend compose file
         if (flags["no-backend"]) {
