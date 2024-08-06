@@ -1,5 +1,77 @@
 # Changelog
 
+## 0.16.0
+
+### Minor Changes
+
+-   988b0b8: flags to disable optional services (explorer, bundler, paymaster)
+
+```diff
+$ cartesi run --help
+(...)
+FLAG DESCRIPTIONS
++  --disable-bundler  disable bundler service
++
++    disable local bundler service to save machine resources
++
++  --disable-explorer  disable explorer service
++
++    disable local explorer service to save machine resources
++
++  --disable-paymaster  disable paymaster service
++
++    disable local paymaster service to save machine resources
+```
+
+-   94e15ee: account abstraction contracts information
+
+```diff
+$ cartesi address-book
+Contract                     Address
+AuthorityHistoryPairFactory  0x3890A047Cf9Af60731E80B2105362BbDCD70142D
+CartesiDAppFactory           0x7122cd1221C20892234186facfE8615e6743Ab02
+DAppAddressRelay             0xF5DE34d6BbC0446E2a45719E718efEbaaE179daE
++EntryPointV06                0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789
++EntryPointV07                0x0000000071727De22E5E9d8BAf0edAc6f37da032
+ERC1155BatchPortal           0xedB53860A6B52bbb7561Ad596416ee9965B055Aa
+ERC1155SinglePortal          0x7CFB0193Ca87eB6e48056885E026552c3A941FC4
+ERC20Portal                  0x9C21AEb2093C32DDbC53eEF24B873BDCd1aDa1DB
+ERC721Portal                 0x237F8DD094C0e47f4236f12b4Fa01d6Dae89fb87
+EtherPortal                  0xFfdbe43d4c855BF7e0f105c400A50857f53AB044
+InputBox                     0x59b22D57D4f067708AB0c00552767405926dc768
++LightAccountFactory          0x00004EC70002a32400f8ae005A26081065620D20
+SelfHostedApplicationFactory 0x9E32e06Fd23675b2DF8eA8e6b0A25c3DF6a60AbC
++SimpleAccountFactory         0x9406Cc6185a346906296840746125a0E44976454
++SmartAccountFactory          0x000000a56Aaca3e9a4C479ea6b6CD0DbcB6634F5
++KernelFactoryV2              0x5de4839a76cf55d0c90e2061ef4386d962E15ae3
++KernelFactoryV3              0x6723b44Abeec4E71eBE3232BD5B455805baDD22f
++KernelFactoryV3_1            0xaac5D4240AF87249B3f71BC8E4A2cae074A3E419
+TestToken                    0x92C6bcA388E99d6B304f1Af3c3Cd749Ff0b591e2
+TestNFT                      0xc6582A9b48F211Fa8c2B5b16CB615eC39bcA653B
+TestMultiToken               0x04d724738873CB6a86328D2EbAEb2079D715e61e
++VerifyingPaymasterV06        0x28ec0633192d0cBd9E1156CE05D5FdACAcB93947
++VerifyingPaymasterV07        0xc5c97885C67F7361aBAfD2B95067a5bBdA603608
+CartesiDApp                  0xab7528bb862fb57e8a2bcd567a2e929a0be56a5e
+```
+
+-   1e6de57: account abstraction services (bundler and paymaster)
+
+```diff
+$ cartesi run
+prompt-1     | Anvil running at http://localhost:8545
+prompt-1     | GraphQL running at http://localhost:8080/graphql
+prompt-1     | Inspect running at http://localhost:8080/inspect/
+prompt-1     | Explorer running at http://localhost:8080/explorer/
++prompt-1     | Bundler running at http://localhost:8080/bundler/rpc
++prompt-1     | Paymaster running at http://localhost:8080/paymaster/
+prompt-1     | Press Ctrl+C to stop the node
+```
+
+### Patch Changes
+
+-   1031dd0: remove workaround of anvil bug
+-   e37a8fd: enable json output of cartesi deploy build
+
 ## 0.15.1
 
 ### Patch Changes
