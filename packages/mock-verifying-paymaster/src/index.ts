@@ -50,7 +50,9 @@ const main = async () => {
         return reply.code(200).send({ message: "pong" });
     });
 
-    const service = await app.listen({ host: "0.0.0.0", port: 3000 });
+    const service = await app.listen({ host: "0.0.0.0", port: 3001 });
+    console.log(`VerifyingPaymasterV06: ${verifyingPaymasterV06.address}`);
+    console.log(`VerifyingPaymasterV07: ${verifyingPaymasterV07.address}`);
     console.log(`Service ready: ${service}`);
 };
 
