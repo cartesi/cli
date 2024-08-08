@@ -10,9 +10,9 @@ printf '{"sequencer":{"type":"avail","height":"%s","vm-id":"%s","network-type":"
 
 ipfs add --cid-version=1 -r -Q /tmp/avail-app > /tmp/cid.avail
 ipfs dag export `cat /tmp/cid.avail` > $output_path/image/avail-$2.car
+CID=`cat /tmp/cid.avail`
 
 mv /tmp/cid.avail $output_path/image/avail-$2.car.cid
 rm -rf /data/ipfs
 
-CID=`cat /tmp/cid.avail`
-echo "Avail network $2 chain available in .cartesi/avail-$2.car with CID $CID"
+echo "Avail network $2 chain available in .cartesi/image/avail-$2.car with CID $CID"
