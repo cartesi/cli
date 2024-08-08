@@ -2,16 +2,16 @@
 set -e
 
 echo "Creating avail chain with app ID $1, network $2, height $3"
-
+output_path=/cartesi-dir
 ipfs init
 mkdir -p /tmp/avail-app/gov/app
-printf '{"base_image_cid":"%s"}' `cat $output_path/machine.car.cid` > /tmp/avail-app/gov/app/info.json
+printf '{"base_image_cid":"%s"}' `cat $output_path/image/machine.car.cid` > /tmp/avail-app/gov/app/info.json
 printf '{"sequencer":{"type":"avail","height":"%s","vm-id":"%s","network-type":"%s"}}' $3 $1 $2 > /tmp/avail-app/gov/chain-info.json
 
 ipfs add --cid-version=1 -r -Q /tmp/avail-app > /tmp/cid.avail
-ipfs dag export `cat /tmp/cid.avail` > $output_path/avail-$2.car
+ipfs dag export `cat /tmp/cid.avail` > $output_path/image/avail-$2.car
 
-mv /tmp/cid.avail $output_path/avail-$2.car.cid
+mv /tmp/cid.avail $output_path/image/avail-$2.car.cid
 rm -rf /data/ipfs
 
 CID=`cat /tmp/cid.avail`
