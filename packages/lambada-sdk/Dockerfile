@@ -107,6 +107,7 @@ COPY create_machine_snapshot /usr/local/bin
 
 COPY entrypoint.sh /usr/local/bin/
 COPY run /run-node
+COPY make_avail_chain /make_avail_chain
 COPY node /node
 COPY --from=su-exec /usr/local/src/su-exec /usr/local/bin/
 COPY --from=crane /usr/local/bin/crane /usr/local/bin/

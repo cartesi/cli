@@ -101,3 +101,4 @@ rm -rf /data/ipfs
 
 cp -r /node $output_path
 cp -r /run-node $output_path/run
+cp -r make_avail_chain $output_path/make_avail_chain
