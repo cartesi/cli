@@ -1,5 +1,9 @@
 #!/bin/bash
 set -e
+if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
+   echo "Syntax: make_avail_chain <app ID> <mainnet|testnet> <starting block height>"
+   exit 1
+fi
 
 echo "Creating avail chain with app ID $1, network $2, height $3"
 output_path=/cartesi-dir
@@ -16,3 +20,9 @@ mv /tmp/cid.avail $output_path/image/avail-$2.car.cid
 rm -rf /data/ipfs
 
 echo "Avail network $2 chain available in .cartesi/image/avail-$2.car with CID $CID"
+echo "You can now upload this to your local IPFS:"
+echo "curl -X POST -F file=@.cartesi/image/avail-$2.car http://127.0.0.1:5001/api/v0/dag/import"
+echo ""
+echo "And subscribe using your Lambada instance:"
+echo "curl http://127.0.0.1:3033/subscribe/$CID"
+echo ""
