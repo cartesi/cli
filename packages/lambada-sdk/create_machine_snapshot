@@ -88,7 +88,7 @@ ipfs add --cid-version=1 --raw-leaves=false -r -Q $output_path > /tmp/cid
 mkdir -p /tmp/sample-app/gov/app
 printf '{"base_image_cid":"%s"}' `cat /tmp/cid` > /tmp/sample-app/gov/app/info.json
 # because of anvil snapshot
-printf '{"sequencer":{"type":"evm-da","height":"23","vm-id":"0xFF00000000000000000000000000000000000020"}}' > /tmp/sample-app/gov/chain-info.json
+printf '{"sequencer":{"type":"evm-da","network-type":"testnet","height":"23","vm-id":"0xFF00000000000000000000000000000000000020"}}' > /tmp/sample-app/gov/chain-info.json
 
 ipfs add --cid-version=1 -r -Q /tmp/sample-app > /tmp/cid.sample
 
@@ -102,3 +102,6 @@ rm -rf /data/ipfs
 cp -r /node $output_path
 cp -r /run-node $output_path/run
 cp -r /make_avail_chain_ext $output_path/make_avail_chain
+cp -r /make_espresso_chain_ext $output_path/make_espresso_chain
+cp -r /make_celestia_chain_ext $output_path/make_celestia_chain
+cp -r /make_evm_da_chain_ext $output_path/make_evm_da_chain

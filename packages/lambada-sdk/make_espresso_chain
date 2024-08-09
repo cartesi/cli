@@ -1,0 +1,28 @@
+#!/bin/bash
+set -e
+if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
+   echo "Syntax: make_espresso_chain <namespace ID> <mainnet|testnet> <starting block height>"
+   exit 1
+fi
+
+echo "Creating espresso chain with namespace $1, network $2, height $3"
+output_path=/cartesi-dir
+ipfs init
+mkdir -p /tmp/espresso-app/gov/app
+printf '{"base_image_cid":"%s"}' `cat $output_path/image/machine.car.cid` > /tmp/espresso-app/gov/app/info.json
+printf '{"sequencer":{"type":"espresso","height":"%s","vm-id":"%s","network-type":"%s"}}' $3 $1 $2 > /tmp/espresso-app/gov/chain-info.json
+
+ipfs add --cid-version=1 -r -Q /tmp/espresso-app > /tmp/cid.espresso
+ipfs dag export `cat /tmp/cid.espresso` > $output_path/image/espresso-$2.car
+CID=`cat /tmp/cid.espresso`
+
+mv /tmp/cid.espresso $output_path/image/espresso-$2.car.cid
+rm -rf /data/ipfs
+
+echo "Espresso network $2 chain available in .cartesi/image/espresso-$2.car with CID $CID"
+echo "You can now upload this to your local IPFS:"
+echo "curl -X POST -F file=@.cartesi/image/espresso-$2.car http://127.0.0.1:5001/api/v0/dag/import"
+echo ""
+echo "And subscribe using your Lambada instance:"
+echo "curl http://127.0.0.1:3033/subscribe/$CID"
+echo ""
