@@ -5,6 +5,8 @@ services:
             - "127.0.0.1:3033:3033"
             - "127.0.0.1:5001:5001"
             - "127.0.0.1:8080:8080"
+        volumes:
+            ./.cartesi/logs:/data/logs
 
         healthcheck:
             test: ["CMD", "curl", "-f", "http://localhost:3033/health"]
@@ -14,3 +16,5 @@ services:
         environment:
             EVM_DA_URL: "http://anvil:8545"
             AUTOMATIC_SUBSCRIBE: "${AUTOMATIC_SUBSCRIBE}"
+            LAMBADA_LOGS_DIR: /data/logs
+            

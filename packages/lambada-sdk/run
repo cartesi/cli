@@ -4,6 +4,7 @@ echo AUTOMATIC_SUBSCRIBE=$AUTOMATIC_SUBSCRIBE
 ANVIL_VERBOSITY=--silent
 BLOCK_TIME=5
 BLOCK_TIMEOUT=8
+mkdir -p .cartesi/logs
 
 docker compose --file ./.cartesi/image/node/docker-compose-lambada.yaml \
 	--file ./.cartesi/image/node/docker-compose-snapshot-volume-lambada.yaml \
