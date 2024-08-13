@@ -107,15 +107,18 @@ COPY create_machine_snapshot /usr/local/bin
 
 COPY entrypoint.sh /usr/local/bin/
 COPY run /run-node
+
 COPY make_avail_chain /make_avail_chain
 COPY make_avail_chain_ext /make_avail_chain_ext
 COPY make_espresso_chain /make_espresso_chain
 COPY make_espresso_chain_ext /make_espresso_chain_ext
 COPY make_celestia_chain /make_celestia_chain
+COPY make_celestia_deployment /make_celestia_deployment
 COPY make_celestia_chain_ext /make_celestia_chain_ext
 COPY make_evm_da_chain /make_evm_da_chain
 COPY make_evm_da_chain_ext /make_evm_da_chain_ext
 COPY node /node
+COPY deployed-node /deployed-node
 COPY --from=su-exec /usr/local/src/su-exec /usr/local/bin/
 COPY --from=crane /usr/local/bin/crane /usr/local/bin/
 COPY --from=devnet /usr/local/lib/node_modules/@cartesi/devnet/export/abi/localhost.json /usr/share/cartesi/

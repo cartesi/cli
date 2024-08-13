@@ -5,7 +5,6 @@ if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
    exit 1
 fi
 
-echo "Creating celestia chain with namespace $1, network $2, height $3"
 output_path=/cartesi-dir
 ipfs init
 mkdir -p /tmp/celestia-app/gov/app
@@ -18,11 +17,3 @@ CID=`cat /tmp/cid.celestia`
 
 mv /tmp/cid.celestia $output_path/image/celestia-$2.car.cid
 rm -rf /data/ipfs
-
-echo "Celestia network $2 chain available in .cartesi/image/celestia-$2.car with CID $CID"
-echo "You can now upload this to your local IPFS:"
-echo "curl -X POST -F file=@.cartesi/image/celestia-$2.car http://127.0.0.1:5001/api/v0/dag/import"
-echo ""
-echo "And subscribe using your Lambada instance:"
-echo "curl http://127.0.0.1:3033/subscribe/$CID"
-echo ""

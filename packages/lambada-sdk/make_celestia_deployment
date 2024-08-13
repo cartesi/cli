@@ -1,0 +1,29 @@
+#!/bin/sh
+if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ]; then
+   echo "Syntax: make_celestia_deployment <deployment directory> <namespace ID> <mocha|mainnet> <starting block height>"
+   exit 1
+fi
+
+if [ ! -e .cartesi/image/machine.car ]; then
+   echo "machine.car not built yet, run cartesi build"
+   exit 1
+fi
+
+mkdir -p $1
+mkdir -p $1/car-files
+cp .cartesi/image/machine.car $1/car-files
+cp .cartesi/image/deployed_node/* $1/
+
+.cartesi/image/.tools/make_celestia_chain $2 $3 $4
+
+CID=`cat .cartesi/image/celestia-$3.car.cid`
+cp .cartesi/image/celestia-$3.car $1/car-files/chain.car
+
+printf 'LAMBADA_LOGS_DIR=/data/logs\nAUTOMATIC_SUBSCRIBE="%s"\nSEQUENCER_MAP={"celestia":{"%s":{"endpoint":"http://celestia-node:26658"}}}\n' $CID $3 > $1/lambada.env
+
+cat > $1/compose << EOF
+HERE=\`dirname \$0\`
+cd \$HERE
+docker compose -f docker-compose-lambada.yaml -f docker-compose-celestia-$3.yaml \$@
+EOF
+chmod +x $1/compose

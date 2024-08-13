@@ -101,7 +101,10 @@ rm -rf /data/ipfs
 
 cp -r /node $output_path
 cp -r /run-node $output_path/run
-cp -r /make_avail_chain_ext $output_path/make_avail_chain
-cp -r /make_espresso_chain_ext $output_path/make_espresso_chain
-cp -r /make_celestia_chain_ext $output_path/make_celestia_chain
-cp -r /make_evm_da_chain_ext $output_path/make_evm_da_chain
+cp -r /deployed-node $output_path/deployed_node
+cp -r /make_celestia_deployment $output_path/make_celestia_deployment
+mkdir -p $output_path/.tools
+cp -r /make_avail_chain_ext $output_path/.tools/make_avail_chain
+cp -r /make_espresso_chain_ext $output_path/.tools/make_espresso_chain
+cp -r /make_celestia_chain_ext $output_path/.tools/make_celestia_chain
+cp -r /make_evm_da_chain_ext $output_path/.tools/make_evm_da_chain

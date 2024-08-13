@@ -1,0 +1,25 @@
+services:
+  celestia-node:
+    image: ghcr.io/celestiaorg/celestia-node:v0.13.7
+    command: "celestia light start --core.ip mocha-4-consensus.mesa.newmetric.xyz --p2p.network mocha --rpc.addr 0.0.0.0:26658 --rpc.skip-auth"
+    environment:
+      - NODE_TYPE=light
+      - P2P_NETWORK=mocha
+      - MAX_HEADERS_PER_RANGE_REQUEST=10
+      - SAMPLE_AMOUNT=5
+      - SAMPLING_RANGE=10
+    healthcheck:
+      test: ["CMD", "nc", "localhost", "26658"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    ports:
+      - "127.0.0.1:26658:26658"
+    networks:
+      - lambada-network
+  validator:
+    depends_on:
+      celestia-node:
+        condition: service_healthy
+  

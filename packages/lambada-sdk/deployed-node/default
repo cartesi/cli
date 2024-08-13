@@ -1,0 +1,21 @@
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    root /var/www/html;
+    server_name _;
+
+    location / {
+    }
+
+    location /ipfs/ {
+        proxy_pass http://127.0.0.1:8080/;
+    }
+
+    location /latest/ {
+        proxy_pass http://127.0.0.1:3033/latest/;
+    }
+
+    location /health {
+        proxy_pass http://127.0.0.1:3033/health;
+    }
+}
