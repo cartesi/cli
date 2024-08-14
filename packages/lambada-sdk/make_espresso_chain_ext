@@ -1,6 +1,4 @@
 #!/bin/bash
 SDK_VERSION=`grep "LABEL io.cartesi.rollups.sdk_version=" Dockerfile | sed 's/LABEL io.cartesi.rollups.sdk_version=//g'`
 SDK_NAME=`grep "LABEL io.cartesi.rollups.sdk_name=" Dockerfile | sed 's/LABEL io.cartesi.rollups.sdk_name=//g'`
-echo $SDK_VERSION
-echo $SDK_NAME
 docker run -v $PWD/.cartesi:/cartesi-dir $SDK_NAME:$SDK_VERSION /make_espresso_chain $@

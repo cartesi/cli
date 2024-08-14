@@ -110,8 +110,10 @@ COPY run /run-node
 
 COPY make_avail_chain /make_avail_chain
 COPY make_avail_chain_ext /make_avail_chain_ext
+COPY make_avail_deployment make_avail_deployment
 COPY make_espresso_chain /make_espresso_chain
 COPY make_espresso_chain_ext /make_espresso_chain_ext
+COPY make_espresso_deployment /make_espresso_deployment
 COPY make_celestia_chain /make_celestia_chain
 COPY make_celestia_deployment /make_celestia_deployment
 COPY make_celestia_chain_ext /make_celestia_chain_ext

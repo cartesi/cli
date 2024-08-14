@@ -103,6 +103,8 @@ cp -r /node $output_path
 cp -r /run-node $output_path/run
 cp -r /deployed-node $output_path/deployed_node
 cp -r /make_celestia_deployment $output_path/make_celestia_deployment
+cp -r /make_espresso_deployment $output_path/make_espresso_deployment
+cp -r /make_avail_deployment $output_path/make_avail_deployment
 mkdir -p $output_path/.tools
 cp -r /make_avail_chain_ext $output_path/.tools/make_avail_chain
 cp -r /make_espresso_chain_ext $output_path/.tools/make_espresso_chain

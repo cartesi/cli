@@ -1,6 +1,6 @@
 services:
   celestia-node:
-    image: ghcr.io/celestiaorg/celestia-node:v0.13.7
+    image: ghcr.io/celestiaorg/celestia-node:v0.15.0
     command: "celestia light start --core.ip mocha-4-consensus.mesa.newmetric.xyz --p2p.network mocha --rpc.addr 0.0.0.0:26658 --rpc.skip-auth"
     environment:
       - NODE_TYPE=light
