@@ -1,0 +1,6 @@
+services:
+    validator:
+        deploy:
+            resources:
+                limits:
+                    cpus: "${CARTESI_VALIDATOR_CPUS}"
