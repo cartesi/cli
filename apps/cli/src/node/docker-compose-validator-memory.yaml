@@ -1,0 +1,6 @@
+services:
+    validator:
+        deploy:
+            resources:
+                limits:
+                    memory: "${CARTESI_VALIDATOR_MEMORY}M"

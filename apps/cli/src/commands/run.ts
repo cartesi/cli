@@ -54,6 +54,16 @@ export default class Run extends BaseCommand<typeof Run> {
             description: "port to listen for incoming connections",
             default: 8080,
         }),
+        cpus: Flags.integer({
+            description:
+                "Define the number of CPUs to use (eg.: 1) for the rollups-node",
+            summary: "number of cpu limits for the rollups-node",
+        }),
+        memory: Flags.integer({
+            description:
+                "Define the amount of memory to use for the rollups-node in MB (eg.: 1024)",
+            summary: "memory limit for the rollups-node in MB",
+        }),
         "dry-run": Flags.boolean({
             description: "show the docker compose configuration",
             default: false,
@@ -104,10 +114,18 @@ export default class Run extends BaseCommand<typeof Run> {
             CARTESI_SNAPSHOT_DIR: "/usr/share/rollups-node/snapshot",
             CARTESI_BIN_PATH: binPath,
             CARTESI_LISTEN_PORT: listenPort.toString(),
+            CARTESI_VALIDATOR_CPUS: flags.cpus?.toString(),
+            CARTESI_VALIDATOR_MEMORY: flags.memory?.toString(),
         };
 
         // validator
         const composeFiles = ["docker-compose-validator.yaml"];
+        if (flags.cpus) {
+            composeFiles.push("docker-compose-validator-cpus.yaml");
+        }
+        if (flags.memory) {
+            composeFiles.push("docker-compose-validator-memory.yaml");
+        }
 
         // prompt
         composeFiles.push("docker-compose-prompt.yaml");
