@@ -54,6 +54,11 @@ export default class Run extends BaseCommand<typeof Run> {
             description: "port to listen for incoming connections",
             default: 8080,
         }),
+        "dry-run": Flags.boolean({
+            description: "show the docker compose configuration",
+            default: false,
+            hidden: true,
+        }),
     };
 
     public async run(): Promise<void> {
@@ -169,6 +174,15 @@ export default class Run extends BaseCommand<typeof Run> {
         process.on("SIGINT", () => {});
 
         try {
+            if (flags["dry-run"]) {
+                // show the docker compose configuration
+                await execa("docker", [...compose_args, "config"], {
+                    env,
+                    stdio: "inherit",
+                });
+                return;
+            }
+
             // run compose environment
             await execa("docker", [...compose_args, "up", ...up_args], {
                 env,
