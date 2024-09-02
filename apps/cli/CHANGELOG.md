@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.16.1
+
+### Patch Changes
+
+-   6e6a17d: adds --dry-run to run command
+-   f478043: bump cartesi/rollups-node to 1.5.1
+-   44c5cca: add --cpus and --memory to run command
+
 ## 0.16.0
 
 ### Minor Changes
