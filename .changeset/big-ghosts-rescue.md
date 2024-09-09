@@ -1,5 +1,5 @@
 ---
-"@cartesi/cli": patch
+"@cartesi/cli": minor
 ---
 
 enforce build for linux/riscv64 platform
