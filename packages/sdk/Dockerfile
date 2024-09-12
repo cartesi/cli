@@ -71,6 +71,7 @@ USER root
 ARG DEBIAN_FRONTEND=noninteractive
 RUN <<EOF
 set -e
+echo 'deb http://deb.debian.org/debian bookworm-backports main' > /etc/apt/sources.list.d/backports.list
 apt-get update
 apt-get install -y --no-install-recommends \
     ca-certificates \
@@ -83,6 +84,8 @@ apt-get install -y --no-install-recommends \
     squashfs-tools \
     xxd \
     xz-utils
+apt-get install -y --no-install-recommends -t bookworm-backports \
+    e2fsprogs
 rm -rf /var/lib/apt/lists/*
 
 sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen
