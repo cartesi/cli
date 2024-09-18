@@ -1,0 +1,15 @@
+# example inspired by Rives. Games are added as sqfs files, which come from an existing external build process
+[drives.root]
+builder = "docker"
+dockerfile = "Dockerfile"
+format = "ext2"
+
+[drives.doom]
+builder = "none"
+filename = "./games/doom.sqfs"
+mount = "/usr/local/games/doom"
+
+[drives.tetrix]
+builder = "none"
+filename = "./games/tetrix.sqfs"
+mount = "/usr/local/games/tetrix"

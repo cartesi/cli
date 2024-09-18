@@ -1,0 +1,6 @@
+# example of a drive built with contents of a tar file
+# this is useful if the developer wants to take care of the tar procedure
+
+[drives.data]
+builder = "tar"
+filename = "build/files.tar"

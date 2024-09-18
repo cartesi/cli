@@ -1,312 +1,645 @@
 import { Flags } from "@oclif/core";
-import bytes from "bytes";
-import { execa } from "execa";
+import { spawn } from "child_process";
+import { execa, ExecaError, Options } from "execa";
 import fs from "fs-extra";
-import semver from "semver";
+import path from "path";
+import { finished } from "stream/promises";
 import tmp from "tmp";
-
 import { BaseCommand } from "../baseCommand.js";
-import { DEFAULT_TEMPLATES_BRANCH } from "./create.js";
+import {
+    Config,
+    DirectoryDriveConfig,
+    DockerDriveConfig,
+    DriveConfig,
+    EmptyDriveConfig,
+    ExistingDriveConfig,
+    getDriveFormat,
+    TarDriveConfig,
+} from "../config.js";
 
-type ImageBuildOptions = {
-    target?: string;
-};
+type ImageBuildOptions = Pick<
+    DockerDriveConfig,
+    "dockerfile" | "tags" | "target"
+>;
 
 type ImageInfo = {
     cmd: string[];
-    dataSize: string;
     entrypoint: string[];
     env: string[];
-    ramSize: string;
-    sdkVersion: string;
-    sdkName: string;
     workdir: string;
 };
 
-const CARTESI_LABEL_PREFIX = "io.cartesi.rollups";
-const CARTESI_LABEL_RAM_SIZE = `${CARTESI_LABEL_PREFIX}.ram_size`;
-const CARTESI_LABEL_DATA_SIZE = `${CARTESI_LABEL_PREFIX}.data_size`;
-const CARTESI_DEFAULT_RAM_SIZE = "128Mi";
+type DriveResult = {
+    filename: string;
+    imageInfo?: ImageInfo;
+};
 
-const CARTESI_LABEL_SDK_VERSION = `${CARTESI_LABEL_PREFIX}.sdk_version`;
-const CARTESI_LABEL_SDK_NAME = `${CARTESI_LABEL_PREFIX}.sdk_name`;
-const CARTESI_DEFAULT_SDK_VERSION = "0.9.0";
+/**
+ * Calls execa and falls back to docker run if command (on the host) fails
+ * @param command command to be executed
+ * @param args arguments to be passed to the command
+ * @param options execution options
+ * @returns return of execa
+ */
+type OptionsDockerFallback = Options & { image?: string };
+const execaDockerFallback = async (
+    command: string,
+    args: readonly string[],
+    options: OptionsDockerFallback,
+) => {
+    try {
+        return execa(command, args, options);
+    } catch (error) {
+        if (error instanceof ExecaError) {
+            if (error.code === "ENOENT" && options.image) {
+                return execa(
+                    "docker",
+                    [
+                        "run",
+                        "--volume",
+                        `${options.cwd}:/work`,
+                        "--workdir",
+                        "/work",
+                        options.image,
+                        command,
+                        ...args,
+                    ],
+                    options,
+                );
+            }
+        }
+        throw error;
+    }
+};
 
-export default class BuildApplication extends BaseCommand<
-    typeof BuildApplication
-> {
+/**
+ * Build Docker image (linux/riscv64). Returns image id.
+ */
+const buildImage = async (options: ImageBuildOptions): Promise<string> => {
+    const { dockerfile, tags, target } = options;
+    const buildResult = tmp.tmpNameSync();
+    const args = [
+        "buildx",
+        "build",
+        "--file",
+        dockerfile,
+        "--load",
+        "--iidfile",
+        buildResult,
+    ];
+
+    // set tags for the image built
+    args.push(...tags.map((tag) => ["--tag", tag]).flat());
+
+    if (target) {
+        args.push("--target", target);
+    }
+
+    await execa("docker", [...args, process.cwd()], { stdio: "inherit" });
+    return fs.readFileSync(buildResult, "utf8");
+};
+
+/**
+ * Query the image using docker image inspect
+ * @param image image id or name
+ * @returns Information about the image
+ */
+const getImageInfo = async (image: string): Promise<ImageInfo> => {
+    const { stdout: jsonStr } = await execa("docker", [
+        "image",
+        "inspect",
+        image,
+    ]);
+    // parse image info from docker inspect output
+    const [imageInfo] = JSON.parse(jsonStr);
+
+    // validate image architecture (must be riscv64)
+    if (imageInfo["Architecture"] !== "riscv64") {
+        throw new Error(
+            `Invalid image Architecture: ${imageInfo["Architecture"]}. Expected riscv64`,
+        );
+    }
+
+    const info: ImageInfo = {
+        cmd: imageInfo["Config"]["Cmd"] ?? [],
+        entrypoint: imageInfo["Config"]["Entrypoint"] ?? [],
+        env: imageInfo["Config"]["Env"] || [],
+        workdir: imageInfo["Config"]["WorkingDir"],
+    };
+
+    return info;
+};
+
+const buildDirectoryDrive = async (
+    name: string,
+    drive: DirectoryDriveConfig,
+    sdkImage: string,
+    destination: string,
+): Promise<DriveResult> => {
+    const filename = `${name}.${drive.format}`;
+    const blockSize = 4096; // fixed at 4k
+    const extraBlocks = Math.ceil(drive.extraSize / blockSize);
+    const extraSize = `+${extraBlocks}`;
+
+    // copy directory to destination
+    const dest = path.join(destination, name);
+    await fs.mkdirp(dest);
+    await fs.copy(drive.directory, dest);
+
+    try {
+        switch (drive.format) {
+            case "ext2": {
+                const command = "xgenext2fs";
+                const args = [
+                    "--block-size",
+                    blockSize.toString(),
+                    "--faketime",
+                    "--root",
+                    name,
+                    "--readjustment",
+                    extraSize,
+                ];
+                await execaDockerFallback(command, args, {
+                    cwd: destination,
+                    image: sdkImage,
+                });
+                break;
+            }
+            case "ext4": {
+                const seed = "00000000-0000-0000-0000-000000000001";
+                const command = "mke2fs";
+                const PATH = "/opt/homebrew/opt/e2fsprogs/sbin";
+                const args = [
+                    "-b",
+                    blockSize.toString(),
+                    "-U",
+                    "clear",
+                    "-E",
+                    `hash_seed=${seed}`,
+                    "-d",
+                    name,
+                    "-t",
+                    drive.format,
+                    filename,
+                ];
+                const env = { PATH, SOURCE_DATE_EPOCH: "0" };
+                await execaDockerFallback(command, args, {
+                    cwd: destination,
+                    env,
+                    image: sdkImage,
+                });
+                break;
+            }
+            case "sqfs": {
+                const compression = "lzo"; // make customizable? default is gzip
+                const command = "mksquashfs";
+                const args = [
+                    "-all-time",
+                    "0",
+                    "-all-root", // XXX: should we use this?
+                    "-noappend",
+                    "-comp",
+                    compression,
+                    "-no-progress",
+                    name,
+                    filename,
+                ];
+                await execaDockerFallback(command, args, {
+                    cwd: destination,
+                    image: sdkImage,
+                });
+            }
+        }
+    } finally {
+        // delete copied
+        await fs.remove(dest);
+    }
+    return { filename: path.join(destination, filename) };
+};
+
+const exportImageTar = async (
+    cwd: string,
+    inputFile: string,
+    outputFile: string,
+) => {
+    const crane = spawn("crane", ["export", "-", "-"]);
+    const input = fs.createReadStream(path.join(cwd, inputFile));
+    const output = fs.createWriteStream(path.join(cwd, outputFile));
+    // pipeline(input, crane, output)
+    input.pipe(crane.stdin);
+    crane.stdout.pipe(output);
+    console.log(cwd, inputFile, outputFile);
+    await finished(output);
+    return finished(input);
+
+    /*
+    return pipeline(
+        createReadStream(path.join(cwd, inputFile)),
+        execa("crane", ["export", "-", "-"]).duplex(),
+        createWriteStream(path.join(cwd, outputFile)),
+    );
+    *.
+
+    /*return execa("crane", ["export", "-", "-"], {
+        cwd,
+        inputFile: path.join(cwd, inputFile),
+        outputFile: path.join(cwd, outputFile),
+        shell: true,
+    });*/
+};
+
+const buildDockerDrive = async (
+    name: string,
+    drive: DockerDriveConfig,
+    sdkImage: string,
+    destination: string,
+): Promise<DriveResult> => {
+    const { format } = drive;
+
+    const ocitar = `${name}.oci.tar`;
+    const tar = `${name}.tar`;
+    const filename = `${name}.${format}`;
+
+    // use pre-existing image or build docker image
+    const image = drive.image || (await buildImage(drive));
+
+    // get image info
+    const imageInfo = await getImageInfo(image);
+
+    try {
+        // create OCI Docker tarball from Docker image
+        await execa("docker", ["image", "save", image, "-o", ocitar], {
+            cwd: destination,
+        });
+
+        // create rootfs tar from OCI tar
+        await exportImageTar(destination, ocitar, tar);
+
+        switch (format) {
+            case "ext2":
+            case "ext4": {
+                // create ext2 or ext4
+                await tarToExt(tar, filename, format, drive.extraSize, {
+                    cwd: destination,
+                    image: sdkImage,
+                });
+                break;
+            }
+            case "sqfs": {
+                const compression = "lzo"; // make customizable? default is gzip
+                const command = "mksquashfs";
+                const args = [
+                    "-tar",
+                    "-all-time",
+                    "0",
+                    "-all-root", // XXX: should we use this?
+                    "-noappend",
+                    "-comp",
+                    compression,
+                    "-no-progress",
+                    filename,
+                ];
+                await execaDockerFallback(command, args, {
+                    cwd: destination,
+                    image: sdkImage,
+                    inputFile: tar,
+                });
+                break;
+            }
+        }
+    } finally {
+        // delete intermediate files
+        // await fs.remove(path.join(destination, gnuTar));
+        // await fs.remove(path.join(destination, tar));
+    }
+
+    return {
+        filename: path.join(destination, filename),
+        imageInfo,
+    };
+};
+
+const buildEmptyDrive = async (
+    name: string,
+    drive: EmptyDriveConfig,
+    sdkImage: string,
+    destination: string,
+): Promise<DriveResult> => {
+    const filename = `${name}.${drive.format}`;
+    switch (drive.format) {
+        case "ext2": {
+            const blockSize = 4096; // fixed at 4k
+            const size = Math.ceil(drive.size / blockSize); // size in blocks
+            const command = "xgenext2fs";
+            const args = [
+                "--block-size",
+                blockSize.toString(),
+                "--faketime",
+                "--size-in-blocks",
+                size.toString(),
+                filename,
+            ];
+            await execaDockerFallback(command, args, {
+                cwd: destination,
+                image: sdkImage,
+            });
+            break;
+        }
+        case "ext4": {
+            const blockSize = 4096; // fixed at 4k
+            const size = Math.ceil(drive.size / blockSize); // size in blocks
+            const seed = "00000000-0000-0000-0000-000000000001";
+            const command = "mke2fs";
+            const PATH = "/opt/homebrew/opt/e2fsprogs/sbin";
+            const args = [
+                "-b",
+                blockSize.toString(),
+                "-U",
+                "clear",
+                "-E",
+                `hash_seed=${seed}`,
+                "-t",
+                drive.format,
+                filename,
+                size.toString(),
+            ];
+            const env = { PATH, SOURCE_DATE_EPOCH: "0" };
+            await execaDockerFallback(command, args, {
+                cwd: destination,
+                env,
+                image: sdkImage,
+            });
+            break;
+        }
+
+        case "raw": {
+            await fs.writeFile(
+                path.join(destination, filename),
+                Buffer.alloc(drive.size),
+            );
+            break;
+        }
+    }
+    return { filename: path.join(destination, filename) };
+};
+
+const tarToExt = async (
+    input: string,
+    output: string,
+    format: "ext2" | "ext4",
+    extraSize: number,
+    options: OptionsDockerFallback,
+) => {
+    const blockSize = 4096; // fixed at 4k
+    const extraBlocks = Math.ceil(extraSize / blockSize);
+    // const extraSize = `+${extraBlocks}`;
+
+    const seed = "00000000-0000-0000-0000-000000000001";
+    const command = "mke2fs";
+    const PATH = "/opt/homebrew/opt/e2fsprogs/sbin";
+    const args = [
+        "-b",
+        blockSize.toString(),
+        "-U",
+        "clear",
+        "-E",
+        `hash_seed=${seed}`,
+        "-d",
+        input,
+        "-t",
+        format,
+        output,
+    ];
+    const env = { ...options.env, PATH, SOURCE_DATE_EPOCH: "0" };
+    return execaDockerFallback(command, args, { ...options, env });
+};
+
+const buildTarDrive = async (
+    name: string,
+    drive: TarDriveConfig,
+    sdkImage: string,
+    destination: string,
+): Promise<DriveResult> => {
+    const tar = `${name}.tar`;
+    const filename = `${name}.${drive.format}`;
+
+    // copy input tar to destination directory (with drive name)
+    await fs.copy(drive.filename, path.join(destination, tar));
+
+    switch (drive.format) {
+        case "ext2":
+        case "ext4": {
+            await tarToExt(tar, filename, drive.format, drive.extraSize, {
+                cwd: destination,
+                image: sdkImage,
+            });
+            break;
+        }
+        case "sqfs": {
+            const compression = "lzo"; // make customizable? default is gzip
+            const command = "mksquashfs";
+            const args = [
+                "-tar",
+                "-all-time",
+                "0",
+                "-all-root", // XXX: should we use this?
+                "-noappend",
+                "-comp",
+                compression,
+                "-no-progress",
+                filename,
+            ];
+            await execaDockerFallback(command, args, {
+                cwd: destination,
+                image: sdkImage,
+                inputFile: tar,
+            });
+            break;
+        }
+    }
+    return { filename: path.join(destination, filename) };
+};
+
+const buildExistingDrive = async (
+    name: string,
+    drive: ExistingDriveConfig,
+    destination: string,
+): Promise<DriveResult> => {
+    // no need to build, drive already exists
+    const src = drive.filename;
+    const format = getDriveFormat(src);
+    const filename = path.join(destination, `${name}.${format}`);
+
+    // just copy it
+    await fs.copyFile(src, filename);
+    return { filename };
+};
+
+const buildDrive = async (
+    name: string,
+    drive: DriveConfig,
+    sdkImage: string,
+    destination: string,
+): Promise<DriveResult> => {
+    switch (drive.builder) {
+        case "directory": {
+            return buildDirectoryDrive(name, drive, sdkImage, destination);
+        }
+        case "docker": {
+            return buildDockerDrive(name, drive, sdkImage, destination);
+        }
+        case "empty": {
+            return buildEmptyDrive(name, drive, sdkImage, destination);
+        }
+        case "tar": {
+            return buildTarDrive(name, drive, sdkImage, destination);
+        }
+        case "none": {
+            return buildExistingDrive(name, drive, destination);
+        }
+    }
+};
+
+const bootMachine = async (
+    config: Config,
+    info: ImageInfo | undefined,
+    sdkImage: string,
+    destination: string,
+) => {
+    const { machine } = config;
+    const { assertRollingTemplate, maxMCycle, noRollup, ramLength, ramImage } =
+        machine;
+
+    // list of environment variables of docker image
+    const env = info?.env ?? [];
+    const envs = env.map(
+        (variable) => `--append-entrypoint="export ${variable}"`,
+    );
+
+    // bootargs from config string array
+    const bootargs = machine.bootargs.map(
+        (arg) => `--append-bootargs="${arg}"`,
+    );
+
+    // entrypoint from config or image info (Docker ENTRYPOINT + CMD)
+    const entrypoint =
+        machine.entrypoint ?? // takes priority
+        (info ? [...info.entrypoint, ...info.cmd].join(" ") : undefined); // ENTRYPOINT and CMD as a space separated string
+
+    if (!entrypoint) {
+        throw new Error("Undefined machine entrypoint");
+    }
+
+    const flashDrives = Object.entries(config.drives).map(([label, drive]) => {
+        const { format, mount, shared, user } = drive;
+        // TODO: filename should be absolute dir inside docker container
+        const filename = `${label}.${format}`;
+        const vars = [`label:${label}`, `filename:${filename}`];
+        if (mount) {
+            vars.push(`mount:${mount}`);
+        }
+        if (user) {
+            vars.push(`user:${user}`);
+        }
+        if (shared) {
+            vars.push("shared");
+        }
+        // don't specify start and length
+        return `--flash-drive=${vars.join(",")}`;
+    });
+
+    // command to change working directory if WORKDIR is defined
+    const command = "cartesi-machine";
+    const args = [
+        ...bootargs,
+        ...envs,
+        ...flashDrives,
+        `--ram-image=${ramImage}`,
+        `--ram-length=${ramLength}`,
+        "--final-hash",
+        "--store=image",
+        `--append-entrypoint="${entrypoint}"`,
+    ];
+    if (info?.workdir) {
+        args.push(`--append-init="WORKDIR=${info.workdir}"`);
+    }
+    if (noRollup) {
+        args.push("--no-rollup");
+    }
+    if (maxMCycle) {
+        args.push(`--max-mcycle=${maxMCycle.toString()}`);
+    }
+    if (assertRollingTemplate) {
+        args.push("--assert-rolling-template");
+    }
+
+    return execaDockerFallback(command, args, {
+        cwd: destination,
+        image: sdkImage,
+    });
+};
+
+export default class Build extends BaseCommand<typeof Build> {
     static summary = "Build application.";
 
     static description =
-        "Build application starting from a Dockerfile and ending with a snapshot of the corresponding Cartesi Machine already booted and yielded for the first time. This snapshot can be used to start a Cartesi node for the application using `run`. The process can also start from a Docker image built by the developer using `docker build` using the option `--from-image`";
+        "Build application by building Cartesi machine drives, configuring a machine and booting it";
 
-    static examples = [
-        "<%= config.bin %> <%= command.id %>",
-        "<%= config.bin %> <%= command.id %> --from-image my-app",
-    ];
-
-    static args = {};
+    static examples = ["<%= config.bin %> <%= command.id %>"];
 
     static flags = {
-        "from-image": Flags.string({
-            summary: "skip docker build and start from this image.",
-            description:
-                "if the build process of the application Dockerfile needs more control the developer can build the image using the `docker build` command, and then start the build process of the Cartesi machine starting from that image.",
+        config: Flags.file({
+            char: "c",
+            default: "cartesi.toml",
+            summary: "path to the configuration file",
         }),
-        target: Flags.string({
-            summary: "target of docker multi-stage build.",
-            description:
-                "if the application Dockerfile uses a multi-stage strategy, and stage of the image to be exported as a Cartesi machine is not the last stage, use this parameter to specify the target stage.",
+        "drives-only": Flags.boolean({
+            default: false,
+            summary: "only build drives",
         }),
     };
 
-    /**
-     * Build DApp image (linux/riscv64). Returns image id.
-     * @param directory path of context containing Dockerfile
-     */
-    private async buildImage(options: ImageBuildOptions): Promise<string> {
-        const buildResult = tmp.tmpNameSync();
-        this.debug(
-            `building docker image and writing result to ${buildResult}`,
-        );
-        const args = ["buildx", "build", "--load", "--iidfile", buildResult];
-        if (options.target) {
-            args.push("--target", options.target);
-        }
-
-        await execa("docker", [...args, process.cwd()], { stdio: "inherit" });
-        return fs.readFileSync(buildResult, "utf8");
-    }
-
-    private async getImageInfo(image: string): Promise<ImageInfo> {
-        const { stdout: jsonStr } = await execa("docker", [
-            "image",
-            "inspect",
-            image,
-        ]);
-        // parse image info from docker inspect output
-        const [imageInfo] = JSON.parse(jsonStr);
-
-        // validate image architecture (must be riscv64)
-        if (imageInfo["Architecture"] !== "riscv64") {
-            throw new Error(
-                `Invalid image Architecture: ${imageInfo["Architecture"]}. Expected riscv64`,
-            );
-        }
-
-        const labels = imageInfo["Config"]["Labels"] || {};
-        const info: ImageInfo = {
-            cmd: imageInfo["Config"]["Cmd"] ?? [],
-            dataSize: labels[CARTESI_LABEL_DATA_SIZE] ?? "10Mb",
-            entrypoint: imageInfo["Config"]["Entrypoint"] ?? [],
-            env: imageInfo["Config"]["Env"] || [],
-            ramSize: labels[CARTESI_LABEL_RAM_SIZE] ?? CARTESI_DEFAULT_RAM_SIZE,
-            sdkName: labels[CARTESI_LABEL_SDK_NAME] ?? "cartesi/sdk",
-            sdkVersion:
-                labels[CARTESI_LABEL_SDK_VERSION] ??
-                CARTESI_DEFAULT_SDK_VERSION,
-            workdir: imageInfo["Config"]["WorkingDir"],
-        };
-
-        if (!info.entrypoint && !info.cmd) {
-            throw new Error("Undefined image ENTRYPOINT or CMD");
-        }
-
-        // fail if using unsupported sdk version
-        if (!semver.valid(info.sdkVersion)) {
-            this.warn("sdk version is not a valid semver");
-        } else if (
-            info.sdkName == "cartesi/sdk" &&
-            semver.lt(info.sdkVersion, CARTESI_DEFAULT_SDK_VERSION)
-        ) {
-            throw new Error(`Unsupported sdk version: ${info.sdkVersion} (used) < ${CARTESI_DEFAULT_SDK_VERSION} (minimum).
-Update your application Dockerfile using one of the templates at https://github.com/cartesi/application-templates/tree/${DEFAULT_TEMPLATES_BRANCH}
-`);
-        }
-
-        // warn for using default values
-        info.sdkVersion ||
-            this.warn(
-                `Undefined ${CARTESI_LABEL_SDK_VERSION} label, defaulting to ${CARTESI_DEFAULT_SDK_VERSION}`,
-            );
-
-        info.ramSize ||
-            this.warn(
-                `Undefined ${CARTESI_LABEL_RAM_SIZE} label, defaulting to ${CARTESI_DEFAULT_RAM_SIZE}`,
-            );
-
-        // validate data size value
-        if (bytes(info.dataSize) === null) {
-            throw new Error(
-                `Invalid ${CARTESI_LABEL_DATA_SIZE} value: ${info.dataSize}`,
-            );
-        }
-
-        // XXX: validate other values
-
-        return info;
-    }
-
-    // saves the OCI Image to a tarball
-    private async createTarball(
-        image: string,
-        outputFilePath: string,
-    ): Promise<void> {
-        // create docker tarball from app image
-        await execa("docker", ["image", "save", image, "-o", outputFilePath]);
-    }
-
-    // this wraps the call to the sdk image with a one-shot approach
-    // the (inputPath, outputPath) signature will mount the input as a volume and copy the output with docker cp
-    private async sdkRun(
-        sdkImage: string,
-        cmd: string[],
-        inputPath: string,
-        outputPath: string,
-    ): Promise<void> {
-        const { stdout: cid } = await execa("docker", [
-            "container",
-            "create",
-            "--volume",
-            `./${inputPath}:/tmp/input`,
-            sdkImage,
-            ...cmd,
-        ]);
-
-        await execa("docker", ["container", "start", "-a", cid], {
-            stdio: "inherit",
-        });
-
-        await execa("docker", [
-            "container",
-            "cp",
-            `${cid}:/tmp/output`,
-            outputPath,
-        ]);
-
-        await execa("docker", ["container", "stop", cid]);
-        await execa("docker", ["container", "rm", cid]);
-    }
-
-    // returns the command to create rootfs tarball from an OCI Image tarball
-    private static createRootfsTarCommand(): string[] {
-        const cmd = [
-            "cat",
-            "/tmp/input",
-            "|",
-            "crane",
-            "export",
-            "-", // OCI Image from stdin
-            "-", // rootfs tarball to stdout
-            "|",
-            "bsdtar",
-            "-cf",
-            "/tmp/output",
-            "--format=gnutar",
-            "@/dev/stdin", // rootfs tarball from stdin
-        ];
-        return ["/usr/bin/env", "bash", "-c", cmd.join(" ")];
-    }
-
-    // returns the command to create ext2 from a rootfs
-    private static createExt2Command(extraBytes: number): string[] {
-        const blockSize = 4096;
-        const extraBlocks = Math.ceil(extraBytes / blockSize);
-        const extraSize = `+${extraBlocks}`;
-
-        return [
-            "xgenext2fs",
-            "--tarball",
-            "/tmp/input",
-            "--block-size",
-            blockSize.toString(),
-            "--faketime",
-            "-r",
-            extraSize,
-            "/tmp/output",
-        ];
-    }
-
-    private static createMachineSnapshotCommand(info: ImageInfo): string[] {
-        const ramSize = info.ramSize;
-        const driveLabel = "root"; // XXX: does this need to be customizable?
-
-        // list of environment variables of docker image
-        const envs = info.env.map((variable) => `--env=${variable}`);
-
-        // ENTRYPOINT and CMD as a space separated string
-        const entrypoint = [...info.entrypoint, ...info.cmd].join(" ");
-
-        // command to change working directory if WORKDIR is defined
-        const cwd = info.workdir ? `--workdir=${info.workdir}` : "";
-        return [
-            "create_machine_snapshot",
-            `--ram-length=${ramSize}`,
-            `--drive-label=${driveLabel}`,
-            `--drive-filename=/tmp/input`,
-            `--output=/tmp/output`,
-            cwd,
-            ...envs,
-            `--entrypoint=${entrypoint}`,
-        ];
-    }
-
     public async run(): Promise<void> {
-        const { flags } = await this.parse(BuildApplication);
-
-        const snapshotPath = this.getContextPath("image");
-        const tarPath = this.getContextPath("image.tar");
-        const gnuTarPath = this.getContextPath("image.gnutar");
-        const ext2Path = this.getContextPath("image.ext2");
+        const { flags } = await this.parse(Build);
 
         // clean up temp files we create along the process
         tmp.setGracefulCleanup();
 
-        // use pre-existing image or build dapp image
-        const appImage = flags["from-image"] || (await this.buildImage(flags));
+        // get application configuration from 'cartesi.toml'
+        const config = this.getApplicationConfig(flags.config);
+
+        // destination directory for image and intermediate files
+        const destination = path.resolve(this.getContextPath());
 
         // prepare context directory
-        await fs.emptyDir(this.getContextPath()); // XXX: make it less error prone
+        await fs.emptyDir(destination); // XXX: make it less error prone
 
-        // get and validate image info
-        const imageInfo = await this.getImageInfo(appImage);
+        // start build of all drives simultaneously
+        const results = Object.entries(config.drives).reduce<
+            Record<string, Promise<DriveResult>>
+        >((acc, [name, drive]) => {
+            acc[name] = buildDrive(name, drive, config.sdk, destination);
+            return acc;
+        }, {});
 
-        // resolve sdk version
-        const sdkImage = `${imageInfo.sdkName}:${imageInfo.sdkVersion}`;
+        // await for all drives to be built
+        await Promise.all(Object.values(results));
 
-        try {
-            // create docker tarball for image specified
-            await this.createTarball(appImage, tarPath);
-
-            // create rootfs tar
-            await this.sdkRun(
-                sdkImage,
-                BuildApplication.createRootfsTarCommand(),
-                tarPath,
-                gnuTarPath,
-            );
-
-            // create ext2
-            await this.sdkRun(
-                sdkImage,
-                BuildApplication.createExt2Command(
-                    bytes.parse(imageInfo.dataSize),
-                ),
-                gnuTarPath,
-                ext2Path,
-            );
-
-            // create machine snapshot
-            await this.sdkRun(
-                sdkImage,
-                BuildApplication.createMachineSnapshotCommand(imageInfo),
-                ext2Path,
-                snapshotPath,
-            );
-            await fs.chmod(snapshotPath, 0o755);
-        } finally {
-            await fs.remove(gnuTarPath);
-            await fs.remove(tarPath);
+        if (flags["drives-only"]) {
+            // only build drives, so quit here
+            return;
         }
+
+        // get image info of root drive
+        const root = await results["root"];
+        const imageInfo = root.imageInfo;
+
+        // path of machine snapshot
+        const snapshotPath = this.getContextPath("image");
+
+        // create machine snapshot
+        await bootMachine(config, imageInfo, config.sdk, destination);
+
+        await fs.chmod(snapshotPath, 0o755);
     }
 }
