@@ -1,0 +1,6 @@
+# example of a drive that is ready
+# this is useful in case drive was previouly built by another process
+
+[drives.root]
+builder = "none"
+filename = "./rootfs-tools-v0.15.0.ext2"
