@@ -1,0 +1,7 @@
+# example of an empty drive to hold application data
+
+[drives.data]
+builder = "empty"
+size = "100Mb" # size can be given as string, or as a number in bytes
+mount = "/var/lib/app" # default is /mnt/{name}
+# format is always ext2, as sqfs is read-only, and a read-only empty drive does not really make sense
