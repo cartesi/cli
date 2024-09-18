@@ -1,0 +1,7 @@
+# this is the basic configuration of a root flash drive built with Docker
+# this is also the default configuration for a root flash drive
+
+[drives.root]
+builder = "docker"
+dockerfile = "Dockerfile"
+format = "ext2"
