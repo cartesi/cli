@@ -5,6 +5,7 @@ import fs from "fs";
 import path from "path";
 import { Address, Hash, getAddress, isHash } from "viem";
 
+import { Config, parse } from "./config.js";
 import {
     applicationFactoryAddress,
     authorityFactoryAddress,
@@ -51,6 +52,12 @@ export abstract class BaseCommand<T extends typeof Command> extends Command {
 
     protected getContextPath(...paths: string[]): string {
         return path.join(".cartesi", ...paths);
+    }
+
+    protected getApplicationConfig(configPath: string): Config {
+        return fs.existsSync(configPath)
+            ? parse(fs.readFileSync(configPath).toString())
+            : parse("");
     }
 
     protected getMachineHash(): Hash | undefined {
