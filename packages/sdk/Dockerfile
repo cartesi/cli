@@ -7,7 +7,7 @@ ARG CARTESI_IMAGE_KERNEL_VERSION
 ARG LINUX_KERNEL_VERSION
 ARG XGENEXT2_VERSION
 
-FROM ${BASE_IMAGE} as builder
+FROM ${BASE_IMAGE} AS builder
 
 WORKDIR /usr/local/src
 ARG DEBIAN_FRONTEND=noninteractive
@@ -25,14 +25,14 @@ apt-get install -y --no-install-recommends \
 rm -rf /var/lib/apt/lists/*
 EOF
 
-FROM builder as su-exec
+FROM builder AS su-exec
 
 # v0.2 -> f85e5bde1afef399021fbc2a99c837cf851ceafa
 WORKDIR /usr/local/src
 ADD https://github.com/ncopa/su-exec.git#f85e5bde1afef399021fbc2a99c837cf851ceafa /usr/local/src
 RUN make
 
-FROM builder as crane
+FROM builder AS crane
 ARG CRANE_VERSION=0.19.1
 RUN <<EOF
 set -e
@@ -53,7 +53,7 @@ ARG ALTO_VERSION
 RUN npm install -g @pimlico/alto@${ALTO_VERSION}
 
 # devnet files
-FROM node:slim as devnet
+FROM node:slim AS devnet
 ARG DEVNET_VERSION
 RUN npm install -g @cartesi/devnet@${DEVNET_VERSION}
 
@@ -108,9 +108,9 @@ RUN <<EOF
 npm install -g @cartesi/mock-verifying-paymaster@${PAYMASTER_VERSION}
 EOF
 
-ENV LC_ALL en_US.UTF-8
-ENV LANG en_US.UTF-8
-ENV LANGUAGE en_US:en
+ENV LC_ALL=en_US.UTF-8
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US:en
 
 # download anvil pre-compiled binaries
 ARG ANVIL_VERSION=e90348416c3a831ab75bb43f6fa5f0a0be4106c4
