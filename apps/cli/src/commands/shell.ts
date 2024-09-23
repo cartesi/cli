@@ -25,7 +25,7 @@ export default class Shell extends BaseCommand<typeof Shell> {
         command: Flags.string({
             description: "shell command to use (eg.: /bin/bash)",
             required: false,
-            default: "/bin/sh",
+            default: "/bin/bash",
         }),
     };
 
