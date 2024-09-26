@@ -85,7 +85,7 @@
         "clean": "rimraf dist",
         "codegen": "run-p codegen:wagmi",
         "codegen:wagmi": "wagmi generate",
-        "compile": "tsc -b",
+        "compile": "tsc -p tsconfig.build.json",
         "copy-files": "copyfiles -u 1 \"src/**/*.yaml\" \"src/**/*.env\" \"src/**/*.txt\" dist",
         "lint": "eslint \"src/**/*.ts*\"",
         "postpack": "rimraf oclif.manifest.json",
