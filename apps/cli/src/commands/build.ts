@@ -48,11 +48,11 @@ const execaDockerFallback = async (
     options: OptionsDockerFallback,
 ) => {
     try {
-        return execa(command, args, options);
+        return await execa(command, args, options);
     } catch (error) {
         if (error instanceof ExecaError) {
             if (error.code === "ENOENT" && options.image) {
-                return execa(
+                return await execa(
                     "docker",
                     [
                         "run",
