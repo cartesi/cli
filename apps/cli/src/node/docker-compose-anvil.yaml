@@ -1,6 +1,6 @@
 services:
     anvil:
-        image: cartesi/sdk:0.10.0
+        image: cartesi/sdk:0.11.0
         command:
             [
                 "devnet",
@@ -19,7 +19,7 @@ services:
             - 8545:8545
 
     dapp_deployer:
-        image: cartesi/sdk:0.10.0
+        image: cartesi/sdk:0.11.0
         restart: on-failure
         depends_on:
             anvil:

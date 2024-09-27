@@ -1,0 +1,124 @@
+services:
+    espresso_database_creator:
+        image: postgres:16-alpine
+        command: ["createdb", "sequencer"]
+        depends_on:
+            database:
+                condition: service_healthy
+        environment:
+            PGHOST: ${PGHOST:-database}
+            PGPORT: ${PGPORT:-5432}
+            PGUSER: ${PGUSER:-postgres}
+            PGPASSWORD: ${PGPASSWORD:-password}
+            PGDATABASE: ${PGDATABASE:-postgres}
+
+    espresso:
+        image: cartesi/espresso:0.11.0
+        command: ["/usr/bin/espresso-dev-node"]
+        deploy:
+            resources:
+                limits:
+                    cpus: "4"
+                    memory: "1G"
+        ports:
+            - 8770:8770
+            - 8771:8771
+            - 8772:8772
+            - 20000:20000
+        depends_on:
+            espresso_database_creator:
+                condition: service_completed_successfully
+            database:
+                condition: service_healthy
+        environment:
+            ESPRESSO_SEQUENCER_L1_PROVIDER: ${CARTESI_BLOCKCHAIN_HTTP_ENDPOINT:-http://anvil:8545}
+            ESPRESSO_SEQUENCER_API_PORT: 8770
+            ESPRESSO_BUILDER_PORT: 8771
+            ESPRESSO_PROVER_PORT: 8772
+            ESPRESSO_DEV_NODE_PORT: 20000
+            ESPRESSO_SEQUENCER_POSTGRES_HOST: database
+            ESPRESSO_SEQUENCER_POSTGRES_PORT: 5432
+            ESPRESSO_SEQUENCER_POSTGRES_USER: postgres
+            ESPRESSO_SEQUENCER_POSTGRES_PASSWORD: password
+            ESPRESSO_SEQUENCER_POSTGRES_DATABASE: sequencer
+            ESPRESSO_SEQUENCER_ETH_MNEMONIC: ${CARTESI_AUTH_MNEMONIC:-test test test test test test test test test test test junk}
+
+    prompt:
+        image: debian:bookworm-slim
+        environment:
+            PROMPT_TXT_07_ESPRESSO: "Espresso running at http://localhost:${CARTESI_LISTEN_PORT}/espresso/"
+
+    traefik-config-generator:
+        environment:
+            TRAEFIK_CONFIG_ESPRESSO_DEV: |
+                http:
+                    routers:
+                        espresso-dev:
+                            rule: "PathPrefix(`/espresso/dev`)"
+                            middlewares:
+                                - "remove-espresso-dev-prefix"
+                            service: espresso-dev
+                    middlewares:
+                        remove-espresso-dev-prefix:
+                            replacePathRegex:
+                                regex: "^/espresso/dev/(.*)"
+                                replacement: "/$1"
+                    services:
+                        espresso-dev:
+                            loadBalancer:
+                                servers:
+                                    - url: "http://espresso:20000"
+            TRAEFIK_CONFIG_ESPRESSO_SEQUENCER: |
+                http:
+                    routers:
+                        espresso-sequencer:
+                            rule: "PathPrefix(`/espresso/sequencer`)"
+                            middlewares:
+                                - "remove-espresso-sequencer-prefix"
+                            service: espresso-sequencer
+                    middlewares:
+                        remove-espresso-sequencer-prefix:
+                            replacePathRegex:
+                                regex: "^/espresso/sequencer/(.*)"
+                                replacement: "/$1"
+                    services:
+                        espresso-sequencer:
+                            loadBalancer:
+                                servers:
+                                    - url: "http://espresso:8770"
+            TRAEFIK_CONFIG_ESPRESSO_BUILDER: |
+                http:
+                    routers:
+                        espresso-builder:
+                            rule: "PathPrefix(`/espresso/builder`)"
+                            middlewares:
+                                - "remove-espresso-builder-prefix"
+                            service: espresso-builder
+                    middlewares:
+                        remove-espresso-builder-prefix:
+                            replacePathRegex:
+                                regex: "^/espresso/builder/(.*)"
+                                replacement: "/$1"
+                    services:
+                        espresso-builder:
+                            loadBalancer:
+                                servers:
+                                    - url: "http://espresso:8771"
+            TRAEFIK_CONFIG_ESPRESSO_PROVER: |
+                http:
+                    routers:
+                        espresso-prover:
+                            rule: "PathPrefix(`/espresso/prover`)"
+                            middlewares:
+                                - "remove-espresso-prover-prefix"
+                            service: espresso-prover
+                    middlewares:
+                        remove-espresso-prover-prefix:
+                            replacePathRegex:
+                                regex: "^/espresso/prover/(.*)"
+                                replacement: "/$1"
+                    services:
+                        espresso-prover:
+                            loadBalancer:
+                                servers:
+                                    - url: "http://espresso:8772"

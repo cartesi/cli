@@ -1,6 +1,6 @@
 services:
     anvil:
-        image: cartesi/sdk:0.10.0
+        image: cartesi/sdk:0.11.0
         command: ["devnet", "--block-time", "${BLOCK_TIME:-5}"]
         healthcheck:
             test: ["CMD", "eth_isready"]
@@ -13,7 +13,7 @@ services:
             - 8545:8545
 
     alto:
-        image: cartesi/sdk:0.10.0
+        image: cartesi/sdk:0.11.0
         command:
             [
                 "alto",
