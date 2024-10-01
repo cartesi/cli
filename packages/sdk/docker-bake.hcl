@@ -17,5 +17,6 @@ target "default" {
     SU_EXEC_VERSION                   = "0.2"
     ANVIL_VERSION                     = "2044faec64f99a21f0e5f0094458a973612d0712"
     CARTESI_ROLLUPS_GRAPHQL_VERSION   = "2.3.4"
+    ESPRESSO_DEV_NODE_TAG             = "20240925"
   }
 }
