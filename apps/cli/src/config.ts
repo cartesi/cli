@@ -1,4 +1,5 @@
 import bytes from "bytes";
+import os from "os";
 import { extname } from "path";
 import { TomlPrimitive, parse as parseToml } from "smol-toml";
 
@@ -7,7 +8,10 @@ import { TomlPrimitive, parse as parseToml } from "smol-toml";
  */
 const DEFAULT_FORMAT = "ext2";
 const DEFAULT_RAM = "128Mi";
-const DEFAULT_RAM_IMAGE = "/usr/share/cartesi-machine/images/linux.bin";
+const DEFAULT_RAM_IMAGE_DOCKER = "/usr/share/cartesi-machine/images/linux.bin";
+const DEFAULT_RAM_IMAGE_LINUX = "/usr/share/cartesi-machine/images/linux.bin";
+const DEFAULT_RAM_IMAGE_MAC =
+    "/opt/homebrew/share/cartesi-machine/images/linux.bin";
 const DEFAULT_SDK = "cartesi/sdk:0.10.0";
 
 type Builder = "directory" | "docker" | "empty" | "none" | "tar";
@@ -87,6 +91,15 @@ export const defaultRootDriveConfig = (): DriveConfig => ({
     tags: [],
 });
 
+export const defaultRamImage = (): string => {
+    switch (os.platform()) {
+        case "darwin":
+            return DEFAULT_RAM_IMAGE_MAC;
+        default:
+            return DEFAULT_RAM_IMAGE_LINUX;
+    }
+};
+
 export const defaultMachineConfig = (): MachineConfig => ({
     assertRollingTemplate: undefined,
     bootargs: [],
@@ -94,7 +107,7 @@ export const defaultMachineConfig = (): MachineConfig => ({
     maxMCycle: undefined,
     noRollup: undefined,
     ramLength: DEFAULT_RAM,
-    ramImage: DEFAULT_RAM_IMAGE,
+    ramImage: defaultRamImage(),
 });
 
 export const defaultConfig = (): Config => ({
@@ -265,7 +278,7 @@ const parseMachine = (value: TomlPrimitive): MachineConfig => {
         maxMCycle: parseOptionalNumber(toml["max-mcycle"]),
         noRollup: parseBoolean(toml["no-rollup"], false),
         ramLength: parseString(toml["ram-length"], DEFAULT_RAM),
-        ramImage: parseString(toml["ram-image"], DEFAULT_RAM_IMAGE),
+        ramImage: parseString(toml["ram-image"], defaultRamImage()),
     };
 };
 

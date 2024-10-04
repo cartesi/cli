@@ -22,12 +22,11 @@ export const tarToExt = async (
         "--block-size",
         blockSize.toString(),
         "--faketime",
-        "--root",
-        output,
         "--readjustment",
         adjustment.toString(),
         "--tarball",
         input,
+        output,
     ];
     return execaDockerFallback(command, args, options);
 };

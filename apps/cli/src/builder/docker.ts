@@ -98,7 +98,7 @@ export const build = async (
     drive: DockerDriveConfig,
     sdkImage: string,
     destination: string,
-): Promise<void> => {
+): Promise<ImageInfo | undefined> => {
     const { format } = drive;
 
     const ocitar = `${name}.oci.tar`;
@@ -153,7 +153,9 @@ export const build = async (
         }
     } finally {
         // delete intermediate files
-        await fs.remove(path.join(destination, ocitar));
-        await fs.remove(path.join(destination, tar));
+        // await fs.remove(path.join(destination, ocitar));
+        // await fs.remove(path.join(destination, tar));
     }
+
+    return imageInfo;
 };

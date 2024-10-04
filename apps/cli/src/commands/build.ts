@@ -20,19 +20,14 @@ type ImageInfo = {
     workdir: string;
 };
 
-type DriveResult_ = {
-    filename: string;
-    imageInfo?: ImageInfo;
-};
-
-type DriveResult = void;
+type DriveResult = ImageInfo | undefined | void;
 
 const buildDrive = async (
     name: string,
     drive: DriveConfig,
     sdkImage: string,
     destination: string,
-): Promise<void> => {
+): Promise<DriveResult> => {
     switch (drive.builder) {
         case "directory": {
             return buildDirectory(name, drive, sdkImage, destination);
@@ -184,8 +179,7 @@ export default class Build extends BaseCommand<typeof Build> {
 
         // get image info of root drive
         const root = await results["root"];
-        // const imageInfo = root.imageInfo;
-        const imageInfo = undefined;
+        const imageInfo = root || undefined;
 
         // path of machine snapshot
         const snapshotPath = this.getContextPath("image");
