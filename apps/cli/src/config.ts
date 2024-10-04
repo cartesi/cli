@@ -11,7 +11,7 @@ const DEFAULT_RAM_IMAGE = "/usr/share/cartesi-machine/images/linux.bin";
 const DEFAULT_SDK = "cartesi/sdk:0.10.0";
 
 type Builder = "directory" | "docker" | "empty" | "none" | "tar";
-type DriveFormat = "ext2" | "ext4" | "sqfs";
+type DriveFormat = "ext2" | "sqfs";
 
 export type DirectoryDriveConfig = {
     builder: "directory";
@@ -32,7 +32,7 @@ export type DockerDriveConfig = {
 
 export type EmptyDriveConfig = {
     builder: "empty";
-    format: "ext2" | "ext4" | "raw";
+    format: "ext2" | "raw";
     size: number; // in bytes
 };
 
@@ -226,8 +226,6 @@ const parseFormat = (value: TomlPrimitive): DriveFormat => {
         switch (value) {
             case "ext2":
                 return "ext2";
-            case "ext4":
-                return "ext4";
             case "sqfs":
                 return "sqfs";
         }
@@ -235,15 +233,13 @@ const parseFormat = (value: TomlPrimitive): DriveFormat => {
     throw new Error(`Invalid format: ${value}`);
 };
 
-const parseEmptyFormat = (value: TomlPrimitive): "ext2" | "ext4" | "raw" => {
+const parseEmptyFormat = (value: TomlPrimitive): "ext2" | "raw" => {
     if (value === undefined) {
         return DEFAULT_FORMAT;
     } else if (typeof value === "string") {
         switch (value) {
             case "ext2":
                 return "ext2";
-            case "ext4":
-                return "ext4";
             case "raw":
                 return "raw";
         }
@@ -278,8 +274,6 @@ export const getDriveFormat = (filename: string): DriveFormat => {
     switch (extension) {
         case ".ext2":
             return "ext2";
-        case ".ext4":
-            return "ext4";
         case ".sqfs":
             return "sqfs";
         default:
