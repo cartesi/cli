@@ -4,9 +4,9 @@ import fs from "fs-extra";
 import path from "path";
 import { finished } from "stream/promises";
 import tmp from "tmp";
-import { tarToExt } from ".";
-import { DockerDriveConfig } from "../config";
-import { execaDockerFallback } from "../exec";
+import { DockerDriveConfig } from "../config.js";
+import { execaDockerFallback } from "../exec.js";
+import { tarToExt } from "./index.js";
 
 type ImageBuildOptions = Pick<
     DockerDriveConfig,

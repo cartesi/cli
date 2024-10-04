@@ -1,8 +1,8 @@
 import fs from "fs-extra";
 import path from "path";
-import { tarToExt } from ".";
-import { TarDriveConfig } from "../config";
-import { execaDockerFallback } from "../exec";
+import { TarDriveConfig } from "../config.js";
+import { execaDockerFallback } from "../exec.js";
+import { tarToExt } from "./index.js";
 
 export const build = async (
     name: string,

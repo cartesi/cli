@@ -1,7 +1,7 @@
 import fs from "fs-extra";
 import path from "path";
-import { DirectoryDriveConfig } from "../config";
-import { execaDockerFallback } from "../exec";
+import { DirectoryDriveConfig } from "../config.js";
+import { execaDockerFallback } from "../exec.js";
 
 export const build = async (
     name: string,

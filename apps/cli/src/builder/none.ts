@@ -1,6 +1,6 @@
 import fs from "fs-extra";
 import path from "path";
-import { ExistingDriveConfig, getDriveFormat } from "../config";
+import { ExistingDriveConfig, getDriveFormat } from "../config.js";
 
 export const build = async (
     name: string,

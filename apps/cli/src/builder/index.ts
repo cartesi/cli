@@ -1,10 +1,10 @@
-import { execaDockerFallback, OptionsDockerFallback } from "../exec";
+import { execaDockerFallback, OptionsDockerFallback } from "../exec.js";
 
-export { build as buildDirectory } from "./directory";
-export { build as buildDocker } from "./docker";
-export { build as buildEmpty } from "./empty";
-export { build as buildNone } from "./none";
-export { build as buildTar } from "./tar";
+export { build as buildDirectory } from "./directory.js";
+export { build as buildDocker } from "./docker.js";
+export { build as buildEmpty } from "./empty.js";
+export { build as buildNone } from "./none.js";
+export { build as buildTar } from "./tar.js";
 
 export const tarToExt = async (
     input: string,
