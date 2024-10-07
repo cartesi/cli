@@ -18,6 +18,9 @@ export const execaDockerFallback = async (
     } catch (error) {
         if (error instanceof ExecaError) {
             if (error.code === "ENOENT" && options.image) {
+                console.warn(
+                    `error executing '${command}', falling back to docker execution using image '${options.image}'`,
+                );
                 return await execa(
                     "docker",
                     [
@@ -32,6 +35,8 @@ export const execaDockerFallback = async (
                     ],
                     options,
                 );
+            } else {
+                console.error(`error executing '${command}'`, error);
             }
         }
         throw error;

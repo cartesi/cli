@@ -60,7 +60,7 @@ const bootMachine = async (
     // list of environment variables of docker image
     const env = info?.env ?? [];
     const envs = env.map(
-        (variable) => `--append-entrypoint="export ${variable}"`,
+        (variable) => `--append-entrypoint=export "${variable}"`,
     );
 
     // bootargs from config string array
@@ -105,10 +105,10 @@ const bootMachine = async (
         `--ram-length=${ramLength}`,
         "--final-hash",
         "--store=image",
-        `--append-entrypoint="${entrypoint}"`,
+        `--append-entrypoint=${entrypoint}`,
     ];
     if (info?.workdir) {
-        args.push(`--append-init="WORKDIR=${info.workdir}"`);
+        args.push(`--append-init=WORKDIR="${info.workdir}"`);
     }
     if (noRollup) {
         args.push("--no-rollup");
@@ -123,6 +123,7 @@ const bootMachine = async (
     return execaDockerFallback(command, args, {
         cwd: destination,
         image: sdkImage,
+        stdio: "inherit",
     });
 };
 
