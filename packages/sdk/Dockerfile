@@ -9,21 +9,24 @@ ARG NODEJS_VERSION
 ARG SU_EXEC_VERSION
 ARG ANVIL_VERSION
 
+################################################################################
+# base image
 FROM ${BASE_IMAGE} AS base
+SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
 ARG DEBIAN_FRONTEND=noninteractive
 RUN <<EOF
-set -e
 apt-get update
 apt-get install -y --no-install-recommends \
     ca-certificates \
     curl
 EOF
 
+################################################################################
+# builder image
 FROM base AS builder
 WORKDIR /usr/local/src
 ARG DEBIAN_FRONTEND=noninteractive
 RUN <<EOF
-set -e
 apt-get install -y --no-install-recommends \
     autoconf \
     automake \
@@ -33,38 +36,43 @@ apt-get install -y --no-install-recommends \
 rm -rf /var/lib/apt/lists/*
 EOF
 
+################################################################################
+# su-exec builder
 FROM builder AS su-exec
 ARG SU_EXEC_VERSION
 WORKDIR /usr/local/src
 ADD https://github.com/ncopa/su-exec.git#v${SU_EXEC_VERSION} /usr/local/src
 RUN make
 
-FROM builder AS crane
+################################################################################
+# crane installer
+FROM base AS crane
 ARG CRANE_VERSION
 RUN <<EOF
-set -e
-
 #FIXME: ugly hack to download the right go-containerregistry binary
 case "$(arch)" in
 aarch64) ARCH="arm64" ;;
 *) ARCH=$(arch) ;;
 esac
 
-curl -sSL https://github.com/google/go-containerregistry/releases/download/v${CRANE_VERSION}/go-containerregistry_Linux_${ARCH}.tar.gz | \
+curl -fsSL https://github.com/google/go-containerregistry/releases/download/v${CRANE_VERSION}/go-containerregistry_Linux_${ARCH}.tar.gz | \
     tar -zx -C /usr/local/bin
 EOF
 
-# alto
+################################################################################
+# alto installer
 FROM node:${NODEJS_VERSION}-bookworm AS alto
 ARG ALTO_VERSION
 RUN npm install -g @pimlico/alto@${ALTO_VERSION}
 
-# devnet files
+################################################################################
+# devnet installer
 FROM node:${NODEJS_VERSION}-bookworm AS devnet
 ARG DEVNET_VERSION
 RUN npm install -g @cartesi/devnet@${DEVNET_VERSION}
 
-# sdk image
+################################################################################
+# sdk final image
 FROM base
 ARG CARTESI_MACHINE_EMULATOR_VERSION
 ARG CARTESI_IMAGE_KERNEL_VERSION
@@ -75,7 +83,6 @@ ARG PAYMASTER_VERSION
 USER root
 ARG DEBIAN_FRONTEND=noninteractive
 RUN <<EOF
-set -e
 apt-get install -y --no-install-recommends \
     jq \
     libarchive-tools \
@@ -102,19 +109,16 @@ EOF
 
 # Install dpkg release of xgenext2fs
 RUN <<EOF
-set -eu
 ARCH=$(dpkg --print-architecture)
 curl -fsSL https://github.com/cartesi/genext2fs/releases/download/v${XGENEXT2_VERSION}/xgenext2fs_${ARCH}.deb \
-    -o ./xgenext2fs.deb
-dpkg -i ./xgenext2fs.deb
-rm ./xgenext2fs.deb
+    -o /tmp/xgenext2fs.deb
+dpkg -i /tmp/xgenext2fs.deb
+rm /tmp/xgenext2fs.deb
 xgenext2fs --version
 EOF
 
 # Install mock-verifying-paymaster
-RUN <<EOF
-npm install -g @cartesi/mock-verifying-paymaster@${PAYMASTER_VERSION}
-EOF
+RUN npm install -g @cartesi/mock-verifying-paymaster@${PAYMASTER_VERSION}
 
 ENV LC_ALL=en_US.UTF-8
 ENV LANG=en_US.UTF-8
@@ -141,8 +145,8 @@ COPY --from=devnet /usr/local/lib/node_modules/@cartesi/devnet/export/abi/localh
 COPY --from=devnet /usr/local/lib/node_modules/@cartesi/devnet/build/anvil_state.json /usr/share/cartesi/
 RUN mkdir -p /tmp/.cartesi && chmod 1777 /tmp/.cartesi
 
+# Install cartesi-machine emulator
 RUN <<EOF
-set -eu
 ARCH=$(dpkg --print-architecture)
 curl -fsSL https://github.com/cartesi/machine-emulator/releases/download/v${CARTESI_MACHINE_EMULATOR_VERSION}/cartesi-machine-v${CARTESI_MACHINE_EMULATOR_VERSION}_${ARCH}.deb \
     -o /tmp/cartesi-machine.deb
@@ -151,11 +155,13 @@ rm /tmp/cartesi-machine.deb
 cartesi-machine --version-json
 EOF
 
+# Install linux kernel image
 ADD --chmod=644 \
     --checksum=sha256:65dd100ff6204346ac2f50f772721358b5c1451450ceb39a154542ee27b4c947 \
     https://github.com/cartesi/image-kernel/releases/download/v${CARTESI_IMAGE_KERNEL_VERSION}/linux-${LINUX_KERNEL_VERSION}.bin \
     /usr/share/cartesi-machine/images/linux.bin
 
+# Install linux headers
 ADD --chmod=644 \
     --checksum=sha256:4a4714bfa8c0028cb443db2036fad4f8da07065c1cb4ac8e0921a259fddd731b \
     https://github.com/cartesi/image-kernel/releases/download/v$CARTESI_IMAGE_KERNEL_VERSION/linux-headers-$LINUX_KERNEL_VERSION.tar.xz \
