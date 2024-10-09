@@ -1,5 +1,6 @@
 import { spawnSync, SpawnSyncOptions } from "child_process";
 import { execa, ExecaError, Options } from "execa";
+import os from "os";
 
 /**
  * Calls execa and falls back to docker run if command (on the host) fails
@@ -22,18 +23,18 @@ export const execaDockerFallback = async (
                 console.warn(
                     `error executing '${command}', falling back to docker execution using image '${options.image}'`,
                 );
+                const userInfo = os.userInfo();
+                const dockerOpts = [
+                    "--volume",
+                    `${options.cwd}:/work`,
+                    "--workdir",
+                    "/work",
+                    "--user",
+                    userInfo.uid.toString(),
+                ];
                 return await execa(
                     "docker",
-                    [
-                        "run",
-                        "--volume",
-                        `${options.cwd}:/work`,
-                        "--workdir",
-                        "/work",
-                        options.image,
-                        command,
-                        ...args,
-                    ],
+                    ["run", ...dockerOpts, options.image, command, ...args],
                     options,
                 );
             } else {
@@ -64,12 +65,15 @@ export const spawnSyncDockerFallback = async (
             console.warn(
                 `error executing '${command}', falling back to docker execution using image '${options.image}'`,
             );
+            const userInfo = os.userInfo();
             const dockerOpts = [
                 "--volume",
                 `${options.cwd}:/work`,
                 "--workdir",
                 "/work",
                 "--interactive",
+                "--user",
+                userInfo.uid.toString(),
             ];
             const dockerArgs = [
                 "run",
