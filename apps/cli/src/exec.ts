@@ -30,7 +30,7 @@ export const execaDockerFallback = async (
                     "--workdir",
                     "/work",
                     "--user",
-                    userInfo.uid.toString(),
+                    `${userInfo.uid}:${userInfo.gid}`,
                 ];
                 return await execa(
                     "docker",
@@ -73,7 +73,7 @@ export const spawnSyncDockerFallback = async (
                 "/work",
                 "--interactive",
                 "--user",
-                userInfo.uid.toString(),
+                `${userInfo.uid}:${userInfo.gid}`,
             ];
             const dockerArgs = [
                 "run",
