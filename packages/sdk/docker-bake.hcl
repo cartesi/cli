@@ -15,5 +15,6 @@ target "default" {
     LINUX_KERNEL_VERSION          = "6.5.9-ctsi-1-v0.19.1"
     XGENEXT2_VERSION              = "1.5.6"
     CRANE_VERSION                 = "0.19.1"
+    NODEJS_VERSION                = "18.19.0"
   }
 }
