@@ -1,4 +1,4 @@
-import { execaDockerFallback, OptionsDockerFallback } from "../exec.js";
+import { execaDockerFallback, ExecaOptionsDockerFallback } from "../exec.js";
 
 export { build as buildDirectory } from "./directory.js";
 export { build as buildDocker } from "./docker.js";
@@ -11,7 +11,7 @@ export const tarToExt = async (
     output: string,
     format: "ext2",
     extraSize: number,
-    options: OptionsDockerFallback,
+    options: ExecaOptionsDockerFallback,
 ) => {
     const blockSize = 4096; // fixed at 4k
     const extraBlocks = Math.ceil(extraSize / blockSize);

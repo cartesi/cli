@@ -1,10 +1,9 @@
 import { execa } from "execa";
 import fs from "fs-extra";
-import { spawnSync } from "node:child_process";
 import path from "path";
 import tmp from "tmp";
 import { DockerDriveConfig } from "../config.js";
-import { execaDockerFallback } from "../exec.js";
+import { execaDockerFallback, spawnSyncDockerFallback } from "../exec.js";
 import { tarToExt } from "./index.js";
 
 type ImageBuildOptions = Pick<
@@ -102,12 +101,13 @@ export const build = async (
         });
 
         // create rootfs tar from OCI tar
-        spawnSync("crane", ["export", "-", "-"], {
+        await spawnSyncDockerFallback("crane", ["export", "-", "-"], {
             stdio: [
                 fs.openSync(path.join(destination, ocitar), "r"),
                 fs.openSync(path.join(destination, tar), "w"),
                 "inherit",
             ],
+            image: sdkImage,
         });
 
         switch (format) {
