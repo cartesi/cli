@@ -14,5 +14,6 @@ target "default" {
     XGENEXT2_VERSION                  = "1.5.6"
     CRANE_VERSION                     = "0.19.1"
     NODEJS_VERSION                    = "18.19.0"
+    SU_EXEC_VERSION                   = "0.2"
   }
 }
