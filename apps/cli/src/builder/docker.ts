@@ -123,6 +123,8 @@ export const build = async (
                 const compression = "lzo"; // make customizable? default is gzip
                 const command = "mksquashfs";
                 const args = [
+                    "-",
+                    filename,
                     "-tar",
                     "-all-time",
                     "0",
@@ -131,12 +133,11 @@ export const build = async (
                     "-comp",
                     compression,
                     "-no-progress",
-                    filename,
                 ];
                 await execaDockerFallback(command, args, {
                     cwd: destination,
                     image: sdkImage,
-                    inputFile: tar,
+                    inputFile: path.join(destination, tar),
                 });
                 break;
             }
