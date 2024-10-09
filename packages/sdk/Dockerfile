@@ -7,6 +7,7 @@ ARG CARTESI_IMAGE_KERNEL_VERSION
 ARG LINUX_KERNEL_VERSION
 ARG XGENEXT2_VERSION
 ARG CRANE_VERSION
+ARG NODEJS_VERSION
 
 FROM ${BASE_IMAGE} AS builder
 
@@ -49,12 +50,12 @@ curl -sSL https://github.com/google/go-containerregistry/releases/download/v${CR
 EOF
 
 # alto
-FROM node:18.19.0-bookworm AS alto
+FROM node:${NODEJS_VERSION}-bookworm AS alto
 ARG ALTO_VERSION
 RUN npm install -g @pimlico/alto@${ALTO_VERSION}
 
 # devnet files
-FROM node:slim AS devnet
+FROM node:${NODEJS_VERSION}-bookworm AS devnet
 ARG DEVNET_VERSION
 RUN npm install -g @cartesi/devnet@${DEVNET_VERSION}
 
