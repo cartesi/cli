@@ -6,6 +6,7 @@
 # assert_rolling_update = true
 # bootargs = ["no4lvl", "quiet", "earlycon=sbi", "console=hvc0", "rootfstype=ext2", "root=/dev/pmem0", "rw", "init=/usr/sbin/cartesi-init"]
 # entrypoint = "/usr/local/bin/app"
+# final-hash = true
 # max-mcycle = 0
 # no-rollup = false
 # ram-image = "/usr/share/cartesi-machine/images/linux.bin" # directory inside SDK image

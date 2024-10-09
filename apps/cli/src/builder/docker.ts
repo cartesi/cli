@@ -8,7 +8,7 @@ import { tarToExt } from "./index.js";
 
 type ImageBuildOptions = Pick<
     DockerDriveConfig,
-    "dockerfile" | "tags" | "target"
+    "context" | "dockerfile" | "tags" | "target"
 >;
 
 type ImageInfo = {
@@ -22,7 +22,7 @@ type ImageInfo = {
  * Build Docker image (linux/riscv64). Returns image id.
  */
 const buildImage = async (options: ImageBuildOptions): Promise<string> => {
-    const { dockerfile, tags, target } = options;
+    const { context, dockerfile, tags, target } = options;
     const buildResult = tmp.tmpNameSync();
     const args = [
         "buildx",
@@ -32,6 +32,7 @@ const buildImage = async (options: ImageBuildOptions): Promise<string> => {
         "--load",
         "--iidfile",
         buildResult,
+        context,
     ];
 
     // set tags for the image built
@@ -41,7 +42,7 @@ const buildImage = async (options: ImageBuildOptions): Promise<string> => {
         args.push("--target", target);
     }
 
-    await execa("docker", [...args, process.cwd()], { stdio: "inherit" });
+    await execa("docker", args, { stdio: "inherit" });
     return fs.readFileSync(buildResult, "utf8");
 };
 
@@ -123,6 +124,8 @@ export const build = async (
                 const compression = "lzo"; // make customizable? default is gzip
                 const command = "mksquashfs";
                 const args = [
+                    "-",
+                    filename,
                     "-tar",
                     "-all-time",
                     "0",
@@ -131,12 +134,11 @@ export const build = async (
                     "-comp",
                     compression,
                     "-no-progress",
-                    filename,
                 ];
                 await execaDockerFallback(command, args, {
                     cwd: destination,
                     image: sdkImage,
-                    inputFile: tar,
+                    inputFile: path.join(destination, tar),
                 });
                 break;
             }

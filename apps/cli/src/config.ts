@@ -17,6 +17,15 @@ const DEFAULT_SDK = "cartesi/sdk:0.10.0";
 type Builder = "directory" | "docker" | "empty" | "none" | "tar";
 type DriveFormat = "ext2" | "sqfs";
 
+export type ImageInfo = {
+    cmd: string[];
+    entrypoint: string[];
+    env: string[];
+    workdir: string;
+};
+
+export type DriveResult = ImageInfo | undefined | void;
+
 export type DirectoryDriveConfig = {
     builder: "directory";
     extraSize: number; // default is 0 (no extra size)
@@ -26,6 +35,7 @@ export type DirectoryDriveConfig = {
 
 export type DockerDriveConfig = {
     builder: "docker";
+    context: string;
     dockerfile: string;
     extraSize: number; // default is 0 (no extra size)
     format: DriveFormat;
@@ -69,10 +79,14 @@ export type MachineConfig = {
     assertRollingTemplate?: boolean; // default given by cartesi-machine
     bootargs: string[];
     entrypoint?: string;
+    finalHash: boolean;
+    interactive?: boolean; // default given by cartesi-machine
     maxMCycle?: bigint; // default given by cartesi-machine
     noRollup?: boolean; // default given by cartesi-machine
     ramLength: string;
     ramImage: string;
+    store?: string;
+    user?: string; // default given by cartesi-machine
 };
 
 export type Config = {
@@ -85,6 +99,7 @@ type TomlTable = { [key: string]: TomlPrimitive };
 
 export const defaultRootDriveConfig = (): DriveConfig => ({
     builder: "docker",
+    context: ".",
     dockerfile: "Dockerfile", // file on current working directory
     extraSize: 0,
     format: DEFAULT_FORMAT,
@@ -104,10 +119,14 @@ export const defaultMachineConfig = (): MachineConfig => ({
     assertRollingTemplate: undefined,
     bootargs: [],
     entrypoint: undefined,
+    finalHash: true,
+    interactive: undefined,
     maxMCycle: undefined,
     noRollup: undefined,
     ramLength: DEFAULT_RAM,
     ramImage: defaultRamImage(),
+    store: "image",
+    user: undefined,
 });
 
 export const defaultConfig = (): Config => ({
@@ -275,10 +294,14 @@ const parseMachine = (value: TomlPrimitive): MachineConfig => {
             toml["assert-rolling-template"],
         ),
         bootargs: parseStringArray(toml.bootargs),
+        finalHash: parseBoolean(toml["final-hash"], true),
+        interactive: undefined,
         maxMCycle: parseOptionalNumber(toml["max-mcycle"]),
         noRollup: parseBoolean(toml["no-rollup"], false),
         ramLength: parseString(toml["ram-length"], DEFAULT_RAM),
         ramImage: parseString(toml["ram-image"], defaultRamImage()),
+        store: "image",
+        user: parseOptionalString(toml.user),
     };
 };
 
@@ -312,6 +335,7 @@ const parseDrive = (drive: TomlPrimitive): DriveConfig => {
         }
         case "docker": {
             const {
+                context,
                 dockerfile,
                 extraSize,
                 format,
@@ -325,6 +349,7 @@ const parseDrive = (drive: TomlPrimitive): DriveConfig => {
             return {
                 builder: "docker",
                 image: parseOptionalString(image),
+                context: parseString(context, "."),
                 dockerfile: parseString(dockerfile, "Dockerfile"),
                 extraSize: parseBytes(extraSize, 0),
                 format: parseFormat(format),

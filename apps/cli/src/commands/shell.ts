@@ -1,9 +1,9 @@
 import { Args, Flags } from "@oclif/core";
-import { execa } from "execa";
 import fs from "fs-extra";
-import { lookpath } from "lookpath";
 import path from "path";
 import { BaseCommand } from "../baseCommand.js";
+import { ImageInfo } from "../config.js";
+import { bootMachine } from "../machine.js";
 
 export default class Shell extends BaseCommand<typeof Shell> {
     static description = "Start a shell in cartesi machine of application";
@@ -18,62 +18,66 @@ export default class Shell extends BaseCommand<typeof Shell> {
     };
 
     static flags = {
+        config: Flags.file({
+            char: "c",
+            default: "cartesi.toml",
+            summary: "path to the configuration file",
+        }),
         "run-as-root": Flags.boolean({
             description: "run as root user",
             default: false,
         }),
     };
 
-    private async startShell(
-        ext2Path: string,
-        runAsRoot: boolean,
-    ): Promise<void> {
-        const containerDir = "/mnt";
-        const bind = `${path.resolve(path.dirname(ext2Path))}:${containerDir}`;
-        const ext2 = path.join(containerDir, path.basename(ext2Path));
-        const ramSize = "128Mi";
-        const driveLabel = "root";
-        const sdkImage = "cartesi/sdk:0.10.0"; // XXX: how to resolve sdk version?
-        const args = [
-            "run",
-            "--interactive",
-            "--tty",
-            "--volume",
-            bind,
-            sdkImage,
-            "cartesi-machine",
-            `--ram-length=${ramSize}`,
-            "--append-bootargs=no4lvl",
-            `--flash-drive=label:${driveLabel},filename:${ext2}`,
-        ];
+    public async run(): Promise<void> {
+        const { flags } = await this.parse(Shell);
 
-        if (runAsRoot) {
-            args.push("--append-init=USER=root");
+        // get application configuration from 'cartesi.toml'
+        const config = this.getApplicationConfig(flags.config);
+
+        // destination directory for image and intermediate files
+        const destination = path.resolve(this.getContextPath());
+
+        // check if all drives are built
+        for (const [name, drive] of Object.entries(config.drives)) {
+            const filename = `${name}.${drive.format}`;
+            const pathname = this.getContextPath(filename);
+            if (!fs.existsSync(pathname)) {
+                throw new Error(
+                    `drive '${name}' not built, run '${this.config.bin} build'`,
+                );
+            }
         }
 
+        // create shell entrypoint
+        const info: ImageInfo = {
+            cmd: [],
+            entrypoint: ["/bin/bash"],
+            env: [],
+            workdir: "/",
+        };
+
+        // start with interactive mode on
+        config.machine.interactive = true;
+
+        /* why this?
         if (!(await lookpath("stty"))) {
             args.push("-i");
         } else {
             args.push("-it");
         }
+        */
 
-        await execa("docker", [...args, "--", "/bin/bash"], {
-            stdio: "inherit",
-        });
-    }
+        // interactive mode can't have final hash
+        config.machine.finalHash = false;
 
-    public async run(): Promise<void> {
-        const { flags } = await this.parse(Shell);
+        // do not store machine in interactive mode
+        config.machine.store = undefined;
 
-        // use pre-existing image or build dapp image
-        const ext2Path = this.getContextPath("root.ext2");
-        if (!fs.existsSync(ext2Path)) {
-            throw new Error(
-                `machine not built, run '${this.config.bin} build'`,
-            );
-        }
+        // run as root if flag is set
+        config.machine.user = flags["run-as-root"] ? "root" : undefined;
 
-        // execute the machine and save snapshot
-        await this.startShell(ext2Path, flags["run-as-root"]);
+        // boot machine
+        await bootMachine(config, info, destination);
     }
 }

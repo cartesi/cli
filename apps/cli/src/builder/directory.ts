@@ -31,6 +31,7 @@ export const build = async (
                     name,
                     "--readjustment",
                     extraSize,
+                    filename,
                 ];
                 await execaDockerFallback(command, args, {
                     cwd: destination,
@@ -42,6 +43,8 @@ export const build = async (
                 const compression = "lzo"; // make customizable? default is gzip
                 const command = "mksquashfs";
                 const args = [
+                    name,
+                    filename,
                     "-all-time",
                     "0",
                     "-all-root", // XXX: should we use this?
@@ -49,8 +52,6 @@ export const build = async (
                     "-comp",
                     compression,
                     "-no-progress",
-                    name,
-                    filename,
                 ];
                 await execaDockerFallback(command, args, {
                     cwd: destination,
