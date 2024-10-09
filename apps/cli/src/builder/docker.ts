@@ -1,8 +1,7 @@
-import { spawn } from "child_process";
 import { execa } from "execa";
 import fs from "fs-extra";
+import { spawnSync } from "node:child_process";
 import path from "path";
-import { finished } from "stream/promises";
 import tmp from "tmp";
 import { DockerDriveConfig } from "../config.js";
 import { execaDockerFallback } from "../exec.js";
@@ -18,21 +17,6 @@ type ImageInfo = {
     entrypoint: string[];
     env: string[];
     workdir: string;
-};
-
-const exportImageTar = async (
-    cwd: string,
-    inputFile: string,
-    outputFile: string,
-) => {
-    const crane = spawn("crane", ["export", "-", "-"]);
-    const input = fs.createReadStream(path.join(cwd, inputFile));
-    const output = fs.createWriteStream(path.join(cwd, outputFile));
-    input.pipe(crane.stdin);
-    crane.stdout.pipe(output);
-    console.log(cwd, inputFile, outputFile);
-    await finished(output);
-    return finished(input);
 };
 
 /**
@@ -118,7 +102,13 @@ export const build = async (
         });
 
         // create rootfs tar from OCI tar
-        await exportImageTar(destination, ocitar, tar);
+        spawnSync("crane", ["export", "-", "-"], {
+            stdio: [
+                fs.openSync(path.join(destination, ocitar), "r"),
+                fs.openSync(path.join(destination, tar), "w"),
+                "inherit",
+            ],
+        });
 
         switch (format) {
             case "ext2": {
