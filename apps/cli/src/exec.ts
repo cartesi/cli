@@ -96,6 +96,5 @@ export const spawnSyncDockerFallback = async (
             throw result.error;
         }
     }
-    console.log(result);
     return result;
 };
