@@ -4,7 +4,7 @@ target "docker-platforms" {}
 target "default" {
   inherits = ["docker-metadata-action", "docker-platforms"]
   args = {
-    BASE_IMAGE                    = "debian:bookworm-20240311"
+    BASE_IMAGE                    = "debian:bookworm-20240926"
     SERVER_MANAGER_REGISTRY       = "docker.io"
     SERVER_MANAGER_ORG            = "cartesi"
     SERVER_MANAGER_VERSION        = "0.9.1"
