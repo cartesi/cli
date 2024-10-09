@@ -6,6 +6,7 @@ ARG LINUX_KERNEL_VERSION
 ARG XGENEXT2_VERSION
 ARG CRANE_VERSION
 ARG NODEJS_VERSION
+ARG SU_EXEC_VERSION
 
 FROM ${BASE_IMAGE} AS base
 ARG DEBIAN_FRONTEND=noninteractive
@@ -32,10 +33,9 @@ rm -rf /var/lib/apt/lists/*
 EOF
 
 FROM builder AS su-exec
-
-# v0.2 -> f85e5bde1afef399021fbc2a99c837cf851ceafa
+ARG SU_EXEC_VERSION
 WORKDIR /usr/local/src
-ADD https://github.com/ncopa/su-exec.git#f85e5bde1afef399021fbc2a99c837cf851ceafa /usr/local/src
+ADD https://github.com/ncopa/su-exec.git#v${SU_EXEC_VERSION} /usr/local/src
 RUN make
 
 FROM builder AS crane
