@@ -29,6 +29,8 @@ export const execaDockerFallback = async (
                     `${options.cwd}:/work`,
                     "--workdir",
                     "/work",
+                    "--interactive",
+                    "--tty",
                     "--user",
                     `${userInfo.uid}:${userInfo.gid}`,
                 ];

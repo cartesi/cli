@@ -10,17 +10,8 @@ import {
     buildNone,
     buildTar,
 } from "../builder/index.js";
-import { Config, DriveConfig } from "../config.js";
-import { execaDockerFallback } from "../exec.js";
-
-type ImageInfo = {
-    cmd: string[];
-    entrypoint: string[];
-    env: string[];
-    workdir: string;
-};
-
-type DriveResult = ImageInfo | undefined | void;
+import { DriveConfig, DriveResult } from "../config.js";
+import { bootMachine } from "../machine.js";
 
 const buildDrive = async (
     name: string,
@@ -45,86 +36,6 @@ const buildDrive = async (
             return buildNone(name, drive, destination);
         }
     }
-};
-
-const bootMachine = async (
-    config: Config,
-    info: ImageInfo | undefined,
-    sdkImage: string,
-    destination: string,
-) => {
-    const { machine } = config;
-    const { assertRollingTemplate, maxMCycle, noRollup, ramLength, ramImage } =
-        machine;
-
-    // list of environment variables of docker image
-    const env = info?.env ?? [];
-    const envs = env.map(
-        (variable) => `--append-entrypoint=export "${variable}"`,
-    );
-
-    // bootargs from config string array
-    const bootargs = machine.bootargs.map(
-        (arg) => `--append-bootargs="${arg}"`,
-    );
-
-    // entrypoint from config or image info (Docker ENTRYPOINT + CMD)
-    const entrypoint =
-        machine.entrypoint ?? // takes priority
-        (info ? [...info.entrypoint, ...info.cmd].join(" ") : undefined); // ENTRYPOINT and CMD as a space separated string
-
-    if (!entrypoint) {
-        throw new Error("Undefined machine entrypoint");
-    }
-
-    const flashDrives = Object.entries(config.drives).map(([label, drive]) => {
-        const { format, mount, shared, user } = drive;
-        // TODO: filename should be absolute dir inside docker container
-        const filename = `${label}.${format}`;
-        const vars = [`label:${label}`, `filename:${filename}`];
-        if (mount) {
-            vars.push(`mount:${mount}`);
-        }
-        if (user) {
-            vars.push(`user:${user}`);
-        }
-        if (shared) {
-            vars.push("shared");
-        }
-        // don't specify start and length
-        return `--flash-drive=${vars.join(",")}`;
-    });
-
-    // command to change working directory if WORKDIR is defined
-    const command = "cartesi-machine";
-    const args = [
-        ...bootargs,
-        ...envs,
-        ...flashDrives,
-        `--ram-image=${ramImage}`,
-        `--ram-length=${ramLength}`,
-        "--final-hash",
-        "--store=image",
-        `--append-entrypoint=${entrypoint}`,
-    ];
-    if (info?.workdir) {
-        args.push(`--append-init=WORKDIR="${info.workdir}"`);
-    }
-    if (noRollup) {
-        args.push("--no-rollup");
-    }
-    if (maxMCycle) {
-        args.push(`--max-mcycle=${maxMCycle.toString()}`);
-    }
-    if (assertRollingTemplate) {
-        args.push("--assert-rolling-template");
-    }
-
-    return execaDockerFallback(command, args, {
-        cwd: destination,
-        image: sdkImage,
-        stdio: "inherit",
-    });
 };
 
 export default class Build extends BaseCommand<typeof Build> {
@@ -186,7 +97,7 @@ export default class Build extends BaseCommand<typeof Build> {
         const snapshotPath = this.getContextPath("image");
 
         // create machine snapshot
-        await bootMachine(config, imageInfo, config.sdk, destination);
+        await bootMachine(config, imageInfo, destination);
 
         await fs.chmod(snapshotPath, 0o755);
     }
