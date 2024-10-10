@@ -22,12 +22,15 @@ export default class Shell extends BaseCommand<typeof Shell> {
             description: "run as root user",
             default: false,
         }),
+        command: Flags.string({
+            description: "shell command to use (eg.: /bin/bash)",
+            required: false,
+            default: "/bin/bash",
+        }),
     };
 
-    private async startShell(
-        ext2Path: string,
-        runAsRoot: boolean,
-    ): Promise<void> {
+    private async startShell(ext2Path: string): Promise<void> {
+        const { flags } = await this.parse(Shell);
         const containerDir = "/mnt";
         const bind = `${path.resolve(path.dirname(ext2Path))}:${containerDir}`;
         const ext2 = path.join(containerDir, path.basename(ext2Path));
@@ -47,7 +50,7 @@ export default class Shell extends BaseCommand<typeof Shell> {
             `--flash-drive=label:${driveLabel},filename:${ext2}`,
         ];
 
-        if (runAsRoot) {
+        if (flags["run-as-root"]) {
             args.push("--append-init=USER=root");
         }
 
@@ -57,14 +60,12 @@ export default class Shell extends BaseCommand<typeof Shell> {
             args.push("-it");
         }
 
-        await execa("docker", [...args, "--", "/bin/bash"], {
+        await execa("docker", [...args, "--", flags.command], {
             stdio: "inherit",
         });
     }
 
     public async run(): Promise<void> {
-        const { flags } = await this.parse(Shell);
-
         // use pre-existing image or build dapp image
         const ext2Path = this.getContextPath("image.ext2");
         if (!fs.existsSync(ext2Path)) {
@@ -74,6 +75,6 @@ export default class Shell extends BaseCommand<typeof Shell> {
         }
 
         // execute the machine and save snapshot
-        await this.startShell(ext2Path, flags["run-as-root"]);
+        await this.startShell(ext2Path);
     }
 }
