@@ -38,13 +38,15 @@ export default class Shell extends BaseCommand<typeof Shell> {
         // destination directory for image and intermediate files
         const destination = path.resolve(this.getContextPath());
 
-        // use pre-existing image or build dapp image
-        // TODO: check if all drives exist
-        const ext2Path = this.getContextPath("root.ext2");
-        if (!fs.existsSync(ext2Path)) {
-            throw new Error(
-                `machine not built, run '${this.config.bin} build'`,
-            );
+        // check if all drives are built
+        for (const [name, drive] of Object.entries(config.drives)) {
+            const filename = `${name}.${drive.format}`;
+            const pathname = this.getContextPath(filename);
+            if (!fs.existsSync(pathname)) {
+                throw new Error(
+                    `drive '${name}' not built, run '${this.config.bin} build'`,
+                );
+            }
         }
 
         // create shell entrypoint
