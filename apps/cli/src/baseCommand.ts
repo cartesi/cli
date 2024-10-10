@@ -3,8 +3,9 @@ import chalk from "chalk";
 import { execa } from "execa";
 import fs from "fs";
 import path from "path";
-import { Address, Hash, isHash } from "viem";
+import { Address, Hash, getAddress, isHash } from "viem";
 
+import { Config, parse } from "./config.js";
 import {
     authorityHistoryPairFactoryAddress,
     cartesiDAppFactoryAddress,
@@ -26,14 +27,7 @@ export type Flags<T extends typeof Command> = Interfaces.InferredFlags<
     (typeof BaseCommand)["baseFlags"] & T["flags"]
 >;
 export type Args<T extends typeof Command> = Interfaces.InferredArgs<T["args"]>;
-
 export type AddressBook = Record<string, Address>;
-export interface DApp {
-    address: Address;
-    blockHash: Address;
-    blockNumber: number;
-    transactionHash: Address;
-}
 
 export abstract class BaseCommand<T extends typeof Command> extends Command {
     protected flags!: Flags<T>;
@@ -61,6 +55,12 @@ export abstract class BaseCommand<T extends typeof Command> extends Command {
         return path.join(".cartesi", ...paths);
     }
 
+    protected getApplicationConfig(configPath: string): Config {
+        return fs.existsSync(configPath)
+            ? parse(fs.readFileSync(configPath).toString())
+            : parse("");
+    }
+
     protected getMachineHash(): Hash | undefined {
         // read hash of the cartesi machine snapshot, if one exists
         const hashPath = this.getContextPath("image", "hash");
@@ -77,15 +77,18 @@ export abstract class BaseCommand<T extends typeof Command> extends Command {
         this.log(`${chalk.green("?")} ${title} ${chalk.cyan(value)}`);
     }
 
-    protected async getApplicationAddress(): Promise<Address | undefined> {
+    protected async getApplicationAddress(): Promise<Address> {
         // fixed value, as we do deterministic deployment with a zero hash
-        return "0xab7528bb862fb57e8a2bcd567a2e929a0be56a5e";
+        return getAddress("0xab7528bb862fb57e8a2bcd567a2e929a0be56a5e");
     }
 
     protected async getAddressBook(): Promise<AddressBook> {
+        const applicationAddress = await this.getApplicationAddress();
+
         // build rollups contracts address book
         const contracts: AddressBook = {
             AuthorityHistoryPairFactory: authorityHistoryPairFactoryAddress,
+            CartesiDApp: applicationAddress,
             CartesiDAppFactory: cartesiDAppFactoryAddress,
             DAppAddressRelay: dAppAddressRelayAddress,
             EntryPointV06: "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
@@ -110,11 +113,6 @@ export abstract class BaseCommand<T extends typeof Command> extends Command {
             VerifyingPaymasterV07: "0xc5c97885C67F7361aBAfD2B95067a5bBdA603608",
         };
 
-        // get dapp address
-        const applicationAddress = await this.getApplicationAddress();
-        if (applicationAddress) {
-            contracts["CartesiDApp"] = applicationAddress;
-        }
         return contracts;
     }
 

@@ -1,0 +1,5 @@
+# example of a machine that doesn't run until yield
+
+[machine]
+assert_rolling_update = false
+max-mcycle = 0

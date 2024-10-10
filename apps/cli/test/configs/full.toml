@@ -1,0 +1,45 @@
+# sdk = "cartesi/sdk:0.6.0"
+# runtime = "rollups"
+# runtime = "lambada"
+
+# [machine]
+# assert_rolling_update = true
+# bootargs = ["no4lvl", "quiet", "earlycon=sbi", "console=hvc0", "rootfstype=ext2", "root=/dev/pmem0", "rw", "init=/usr/sbin/cartesi-init"]
+# entrypoint = "/usr/local/bin/app"
+# max-mcycle = 0
+# no-rollup = false
+# ram-image = "/usr/share/cartesi-machine/images/linux.bin" # directory inside SDK image
+# ram-length = "128Mi"
+
+# [drives.root]
+# builder = "docker"
+# dockerfile = "Dockerfile"
+# target = "docker-multi-stage-target"
+# format = "ext2"
+# format = "sqfs"
+# extraSize = "100Mb" # optional. size is given by directory content size plus this amount
+
+# [drives.data]
+# builder = "empty"
+# size = "100Mb" # size can be given as string, or as a number in bytes
+# mount = "/var/lib/app" # default is /mnt/{name}
+
+# [drives.data]
+# builder = "directory"
+# directory = "./data" # required
+# extraSize = "100Mb" # optional. size is given by directory content size plus this amount
+# format = "ext2"
+# format = "sqfs"
+# mount = "/var/lib/app" # optional, default is /mnt/{name}
+
+# [drives.data]
+# builder = "tar"
+# filename = "build/files.tar"
+# extraSize = "100Mb" # optional. size is given by directory content size plus this amount
+# mount = "/var/lib/app" # optional, default is /mnt/{name}
+
+# [drives.doom]
+# builder = "none"
+# filename = "./games/doom.sqfs"
+# mount = "/usr/local/games/doom"
+
