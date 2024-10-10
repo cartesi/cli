@@ -1,5 +1,12 @@
 # sdk
 
+## 0.11.0
+
+### Minor Changes
+
+-   165e454: bump e2fsprogs
+-   d9933a5: bump machine-emulator to 0.18.1
+
 ## 0.10.0
 
 ### Minor Changes
