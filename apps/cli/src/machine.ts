@@ -42,6 +42,18 @@ export const bootMachine = async (
         (variable) => `--append-entrypoint=export "${variable}"`,
     );
 
+    // check if we need a rootfstype boot arg
+    const root = config.drives.root;
+    if (root?.format === "sqfs") {
+        const definedRootfsType = config.machine.bootargs.find((arg) =>
+            arg.startsWith("rootfstype="),
+        );
+        // not checking here if user intentionally defined wrong type
+        if (!definedRootfsType) {
+            config.machine.bootargs.push("rootfstype=squashfs");
+        }
+    }
+
     // bootargs from config string array
     const bootargs = machine.bootargs.map(
         (arg) => `--append-bootargs="${arg}"`,
