@@ -35,6 +35,7 @@ export type DirectoryDriveConfig = {
 
 export type DockerDriveConfig = {
     builder: "docker";
+    context: string;
     dockerfile: string;
     extraSize: number; // default is 0 (no extra size)
     format: DriveFormat;
@@ -98,6 +99,7 @@ type TomlTable = { [key: string]: TomlPrimitive };
 
 export const defaultRootDriveConfig = (): DriveConfig => ({
     builder: "docker",
+    context: ".",
     dockerfile: "Dockerfile", // file on current working directory
     extraSize: 0,
     format: DEFAULT_FORMAT,
@@ -333,6 +335,7 @@ const parseDrive = (drive: TomlPrimitive): DriveConfig => {
         }
         case "docker": {
             const {
+                context,
                 dockerfile,
                 extraSize,
                 format,
@@ -346,6 +349,7 @@ const parseDrive = (drive: TomlPrimitive): DriveConfig => {
             return {
                 builder: "docker",
                 image: parseOptionalString(image),
+                context: parseString(context, "."),
                 dockerfile: parseString(dockerfile, "Dockerfile"),
                 extraSize: parseBytes(extraSize, 0),
                 format: parseFormat(format),
