@@ -2,21 +2,15 @@
 # SPDX-License-Identifier: Apache-2.0 (see LICENSE)
 
 # syntax=docker.io/docker/dockerfile:1
-ARG IMAGE_REGISTRY
-ARG IMAGE_NAMESPACE
-ARG IMAGE_NAME
-ARG IMAGE_TAG
-ARG TARGETARCH
 
 ###############################################################################
 # STAGE: base-image
 #
 # This stage creates a base-image with apt repository cache and ca-certificates
 # to be used by later stages.
-FROM ${IMAGE_REGISTRY}/${IMAGE_NAMESPACE}/${IMAGE_NAME}:$IMAGE_TAG AS base-image
+FROM --platform=linux/riscv64 ubuntu:24.04 AS base-image
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
-
 
 ###############################################################################
 # STAGE: chisel
@@ -25,28 +19,25 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
 # This image should have the machine-emulator-tools and crun dependencies
 # installed.
 #
-#FIXME: replace the image with the official one when it's available
-#       from: docker.io/risv64/ubuntu to: docker.io/library/ubuntu
 FROM base-image AS chisel
 ARG TARGETARCH
 
 WORKDIR /rootfs
 
 # Extract machine-emulator-tools into the chiselled filesystem
-ARG MACHINE_EMULATOR_TOOLS_VERSION
-ADD https://github.com/cartesi/machine-emulator-tools/releases/download/v${MACHINE_EMULATOR_TOOLS_VERSION}/machine-emulator-tools-v${MACHINE_EMULATOR_TOOLS_VERSION}.deb /
-RUN dpkg -x /machine-emulator-tools-v${MACHINE_EMULATOR_TOOLS_VERSION}.deb /rootfs
+ARG MACHINE_EMULATOR_TOOLS_VERSION=0.16.1
+ADD https://github.com/cartesi/machine-emulator-tools/releases/download/v${MACHINE_EMULATOR_TOOLS_VERSION}/machine-emulator-tools-v${MACHINE_EMULATOR_TOOLS_VERSION}.deb /tmp/
+RUN dpkg -x /tmp/machine-emulator-tools-v${MACHINE_EMULATOR_TOOLS_VERSION}.deb /rootfs
 
 # Get chisel binary
-ARG CHISEL_VERSION
+ARG CHISEL_VERSION=1.0.0
 ADD "https://github.com/canonical/chisel/releases/download/v${CHISEL_VERSION}/chisel_v${CHISEL_VERSION}_linux_${TARGETARCH}.tar.gz" chisel.tar.gz
 RUN tar -xvf chisel.tar.gz -C /usr/bin/
 
 # Extract crun dependencies into the chiselled filesystem
-# FIXME: remove this when crun's dependecies slices are upstream
-ADD https://github.com/endersonmaia/chisel-releases.git#0ce6657c093a38267d65e7d9275a45e22b162942 /chisel-22.04
+ADD https://github.com/cartesi/chisel-releases.git#ubuntu-24.04-busybox-static /ubuntu-22.04
 RUN chisel cut \
-    --release /chisel-22.04 \
+    --release /ubuntu-22.04 \
     --root /rootfs \
     --arch=${TARGETARCH} \
     base-files_base \
@@ -66,49 +57,13 @@ RUN chisel cut \
 RUN <<EOF
 set -e
 ln -s /bin/busybox bin/sh
+ln -s /bin/sh bin/bash
 mkdir -p proc sys dev run/cruntime mnt
 echo "dapp:x:1000:1000::/home/dapp:/bin/sh" >> etc/passwd
 echo "dapp:x:1000:" >> etc/group
 mkdir home/dapp
 chown 1000:1000 home/dapp
 sed -i '/^root/s/bash/sh/g' etc/passwd
-EOF
-###############################################################################
-# STAGE: crun-builder
-#
-# Build most recent version of the crun binary to be used at final image.
-#
-FROM base-image AS crun-builder
-ARG DEBIAN_FRONTEND=noninteractive
-RUN <<EOF
-set -e
-apt-get install -y \
-    autoconf \
-    automake \
-    build-essential \
-    gcc \
-    git \
-    go-md2man \
-    libcap-dev \
-    libprotobuf-c-dev \
-    libseccomp-dev \
-    libtool \
-    libyajl-dev \
-    make \
-    pkgconf \
-    python3
-EOF
-
-WORKDIR /usr/local/src
-# crun:v1.4.4 -> a220ca661ce078f2c37b38c92e66cf66c012d9c1
-ADD --keep-git-dir https://github.com/containers/crun.git#a220ca661ce078f2c37b38c92e66cf66c012d9c1 /usr/local/src
-RUN <<EOF
-set -e
-./autogen.sh
-./configure \
-    --disable-systemd \
-    --disable-criu
-make
 EOF
 
 ###############################################################################
@@ -117,8 +72,13 @@ EOF
 # This stage creates the final image with the crun binary and the chiselled filesystem.
 #
 FROM scratch
+
+ARG CRUN_VERSION=1.17
 COPY --chown=root:root --chmod=644 skel/etc/subgid /etc/subgid
 COPY --chown=root:root --chmod=644 skel/etc/subuid /etc/subuid
-COPY --chown=root:root --chmod=755 etc/cartesi-init.d/cruntime-init /etc/cartesi-init.d/cruntime-init
+COPY --chown=root:root --chmod=755 skel/etc/cartesi-init.d/cruntime-init /etc/cartesi-init.d/cruntime-init
 COPY --from=chisel /rootfs /
-COPY --from=crun-builder /usr/local/src/crun /usr/bin/
+ADD --chown=root:root --chmod=0755 https://github.com/containers/crun/releases/download/${CRUN_VERSION}/crun-${CRUN_VERSION}-linux-riscv64-disable-systemd /usr/bin/crun
+
+#ENTRYPOINT [ "rollup-init", "crun", "run", "--config", "/run/cruntime/config/config.json", "--bundle", "/run/cruntime", "app" ]
+ENTRYPOINT [ "rollup-init", "echo-dapp" ]

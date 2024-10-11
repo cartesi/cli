@@ -1,0 +1,21 @@
+sdk = "cartesi/sdk:devel"
+
+[drives.root]
+builder = "docker"
+#dockerfile = "cruntime.Dockerfile"
+image = "cruntime"
+format = "sqfs"
+
+[drives.crunconfig]
+builder = "directory"
+directory = "./config" # required
+format = "sqfs"
+mount = "/run/cruntime/config"
+
+[drives.crunrootfs]
+builder = "docker"
+dockerfile = "jsdapp.Dockerfile"
+context = "jsdapp"
+format = "ext2"
+mount = "/run/cruntime/rootfs"
+
