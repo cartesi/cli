@@ -24,8 +24,14 @@ export default class Shell extends BaseCommand<typeof Shell> {
             summary: "path to the configuration file",
         }),
         "run-as-root": Flags.boolean({
-            description: "run as root user",
             default: false,
+            description: "run as root user",
+            summary: "run the cartesi machine as the root user",
+        }),
+        shell: Flags.string({
+            default: "/bin/sh",
+            description: "shell command to run",
+            summary: "shell to run",
         }),
     };
 
@@ -52,7 +58,7 @@ export default class Shell extends BaseCommand<typeof Shell> {
         // create shell entrypoint
         const info: ImageInfo = {
             cmd: [],
-            entrypoint: ["/bin/bash"],
+            entrypoint: [this.flags.shell],
             env: [],
             workdir: "/",
         };
