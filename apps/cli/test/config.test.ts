@@ -19,6 +19,7 @@ shared = true`);
                 root: {
                     builder: "docker",
                     dockerfile: "backend/Dockerfile",
+                    context: ".",
                     extraSize: 0,
                     format: "ext2",
                     image: undefined,
