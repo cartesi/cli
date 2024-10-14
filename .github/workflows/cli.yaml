@@ -47,6 +47,10 @@ jobs:
             - name: Install dependencies
               run: pnpm install
 
+            - name: Test
+              working-directory: ./apps/cli
+              run: pnpm test run
+
             - name: Build
               run: pnpm build --filter @cartesi/cli
 
