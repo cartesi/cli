@@ -18,6 +18,11 @@ export default class Shell extends BaseCommand<typeof Shell> {
     };
 
     static flags = {
+        command: Flags.string({
+            default: "/bin/sh",
+            description: "shell command to run",
+            summary: "shell to run",
+        }),
         config: Flags.file({
             char: "c",
             default: "cartesi.toml",
@@ -27,11 +32,6 @@ export default class Shell extends BaseCommand<typeof Shell> {
             default: false,
             description: "run as root user",
             summary: "run the cartesi machine as the root user",
-        }),
-        shell: Flags.string({
-            default: "/bin/sh",
-            description: "shell command to run",
-            summary: "shell to run",
         }),
     };
 
@@ -58,7 +58,7 @@ export default class Shell extends BaseCommand<typeof Shell> {
         // create shell entrypoint
         const info: ImageInfo = {
             cmd: [],
-            entrypoint: [this.flags.shell],
+            entrypoint: [this.flags.command],
             env: [],
             workdir: "/",
         };
