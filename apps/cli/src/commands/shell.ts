@@ -66,14 +66,6 @@ export default class Shell extends BaseCommand<typeof Shell> {
         // start with interactive mode on
         config.machine.interactive = true;
 
-        /* why this?
-        if (!(await lookpath("stty"))) {
-            args.push("-i");
-        } else {
-            args.push("-it");
-        }
-        */
-
         // interactive mode can't have final hash
         config.machine.finalHash = false;
 
