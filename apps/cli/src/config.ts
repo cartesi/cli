@@ -4,6 +4,72 @@ import { extname } from "path";
 import { TomlPrimitive, parse as parseToml } from "smol-toml";
 
 /**
+ * Typed Errors
+ */
+export class InvalidBuilderError extends Error {
+    constructor(builder: any) {
+        super(`Invalid builder: ${builder}`);
+        this.name = "InvalidBuilder";
+    }
+}
+
+export class InvalidDriveFormatError extends Error {
+    constructor(format: any) {
+        super(`Invalid drive format: ${format}`);
+        this.name = "InvalidDriveFormatError";
+    }
+}
+
+export class InvalidEmptyDriveFormatError extends Error {
+    constructor(format: any) {
+        super(`Invalid empty drive format: ${format}`);
+        this.name = "InvalidEmptyDriveFormatError";
+    }
+}
+
+export class InvalidStringValueError extends Error {
+    constructor(value: any) {
+        super(`Invalid string value: ${value}`);
+        this.name = "InvalidStringValueError";
+    }
+}
+
+export class InvalidBooleanValueError extends Error {
+    constructor(value: any) {
+        super(`Invalid boolean value: ${value}`);
+        this.name = "InvalidBooleanValueError";
+    }
+}
+
+export class InvalidNumberValueError extends Error {
+    constructor(value: any) {
+        super(`Invalid number value: ${value}`);
+        this.name = "InvalidNumberValueError";
+    }
+}
+
+export class InvalidBytesValueError extends Error {
+    constructor(value: any) {
+        super(`Invalid bytes value: ${value}`);
+        this.name = "InvalidBytesValueError";
+    }
+}
+
+export class RequiredFieldError extends Error {
+    constructor(key: string) {
+        super(`Missing required field: ${key}`);
+        this.name = "RequiredFieldError";
+    }
+}
+
+export class InvalidStringArrayError extends Error {
+    constructor() {
+        super(`Invalid string array`);
+        this.name = "InvalidStringArrayError";
+    }
+}
+
+/**
  * Configuration for drives of a Cartesi Machine. A drive may already exist or be built by a builder
  */
 const DEFAULT_FORMAT = "ext2";
@@ -141,7 +207,7 @@ const parseBoolean = (value: TomlPrimitive, defaultValue: boolean): boolean => {
     } else if (typeof value === "boolean") {
         return value;
     }
-    throw new Error(`Invalid boolean value: ${value}`);
+    throw new InvalidBooleanValueError(value);
 };
 
 const parseOptionalBoolean = (value: TomlPrimitive): boolean | undefined => {
@@ -150,7 +216,7 @@ const parseOptionalBoolean = (value: TomlPrimitive): boolean | undefined => {
     } else if (typeof value === "boolean") {
         return value;
     }
-    throw new Error(`Invalid boolean value: ${value}`);
+    throw new InvalidBooleanValueError(value);
 };
 
 const parseString = (value: TomlPrimitive, defaultValue: string): string => {
@@ -159,7 +225,7 @@ const parseString = (value: TomlPrimitive, defaultValue: string): string => {
     } else if (typeof value === "string") {
         return value;
     }
-    throw new Error(`Invalid string value: ${value}`);
+    throw new InvalidStringValueError(value);
 };
 
 const parseStringArray = (value: TomlPrimitive): string[] => {
@@ -172,19 +238,19 @@ const parseStringArray = (value: TomlPrimitive): string[] => {
             if (typeof v === "string") {
                 return v;
             }
-            throw new Error(`Invalid string value: ${v}`);
+            throw new InvalidStringValueError(v);
         });
     }
-    throw new Error(`Invalid string array value: ${value}`);
+    throw new InvalidStringArrayError();
 };
 
 const parseRequiredString = (value: TomlPrimitive, key: string): string => {
     if (value === undefined) {
-        throw new Error(`Missing required value: ${key}`);
+        throw new RequiredFieldError(key);
     } else if (typeof value === "string") {
         return value;
     }
-    throw new Error(`Invalid string value: ${value}`);
+    throw new InvalidStringValueError(value);
 };
 
 const parseOptionalString = (value: TomlPrimitive): string | undefined => {
@@ -193,7 +259,7 @@ const parseOptionalString = (value: TomlPrimitive): string | undefined => {
     } else if (typeof value === "string") {
         return value;
     }
-    throw new Error(`Invalid string value: ${value}`);
+    throw new InvalidStringValueError(value);
 };
 
 const parseOptionalStringBoolean = (
@@ -206,7 +272,7 @@ const parseOptionalStringBoolean = (
     } else if (typeof value === "boolean") {
         return value;
     }
-    throw new Error(`Invalid string value: ${value}`);
+    throw new InvalidStringValueError(value);
 };
 
 const parseOptionalNumber = (value: TomlPrimitive): bigint | undefined => {
@@ -217,7 +283,7 @@ const parseOptionalNumber = (value: TomlPrimitive): bigint | undefined => {
     } else if (typeof value === "number") {
         return BigInt(value);
     }
-    throw new Error(`Invalid number value: ${value}`);
+    throw new InvalidNumberValueError(value);
 };
 
 const parseBytes = (value: TomlPrimitive, defaultValue: number): number => {
@@ -228,7 +294,7 @@ const parseBytes = (value: TomlPrimitive, defaultValue: number): number => {
     } else if (typeof value === "number" || typeof value === "string") {
         return bytes.parse(value);
     }
-    throw new Error(`Invalid bytes value: ${value}`);
+    throw new InvalidBytesValueError(value);
 };
 
 const parseBuilder = (value: TomlPrimitive): Builder => {
@@ -248,7 +314,7 @@ const parseBuilder = (value: TomlPrimitive): Builder => {
                 return "tar";
         }
     }
-    throw new Error(`Invalid builder: ${value}`);
+    throw new InvalidBuilderError(value as string);
 };
 
 const parseFormat = (value: TomlPrimitive): DriveFormat => {
@@ -262,7 +328,7 @@ const parseFormat = (value: TomlPrimitive): DriveFormat => {
                 return "sqfs";
         }
     }
-    throw new Error(`Invalid format: ${value}`);
+    throw new InvalidDriveFormatError(value as string);
 };
 
 const parseEmptyFormat = (value: TomlPrimitive): "ext2" | "raw" => {
@@ -276,7 +342,7 @@ const parseEmptyFormat = (value: TomlPrimitive): "ext2" | "raw" => {
                 return "raw";
         }
     }
-    throw new Error(`Invalid format: ${value}`);
+    throw new InvalidEmptyDriveFormatError(value as string);
 };
 
 const parseMachine = (value: TomlPrimitive): MachineConfig => {
@@ -313,7 +379,7 @@ export const getDriveFormat = (filename: string): DriveFormat => {
         case ".sqfs":
             return "sqfs";
         default:
-            throw new Error(`Invalid drive format: ${extension}`);
+            throw new InvalidDriveFormatError(extension);
     }
 };
 

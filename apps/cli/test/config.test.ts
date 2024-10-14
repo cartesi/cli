@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { defaultConfig, defaultMachineConfig, parse } from "../src/config.js";
+import {
+    defaultConfig,
+    defaultMachineConfig,
+    InvalidBooleanValueError,
+    InvalidBuilderError,
+    InvalidDriveFormatError,
+    InvalidEmptyDriveFormatError,
+    InvalidStringValueError,
+    parse,
+    RequiredFieldError,
+} from "../src/config.js";
 
 describe("config", () => {
     it("default config", () => {
@@ -41,47 +51,106 @@ shared = true`);
 
     it("invalid drive: invalid builder", () => {
         expect(() => parse('[drives.root]\nbuilder = "invalid"')).toThrowError(
-            "Invalid builder: invalid",
+            new InvalidBuilderError("invalid"),
         );
         expect(() => parse("[drives.root]\nbuilder = true")).toThrowError(
-            "Invalid builder: true",
+            new InvalidBuilderError(true),
         );
         expect(() => parse("[drives.root]\nbuilder = 10")).toThrowError(
-            "Invalid builder: 10",
+            new InvalidBuilderError(10),
         );
         expect(() => parse("[drives.root]\nbuilder = {}")).toThrowError(
-            "Invalid builder: [object Object]",
+            new InvalidBuilderError({}),
         );
     });
 
     it("invalid drive: invalid format", () => {
         expect(() => parse('[drives.root]\nformat = "invalid"')).toThrowError(
-            "Invalid format: invalid",
+            new InvalidDriveFormatError("invalid"),
         );
         expect(() => parse("[drives.root]\nformat = true")).toThrowError(
-            "Invalid format: true",
+            new InvalidDriveFormatError(true),
         );
         expect(() => parse("[drives.root]\nformat = 10")).toThrowError(
-            "Invalid format: 10",
+            new InvalidDriveFormatError(10),
         );
         expect(() => parse("[drives.root]\nformat = {}")).toThrowError(
-            "Invalid format: [object Object]",
+            new InvalidDriveFormatError({}),
+        );
+    });
+
+    it("invalid drive: invalid extension", () => {
+        const builderNone = `
+            [drives.none]
+            builder = "none"
+            filename = "./games/doom.xyzfs"
+            mount = "/usr/local/games/doom"
+        `;
+        expect(() => parse(builderNone)).toThrowError(
+            new InvalidDriveFormatError(".xyzfs"),
         );
     });
 
     it("invalid drive: invalid mount", () => {
         expect(() => parse("[drives.data]\nmount = 42")).toThrowError(
-            "Invalid string value: 42",
+            new InvalidStringValueError(42),
+        );
+    });
+
+    it("invalid empty drive: invalid fomat", () => {
+        expect(() =>
+            parse("[drives.data]\nbuilder = 'empty'\nformat = 42"),
+        ).toThrowError(new InvalidEmptyDriveFormatError(42));
+    });
+
+    it("invalid boolean value", () => {
+        expect(() => parse("[machine]\nno-rollup = 42")).toThrowError(
+            new InvalidBooleanValueError(42),
+        );
+    });
+
+    it("invalid string value", () => {
+        const invalidTarDrive = `
+            [drives.data]
+            builder = "tar"
+            filename = 42 # invalid
+            format = "ext2"
+        `;
+        expect(() => parse(invalidTarDrive)).toThrowError(
+            new InvalidStringValueError(42),
+        );
+    });
+
+    it("required field", () => {
+        const invalidDirectoryDrive = `
+            [drives.data]
+            builder = "directory"
+            # directory = '' # required
+        `;
+        expect(() => parse(invalidDirectoryDrive)).toThrowError(
+            new RequiredFieldError("directory"), //XXX: how to know which field was required
         );
     });
 
     it("machine-config", () => {
-        expect(parse("[machine]\nno-rollup = true")).toEqual({
+        const config = `
+            [machine]
+            no-rollup = true
+        `;
+        expect(parse(config)).toEqual({
             ...defaultConfig(),
             machine: {
                 ...defaultMachineConfig(),
                 noRollup: true,
             },
         });
+
+        const invalidConfig = `
+            ${config}
+            bootargs = ["no4lvl", "quiet", false]
+        `;
+        expect(() => parse(invalidConfig)).toThrowError(
+            new InvalidStringValueError(false),
+        );
     });
 });
