@@ -1,10 +1,13 @@
 sdk = "cartesi/sdk:devel"
 
+[machine]
+entrypoint = "rollup-init crun run --config /run/cruntime/config/config.json --bundle /run/cruntime app"
+
 [drives.root]
 builder = "docker"
 #dockerfile = "cruntime.Dockerfile"
 image = "cruntime"
-format = "sqfs"
+format = "ext2"
 
 [drives.crunconfig]
 builder = "directory"
@@ -18,4 +21,3 @@ dockerfile = "jsdapp.Dockerfile"
 context = "jsdapp"
 format = "ext2"
 mount = "/run/cruntime/rootfs"
-
