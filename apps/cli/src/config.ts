@@ -7,49 +7,49 @@ import { TomlPrimitive, parse as parseToml } from "smol-toml";
  * Typed Errors
  */
 export class InvalidBuilderError extends Error {
-    constructor(builder: any) {
+    constructor(builder: string) {
         super(`Invalid builder: ${builder}`);
         this.name = "InvalidBuilder";
     }
 }
 
 export class InvalidDriveFormatError extends Error {
-    constructor(format: any) {
+    constructor(format: string) {
         super(`Invalid drive format: ${format}`);
         this.name = "InvalidDriveFormatError";
     }
 }
 
 export class InvalidEmptyDriveFormatError extends Error {
-    constructor(format: any) {
+    constructor(format: string) {
         super(`Invalid empty drive format: ${format}`);
         this.name = "InvalidEmptyDriveFormatError";
     }
 }
 
 export class InvalidStringValueError extends Error {
-    constructor(value: any) {
+    constructor(value: string) {
         super(`Invalid string value: ${value}`);
         this.name = "InvalidStringValueError";
     }
 }
 
 export class InvalidBooleanValueError extends Error {
-    constructor(value: any) {
+    constructor(value: string) {
         super(`Invalid boolean value: ${value}`);
         this.name = "InvalidBooleanValueError";
     }
 }
 
 export class InvalidNumberValueError extends Error {
-    constructor(value: any) {
+    constructor(value: string) {
         super(`Invalid number value: ${value}`);
         this.name = "InvalidNumberValueError";
     }
 }
 
 export class InvalidBytesValueError extends Error {
-    constructor(value: any) {
+    constructor(value: string) {
         super(`Invalid bytes value: ${value}`);
         this.name = "InvalidBytesValueError";
     }
@@ -207,7 +207,7 @@ const parseBoolean = (value: TomlPrimitive, defaultValue: boolean): boolean => {
     } else if (typeof value === "boolean") {
         return value;
     }
-    throw new InvalidBooleanValueError(value);
+    throw new InvalidBooleanValueError(value as string);
 };
 
 const parseOptionalBoolean = (value: TomlPrimitive): boolean | undefined => {
@@ -216,7 +216,7 @@ const parseOptionalBoolean = (value: TomlPrimitive): boolean | undefined => {
     } else if (typeof value === "boolean") {
         return value;
     }
-    throw new InvalidBooleanValueError(value);
+    throw new InvalidBooleanValueError(value as string);
 };
 
 const parseString = (value: TomlPrimitive, defaultValue: string): string => {
@@ -225,7 +225,7 @@ const parseString = (value: TomlPrimitive, defaultValue: string): string => {
     } else if (typeof value === "string") {
         return value;
     }
-    throw new InvalidStringValueError(value);
+    throw new InvalidStringValueError(value as unknown as string);
 };
 
 const parseStringArray = (value: TomlPrimitive): string[] => {
@@ -238,7 +238,7 @@ const parseStringArray = (value: TomlPrimitive): string[] => {
             if (typeof v === "string") {
                 return v;
             }
-            throw new InvalidStringValueError(v);
+            throw new InvalidStringValueError(v as unknown as string);
         });
     }
     throw new InvalidStringArrayError();
@@ -250,7 +250,7 @@ const parseRequiredString = (value: TomlPrimitive, key: string): string => {
     } else if (typeof value === "string") {
         return value;
     }
-    throw new InvalidStringValueError(value);
+    throw new InvalidStringValueError(value as unknown as string);
 };
 
 const parseOptionalString = (value: TomlPrimitive): string | undefined => {
@@ -259,7 +259,7 @@ const parseOptionalString = (value: TomlPrimitive): string | undefined => {
     } else if (typeof value === "string") {
         return value;
     }
-    throw new InvalidStringValueError(value);
+    throw new InvalidStringValueError(value as unknown as string);
 };
 
 const parseOptionalStringBoolean = (
@@ -272,7 +272,7 @@ const parseOptionalStringBoolean = (
     } else if (typeof value === "boolean") {
         return value;
     }
-    throw new InvalidStringValueError(value);
+    throw new InvalidStringValueError(value as unknown as string);
 };
 
 const parseOptionalNumber = (value: TomlPrimitive): bigint | undefined => {
@@ -283,7 +283,7 @@ const parseOptionalNumber = (value: TomlPrimitive): bigint | undefined => {
     } else if (typeof value === "number") {
         return BigInt(value);
     }
-    throw new InvalidNumberValueError(value);
+    throw new InvalidNumberValueError(value as string);
 };
 
 const parseBytes = (value: TomlPrimitive, defaultValue: number): number => {
@@ -294,7 +294,7 @@ const parseBytes = (value: TomlPrimitive, defaultValue: number): number => {
     } else if (typeof value === "number" || typeof value === "string") {
         return bytes.parse(value);
     }
-    throw new InvalidBytesValueError(value);
+    throw new InvalidBytesValueError(value as unknown as string);
 };
 
 const parseBuilder = (value: TomlPrimitive): Builder => {
