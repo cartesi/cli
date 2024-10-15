@@ -23,6 +23,7 @@ concurrency:
 permissions:
     contents: read
     packages: write
+    pull-requests: write
 jobs:
     build:
         runs-on: ubuntu-latest
@@ -50,6 +51,12 @@ jobs:
             - name: Test
               working-directory: ./apps/cli
               run: pnpm test run
+
+            - name: "Report Coverage"
+              if: always()
+              uses: davelosert/vitest-coverage-report-action@v2
+              with:
+                  working-directory: ./apps/cli
 
             - name: Build
               run: pnpm build --filter @cartesi/cli
