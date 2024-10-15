@@ -54,13 +54,13 @@ shared = true`);
             new InvalidBuilderError("invalid"),
         );
         expect(() => parse("[drives.root]\nbuilder = true")).toThrowError(
-            new InvalidBuilderError(true as unknown as string),
+            new InvalidBuilderError(true),
         );
         expect(() => parse("[drives.root]\nbuilder = 10")).toThrowError(
-            new InvalidBuilderError(10 as unknown as string),
+            new InvalidBuilderError(10),
         );
         expect(() => parse("[drives.root]\nbuilder = {}")).toThrowError(
-            new InvalidBuilderError({} as unknown as string),
+            new InvalidBuilderError({}),
         );
     });
 
@@ -69,13 +69,13 @@ shared = true`);
             new InvalidDriveFormatError("invalid"),
         );
         expect(() => parse("[drives.root]\nformat = true")).toThrowError(
-            new InvalidDriveFormatError(true as unknown as string),
+            new InvalidDriveFormatError(true),
         );
         expect(() => parse("[drives.root]\nformat = 10")).toThrowError(
-            new InvalidDriveFormatError(10 as unknown as string),
+            new InvalidDriveFormatError(10),
         );
         expect(() => parse("[drives.root]\nformat = {}")).toThrowError(
-            new InvalidDriveFormatError({} as unknown as string),
+            new InvalidDriveFormatError({}),
         );
     });
 
@@ -93,21 +93,19 @@ shared = true`);
 
     it("invalid drive: invalid mount", () => {
         expect(() => parse("[drives.data]\nmount = 42")).toThrowError(
-            new InvalidStringValueError(42 as unknown as string),
+            new InvalidStringValueError(42),
         );
     });
 
     it("invalid empty drive: invalid fomat", () => {
         expect(() =>
             parse("[drives.data]\nbuilder = 'empty'\nformat = 42"),
-        ).toThrowError(
-            new InvalidEmptyDriveFormatError(42 as unknown as string),
-        );
+        ).toThrowError(new InvalidEmptyDriveFormatError(42));
     });
 
     it("invalid boolean value", () => {
         expect(() => parse("[machine]\nno-rollup = 42")).toThrowError(
-            new InvalidBooleanValueError(42 as unknown as string),
+            new InvalidBooleanValueError(42),
         );
     });
 
@@ -119,7 +117,7 @@ shared = true`);
             format = "ext2"
         `;
         expect(() => parse(invalidTarDrive)).toThrowError(
-            new InvalidStringValueError(42 as unknown as string),
+            new InvalidStringValueError(42),
         );
     });
 
@@ -152,7 +150,7 @@ shared = true`);
             bootargs = ["no4lvl", "quiet", false]
         `;
         expect(() => parse(invalidConfig)).toThrowError(
-            new InvalidStringValueError(false as unknown as string),
+            new InvalidStringValueError(false),
         );
     });
 });
