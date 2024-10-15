@@ -4,8 +4,10 @@ import {
     defaultMachineConfig,
     InvalidBooleanValueError,
     InvalidBuilderError,
+    InvalidBytesValueError,
     InvalidDriveFormatError,
     InvalidEmptyDriveFormatError,
+    InvalidNumberValueError,
     InvalidStringValueError,
     parse,
     RequiredFieldError,
@@ -109,6 +111,12 @@ shared = true`);
         );
     });
 
+    it("invalid number value", () => {
+        expect(() => parse("[machine]\nmax-mcycle = 'abc'")).toThrowError(
+            new InvalidNumberValueError("abc"),
+        );
+    });
+
     it("invalid string value", () => {
         const invalidTarDrive = `
             [drives.data]
@@ -119,6 +127,18 @@ shared = true`);
         expect(() => parse(invalidTarDrive)).toThrowError(
             new InvalidStringValueError(42),
         );
+    });
+
+    it("invalid bytes value", () => {
+        expect(() => parse("[machine]\nram-length = 'abc'")).toThrowError(
+            new InvalidBytesValueError("abc"),
+        );
+    });
+
+    it("invalid boolean", () => {
+        expect(() =>
+            parse("[machine]\nassert_rolling_update = 42"),
+        ).toThrowError(new InvalidBooleanValueError(42));
     });
 
     it("required field", () => {
