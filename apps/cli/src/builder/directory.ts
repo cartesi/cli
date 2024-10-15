@@ -57,6 +57,7 @@ export const build = async (
                     cwd: destination,
                     image: sdkImage,
                 });
+                break;
             }
         }
     } finally {
