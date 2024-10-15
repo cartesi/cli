@@ -92,7 +92,8 @@
         "postpack": "rimraf oclif.manifest.json",
         "posttest": "pnpm lint",
         "prepack": "pnpm build && oclif manifest",
-        "test": "vitest --coverage.enabled true"
+        "test": "vitest",
+        "test:coverage": "vitest --coverage.enabled true"
     },
     "engines": {
         "node": ">=18.0.0"
