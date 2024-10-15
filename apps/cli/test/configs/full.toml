@@ -3,7 +3,7 @@
 # runtime = "lambada"
 
 # [machine]
-# assert_rolling_update = true
+# assert-rolling-update = true
 # bootargs = ["no4lvl", "quiet", "earlycon=sbi", "console=hvc0", "rootfstype=ext2", "root=/dev/pmem0", "rw", "init=/usr/sbin/cartesi-init"]
 # entrypoint = "/usr/local/bin/app"
 # final-hash = true

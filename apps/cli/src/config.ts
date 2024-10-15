@@ -292,7 +292,10 @@ const parseBytes = (value: TomlPrimitive, defaultValue: number): number => {
     } else if (typeof value === "bigint") {
         return Number(value);
     } else if (typeof value === "number" || typeof value === "string") {
-        return bytes.parse(value);
+        const output = bytes.parse(value);
+        if (output !== null) {
+            return output;
+        }
     }
     throw new InvalidBytesValueError(value);
 };
