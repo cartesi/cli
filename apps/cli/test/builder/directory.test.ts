@@ -28,9 +28,11 @@ describe("when building with the directory builder", () => {
         "should fail when the directory is empty",
         async ({ tmpdir }) => {
             const destination = tmpdir;
+            const directory = path.join(__dirname, "data", "empty");
+            fs.ensureDirSync(directory);
             const drive: DirectoryDriveConfig = {
                 builder: "directory",
-                directory: path.join(__dirname, "data", "empty"),
+                directory,
                 extraSize: 0,
                 format: "ext2",
             };
@@ -44,9 +46,11 @@ describe("when building with the directory builder", () => {
         "should pass when the directory is empty but extra size is defined",
         async ({ tmpdir }) => {
             const destination = tmpdir;
+            const directory = path.join(__dirname, "data", "empty");
+            fs.ensureDirSync(directory);
             const drive: DirectoryDriveConfig = {
                 builder: "directory",
-                directory: path.join(__dirname, "data", "empty"),
+                directory,
                 extraSize: 1024 * 1024, // 1Mb
                 format: "ext2",
             };
