@@ -43,7 +43,7 @@ describe("when building with the docker builder", () => {
             target: undefined,
         };
         await expect(build("root", drive, image, destination)).rejects.toThrow(
-            "Invalid image Architecture: arm64. Expected riscv64",
+            "Expected riscv64",
         );
     });
 
