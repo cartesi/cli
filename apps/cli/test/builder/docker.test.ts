@@ -47,6 +47,27 @@ describe("when building with the docker builder", () => {
         );
     });
 
+    tmpdirTest(
+        "should build an ext2 drive with a target definition",
+        async ({ tmpdir }) => {
+            const destination = tmpdir;
+            const drive: DockerDriveConfig = {
+                builder: "docker",
+                context: path.join(__dirname, "data"),
+                dockerfile: path.join(__dirname, "data", "Dockerfile"),
+                extraSize: 0,
+                format: "ext2",
+                tags: [],
+                image: undefined,
+                target: "test",
+            };
+            await build("root", drive, image, destination);
+            const filename = path.join(destination, "root.ext2");
+            const stat = fs.statSync(filename);
+            expect(stat.size).toEqual(76087296);
+        },
+    );
+
     tmpdirTest("should build an ext2 drive", async ({ tmpdir }) => {
         const destination = tmpdir;
         const drive: DockerDriveConfig = {
