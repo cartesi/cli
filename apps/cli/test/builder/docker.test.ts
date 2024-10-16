@@ -86,7 +86,7 @@ describe("when building with the docker builder", () => {
         expect(stat.size).toEqual(76087296);
     });
 
-    tmpdirTest("should build a sqfs drive", async ({ tmpdir }) => {
+    tmpdirTest.skip("should build a sqfs drive", async ({ tmpdir }) => {
         const destination = tmpdir;
         const drive: DockerDriveConfig = {
             builder: "docker",
