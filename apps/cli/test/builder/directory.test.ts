@@ -61,17 +61,37 @@ describe("when building with the directory builder", () => {
         },
     );
 
-    tmpdirTest("should pass for a populated directory", async ({ tmpdir }) => {
-        const destination = tmpdir;
-        const drive: DirectoryDriveConfig = {
-            builder: "directory",
-            directory: path.join(__dirname, "data", "sample1"),
-            extraSize: 0,
-            format: "ext2",
-        };
-        await build("root", drive, image, destination);
-        const filename = path.join(destination, "root.ext2");
-        const stat = fs.statSync(filename);
-        expect(stat.size).toEqual(32768);
-    });
+    tmpdirTest(
+        "should pass for a populated directory (ext2)",
+        async ({ tmpdir }) => {
+            const destination = tmpdir;
+            const drive: DirectoryDriveConfig = {
+                builder: "directory",
+                directory: path.join(__dirname, "data", "sample1"),
+                extraSize: 0,
+                format: "ext2",
+            };
+            await build("root", drive, image, destination);
+            const filename = path.join(destination, "root.ext2");
+            const stat = fs.statSync(filename);
+            expect(stat.size).toEqual(32768);
+        },
+    );
+
+    tmpdirTest(
+        "should pass for a populated directory (sqfs)",
+        async ({ tmpdir }) => {
+            const destination = tmpdir;
+            const drive: DirectoryDriveConfig = {
+                builder: "directory",
+                directory: path.join(__dirname, "data", "sample1"),
+                extraSize: 0,
+                format: "sqfs",
+            };
+            await build("root", drive, image, destination);
+            const filename = path.join(destination, "root.sqfs");
+            const stat = fs.statSync(filename);
+            expect(stat.size).toEqual(4096);
+        },
+    );
 });
