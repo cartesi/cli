@@ -47,22 +47,18 @@ describe("when building with the docker builder", () => {
         );
     });
 
-    tmpdirTest(
-        "should build a docker drive",
-        { timeout: 60000 },
-        async ({ tmpdir }) => {
-            const destination = tmpdir;
-            const drive: DockerDriveConfig = {
-                builder: "docker",
-                context: path.join(__dirname, "data"),
-                dockerfile: path.join(__dirname, "data", "Dockerfile"),
-                extraSize: 0,
-                format: "ext2",
-                tags: [],
-                image: undefined,
-                target: undefined,
-            };
-            await build("root", drive, image, destination);
-        },
-    );
+    tmpdirTest("should build a docker drive", async ({ tmpdir }) => {
+        const destination = tmpdir;
+        const drive: DockerDriveConfig = {
+            builder: "docker",
+            context: path.join(__dirname, "data"),
+            dockerfile: path.join(__dirname, "data", "Dockerfile"),
+            extraSize: 0,
+            format: "ext2",
+            tags: [],
+            image: undefined,
+            target: undefined,
+        };
+        await build("root", drive, image, destination);
+    });
 });

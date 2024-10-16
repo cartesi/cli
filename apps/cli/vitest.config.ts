@@ -7,5 +7,6 @@ export default defineConfig({
             reporter: ["text", "json-summary", "json"],
             reportOnFailure: true,
         },
+        testTimeout: 60000,
     },
 });
