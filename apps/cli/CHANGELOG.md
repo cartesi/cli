@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.0
+
+### Minor Changes
+
+-   5154fb8: v1.4
+
 ## 1.3.0
 
 ### Minor Changes
