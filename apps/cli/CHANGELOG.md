@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.0
+
+### Major Changes
+
+-   6bd3be3: 1.0 release
+
 ## 0.16.1
 
 ### Patch Changes
