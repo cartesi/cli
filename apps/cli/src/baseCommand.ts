@@ -6,9 +6,8 @@ import path from "path";
 import { Address, Hash, getAddress, isHash } from "viem";
 
 import {
-    authorityHistoryPairFactoryAddress,
-    cartesiDAppFactoryAddress,
-    dAppAddressRelayAddress,
+    applicationFactoryAddress,
+    authorityFactoryAddress,
     erc1155BatchPortalAddress,
     erc1155SinglePortalAddress,
     erc20PortalAddress,
@@ -80,10 +79,9 @@ export abstract class BaseCommand<T extends typeof Command> extends Command {
 
         // build rollups contracts address book
         const contracts: AddressBook = {
-            AuthorityHistoryPairFactory: authorityHistoryPairFactoryAddress,
-            CartesiDApp: applicationAddress,
-            CartesiDAppFactory: cartesiDAppFactoryAddress,
-            DAppAddressRelay: dAppAddressRelayAddress,
+            Application: applicationAddress,
+            ApplicationFactory: applicationFactoryAddress,
+            AuthorityFactory: authorityFactoryAddress,
             EntryPointV06: "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
             EntryPointV07: "0x0000000071727De22E5E9d8BAf0edAc6f37da032",
             ERC1155BatchPortal: erc1155BatchPortalAddress,
