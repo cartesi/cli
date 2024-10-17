@@ -1,6 +1,6 @@
 {
     "name": "@cartesi/cli",
-    "version": "0.16.1",
+    "version": "1.0.0",
     "description": "Cartesi CLI",
     "author": "Danilo Tuler <tuler@pobox.com>",
     "bin": {
