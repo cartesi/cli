@@ -1,5 +1,11 @@
 # devnet
 
+## 2.0.0-alpha.0
+
+### Major Changes
+
+-   f856432: rollups-contract v2
+
 ## 1.8.0
 
 ### Minor Changes
