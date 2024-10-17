@@ -15,6 +15,7 @@ build
 
 # misc
 .DS_Store
+*.tsbuildinfo
 
 # debug
 npm-debug.log*
