@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.0
+
+### Minor Changes
+
+-   3e2ae36: v1.5
+
 ## 1.4.0
 
 ### Minor Changes
