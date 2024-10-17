@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.0
+
+### Minor Changes
+
+-   4d2f8bc: v1.3
+
 ## 1.2.0
 
 ### Minor Changes
