@@ -69,7 +69,15 @@ export default class BuildApplication extends BaseCommand<
         this.debug(
             `building docker image and writing result to ${buildResult}`,
         );
-        const args = ["buildx", "build", "--load", "--iidfile", buildResult];
+        const args = [
+            "buildx",
+            "build",
+            "--load",
+            "--iidfile",
+            buildResult,
+            "--platform",
+            "linux/riscv64",
+        ];
         if (options.target) {
             args.push("--target", options.target);
         }
