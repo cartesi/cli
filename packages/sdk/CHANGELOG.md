@@ -1,5 +1,11 @@
 # sdk
 
+## 0.12.0-alpha.0
+
+### Minor Changes
+
+-   cd34027: bump devnet to v2
+
 ## 0.11.0
 
 ### Minor Changes
