@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1.0
+
+### Minor Changes
+
+-   3353d3c: v1.1
+
+### Patch Changes
+
+-   3353d3c: fix release process
+
 ## 1.0.0
 
 ### Major Changes
