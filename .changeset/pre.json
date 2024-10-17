@@ -10,6 +10,7 @@
     "tsconfig": "0.0.0"
   },
   "changesets": [
-    "funny-zoos-tell"
+    "funny-zoos-tell",
+    "orange-deers-refuse"
   ]
 }
