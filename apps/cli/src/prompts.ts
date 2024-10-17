@@ -2,7 +2,7 @@ import confirm from "@inquirer/confirm";
 import { Separator } from "@inquirer/core";
 import input from "@inquirer/input";
 import select from "@inquirer/select";
-import { CancelablePromise, Context } from "@inquirer/type";
+import { Context } from "@inquirer/type";
 import chalk from "chalk";
 import {
     Address,
@@ -212,7 +212,7 @@ export type SelectAutoConfig<ValueType> = SelectConfig<ValueType> & {
 export const selectAuto = <ValueType>(
     config: SelectAutoConfig<ValueType> & { discardDisabled?: boolean },
     context?: Context | undefined,
-): CancelablePromise<ValueType> => {
+): Promise<ValueType> => {
     const choices = config.choices;
 
     const list = config.discardDisabled
@@ -230,9 +230,7 @@ export const selectAuto = <ValueType>(
                     choice.name || choice.value,
                 )}\n`,
             );
-            return new CancelablePromise<ValueType>((resolve) =>
-                resolve(choice.value),
-            );
+            return new Promise<ValueType>((resolve) => resolve(choice.value));
         }
     }
     return select(config, context);
