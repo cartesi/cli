@@ -1,15 +1,5 @@
 name: paymaster
 on:
-    workflow_call:
-        inputs:
-            release:
-                type: boolean
-                required: false
-        secrets:
-            NPM_TOKEN:
-                required: true
-            TURBO_TOKEN:
-                required: true
     pull_request:
         paths:
             - .github/workflows/paymaster.yaml
@@ -48,10 +38,3 @@ jobs:
 
             - name: Build
               run: pnpm build --filter @cartesi/mock-verifying-paymaster
-
-            - name: Publish
-              if: ${{ inputs.release }}
-              working-directory: ./packages/mock-verifying-paymaster
-              run: pnpm publish --access public
-              env:
-                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
