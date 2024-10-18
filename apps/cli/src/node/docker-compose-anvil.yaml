@@ -1,6 +1,6 @@
 services:
     anvil:
-        image: cartesi/sdk:0.10.0
+        image: cartesi/sdk:0.12.0-alpha.0
         command:
             [
                 "devnet",
@@ -19,7 +19,7 @@ services:
             - 8545:8545
 
     dapp_deployer:
-        image: cartesi/sdk:0.10.0
+        image: cartesi/sdk:0.12.0-alpha.0
         restart: on-failure
         depends_on:
             anvil:
@@ -32,9 +32,10 @@ services:
                 "http://anvil:8545",
                 "--private-key",
                 "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
-                "0x9E32e06Fd23675b2DF8eA8e6b0A25c3DF6a60AbC",
+                "0x4C11C7F82D6D56a726f9B53dd99af031AFd86BB6",
                 "deployContracts(address,address,bytes32,bytes32)",
                 "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+                "720",
                 "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
                 "0x0000000000000000000000000000000000000000000000000000000000000000",
                 "0x0000000000000000000000000000000000000000000000000000000000000000",
