@@ -9,8 +9,9 @@
         "dev": "turbo run dev --parallel",
         "lint": "turbo run lint",
         "format": "prettier --write \"**/*.{cjs,css,json,md,mjs,ts,tsx}\"",
-        "publish-packages": "pnpm changeset tag && git push --follow-tags",
-        "preinstall": "npx only-allow pnpm"
+        "publish-packages": "pnpm changeset publish && git push --follow-tags",
+        "preinstall": "npx only-allow pnpm",
+        "test": "turbo test"
     },
     "devDependencies": {
         "@cartesi/eslint-config": "workspace:*",

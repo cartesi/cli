@@ -1,15 +1,5 @@
 name: devnet
 on:
-    workflow_call:
-        inputs:
-            release:
-                type: boolean
-                required: false
-        secrets:
-            NPM_TOKEN:
-                required: true
-            TURBO_TOKEN:
-                required: true
     pull_request:
         paths:
             - .github/workflows/devnet.yaml
@@ -46,10 +36,3 @@ jobs:
 
             - name: Build
               run: pnpm build --filter @cartesi/devnet
-
-            - name: Publish
-              if: ${{ inputs.release }}
-              run: pnpm publish --access public
-              working-directory: packages/devnet
-              env:
-                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
