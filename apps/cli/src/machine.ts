@@ -38,9 +38,7 @@ export const bootMachine = async (
 
     // list of environment variables of docker image
     const env = info?.env ?? [];
-    const envs = env.map(
-        (variable) => `--append-entrypoint=export "${variable}"`,
-    );
+    const envs = env.map((variable) => `--env=${variable}`);
 
     // check if we need a rootfstype boot arg
     const root = config.drives.root;
@@ -89,7 +87,7 @@ export const bootMachine = async (
         args.push("--final-hash");
     }
     if (info?.workdir) {
-        args.push(`--append-init=WORKDIR="${info.workdir}"`);
+        args.push(`--workdir="${info.workdir}"`);
     }
     if (interactive) {
         args.push("-it");
@@ -104,7 +102,7 @@ export const bootMachine = async (
         args.push(`--store=${store}`);
     }
     if (user) {
-        args.push(`--append-init=USER=${user}`);
+        args.push(`--user=${user}`);
     }
 
     return execaDockerFallback(command, args, {
