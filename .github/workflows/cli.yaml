@@ -1,15 +1,5 @@
 name: cli
 on:
-    workflow_call:
-        inputs:
-            release:
-                type: boolean
-                required: false
-        secrets:
-            NPM_TOKEN:
-                required: true
-            TURBO_TOKEN:
-                required: true
     pull_request:
         paths:
             - .github/workflows/cli.yaml
@@ -48,22 +38,14 @@ jobs:
             - name: Install dependencies
               run: pnpm install
 
-            - name: Test / Coverage
-              working-directory: ./apps/cli
-              run: pnpm run test:coverage
+            - name: Build
+              run: pnpm build --filter @cartesi/cli
+
+            - name: Test
+              run: pnpm test --filter @cartesi/cli
 
             - name: "Report Coverage"
               if: always()
               uses: davelosert/vitest-coverage-report-action@v2
               with:
                   working-directory: ./apps/cli
-
-            - name: Build
-              run: pnpm build --filter @cartesi/cli
-
-            - name: Publish
-              if: ${{ inputs.release }}
-              working-directory: ./apps/cli
-              run: pnpm publish --access public
-              env:
-                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -26,6 +26,10 @@
         "lint": {},
         "start": {
             "dependsOn": ["^build"]
+        },
+        "test": {
+            "outputs": ["coverage/**"],
+            "dependsOn": []
         }
     }
 }

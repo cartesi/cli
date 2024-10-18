@@ -38,7 +38,19 @@ jobs:
             - name: Install Dependencies
               run: pnpm install
 
-            - name: Create Release Pull Request
+            - name: Build
+              run: pnpm build
+
+            - name: Test
+              run: pnpm test
+
+            - name: "Report Coverage"
+              if: always()
+              uses: davelosert/vitest-coverage-report-action@v2
+              with:
+                  working-directory: ./apps/cli
+
+            - name: Create Release Pull Request or Publish to npm
               id: changeset
               uses: changesets/action@v1
               with:
@@ -46,6 +58,7 @@ jobs:
                   publish: pnpm run publish-packages
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
     packages_to_build:
         name: Get released packages
@@ -66,30 +79,3 @@ jobs:
         if: ${{ needs.release.outputs.published == 'true' && contains(fromJSON(needs.packages_to_build.outputs.packages), '@cartesi/sdk') }}
         uses: ./.github/workflows/sdk.yaml
         secrets: inherit
-
-    build_devnet:
-        name: Build devnet
-        needs: [release, packages_to_build]
-        if: ${{ needs.release.outputs.published == 'true' && contains(fromJSON(needs.packages_to_build.outputs.packages), '@cartesi/devnet') }}
-        uses: ./.github/workflows/devnet.yaml
-        secrets: inherit
-        with:
-            release: true
-
-    build_cli:
-        name: Build cli
-        needs: [release, packages_to_build]
-        if: ${{ needs.release.outputs.published == 'true' && contains(fromJSON(needs.packages_to_build.outputs.packages), '@cartesi/cli') }}
-        uses: ./.github/workflows/cli.yaml
-        secrets: inherit
-        with:
-            release: true
-
-    build_paymaster:
-        name: Build paymaster
-        needs: [release, packages_to_build]
-        if: ${{ needs.release.outputs.published == 'true' && contains(fromJSON(needs.packages_to_build.outputs.packages), '@cartesi/mock-verifying-paymaster') }}
-        uses: ./.github/workflows/paymaster.yaml
-        secrets: inherit
-        with:
-            release: true
