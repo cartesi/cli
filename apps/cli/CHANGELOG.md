@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.0.0-alpha.0
+
+### Major Changes
+
+-   63ddeb9: bump sdk to 0.12
+-   93a5513: remove command `send dapp-address`
+-   ca4e0a9: build based on cartesi.toml
+
 ## 1.5.0
 
 ### Minor Changes
