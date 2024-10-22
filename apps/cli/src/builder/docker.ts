@@ -53,6 +53,9 @@ const buildImage = async (options: ImageBuildOptions): Promise<string> => {
  * @returns Information about the image
  */
 const getImageInfo = async (image: string): Promise<ImageInfo> => {
+    // pull image to ensure it is available
+    await execa("docker", ["image", "pull", image]);
+
     const { stdout: jsonStr } = await execa("docker", [
         "image",
         "inspect",
