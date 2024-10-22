@@ -6,7 +6,7 @@ const COMPRESSION = "lzo"; // make customizable? default is gzip
 export const requiredVersion: Range = new Range("^4.5.1");
 
 const baseArgs = () => [
-    "--all-time",
+    "-all-time",
     "0",
     "-all-root", // XXX: should we use this?
     "-noappend",
