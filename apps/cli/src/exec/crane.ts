@@ -6,8 +6,8 @@ export const requiredVersion = new Range("^0.19.1");
 
 export const exportImage = async (
     options: {
-        stdin: Stream;
-        stdout: Stream;
+        stdin: Stream | number;
+        stdout: Stream | number;
     } & DockerFallbackOptions,
 ) => {
     const { image, stdin, stdout } = options;
