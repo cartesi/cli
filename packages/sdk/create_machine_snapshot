@@ -63,6 +63,8 @@ while true ; do
             exit 1 ;;
     esac
 done
+# XXX hotfix to fix issue with assert-rolling-template
+sed -i "s/cmd == cartesi.machine.HTIF_YIELD_MANUAL/cmd == cartesi.machine.HTIF_YIELD_CMD_MANUAL/g" /usr/share/lua/5.4/cartesi-machine.lua
 
 # Construct the command line for cartesi-machine
 cmd=("cartesi-machine")
