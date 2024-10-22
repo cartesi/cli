@@ -32,6 +32,7 @@ services:
         environment:
             PROMPT_TXT_02_GRAPHQL: "GraphQL running at http://localhost:${CARTESI_LISTEN_PORT}/graphql"
             PROMPT_TXT_03_INSPECT: "Inspect running at http://localhost:${CARTESI_LISTEN_PORT}/inspect/"
+            PROMPT_TXT_08_METRICS: "Prometheus metrics at http://localhost:${CARTESI_LISTEN_PORT}/metrics"
 
     traefik-config-generator:
         environment:
@@ -57,3 +58,14 @@ services:
                             loadBalancer:
                                 servers:
                                     - url: "http://validator:10000/graphql"
+            TRAEFIK_CONFIG_VALIDATOR_METRICS: |
+                http:
+                    routers:
+                        validator_metrics:
+                            rule: "PathPrefix(`/metrics`)"
+                            service: validator_metrics
+                    services:
+                        validator_metrics:
+                            loadBalancer:
+                                servers:
+                                    - url: "http://validator:10000/metrics"
