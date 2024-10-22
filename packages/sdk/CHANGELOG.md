@@ -1,5 +1,11 @@
 # sdk
 
+## 0.11.1
+
+### Patch Changes
+
+-   20baf3d: fix: work around assert-rolling-template issue
+
 ## 0.11.0
 
 ### Minor Changes
