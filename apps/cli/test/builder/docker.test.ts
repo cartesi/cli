@@ -35,11 +35,10 @@ describe("when building with the docker builder", () => {
         const drive: DockerDriveConfig = {
             builder: "docker",
             context: path.join(__dirname, "data"),
-            dockerfile: path.join(__dirname, "data", "Dockerfile.nonriscv"),
             extraSize: 0,
             format: "ext2",
             tags: [],
-            image: undefined,
+            image: "debian:bookworm-slim",
             target: undefined,
         };
         await expect(build("root", drive, image, destination)).rejects.toThrow(

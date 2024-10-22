@@ -26,6 +26,8 @@ const buildImage = async (options: ImageBuildOptions): Promise<string> => {
     const args = [
         "buildx",
         "build",
+        "--platform",
+        "linux/riscv64",
         "--file",
         dockerfile,
         "--load",
@@ -89,7 +91,13 @@ export const build = async (
     const filename = `${name}.${format}`;
 
     // use pre-existing image or build docker image
-    const image = drive.image || (await buildImage(drive));
+    let image: string;
+    if (drive.image) {
+        image = drive.image;
+        await execa("docker", ["image", "pull", image]);
+    } else {
+        image = await buildImage(drive);
+    }
 
     // get image info
     const imageInfo = await getImageInfo(image);
