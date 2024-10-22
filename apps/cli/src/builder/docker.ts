@@ -26,6 +26,8 @@ const buildImage = async (options: ImageBuildOptions): Promise<string> => {
     const args = [
         "buildx",
         "build",
+        "--platform",
+        "linux/riscv64",
         "--file",
         dockerfile,
         "--load",
