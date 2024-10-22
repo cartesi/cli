@@ -78,7 +78,7 @@ const DEFAULT_RAM_IMAGE_DOCKER = "/usr/share/cartesi-machine/images/linux.bin";
 const DEFAULT_RAM_IMAGE_LINUX = "/usr/share/cartesi-machine/images/linux.bin";
 const DEFAULT_RAM_IMAGE_MAC =
     "/opt/homebrew/share/cartesi-machine/images/linux.bin";
-const DEFAULT_SDK = "cartesi/sdk:0.12.0-alpha.0";
+export const DEFAULT_SDK = "cartesi/sdk:0.12.0-alpha.0";
 
 type Builder = "directory" | "docker" | "empty" | "none" | "tar";
 type DriveFormat = "ext2" | "sqfs";

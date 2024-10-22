@@ -2,11 +2,11 @@ import fs from "fs-extra";
 import path from "path";
 import { describe, expect } from "vitest";
 import { build } from "../../src/builder/tar";
-import { TarDriveConfig } from "../../src/config";
+import { DEFAULT_SDK, TarDriveConfig } from "../../src/config";
 import { tmpdirTest } from "./tmpdirTest";
 
 describe("when building with the tar builder", () => {
-    const image = "cartesi/sdk:0.11.0";
+    const image = DEFAULT_SDK;
 
     tmpdirTest("should not build a missing file", async ({ tmpdir }) => {
         const destination = tmpdir;

@@ -2,11 +2,11 @@ import fs from "fs-extra";
 import path from "path";
 import { describe, expect } from "vitest";
 import { build } from "../../src/builder/empty";
-import { EmptyDriveConfig } from "../../src/config";
+import { DEFAULT_SDK, EmptyDriveConfig } from "../../src/config";
 import { tmpdirTest } from "./tmpdirTest";
 
 describe("when building with the empty builder", () => {
-    const image = "cartesi/sdk:0.11.0";
+    const image = DEFAULT_SDK;
 
     tmpdirTest("should fail with an invalid size", async ({ tmpdir }) => {
         const destination = tmpdir;
