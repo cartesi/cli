@@ -3,11 +3,11 @@ import { beforeEach } from "node:test";
 import path from "path";
 import { describe, expect } from "vitest";
 import { build } from "../../src/builder/docker";
-import { DockerDriveConfig } from "../../src/config";
+import { DEFAULT_SDK, DockerDriveConfig } from "../../src/config";
 import { tmpdirTest } from "./tmpdirTest";
 
 describe("when building with the docker builder", () => {
-    const image = "cartesi/sdk:0.11.0";
+    const image = DEFAULT_SDK;
 
     beforeEach(({ name }) => {
         fs.mkdirpSync(path.join(__dirname, "output", name));

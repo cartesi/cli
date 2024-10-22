@@ -2,11 +2,11 @@ import fs from "fs-extra";
 import path from "path";
 import { describe, expect } from "vitest";
 import { build } from "../../src/builder/directory";
-import { DirectoryDriveConfig } from "../../src/config";
+import { DEFAULT_SDK, DirectoryDriveConfig } from "../../src/config";
 import { tmpdirTest } from "./tmpdirTest";
 
 describe("when building with the directory builder", () => {
-    const image = "cartesi/sdk:0.11.0";
+    const image = DEFAULT_SDK;
 
     tmpdirTest(
         "should fail when the directory doesn't exists",
