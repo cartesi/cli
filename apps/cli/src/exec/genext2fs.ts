@@ -13,6 +13,29 @@ const baseArgs = (options: { extraBlocks: number }) => [
     `+${options.extraBlocks}`,
 ];
 
+export const empty = async (
+    options: {
+        cwd?: string;
+        size: number;
+        output: string;
+    } & DockerFallbackOptions,
+) => {
+    const { size, output } = options;
+    const blocks = Math.ceil(size / BLOCK_SIZE); // size in blocks
+    await execaDockerFallback(
+        "xgenext2fs",
+        [
+            "--block-size",
+            BLOCK_SIZE.toString(),
+            "--faketime",
+            "--size-in-blocks",
+            blocks.toString(),
+            output,
+        ],
+        options,
+    );
+};
+
 export const fromDirectory = async (
     options: {
         cwd?: string;
