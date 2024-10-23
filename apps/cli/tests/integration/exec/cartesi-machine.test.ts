@@ -1,7 +1,7 @@
 import { satisfies } from "semver";
 import { describe, expect, it } from "vitest";
-import { DEFAULT_SDK } from "../../src/config.js";
-import { cartesiMachine } from "../../src/exec/index.js";
+import { DEFAULT_SDK } from "../../../src/config.js";
+import { cartesiMachine } from "../../../src/exec/index.js";
 
 describe("cartesi-machine", () => {
     it("should report version", async () => {

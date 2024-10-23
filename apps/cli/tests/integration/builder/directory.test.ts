@@ -1,8 +1,8 @@
 import fs from "fs-extra";
 import path from "path";
 import { describe, expect } from "vitest";
-import { build } from "../../src/builder/directory";
-import { DEFAULT_SDK, DirectoryDriveConfig } from "../../src/config";
+import { build } from "../../../src/builder/directory";
+import { DEFAULT_SDK, DirectoryDriveConfig } from "../../../src/config";
 import { tmpdirTest } from "./tmpdirTest";
 
 describe("when building with the directory builder", () => {
@@ -67,7 +67,7 @@ describe("when building with the directory builder", () => {
             const destination = tmpdir;
             const drive: DirectoryDriveConfig = {
                 builder: "directory",
-                directory: path.join(__dirname, "data", "sample1"),
+                directory: path.join(__dirname, "fixtures", "sample1"),
                 extraSize: 0,
                 format: "ext2",
             };
@@ -84,7 +84,7 @@ describe("when building with the directory builder", () => {
             const destination = tmpdir;
             const drive: DirectoryDriveConfig = {
                 builder: "directory",
-                directory: path.join(__dirname, "data", "sample1"),
+                directory: path.join(__dirname, "fixtures", "sample1"),
                 extraSize: 0,
                 format: "sqfs",
             };

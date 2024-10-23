@@ -1,8 +1,8 @@
 import fs from "fs-extra";
 import path from "path";
 import { describe, expect } from "vitest";
-import { build } from "../../src/builder/empty";
-import { DEFAULT_SDK, EmptyDriveConfig } from "../../src/config";
+import { build } from "../../../src/builder/empty";
+import { DEFAULT_SDK, EmptyDriveConfig } from "../../../src/config";
 import { tmpdirTest } from "./tmpdirTest";
 
 describe("when building with the empty builder", () => {

@@ -1,8 +1,8 @@
 import fs from "fs-extra";
 import path from "path";
 import { describe, expect } from "vitest";
-import { build } from "../../src/builder/none";
-import { ExistingDriveConfig } from "../../src/config";
+import { build } from "../../../src/builder/none";
+import { ExistingDriveConfig } from "../../../src/config";
 import { tmpdirTest } from "./tmpdirTest";
 
 describe("when building with the none builder", () => {
@@ -20,7 +20,7 @@ describe("when building with the none builder", () => {
 
     tmpdirTest("should just copy an existing drive", async ({ tmpdir }) => {
         const destination = tmpdir;
-        const filename = path.join(__dirname, "data", "data.ext2");
+        const filename = path.join(__dirname, "fixtures", "data.ext2");
         const drive: ExistingDriveConfig = {
             builder: "none",
             filename,
