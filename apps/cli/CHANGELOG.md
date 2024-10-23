@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0-alpha.1
+
+### Patch Changes
+
+-   29ba930: enforce build for linux/riscv64 platform
+
 ## 2.0.0-alpha.0
 
 ### Major Changes
