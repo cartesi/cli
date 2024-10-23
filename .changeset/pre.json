@@ -10,6 +10,7 @@
     "tsconfig": "0.0.0"
   },
   "changesets": [
+    "big-ghosts-rescue",
     "blue-planes-develop",
     "early-ants-yell",
     "eight-schools-repair",
