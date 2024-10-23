@@ -1,8 +1,8 @@
 import fs from "fs-extra";
 import path from "path";
 import { describe, expect } from "vitest";
-import { build } from "../../src/builder/tar";
-import { DEFAULT_SDK, TarDriveConfig } from "../../src/config";
+import { build } from "../../../src/builder/tar";
+import { DEFAULT_SDK, TarDriveConfig } from "../../../src/config";
 import { tmpdirTest } from "./tmpdirTest";
 
 describe("when building with the tar builder", () => {
@@ -25,7 +25,7 @@ describe("when building with the tar builder", () => {
         const destination = tmpdir;
         const drive: TarDriveConfig = {
             builder: "tar",
-            filename: path.join(__dirname, "data", "data.tar"),
+            filename: path.join(__dirname, "fixtures", "data.tar"),
             extraSize: 0,
             format: "ext2",
         };
@@ -39,7 +39,7 @@ describe("when building with the tar builder", () => {
         const destination = tmpdir;
         const drive: TarDriveConfig = {
             builder: "tar",
-            filename: path.join(__dirname, "data", "data.tar"),
+            filename: path.join(__dirname, "fixtures", "data.tar"),
             extraSize: 0,
             format: "sqfs",
         };

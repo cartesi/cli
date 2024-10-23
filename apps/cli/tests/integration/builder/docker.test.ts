@@ -2,8 +2,8 @@ import fs from "fs-extra";
 import { beforeEach } from "node:test";
 import path from "path";
 import { describe, expect } from "vitest";
-import { build } from "../../src/builder/docker";
-import { DEFAULT_SDK, DockerDriveConfig } from "../../src/config";
+import { build } from "../../../src/builder/docker";
+import { DEFAULT_SDK, DockerDriveConfig } from "../../../src/config";
 import { tmpdirTest } from "./tmpdirTest";
 
 describe("when building with the docker builder", () => {
@@ -52,8 +52,8 @@ describe("when building with the docker builder", () => {
             const destination = tmpdir;
             const drive: DockerDriveConfig = {
                 builder: "docker",
-                context: path.join(__dirname, "data"),
-                dockerfile: path.join(__dirname, "data", "Dockerfile"),
+                context: path.join(__dirname, "fixtures"),
+                dockerfile: path.join(__dirname, "fixtures", "Dockerfile"),
                 extraSize: 0,
                 format: "ext2",
                 tags: [],
@@ -71,8 +71,8 @@ describe("when building with the docker builder", () => {
         const destination = tmpdir;
         const drive: DockerDriveConfig = {
             builder: "docker",
-            context: path.join(__dirname, "data"),
-            dockerfile: path.join(__dirname, "data", "Dockerfile"),
+            context: path.join(__dirname, "fixtures"),
+            dockerfile: path.join(__dirname, "fixtures", "Dockerfile"),
             extraSize: 0,
             format: "ext2",
             tags: [],
@@ -89,8 +89,8 @@ describe("when building with the docker builder", () => {
         const destination = tmpdir;
         const drive: DockerDriveConfig = {
             builder: "docker",
-            context: path.join(__dirname, "data"),
-            dockerfile: path.join(__dirname, "data", "Dockerfile"),
+            context: path.join(__dirname, "fixtures"),
+            dockerfile: path.join(__dirname, "fixtures", "Dockerfile"),
             extraSize: 0,
             format: "sqfs",
             tags: [],

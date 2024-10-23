@@ -1,3 +1,5 @@
+import * as fs from "fs";
+import * as path from "path";
 import { describe, expect, it } from "vitest";
 import {
     defaultConfig,
@@ -11,7 +13,50 @@ import {
     InvalidStringValueError,
     parse,
     RequiredFieldError,
-} from "../src/config.js";
+} from "../../src/config.js";
+
+const loadDriveConfig = (driveName: string) => {
+    const filePath = path.join(
+        __dirname,
+        "config",
+        "fixtures",
+        "drives",
+        `${driveName}.toml`,
+    );
+    return fs.readFileSync(filePath, "utf-8");
+};
+
+describe("when parsing only drive config files", () => {
+    it("should pass with a basic drive config", () => {
+        const basic = loadDriveConfig("basic");
+        expect(() => parse(basic)).not.toThrow();
+    });
+
+    it("should pass with a data drive config", () => {
+        const basic = loadDriveConfig("data");
+        expect(() => parse(basic)).not.toThrow();
+    });
+
+    it("should pass with an empty drive config", () => {
+        const basic = loadDriveConfig("empty");
+        expect(() => parse(basic)).not.toThrow();
+    });
+
+    it("should pass with a none drive config", () => {
+        const basic = loadDriveConfig("none");
+        expect(() => parse(basic)).not.toThrow();
+    });
+
+    it("should pass with a rives config", () => {
+        const basic = loadDriveConfig("rives");
+        expect(() => parse(basic)).not.toThrow();
+    });
+
+    it("should pass with a tar drive config", () => {
+        const basic = loadDriveConfig("rives");
+        expect(() => parse(basic)).not.toThrow();
+    });
+});
 
 describe("when parsing a cartesi.toml config", () => {
     it("should load the default config when file is empty", () => {
