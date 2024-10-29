@@ -19,27 +19,30 @@ services:
             - 8545:8545
 
     dapp_deployer:
-        image: cartesi/sdk:0.12.0-alpha.3
+        image: cartesi/rollups-node:2.0.0
         restart: on-failure
         depends_on:
-            anvil:
+            validator:
                 condition: service_started
+        env_file:
+            - ${CARTESI_BIN_PATH}/node/default.env
         command:
-            [
-                "cast",
-                "send",
-                "--rpc-url",
-                "http://anvil:8545",
-                "--private-key",
-                "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
-                "0x4C11C7F82D6D56a726f9B53dd99af031AFd86BB6",
-                "deployContracts(address,address,bytes32,bytes32)",
-                "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
-                "720",
-                "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
-                "0x0000000000000000000000000000000000000000000000000000000000000000",
-                "0x0000000000000000000000000000000000000000000000000000000000000000",
-            ]
+            - /bin/bash
+            - -c
+            - -x
+            - |
+                cartesi-rollups-cli app deploy                                                      \
+                    --print-json                                                                    \
+                    --postgres-endpoint "$$CARTESI_POSTGRES_ENDPOINT"                               \
+                    --rpc-url "$$CARTESI_BLOCKCHAIN_HTTP_ENDPOINT"                                  \
+                    --inputbox-block-number "$$CARTESI_CONTRACTS_INPUT_BOX_DEPLOYMENT_BLOCK_NUMBER" \
+                    --mnemonic "$$CARTESI_AUTH_MNEMONIC"                                            \
+                    --epoch-length "$$CARTESI_EPOCH_LENGTH"                                         \
+                    --app-factory "$$CARTESI_CONTRACTS_APPLICATION_FACTORY_ADDRESS"                 \
+                    --authority-factory "$$CARTESI_CONTRACTS_AUTHORITY_FACTORY_ADDRESS"             \
+                    --app-owner "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"                        \
+                    --template-path $$CARTESI_SNAPSHOT_DIR                                          \
+                    --name "dapp"
 
     prompt:
         image: debian:bookworm-slim

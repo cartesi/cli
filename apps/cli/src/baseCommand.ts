@@ -78,7 +78,7 @@ export abstract class BaseCommand<T extends typeof Command> extends Command {
 
     protected async getApplicationAddress(): Promise<Address> {
         // fixed value, as we do deterministic deployment with a zero hash
-        return getAddress("0xab7528bb862fb57e8a2bcd567a2e929a0be56a5e");
+        return getAddress("0x60ec77594cdaa4ec2263c0d7436d70e37164c69f");
     }
 
     protected async getAddressBook(): Promise<AddressBook> {

@@ -1,16 +1,19 @@
 services:
     validator:
-        image: cartesi/rollups-node:1.5.1
+        image: cartesi/rollups-node:2.0.0
         depends_on:
-            dapp_deployer:
+            migration:
                 condition: service_completed_successfully
+            anvil:
+                condition: service_healthy
         expose:
             - "10000"
         healthcheck:
-            test: ["CMD", "curl", "-f", "http://localhost:10000/healthz"]
+            test: ["CMD", "curl", "-f", "http://localhost:10000/livez"]
             interval: 10s
             timeout: 1s
             retries: 5
+        user: root
         command:
             - /bin/bash
             - -c
@@ -45,7 +48,7 @@ services:
                         inspect_server:
                             loadBalancer:
                                 servers:
-                                    - url: "http://validator:10000/inspect"
+                                    - url: "http://validator:10012/inspect"
             TRAEFIK_CONFIG_GRAPHQL_SERVER: |
                 http:
                     routers:

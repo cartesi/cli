@@ -1,7 +1,7 @@
 services:
     dapp_deployer:
         volumes:
-            - ./.cartesi/image:/usr/share/cartesi/snapshot:ro
+            - ./.cartesi/image:/usr/share/rollups-node/snapshot:ro
 
     validator:
         volumes:
