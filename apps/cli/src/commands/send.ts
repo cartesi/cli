@@ -2,12 +2,13 @@ import { Command } from "@commander-js/extra-typings";
 import input from "@inquirer/input";
 import select from "@inquirer/select";
 import { Address, isAddress, PublicClient, WalletClient } from "viem";
-import { getApplicationAddress } from "../base.js";
+import { parseAddress } from "../base.js";
+import { getApplicationAddress } from "../exec/rollups.js";
 import createClients, { supportedChains } from "../wallet.js";
-import { registerErc20Command } from "./send/erc20.js";
-import { registerErc721Command } from "./send/erc721.js";
-import { registerEtherCommand } from "./send/ether.js";
-import { registerGenericCommand } from "./send/generic.js";
+import { createErc20Command } from "./send/erc20.js";
+import { createErc721Command } from "./send/erc721.js";
+import { createEtherCommand } from "./send/ether.js";
+import { createGenericCommand } from "./send/generic.js";
 
 export const connect = (options: {
     chainId?: number;
@@ -52,10 +53,12 @@ export const getInputApplicationAddress = async (
     return applicationAddress as Address;
 };
 
-export const addCommonOptions = (command: Command) => {
-    return command
-        .option("--dapp <address>", "Application address")
-        .option("--chain-id <id>", "Chain ID", parseInt)
+export const createSendCommand = () => {
+    const command = new Command("send")
+        .description(
+            "Sends different kinds of input to the application in interactive mode.",
+        )
+        .option("--chain-id <id>", "Chain ID", parseInt, 31337)
         .option("--rpc-url <url>", "RPC URL")
         .option("--mnemonic <phrase>", "Mnemonic passphrase")
         .option(
@@ -63,38 +66,40 @@ export const addCommonOptions = (command: Command) => {
             "Mnemonic account index",
             parseInt,
             0,
-        );
-};
+        )
+        .option(
+            "--dapp <address>",
+            "Application address",
+            parseAddress,
+            undefined,
+        )
+        .action(async (options, program) => {
+            // Get the registered subcommands from the program
+            const commands = program.commands;
 
-export const registerSendCommand = (program: Command) => {
-    const sendCommand = addCommonOptions(
-        program
-            .command("send")
-            .description(
-                "Sends different kinds of input to the application in interactive mode.",
-            ),
-    ).action(async (options, program) => {
-        // Get the registered subcommands from the program
-        const commands = program.commands;
+            // Create choices for the select prompt based on registered commands
+            const choices = commands.map((cmd) => ({
+                name: cmd.name(),
+                value: cmd,
+                description: cmd.description(),
+            }));
 
-        // Create choices for the select prompt based on registered commands
-        const choices = commands.map((cmd) => ({
-            name: cmd.name(),
-            value: cmd,
-            description: cmd.description(),
-        }));
+            // Present the list of subcommands using @inquirer/select
+            const subcommand = await select({
+                message: "Select the type of input to send",
+                choices,
+            });
 
-        // Present the list of subcommands using @inquirer/select
-        const subcommand = await select({
-            message: "Select the type of input to send",
-            choices,
+            // Execute the selected subcommand
+            subcommand.parseAsync(program.args);
         });
-
-        // Execute the selected subcommand
-        subcommand.parseAsync(program.args);
-    });
-    registerErc20Command(sendCommand);
-    registerErc721Command(sendCommand);
-    registerEtherCommand(sendCommand);
-    registerGenericCommand(sendCommand);
+    command.addCommand(createGenericCommand());
+    command.addCommand(createErc20Command());
+    command.addCommand(createErc721Command());
+    command.addCommand(createEtherCommand());
+    return command;
 };
+
+export type SendCommandOpts = ReturnType<
+    ReturnType<typeof createSendCommand>["opts"]
+>;

@@ -4,9 +4,9 @@ import ora from "ora";
 import { Address, erc721Abi, getAddress, isAddress, PublicClient } from "viem";
 import { erc721PortalAbi, erc721PortalAddress } from "../../contracts.js";
 import {
-    addCommonOptions,
     connect,
     getInputApplicationAddress,
+    SendCommandOpts,
 } from "../send.js";
 
 type ERC721Token = {
@@ -47,22 +47,24 @@ const ercValidator =
         return true;
     };
 
-export const registerErc721Command = (program: Command) => {
-    addCommonOptions(
-        program
-            .command("erc721")
-            .description(
-                "Sends ERC-721 deposits to the application, optionally in interactive mode.",
-            ),
-    )
+export const createErc721Command = () => {
+    return new Command<[], {}, SendCommandOpts>("erc721")
+        .description(
+            "Sends ERC-721 deposits to the application, optionally in interactive mode.",
+        )
+        .configureHelp({ showGlobalOptions: true })
         .option("--token <address>", "token address")
         .option("--token-id <number>", "token ID")
-        .action(async (options) => {
+        .action(async (options, command) => {
+            const sendOptions = command.optsWithGlobals();
+
             // connect to RPC provider
-            const { publicClient, walletClient } = await connect(options);
+            const { publicClient, walletClient } = await connect(sendOptions);
 
             // get dapp address from local node, or ask
-            const applicationAddress = await getInputApplicationAddress();
+            const applicationAddress = await getInputApplicationAddress(
+                sendOptions.dapp,
+            );
 
             const token =
                 options.token && isAddress(options.token)

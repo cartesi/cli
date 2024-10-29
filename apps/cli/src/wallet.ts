@@ -16,11 +16,11 @@ import {
 } from "viem";
 import { mnemonicToAccount, privateKeyToAccount } from "viem/accounts";
 import {
+    anvil,
     arbitrum,
     arbitrumSepolia,
     base,
     baseSepolia,
-    foundry,
     mainnet,
     optimism,
     optimismSepolia,
@@ -47,7 +47,7 @@ export const supportedChains = (options?: SupportedChainsOptions): Chain[] => {
 
     const chains: Chain[] = [];
     if (options.includeDevnet) {
-        chains.push(foundry);
+        chains.push(anvil);
     }
     if (options.includeTestnets) {
         chains.push(arbitrumSepolia, baseSepolia, optimismSepolia, sepolia);
@@ -63,7 +63,7 @@ export const DEFAULT_DEVNET_MNEMONIC =
 
 export type WalletType = "mnemonic" | "private-key";
 const walletChoices = (chain: Chain): Choice<WalletType>[] => {
-    const dev = chain.id === foundry.id;
+    const dev = chain.id === anvil.id;
     return [
         {
             name: `Mnemonic${dev ? "" : chalk.red(" (UNSAFE)")}`,
@@ -74,6 +74,24 @@ const walletChoices = (chain: Chain): Choice<WalletType>[] => {
             value: "private-key",
         },
     ];
+};
+
+/**
+ * Test if the default RPC URL for a chain is working
+ * @param chain chain to test
+ * @returns true if the default RPC URL is valid, false otherwise
+ */
+const testDefaultPublicClient = async (chain: Chain): Promise<boolean> => {
+    try {
+        const publicClient = viemCreatePublicClient({
+            transport: http(chain.rpcUrls.default.http[0]),
+            chain,
+        });
+        const chainId = await publicClient.getChainId();
+        return chainId === chain.id;
+    } catch (e) {
+        return false;
+    }
 };
 
 export interface EthereumPromptOptions {
@@ -90,7 +108,7 @@ export type TransactionPrompt = (
 ) => Promise<Address>;
 
 const selectChain = async (options: EthereumPromptOptions): Promise<Chain> => {
-    // if development mode, include foundry as an option
+    // if development mode, include anvil as an option
     const chains = supportedChains({ includeDevnet: true });
 
     if (options.chain) {
@@ -122,10 +140,18 @@ const selectTransport = async (
     if (options.rpcUrl) {
         return http(options.rpcUrl);
     } else {
+        const defaultUrl = chain.rpcUrls.default.http[0];
+
+        // if the chain is anvil and the default URL is valid, use it without asking the user
+        if (chain.id === anvil.id && (await testDefaultPublicClient(chain))) {
+            return http(defaultUrl);
+        }
+
         const url = await input({
             message: "RPC URL",
-            default: chain.rpcUrls.default.http[0],
+            default: defaultUrl,
         });
+
         return http(url);
     }
 };
@@ -215,7 +241,7 @@ const createWalletClient = async (
             const mnemonic = await input({
                 message: "Mnemonic",
                 default:
-                    chain.id === 31337 ? DEFAULT_DEVNET_MNEMONIC : undefined,
+                    chain.id === anvil.id ? DEFAULT_DEVNET_MNEMONIC : undefined,
             });
 
             // select account from mnemonic

@@ -13,7 +13,12 @@ const buildRollupsImage = async (platform?: string) => {
         "..",
         "..",
     );
-    const dockerfile = path.join(binPath, "node", "DockerfileDeploy.txt");
+    const dockerfile = path.join(
+        binPath,
+        "compose",
+        "rollups",
+        "DockerfileDeploy.txt",
+    );
     const args = [
         "buildx",
         "build",
@@ -34,9 +39,8 @@ const buildRollupsImage = async (platform?: string) => {
     return fs.readFileSync(buildResult, "utf8");
 };
 
-export const registerBuildCommand = (program: Command) => {
-    program
-        .command("build")
+export const createBuildCommand = () => {
+    return new Command("build")
         .description(
             "Package the application in a Docker image ready to be deployed.",
         )

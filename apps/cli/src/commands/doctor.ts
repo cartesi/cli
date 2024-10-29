@@ -122,8 +122,8 @@ const checkBuildx = async (progress: Ora): Promise<true | never> => {
     return true;
 };
 
-export const registerDoctorCommand = (program: Command) => {
-    program.command("doctor").action(async () => {
+export const createDoctorCommand = () => {
+    return new Command("doctor").action(async () => {
         const progress = ora();
         try {
             await checkDocker(progress);

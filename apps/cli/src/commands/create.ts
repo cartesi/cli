@@ -39,9 +39,8 @@ const download = async (
     });
 };
 
-export const registerCreateCommand = (program: Command) => {
-    program
-        .command("create")
+export const createCreateCommand = () => {
+    return new Command("create")
         .argument("<name>", "application and directory name")
         .addOption(
             new Option("-t, --template <template>", "template name to use")

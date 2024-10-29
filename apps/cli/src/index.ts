@@ -2,16 +2,17 @@
 
 import { Command } from "@commander-js/extra-typings";
 import { createRequire } from "node:module";
-import { registerAddressBookCommand } from "./commands/address-book.js";
-import { registerBuildCommand } from "./commands/build.js";
-import { registerCleanCommand } from "./commands/clean.js";
-import { registerCreateCommand } from "./commands/create.js";
-import { registerDeployCommand } from "./commands/deploy.js";
-import { registerDoctorCommand } from "./commands/doctor.js";
-import { registerHashCommand } from "./commands/hash.js";
-import { registerRunCommand } from "./commands/run.js";
-import { registerSendCommand } from "./commands/send.js";
-import { registerShellCommand } from "./commands/shell.js";
+import { createAddressBookCommand } from "./commands/address-book.js";
+import { createBuildCommand } from "./commands/build.js";
+import { createCleanCommand } from "./commands/clean.js";
+import { createCreateCommand } from "./commands/create.js";
+import { createDeployCommand } from "./commands/deploy.js";
+import { createDoctorCommand } from "./commands/doctor.js";
+import { createHashCommand } from "./commands/hash.js";
+import { createRollupsCommand } from "./commands/rollups.js";
+import { createRunCommand } from "./commands/run.js";
+import { createSendCommand } from "./commands/send.js";
+import { createShellCommand } from "./commands/shell.js";
 
 // Use `createRequire` to import JSON in ESM
 const require = createRequire(import.meta.url);
@@ -30,18 +31,18 @@ const splash = String.raw`         .
 const program = new Command()
     .name("cartesi")
     .version(pkg.version)
-    .addHelpText("before", splash);
-
-registerAddressBookCommand(program);
-registerBuildCommand(program);
-registerCleanCommand(program);
-registerCreateCommand(program);
-registerDeployCommand(program);
-registerDoctorCommand(program);
-registerHashCommand(program);
-registerRunCommand(program);
-registerSendCommand(program);
-registerShellCommand(program);
+    .addHelpText("before", splash)
+    .addCommand(createAddressBookCommand())
+    .addCommand(createBuildCommand())
+    .addCommand(createCleanCommand())
+    .addCommand(createCreateCommand())
+    .addCommand(createDeployCommand())
+    .addCommand(createDoctorCommand())
+    .addCommand(createHashCommand())
+    .addCommand(createRollupsCommand())
+    .addCommand(createRunCommand(), { hidden: true })
+    .addCommand(createSendCommand())
+    .addCommand(createShellCommand());
 
 // Global error handling
 process.on("uncaughtException", (err) => {

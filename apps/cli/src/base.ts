@@ -1,8 +1,9 @@
+import { InvalidArgumentError } from "@commander-js/extra-typings";
 import chalk from "chalk";
 import { execa } from "execa";
 import fs from "fs";
 import path from "path";
-import { Address, getAddress, Hash, isHash } from "viem";
+import { Address, getAddress, Hash, isAddress, isHash, zeroHash } from "viem";
 import { Config, parse } from "./config.js";
 import {
     applicationFactoryAddress,
@@ -18,6 +19,7 @@ import {
     testNftAddress,
     testTokenAddress,
 } from "./contracts.js";
+import { getApplicationAddress } from "./exec/rollups.js";
 import { PsResponse } from "./types/docker.js";
 
 export const getContextPath = (...paths: string[]): string => {
@@ -42,11 +44,6 @@ export const getApplicationConfig = (configPath: string): Config => {
         : parse("");
 };
 
-export const getApplicationAddress = async (): Promise<Address> => {
-    // fixed value, as we do deterministic deployment with a zero hash
-    return getAddress("0xab7528bb862fb57e8a2bcd567a2e929a0be56a5e");
-};
-
 export type AddressBook = Record<string, Address>;
 
 export const getAddressBook = async (): Promise<AddressBook> => {
@@ -54,7 +51,6 @@ export const getAddressBook = async (): Promise<AddressBook> => {
 
     // build rollups contracts address book
     const contracts: AddressBook = {
-        Application: applicationAddress,
         ApplicationFactory: applicationFactoryAddress,
         AuthorityFactory: authorityFactoryAddress,
         EntryPointV06: "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
@@ -78,6 +74,10 @@ export const getAddressBook = async (): Promise<AddressBook> => {
         VerifyingPaymasterV06: "0x28ec0633192d0cBd9E1156CE05D5FdACAcB93947",
         VerifyingPaymasterV07: "0xc5c97885C67F7361aBAfD2B95067a5bBdA603608",
     };
+
+    if (applicationAddress) {
+        contracts.Application = applicationAddress;
+    }
 
     return contracts;
 };
@@ -108,4 +108,29 @@ export const getServiceState = async (
     ]);
     const ps = stdout ? (JSON.parse(stdout) as PsResponse) : undefined;
     return ps?.State;
+};
+
+export const parseAddress = (
+    value: string,
+    _previous: Address | undefined,
+): Address | undefined => {
+    if (isAddress(value)) {
+        return getAddress(value);
+    } else {
+        if (value !== "") {
+            throw new InvalidArgumentError(`Invalid address: ${value}`);
+        }
+        return undefined;
+    }
+};
+
+export const parseHash = (value: string, _previous: Hash): Hash => {
+    if (isHash(value)) {
+        return value;
+    } else {
+        if (value !== "") {
+            throw new InvalidArgumentError(`Invalid hash: ${value}`);
+        }
+        return zeroHash;
+    }
 };

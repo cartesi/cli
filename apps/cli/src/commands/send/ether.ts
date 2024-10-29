@@ -4,27 +4,29 @@ import ora from "ora";
 import { isHex, parseEther } from "viem";
 import { etherPortalAbi, etherPortalAddress } from "../../contracts.js";
 import {
-    addCommonOptions,
     connect,
     getInputApplicationAddress,
+    SendCommandOpts,
 } from "../send.js";
 
-export const registerEtherCommand = (program: Command) => {
-    addCommonOptions(
-        program
-            .command("ether")
-            .description(
-                "Sends ether deposits to the application, optionally in interactive mode.",
-            ),
-    )
+export const createEtherCommand = () => {
+    return new Command<[], {}, SendCommandOpts>("ether")
+        .description(
+            "Sends ether deposits to the application, optionally in interactive mode.",
+        )
+        .configureHelp({ showGlobalOptions: true })
         .option("--amount <number>", "amount, in ETH units")
         .option("--exec-layer-data <hex>", "exec layer data", "0x")
-        .action(async (options) => {
+        .action(async (options, command) => {
+            const sendOptions = command.optsWithGlobals();
+
             // connect to RPC provider
-            const { publicClient, walletClient } = await connect(options);
+            const { publicClient, walletClient } = await connect(sendOptions);
 
             // get dapp address from local node, or ask
-            const applicationAddress = await getInputApplicationAddress();
+            const applicationAddress = await getInputApplicationAddress(
+                sendOptions.dapp,
+            );
 
             const amount =
                 options.amount || (await input({ message: "Amount" }));
