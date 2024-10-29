@@ -8,3 +8,19 @@ services:
             retries: 5
         environment:
             - POSTGRES_PASSWORD=password
+
+    migration:
+        image: cartesi/rollups-node:2.0.0
+        command:
+            - /bin/bash
+            - -c
+            - -x
+            - |
+                cartesi-rollups-cli db upgrade -p "$$CARTESI_POSTGRES_ENDPOINT"
+
+        depends_on:
+            database:
+                condition: service_healthy
+        restart: "no"
+        env_file:
+            - ${CARTESI_BIN_PATH}/node/default.env
