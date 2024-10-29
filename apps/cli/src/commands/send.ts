@@ -2,7 +2,8 @@ import { Command } from "@commander-js/extra-typings";
 import input from "@inquirer/input";
 import select from "@inquirer/select";
 import { Address, isAddress, PublicClient, WalletClient } from "viem";
-import { getApplicationAddress } from "../base.js";
+import { parseAddress } from "../base.js";
+import { getApplicationAddress } from "../exec/rollups.js";
 import createClients, { supportedChains } from "../wallet.js";
 import { registerErc20Command } from "./send/erc20.js";
 import { registerErc721Command } from "./send/erc721.js";
@@ -52,10 +53,9 @@ export const getInputApplicationAddress = async (
     return applicationAddress as Address;
 };
 
-export const addCommonOptions = (command: Command) => {
+export const addConnectOptions = (command: Command) => {
     return command
-        .option("--dapp <address>", "Application address")
-        .option("--chain-id <id>", "Chain ID", parseInt)
+        .option("--chain-id <id>", "Chain ID", parseInt, 31337)
         .option("--rpc-url <url>", "RPC URL")
         .option("--mnemonic <phrase>", "Mnemonic passphrase")
         .option(
@@ -64,6 +64,15 @@ export const addCommonOptions = (command: Command) => {
             parseInt,
             0,
         );
+};
+
+export const addCommonOptions = (command: Command) => {
+    return addConnectOptions(command).option(
+        "--dapp <address>",
+        "Application address",
+        parseAddress,
+        undefined,
+    );
 };
 
 export const registerSendCommand = (program: Command) => {

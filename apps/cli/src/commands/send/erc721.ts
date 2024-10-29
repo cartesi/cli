@@ -62,7 +62,9 @@ export const registerErc721Command = (program: Command) => {
             const { publicClient, walletClient } = await connect(options);
 
             // get dapp address from local node, or ask
-            const applicationAddress = await getInputApplicationAddress();
+            const applicationAddress = await getInputApplicationAddress(
+                options.dapp,
+            );
 
             const token =
                 options.token && isAddress(options.token)

@@ -13,7 +13,12 @@ const buildRollupsImage = async (platform?: string) => {
         "..",
         "..",
     );
-    const dockerfile = path.join(binPath, "node", "DockerfileDeploy.txt");
+    const dockerfile = path.join(
+        binPath,
+        "compose",
+        "rollups",
+        "DockerfileDeploy.txt",
+    );
     const args = [
         "buildx",
         "build",

@@ -1,0 +1,39 @@
+services:
+    rollups-node-migration:
+        image: cartesi/rollups-node:devel
+        command: ["cartesi-rollups-cli", "db", "upgrade"]
+        depends_on:
+            database:
+                condition: service_healthy
+        restart: "no"
+        env_file:
+            - ${CARTESI_BIN_PATH}/compose/rollups/default.env
+    rollups-node:
+        image: cartesi/rollups-node:devel
+        depends_on:
+            rollups-node-migration:
+                condition: service_completed_successfully
+            anvil:
+                condition: service_healthy
+        expose:
+            - "10000"
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://127.0.0.1:10000/livez"]
+            interval: 10s
+            timeout: 1s
+            retries: 5
+        command: ["cartesi-rollups-node"]
+        env_file:
+            - ${CARTESI_BIN_PATH}/compose/rollups/default.env
+
+    proxy:
+        depends_on:
+            rollups-node:
+                condition: service_healthy
+        volumes:
+            - ./proxy/rollups-node.yaml:/etc/traefik/conf.d/rollups-node.yaml
+
+    prompt:
+        image: debian:bookworm-slim
+        environment:
+            PROMPT_TXT_02_INSPECT: "Inspect running at http://localhost:${CARTESI_LISTEN_PORT}/inspect/<address>/"

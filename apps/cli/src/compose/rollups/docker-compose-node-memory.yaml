@@ -1,0 +1,6 @@
+services:
+    rollups-node:
+        deploy:
+            resources:
+                limits:
+                    memory: "${CARTESI_ROLLUPS_NODE_MEMORY}M"

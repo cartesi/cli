@@ -1,0 +1,24 @@
+services:
+    anvil:
+        image: cartesi/sdk:0.12.0-alpha.8
+        command:
+            [
+                "devnet",
+                "--block-time",
+                "${BLOCK_TIME:-5}",
+                "${ANVIL_VERBOSITY:---silent}",
+            ]
+        healthcheck:
+            test: ["CMD", "eth_isready"]
+            interval: 10s
+            timeout: 1s
+            retries: 5
+        environment:
+            ANVIL_IP_ADDR: 0.0.0.0
+        ports:
+            - 8545:8545
+
+    prompt:
+        image: debian:bookworm-slim
+        environment:
+            PROMPT_TXT_01_ANVIL: "Anvil running at http://localhost:8545"

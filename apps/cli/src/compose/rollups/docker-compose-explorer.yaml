@@ -55,34 +55,7 @@ services:
         environment:
             PROMPT_TXT_04_EXPLORER: "Explorer running at http://localhost:${CARTESI_LISTEN_PORT}/explorer/"
 
-    traefik-config-generator:
-        environment:
-            TRAEFIK_CONFIG_EXPLORER_API: |
-                http:
-                    routers:
-                        explorer-api:
-                            rule: "PathPrefix(`/explorer-api`)"
-                            middlewares:
-                                - "remove-explorer-api-prefix"
-                            service: explorer-api
-                    middlewares:
-                        remove-explorer-api-prefix:
-                            replacePathRegex:
-                                regex: "^/explorer-api/(.*)"
-                                replacement: "/$1"
-                    services:
-                        explorer-api:
-                            loadBalancer:
-                                servers:
-                                    - url: "http://explorer_api:4350"
-            TRAEFIK_CONFIG_EXPLORER: |
-                http:
-                    routers:
-                        explorer:
-                            rule: "PathPrefix(`/explorer`)"
-                            service: explorer
-                    services:
-                        explorer:
-                            loadBalancer:
-                                servers:
-                                    - url: "http://explorer:3000"
+    proxy:
+        volumes:
+            - ./proxy/explorer.yaml:/etc/traefik/conf.d/explorer.yaml
+            - ./proxy/explorer-api.yaml:/etc/traefik/conf.d/explorer-api.yaml

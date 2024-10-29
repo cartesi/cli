@@ -119,7 +119,9 @@ export const registerGenericCommand = (program: Command) => {
             const { publicClient, walletClient } = await connect(options);
 
             // get dapp address from local node, or ask
-            const applicationAddress = await getInputApplicationAddress();
+            const applicationAddress = await getInputApplicationAddress(
+                options.dapp,
+            );
 
             const payload =
                 (await getInput(options)) ||

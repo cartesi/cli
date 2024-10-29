@@ -1,0 +1,56 @@
+http:
+    routers:
+        espresso-builder:
+            rule: "PathPrefix(`/espresso/builder`)"
+            middlewares:
+                - "remove-espresso-builder-prefix"
+            service: espresso-builder
+        espresso-dev:
+            rule: "PathPrefix(`/espresso/dev`)"
+            middlewares:
+                - "remove-espresso-dev-prefix"
+            service: espresso-dev
+        espresso-prover:
+            rule: "PathPrefix(`/espresso/prover`)"
+            middlewares:
+                - "remove-espresso-prover-prefix"
+            service: espresso-prover
+        espresso-sequencer:
+            rule: "PathPrefix(`/espresso/sequencer`)"
+            middlewares:
+                - "remove-espresso-sequencer-prefix"
+            service: espresso-sequencer
+    middlewares:
+        remove-espresso-builder-prefix:
+            replacePathRegex:
+                regex: "^/espresso/builder/(.*)"
+                replacement: "/$1"
+        remove-espresso-dev-prefix:
+            replacePathRegex:
+                regex: "^/espresso/dev/(.*)"
+                replacement: "/$1"
+        remove-espresso-prover-prefix:
+            replacePathRegex:
+                regex: "^/espresso/prover/(.*)"
+                replacement: "/$1"
+        remove-espresso-sequencer-prefix:
+            replacePathRegex:
+                regex: "^/espresso/sequencer/(.*)"
+                replacement: "/$1"
+    services:
+        espresso-builder:
+            loadBalancer:
+                servers:
+                    - url: "http://espresso:8771"
+        espresso-dev:
+            loadBalancer:
+                servers:
+                    - url: "http://espresso:20000"
+        espresso-prover:
+            loadBalancer:
+                servers:
+                    - url: "http://espresso:8772"
+        espresso-sequencer:
+            loadBalancer:
+                servers:
+                    - url: "http://espresso:8770"

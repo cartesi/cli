@@ -1,0 +1,17 @@
+http:
+    routers:
+        bundler:
+            rule: "PathPrefix(`/bundler`)"
+            middlewares:
+                - "remove-bundler-prefix"
+            service: bundler
+    middlewares:
+        remove-bundler-prefix:
+            replacePathRegex:
+                regex: "^/bundler/(.*)"
+                replacement: "/$1"
+    services:
+        bundler:
+            loadBalancer:
+                servers:
+                    - url: "http://alto:4337"
