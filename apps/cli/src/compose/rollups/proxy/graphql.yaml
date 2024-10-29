@@ -1,0 +1,10 @@
+http:
+    routers:
+        graphql:
+            rule: "PathPrefix(`/graphql`)"
+            service: graphql
+    services:
+        graphql:
+            loadBalancer:
+                servers:
+                    - url: "http://graphql:8080"

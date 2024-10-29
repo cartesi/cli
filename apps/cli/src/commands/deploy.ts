@@ -4,11 +4,10 @@ import select from "@inquirer/select";
 import chalk from "chalk";
 import open, { apps } from "open";
 import { getMachineHash, logPrompt } from "../base.js";
-import { registerBuildCommand } from "./deploy/build.js";
+import { createBuildCommand } from "./deploy/build.js";
 
-export const registerDeployCommand = (program: Command) => {
-    const deployCommand = program
-        .command("deploy")
+export const createDeployCommand = () => {
+    const command = new Command("deploy")
         .description(
             "Package and deploy the application to a supported live network.",
         )
@@ -71,9 +70,9 @@ You will need the following infrastructure:
                 case "self-hosted": {
                     // build docker image
                     // Execute the build subcommand
-                    program.commands
+                    command.commands
                         .find((cmd) => cmd.name() === "build")
-                        ?.parseAsync(program.args);
+                        ?.parseAsync(command.args);
 
                     queryString = `?templateHash=${templateHash}`;
                     break;
@@ -93,5 +92,6 @@ You will need the following infrastructure:
 
             return;
         });
-    registerBuildCommand(deployCommand);
+    command.addCommand(createBuildCommand());
+    return command;
 };

@@ -2,9 +2,8 @@ import { Command } from "@commander-js/extra-typings";
 import Table from "cli-table3";
 import { getAddressBook } from "../base.js";
 
-export const registerAddressBookCommand = (program: Command) => {
-    program
-        .command("address-book")
+export const createAddressBookCommand = () => {
+    return new Command("address-book")
         .description(
             "Prints the addresses of all smart contracts deployed to the runtime environment of the application.",
         )

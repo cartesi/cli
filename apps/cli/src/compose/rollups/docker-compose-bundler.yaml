@@ -1,6 +1,6 @@
 services:
     alto:
-        image: cartesi/sdk:0.12.0-alpha.3
+        image: ${CARTESI_SDK_IMAGE}
         command:
             - "alto"
             - "--entrypoints"
@@ -35,23 +35,6 @@ services:
         environment:
             PROMPT_TXT_06_BUNDLER: "Bundler running at http://localhost:${CARTESI_LISTEN_PORT}/bundler/rpc"
 
-    traefik-config-generator:
-        environment:
-            TRAEFIK_CONFIG_BUNDLER: |
-                http:
-                    routers:
-                        bundler:
-                            rule: "PathPrefix(`/bundler`)"
-                            middlewares:
-                                - "remove-bundler-prefix"
-                            service: bundler
-                    middlewares:
-                        remove-bundler-prefix:
-                            replacePathRegex:
-                                regex: "^/bundler/(.*)"
-                                replacement: "/$1"
-                    services:
-                        bundler:
-                            loadBalancer:
-                                servers:
-                                    - url: "http://alto:4337"
+    proxy:
+        volumes:
+            - ./proxy/bundler.yaml:/etc/traefik/conf.d/bundler.yaml

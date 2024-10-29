@@ -1,24 +1,6 @@
 services:
-    traefik-config-generator:
-        image: debian:bookworm-slim
-        command:
-            - /bin/bash
-            - -c
-            - |
-                for cfg_file in $${!TRAEFIK_CONFIG_*}
-                do
-                    declare -n cfg_content=$$cfg_file
-                    _cfg_file=$${cfg_file:15}
-                    echo "$$cfg_content" > /etc/traefik/conf.d/$${_cfg_file,,}.yaml
-                done
-        volumes:
-            - traefik-conf:/etc/traefik/conf.d
-
     proxy:
-        image: traefik:v2.10
-        depends_on:
-            traefik-config-generator:
-                condition: service_completed_successfully
+        image: traefik:v3.3.4
         healthcheck:
             test: ["CMD", "traefik", "healthcheck", "--ping"]
             interval: 5s
@@ -36,13 +18,8 @@ services:
             ]
         ports:
             - ${CARTESI_LISTEN_PORT:-8080}:8088
-        volumes:
-            - traefik-conf:/etc/traefik/conf.d
 
     prompt:
         depends_on:
             proxy:
                 condition: service_healthy
-
-volumes:
-    traefik-conf: {}

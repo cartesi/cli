@@ -5,9 +5,8 @@ import { getApplicationConfig, getContextPath } from "../base.js";
 import { ImageInfo } from "../config.js";
 import { bootMachine } from "../machine.js";
 
-export const registerShellCommand = (program: Command) => {
-    program
-        .command("shell")
+export const createShellCommand = () => {
+    return new Command("shell")
         .argument("[image]", "image ID|name")
         .option("--command <command>", "shell command to run", "/bin/sh")
         .option(

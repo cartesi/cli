@@ -1,8 +1,0 @@
-services:
-    dapp_deployer:
-        volumes:
-            - ./.cartesi/image:/usr/share/cartesi/snapshot:ro
-
-    validator:
-        volumes:
-            - ./.cartesi/image:/tmp/snapshot:ro

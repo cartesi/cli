@@ -1,0 +1,7 @@
+services:
+    rollups-node:
+        ptofiles: [cpu]
+        deploy:
+            resources:
+                limits:
+                    cpus: "${CARTESI_ROLLUPS_NODE_CPUS}"
