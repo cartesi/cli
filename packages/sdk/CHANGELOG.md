@@ -1,5 +1,11 @@
 # sdk
 
+## 0.12.0-alpha.1
+
+### Patch Changes
+
+-   a1e13ef: bump devnet
+
 ## 0.12.0-alpha.0
 
 ### Minor Changes
