@@ -1,5 +1,12 @@
 # devnet
 
+## 2.0.0-alpha.1
+
+### Patch Changes
+
+-   9862a9c: bump openzeppelin, change to test contract addresses
+-   707204d: bump rollups-contracts
+
 ## 2.0.0-alpha.0
 
 ### Major Changes
