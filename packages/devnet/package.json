@@ -31,7 +31,7 @@
         "viem": "^2.21.37"
     },
     "dependencies": {
-        "@openzeppelin/contracts": "5.0.2"
+        "@openzeppelin/contracts": "5.1.0"
     },
     "files": [
         "build",
