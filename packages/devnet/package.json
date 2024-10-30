@@ -17,18 +17,18 @@
         "tsc": "tsc"
     },
     "devDependencies": {
-        "@cartesi/rollups": "2.0.0-rc.10",
+        "@cartesi/rollups": "2.0.0-rc.12",
         "@nomicfoundation/hardhat-viem": "^2.0.5",
         "@safe-global/safe-singleton-factory": "^1.0.35",
-        "@types/node": "^22.7.6",
-        "hardhat": "^2.22.13",
+        "@types/node": "^22.8.4",
+        "hardhat": "^2.22.15",
         "hardhat-abi-exporter": "^2",
-        "hardhat-deploy": "^0.12.4",
+        "hardhat-deploy": "^0.14.0",
         "npm-run-all": "^4",
         "rimraf": "^6.0.1",
         "tsconfig": "workspace:*",
         "typescript": "^5.6.3",
-        "viem": "^2.21.28"
+        "viem": "^2.21.37"
     },
     "dependencies": {
         "@openzeppelin/contracts": "5.0.2"
