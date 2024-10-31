@@ -9,12 +9,12 @@ target "default" {
     CARTESI_IMAGE_KERNEL_VERSION      = "0.20.0"
     ALTO_VERSION                      = "0.0.4"
     PAYMASTER_VERSION                 = "0.2.0"
-    DEVNET_VERSION                    = "2.0.0-alpha.1"
+    DEVNET_VERSION                    = "2.0.0-alpha.2"
     LINUX_KERNEL_VERSION              = "6.5.13-ctsi-1-v0.20.0"
     XGENEXT2_VERSION                  = "1.5.6"
     CRANE_VERSION                     = "0.19.1"
     NODEJS_VERSION                    = "18.19.0"
     SU_EXEC_VERSION                   = "0.2"
-    ANVIL_VERSION                     = "e90348416c3a831ab75bb43f6fa5f0a0be4106c4"
+    ANVIL_VERSION                     = "2044faec64f99a21f0e5f0094458a973612d0712"
   }
 }
