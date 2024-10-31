@@ -1,5 +1,11 @@
 # devnet
 
+## 2.0.0-alpha.2
+
+### Major Changes
+
+-   83946c0: lock anvil version in CI to the same anvil used by cartesi/rollups-contracts
+
 ## 2.0.0-alpha.1
 
 ### Patch Changes
