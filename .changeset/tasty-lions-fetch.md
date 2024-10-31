@@ -1,5 +1,5 @@
 ---
-"@cartesi/sdk": major
+"@cartesi/sdk": minor
 ---
 
 bump devnet release
