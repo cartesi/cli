@@ -19,7 +19,7 @@ services:
             - 8545:8545
 
     dapp_deployer:
-        image: cartesi/rollups-node:2.0.0
+        image: cartesi/rollups-node:devel
         restart: on-failure
         depends_on:
             validator:

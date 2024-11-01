@@ -10,7 +10,7 @@ services:
             - POSTGRES_PASSWORD=password
 
     migration:
-        image: cartesi/rollups-node:2.0.0
+        image: cartesi/rollups-node:devel
         command:
             - /bin/bash
             - -c
