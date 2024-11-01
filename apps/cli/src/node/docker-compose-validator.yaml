@@ -1,6 +1,6 @@
 services:
     validator:
-        image: cartesi/rollups-node:2.0.0
+        image: cartesi/rollups-node:devel
         depends_on:
             migration:
                 condition: service_completed_successfully
