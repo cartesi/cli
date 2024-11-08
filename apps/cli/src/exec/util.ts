@@ -41,6 +41,7 @@ export const execaDockerFallback = async (
                     "--workdir",
                     "/work",
                     "--interactive",
+                    "--rm",
                     "--user",
                     `${userInfo.uid}:${userInfo.gid}`,
                 ];
@@ -89,6 +90,7 @@ export const spawnSyncDockerFallback = (
                 "--workdir",
                 "/work",
                 "--interactive",
+                "--rm",
                 "--user",
                 `${userInfo.uid}:${userInfo.gid}`,
             ];
