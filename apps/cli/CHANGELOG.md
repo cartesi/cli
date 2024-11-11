@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.0-alpha.3
+
+### Major Changes
+
+-   fd9e215: remove container after execution
+-   21375e8: set default ram-image to always be '/usr/share/cartesi-machine/images/linux.bin'
+
 ## 2.0.0-alpha.2
 
 ### Patch Changes
