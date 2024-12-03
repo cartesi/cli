@@ -33,7 +33,6 @@ services:
     prompt:
         image: debian:bookworm-slim
         environment:
-            PROMPT_TXT_02_GRAPHQL: "GraphQL running at http://localhost:${CARTESI_LISTEN_PORT}/graphql"
             PROMPT_TXT_03_INSPECT: "Inspect running at http://localhost:${CARTESI_LISTEN_PORT}/inspect/"
 
     traefik-config-generator:
@@ -48,15 +47,4 @@ services:
                         inspect_server:
                             loadBalancer:
                                 servers:
-                                    - url: "http://validator:10012/inspect"
-            TRAEFIK_CONFIG_GRAPHQL_SERVER: |
-                http:
-                    routers:
-                        graphql_server:
-                            rule: "PathPrefix(`/graphql`)"
-                            service: graphql_server
-                    services:
-                        graphql_server:
-                            loadBalancer:
-                                servers:
-                                    - url: "http://validator:10000/graphql"
+                                    - url: "http://validator:10000/inspect"

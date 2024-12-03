@@ -1,0 +1,67 @@
+services:
+    graphql_database_creator:
+        image: postgres:16-alpine
+        command: ["createdb", "graphql"]
+        depends_on:
+            database:
+                condition: service_healthy
+        environment:
+            PGHOST: ${PGHOST:-database}
+            PGPORT: ${PGPORT:-5432}
+            PGUSER: ${PGUSER:-postgres}
+            PGPASSWORD: ${PGPASSWORD:-password}
+            PGDATABASE: ${PGDATABASE:-postgres}
+
+    graphql_database_migration:
+        image: cartesi/sdk:0.12.0-alpha.8
+        environment:
+            POSTGRES_GRAPHQL_DB_URL: &graphql_db_url postgres://${PGUSER:-postgres}:${PGPASSWORD:-password}@${PGHOST:-database}:${PGPORT:-5432}/graphql?sslmode=disable
+        command:
+            - /bin/bash
+            - -c
+            - |
+                migrate                                                      \
+                -source file:///usr/share/cartesi/rollups-graphql/migrations \
+                -database $$POSTGRES_GRAPHQL_DB_URL                          \
+                up
+        depends_on:
+            graphql_database_creator:
+                condition: service_completed_successfully
+
+    graphql:
+        image: cartesi/sdk:0.12.0-alpha.8
+        environment:
+            POSTGRES_GRAPHQL_DB_URL: *graphql_db_url
+            POSTGRES_NODE_DB_URL: postgres://${PGUSER:-postgres}:${PGPASSWORD:-password}@${PGHOST:-database}:${PGPORT:-5432}/${PGDATABASE:-postgres}?sslmode=disable
+        expose:
+            - 8080
+        command: ["cartesi-rollups-graphql"]
+        depends_on:
+            graphql_database_migration:
+                condition: service_completed_successfully
+
+    prompt:
+        image: debian:bookworm-slim
+        environment:
+            PROMPT_TXT_04_GRAPHQL: "GraphQL endpoint running at http://localhost:${CARTESI_LISTEN_PORT}/graphql/"
+
+    traefik-config-generator:
+        environment:
+            TRAEFIK_CONFIG_GRAPHQL: |
+                http:
+                    routers:
+                        graphql:
+                            rule: "PathPrefix(`/graphql`)"
+                            middlewares:
+                                - "remove-graphql-prefix"
+                            service: graphql
+                    middlewares:
+                        remove-graphql-prefix:
+                            replacePathRegex:
+                                regex: "^/graphql/(.*)"
+                                replacement: "/$1"
+                    services:
+                        graphql:
+                            loadBalancer:
+                                servers:
+                                    - url: "http://graphql:8080"

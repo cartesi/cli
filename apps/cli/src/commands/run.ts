@@ -41,6 +41,11 @@ export const registerRunCommand = (program: Command) => {
         )
         .option("--enable-espresso", "enable espresso development node", false)
         .option(
+            "--disable-graphql",
+            "disable local graphql service to save machine resources",
+            false,
+        )
+        .option(
             "--no-backend",
             "run a node without the application code",
             false,
@@ -164,6 +169,11 @@ export const registerRunCommand = (program: Command) => {
                 // espresso development node
                 if (enableEspresso) {
                     composeFiles.push("docker-compose-espresso.yaml");
+                }
+
+                // graphql
+                if (!disableExplorer) {
+                    composeFiles.push("docker-compose-graphql.yaml");
                 }
 
                 // load the no-backend compose file
