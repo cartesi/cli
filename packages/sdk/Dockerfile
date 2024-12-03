@@ -8,6 +8,7 @@ ARG CRANE_VERSION
 ARG NODEJS_VERSION
 ARG SU_EXEC_VERSION
 ARG ANVIL_VERSION
+ARG CARTESI_ROLLUPS_GRAPHQL_VERSION
 
 ################################################################################
 # base image
@@ -70,6 +71,15 @@ RUN npm install -g @pimlico/alto@${ALTO_VERSION}
 FROM node:${NODEJS_VERSION}-bookworm AS devnet
 ARG DEVNET_VERSION
 RUN npm install -g @cartesi/devnet@${DEVNET_VERSION}
+
+################################################################################
+# cartesi-rollups-graphql installer
+FROM base AS graphql
+ARG CARTESI_ROLLUPS_GRAPHQL_VERSION
+ARG TARGETOS
+ARG TARGETARCH
+RUN curl -fsSL https://github.com/Calindra/cartesi-rollups-graphql/releases/download/v${CARTESI_ROLLUPS_GRAPHQL_VERSION}/cartesi-rollups-graphql-v${CARTESI_ROLLUPS_GRAPHQL_VERSION}-${TARGETOS}-${TARGETARCH}.tar.gz \
+    | tar -xzf - -C /usr/local/bin
 
 ################################################################################
 # sdk final image
@@ -143,6 +153,7 @@ COPY --from=su-exec /usr/local/src/su-exec /usr/local/bin/
 COPY --from=crane /usr/local/bin/crane /usr/local/bin/
 COPY --from=devnet /usr/local/lib/node_modules/@cartesi/devnet/export/abi/localhost.json /usr/share/cartesi/
 COPY --from=devnet /usr/local/lib/node_modules/@cartesi/devnet/build/anvil_state.json /usr/share/cartesi/
+COPY --from=graphql /usr/local/bin/cartesi-rollups-graphql /usr/local/bin/
 RUN mkdir -p /tmp/.cartesi && chmod 1777 /tmp/.cartesi
 
 # Install cartesi-machine emulator
