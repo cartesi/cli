@@ -78,7 +78,7 @@ FROM base AS graphql
 ARG CARTESI_ROLLUPS_GRAPHQL_VERSION
 ARG TARGETOS
 ARG TARGETARCH
-RUN curl -fsSL https://github.com/cartesi/rollups-graphql/releases/download/v${CARTESI_ROLLUPS_GRAPHQL_VERSION}/rollups-graphql-v${CARTESI_ROLLUPS_GRAPHQL_VERSION}-${TARGETOS}-${TARGETARCH}.tar.gz \
+RUN curl -fsSL https://github.com/cartesi/rollups-graphql/releases/download/v${CARTESI_ROLLUPS_GRAPHQL_VERSION}/cartesi-rollups-graphql-v${CARTESI_ROLLUPS_GRAPHQL_VERSION}-${TARGETOS}-${TARGETARCH}.tar.gz \
     | tar -xzf - -C /usr/local/bin
 
 ################################################################################
@@ -153,7 +153,7 @@ COPY --from=su-exec /usr/local/src/su-exec /usr/local/bin/
 COPY --from=crane /usr/local/bin/crane /usr/local/bin/
 COPY --from=devnet /usr/local/lib/node_modules/@cartesi/devnet/export/abi/localhost.json /usr/share/cartesi/
 COPY --from=devnet /usr/local/lib/node_modules/@cartesi/devnet/build/anvil_state.json /usr/share/cartesi/
-COPY --from=graphql /usr/local/bin/rollups-graphql /usr/local/bin/cartesi-rollups-graphql
+COPY --from=graphql /usr/local/bin/cartesi-rollups-graphql /usr/local/bin/cartesi-rollups-graphql
 RUN mkdir -p /tmp/.cartesi && chmod 1777 /tmp/.cartesi
 
 # Install cartesi-machine emulator
