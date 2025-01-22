@@ -153,7 +153,7 @@ COPY --from=su-exec /usr/local/src/su-exec /usr/local/bin/
 COPY --from=crane /usr/local/bin/crane /usr/local/bin/
 COPY --from=devnet /usr/local/lib/node_modules/@cartesi/devnet/export/abi/localhost.json /usr/share/cartesi/
 COPY --from=devnet /usr/local/lib/node_modules/@cartesi/devnet/build/anvil_state.json /usr/share/cartesi/
-COPY --from=graphql /usr/local/bin/cartesi-rollups-graphql /usr/local/bin/cartesi-rollups-graphql
+COPY --from=graphql /usr/local/bin/cartesi-rollups-graphql /usr/local/bin/
 RUN mkdir -p /tmp/.cartesi && chmod 1777 /tmp/.cartesi
 
 # Install cartesi-machine emulator
