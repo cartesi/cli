@@ -9,6 +9,10 @@ ARG NODEJS_VERSION
 ARG SU_EXEC_VERSION
 ARG ANVIL_VERSION
 ARG CARTESI_ROLLUPS_GRAPHQL_VERSION
+ARG ESPRESSO_DEV_NODE_TAG
+
+# https://github.com/EspressoSystems/espresso-sequencer/pkgs/container/espresso-sequencer%2Fespresso-dev-node
+FROM ghcr.io/espressosystems/espresso-sequencer/espresso-dev-node:${ESPRESSO_DEV_NODE_TAG} AS espresso-dev-node
 
 ################################################################################
 # base image
@@ -179,6 +183,8 @@ ADD --chmod=644 \
     /usr/share/cartesi-machine/images/linux-headers.tar.xz
 RUN tar -xJf /usr/share/cartesi-machine/images/linux-headers.tar.xz -C / && \
     rm /usr/share/cartesi-machine/images/linux-headers.tar.xz
+
+COPY --from=espresso-dev-node /usr/bin/espresso-dev-node /usr/local/bin/
 
 WORKDIR /mnt
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
