@@ -184,7 +184,7 @@ ADD --chmod=644 \
 RUN tar -xJf /usr/share/cartesi-machine/images/linux-headers.tar.xz -C / && \
     rm /usr/share/cartesi-machine/images/linux-headers.tar.xz
 
-COPY --from=espresso-dev-node /usr/bin/espresso-dev-node /usr/bin/
+COPY --from=espresso-dev-node /usr/bin/espresso-dev-node /usr/local/bin/
 
 WORKDIR /mnt
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
