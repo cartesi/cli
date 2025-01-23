@@ -1,5 +1,17 @@
 # sdk
 
+## 0.12.0-alpha.3
+
+### Minor Changes
+
+-   aeebda0: add cartesi-rollups-graphql binary
+-   a18955a: add espresso-dev-node binary
+
+### Patch Changes
+
+-   6ec3aba: bump base image to debian:bookworm-20241202
+-   1058736: bump debian base image
+
 ## 0.12.0-alpha.2
 
 ### Minor Changes
