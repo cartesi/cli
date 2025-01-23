@@ -35,6 +35,11 @@ export default class Run extends BaseCommand<typeof Run> {
                 "disable local paymaster service to save machine resources",
             summary: "disable paymaster service",
         }),
+        "enable-espresso": Flags.boolean({
+            default: false,
+            description: "enable Espresso development node ",
+            summary: "enable Espresso development node",
+        }),
         "epoch-length": Flags.integer({
             description: "length of an epoch (in blocks)",
             default: 720,
@@ -151,6 +156,11 @@ export default class Run extends BaseCommand<typeof Run> {
         if (!flags["disable-paymaster"] && !flags["disable-bundler"]) {
             // only add paymaster if bundler is enabled
             composeFiles.push("docker-compose-paymaster.yaml");
+        }
+
+        // espresso development node
+        if (flags["enable-espresso"]) {
+            composeFiles.push("docker-compose-espresso.yaml");
         }
 
         // load the no-backend compose file
