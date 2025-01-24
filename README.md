@@ -1,6 +1,6 @@
 # Cartesi CLI
 
-![Release Packages](https://github.com/cartesi/cli/actions/workflows/release.yaml/badge.svg)
+[![Release Packages](https://github.com/cartesi/cli/actions/workflows/release.yaml/badge.svg)](https://github.com/cartesi/cli/actions/workflows/release.yaml)
 
 Cartesi CLI is a tool to help creating [Cartesi](http://cartesi.io) applications. It includes commands that help developers to:
 
