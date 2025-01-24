@@ -4,7 +4,7 @@ target "docker-platforms" {}
 target "default" {
   inherits = ["docker-metadata-action", "docker-platforms"]
   args = {
-    BASE_IMAGE                        = "debian:bookworm-20241202"
+    BASE_IMAGE                        = "debian:bookworm-20250113"
     CARTESI_MACHINE_EMULATOR_VERSION  = "0.18.1"
     CARTESI_IMAGE_KERNEL_VERSION      = "0.20.0"
     ALTO_VERSION                      = "0.0.4"
