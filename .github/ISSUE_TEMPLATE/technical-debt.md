@@ -12,7 +12,7 @@ assignees: ''
 
 What is the problem that you are trying to solve?
 Why is this problem relevant?
-How this problem afects the feature roadmap?
+How this problem affects the feature roadmap?
 Is it a blocker to implement a new future?
 What parts of the architecture and code are affected?
 
