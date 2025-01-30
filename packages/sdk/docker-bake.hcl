@@ -18,5 +18,6 @@ target "default" {
     ANVIL_VERSION                     = "0.3.0"
     CARTESI_ROLLUPS_GRAPHQL_VERSION   = "2.3.4"
     ESPRESSO_DEV_NODE_TAG             = "20241120-patch2"
+    CARTESI_ESPRESSO_READER_VERSION   = "0.2.1-node-20250128"
   }
 }
