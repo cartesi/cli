@@ -10,6 +10,7 @@ ARG SU_EXEC_VERSION
 ARG ANVIL_VERSION
 ARG CARTESI_ROLLUPS_GRAPHQL_VERSION
 ARG ESPRESSO_DEV_NODE_TAG
+ARG CARTESI_ESPRESSO_READER_VERSION
 
 # https://github.com/EspressoSystems/espresso-sequencer/pkgs/container/espresso-sequencer%2Fespresso-dev-node
 FROM ghcr.io/espressosystems/espresso-sequencer/espresso-dev-node:${ESPRESSO_DEV_NODE_TAG} AS espresso-dev-node
@@ -86,6 +87,15 @@ RUN curl -fsSL https://github.com/cartesi/rollups-graphql/releases/download/v${C
     | tar -xzf - -C /usr/local/bin
 
 ################################################################################
+# cartesi-rollups-espresso-reader installer
+FROM  base AS espresso-reader
+ARG CARTESI_ESPRESSO_READER_VERSION
+ARG TARGETOS
+ARG TARGETARCH
+RUN curl -fsSL https://github.com/cartesi/rollups-espresso-reader/releases/download/v${CARTESI_ESPRESSO_READER_VERSION}/cartesi-rollups-espresso-reader-v${CARTESI_ESPRESSO_READER_VERSION}-${TARGETOS}-${TARGETARCH}.tar.gz \
+    | tar -xzf - -C /usr/local/bin
+
+################################################################################
 # sdk final image
 FROM base
 ARG CARTESI_MACHINE_EMULATOR_VERSION
@@ -158,6 +168,8 @@ COPY --from=crane /usr/local/bin/crane /usr/local/bin/
 COPY --from=devnet /usr/local/lib/node_modules/@cartesi/devnet/export/abi/localhost.json /usr/share/cartesi/
 COPY --from=devnet /usr/local/lib/node_modules/@cartesi/devnet/build/anvil_state.json /usr/share/cartesi/
 COPY --from=graphql /usr/local/bin/cartesi-rollups-graphql /usr/local/bin/
+COPY --from=espresso-reader /usr/local/bin/cartesi-rollups-espresso-reader /usr/local/bin/
+
 RUN mkdir -p /tmp/.cartesi && chmod 1777 /tmp/.cartesi
 
 # Install cartesi-machine emulator
