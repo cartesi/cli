@@ -140,7 +140,7 @@ ENV LANGUAGE=en_US:en
 
 # download anvil pre-compiled binaries
 ARG ANVIL_VERSION
-RUN curl -sSL https://github.com/foundry-rs/foundry/releases/download/nightly-${ANVIL_VERSION}/foundry_nightly_linux_$(dpkg --print-architecture).tar.gz | \
+RUN curl -sSL https://github.com/foundry-rs/foundry/releases/download/v${ANVIL_VERSION}/foundry_v${ANVIL_VERSION}_linux_$(dpkg --print-architecture).tar.gz | \
     tar -zx -C /usr/local/bin
 
 # healthcheck script using net_listening JSON-RPC method
