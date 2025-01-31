@@ -8,7 +8,7 @@ export default class DoctorCommand extends BaseCommand<typeof DoctorCommand> {
     static examples = ["<%= config.bin %> <%= command.id %>"];
 
     private static MINIMUM_DOCKER_VERSION = "23.0.0"; // Replace with our minimum required Docker version
-    private static MINIMUM_DOCKER_COMPOSE_VERSION = "2.21.0"; // Replace with our minimum required Docker Compose version
+    private static MINIMUM_DOCKER_COMPOSE_VERSION = "2.30.0"; // Replace with our minimum required Docker Compose version
     private static MINIMUM_BUILDX_VERSION = "0.13.0"; // Replace with our minimum required Buildx version
 
     private async checkDocker(): Promise<true | never> {

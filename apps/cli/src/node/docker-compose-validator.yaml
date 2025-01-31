@@ -13,13 +13,21 @@ services:
             interval: 10s
             timeout: 1s
             retries: 5
-        user: root
+        post_start:
+            - command:
+                  - /bin/bash
+                  - -c
+                  - |
+                      mkdir -p "$CARTESI_SNAPSHOT_DIR"
+                      cp --recursive /tmp/snapshot/* "$CARTESI_SNAPSHOT_DIR"
+              user: root
         command:
             - /bin/bash
             - -c
             - |
-                mkdir -p "$CARTESI_SNAPSHOT_DIR"
-                cp --recursive /tmp/snapshot/* "$CARTESI_SNAPSHOT_DIR"
+                while ! stat "$CARTESI_SNAPSHOT_DIR" &>/dev/null; do
+                    sleep 0.5
+                done
                 exec cartesi-rollups-node
 
         env_file:
