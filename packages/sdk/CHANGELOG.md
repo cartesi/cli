@@ -1,5 +1,17 @@
 # sdk
 
+## 0.12.0-alpha.4
+
+### Minor Changes
+
+-   9a07738: bump anvil to 0.3.0
+-   1540871: bump graphql to v2.3.5-node-20250128
+-   19a2546: add cartesi-rollups-espresso-reader binary
+
+### Patch Changes
+
+-   ab2ed2a: bump base image to debian:bookworm-20250113
+
 ## 0.12.0-alpha.3
 
 ### Minor Changes

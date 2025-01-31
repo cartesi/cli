@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.0.0-alpha.4
+
+### Minor Changes
+
+-   e79c0bb: add `--enable-espresso` to `cartesi run`
+-   1147180: disable evm input reader when --enable-espresso is used
+
+### Patch Changes
+
+-   96fcccb: bump postgresql to 16
+
 ## 2.0.0-alpha.3
 
 ### Major Changes

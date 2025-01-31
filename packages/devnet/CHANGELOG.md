@@ -1,5 +1,11 @@
 # devnet
 
+## 2.0.0-alpha.3
+
+### Minor Changes
+
+-   9a07738: bump anvil to 0.3.0
+
 ## 2.0.0-alpha.2
 
 ### Major Changes
