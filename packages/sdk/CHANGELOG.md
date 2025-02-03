@@ -1,5 +1,11 @@
 # sdk
 
+## 0.12.0-alpha.5
+
+### Patch Changes
+
+-   af08035: bump devnet to 2.0.0-alpha.3
+
 ## 0.12.0-alpha.4
 
 ### Minor Changes
