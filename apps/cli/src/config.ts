@@ -74,7 +74,7 @@ export class InvalidStringArrayError extends Error {
 const DEFAULT_FORMAT = "ext2";
 const DEFAULT_RAM = "128Mi";
 const DEFAULT_RAM_IMAGE = "/usr/share/cartesi-machine/images/linux.bin";
-export const DEFAULT_SDK = "cartesi/sdk:0.12.0-alpha.3";
+export const DEFAULT_SDK = "cartesi/sdk:0.12.0-alpha.5";
 
 type Builder = "directory" | "docker" | "empty" | "none" | "tar";
 type DriveFormat = "ext2" | "sqfs";
