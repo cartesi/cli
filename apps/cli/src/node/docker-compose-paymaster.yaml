@@ -7,7 +7,9 @@ services:
             - ANVIL_RPC=http://anvil:8545
 
     prompt:
-        image: debian:bookworm-slim
+        depends_on:
+            mock-verifying-paymaster:
+                condition: service_started
         environment:
             PROMPT_TXT_07_PAYMASTER: "Paymaster running at http://localhost:${CARTESI_LISTEN_PORT}/paymaster/"
 

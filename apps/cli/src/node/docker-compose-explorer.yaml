@@ -51,7 +51,9 @@ services:
                 condition: service_completed_successfully
 
     prompt:
-        image: debian:bookworm-slim
+        depends_on:
+            explorer:
+                condition: service_started
         environment:
             PROMPT_TXT_04_EXPLORER: "Explorer running at http://localhost:${CARTESI_LISTEN_PORT}/explorer/"
 

@@ -42,7 +42,11 @@ services:
             ]
 
     prompt:
-        image: debian:bookworm-slim
+        depends_on:
+            anvil:
+                condition: service_healthy
+            dapp_deployer:
+                condition: service_completed_successfully
         environment:
             PROMPT_TXT_01_ANVIL: "Anvil running at http://localhost:8545"
 
