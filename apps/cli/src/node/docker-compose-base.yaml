@@ -1,0 +1,5 @@
+services:
+    sdk_image:
+        image: cartesi/sdk:0.12.0-alpha.5
+    rollups_node_image:
+        image: cartesi/rollups-node:2.0.0

@@ -1,6 +1,8 @@
 services:
     validator:
-        image: cartesi/rollups-node:devel
+        extends:
+            file: ${CARTESI_BIN_PATH}/node/docker-compose-base.yaml
+            service: rollups_node_image
         depends_on:
             migration:
                 condition: service_completed_successfully

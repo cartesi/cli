@@ -1,6 +1,8 @@
 services:
     anvil:
-        image: cartesi/sdk:0.12.0-alpha.5
+        extends:
+            file: ${CARTESI_BIN_PATH}/node/docker-compose-base.yaml
+            service: sdk_image
         command:
             [
                 "devnet",
@@ -19,7 +21,9 @@ services:
             - 8545:8545
 
     dapp_deployer:
-        image: cartesi/rollups-node:devel
+        extends:
+            file: ${CARTESI_BIN_PATH}/node/docker-compose-base.yaml
+            service: rollups_node_image
         restart: on-failure
         depends_on:
             validator:

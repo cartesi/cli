@@ -10,7 +10,9 @@ services:
             - POSTGRES_PASSWORD=password
 
     migration:
-        image: cartesi/rollups-node:devel
+        extends:
+            file: ${CARTESI_BIN_PATH}/node/docker-compose-base.yaml
+            service: rollups_node_image
         command:
             - /bin/bash
             - -c

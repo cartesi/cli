@@ -123,8 +123,12 @@ export default class Run extends BaseCommand<typeof Run> {
             CARTESI_VALIDATOR_MEMORY: flags.memory?.toString(),
         };
 
+        // base
+        const composeFiles = ["docker-compose-base.yaml"];
+
         // validator
-        const composeFiles = ["docker-compose-validator.yaml"];
+        composeFiles.push("docker-compose-validator.yaml");
+
         if (flags.cpus) {
             composeFiles.push("docker-compose-validator-cpus.yaml");
         }
