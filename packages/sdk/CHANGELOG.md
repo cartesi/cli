@@ -1,5 +1,11 @@
 # sdk
 
+## 0.12.0-alpha.6
+
+### Patch Changes
+
+-   38b991d: bump espresso-dev-node to 20241120-patch5
+
 ## 0.12.0-alpha.5
 
 ### Patch Changes
