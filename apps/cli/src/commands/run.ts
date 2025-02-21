@@ -4,6 +4,7 @@ import fs from "fs-extra";
 import path from "path";
 
 import { BaseCommand } from "../baseCommand.js";
+import { DEFAULT_SDK } from "../config.js";
 
 export default class Run extends BaseCommand<typeof Run> {
     static summary = "Run application node.";
@@ -121,6 +122,7 @@ export default class Run extends BaseCommand<typeof Run> {
             CARTESI_LISTEN_PORT: listenPort.toString(),
             CARTESI_VALIDATOR_CPUS: flags.cpus?.toString(),
             CARTESI_VALIDATOR_MEMORY: flags.memory?.toString(),
+            CARTESI_SDK_IMAGE: DEFAULT_SDK,
         };
 
         // base
