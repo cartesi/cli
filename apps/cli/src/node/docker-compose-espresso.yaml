@@ -16,7 +16,9 @@ services:
         environment:
             CARTESI_FEATURE_INPUT_READER_ENABLED: false
     espresso:
-        image: cartesi/sdk:0.12.0-alpha.3
+        extends:
+            file: ${CARTESI_BIN_PATH}/node/docker-compose-base.yaml
+            service: sdk_image
         command: ["/usr/local/bin/espresso-dev-node"]
         deploy:
             resources:
