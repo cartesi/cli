@@ -93,7 +93,8 @@ apt-get install -y --no-install-recommends \
     npm \
     squashfs-tools \
     xxd \
-    xz-utils
+    xz-utils \
+    git
 
 # Install e2fsprogs from backports
 echo 'deb http://deb.debian.org/debian bookworm-backports main' > /etc/apt/sources.list.d/backports.list
@@ -188,6 +189,32 @@ RUN ARCH=$(dpkg --print-architecture || uname -m) && \
     dpkg -i /tmp/migrate.deb && \
     rm /tmp/migrate.deb && \
     migrate --version
+
+# Get migration files for rollups-graphql
+ARG GRAPHQL_REPO=cartesi/rollups-graphql
+ARG GRAPHQL_TAG=v2.3.8
+ARG GRAPHQL_GIT_FOLDER=dev/migrations
+ARG GRAPHQL_DEST_FOLDER=db/rollups-graphql
+RUN git clone --depth 1 --branch "$GRAPHQL_TAG" --filter=blob:none --sparse "https://github.com/$GRAPHQL_REPO.git" && \
+    mkdir -p "$GRAPHQL_DEST_FOLDER" && \
+    cd "$(basename "$GRAPHQL_REPO")" && \
+    git sparse-checkout set "$GRAPHQL_GIT_FOLDER" && \
+    mv "$GRAPHQL_GIT_FOLDER" ../$GRAPHQL_DEST_FOLDER && \
+    cd .. && \
+    rm -rf "$(basename "$GRAPHQL_REPO")"
+
+# Get migration files for rollups-espresso-reader
+ARG ESPRESSO_REPO=cartesi/rollups-espresso-reader
+ARG ESPRESSO_TAG=v0.2.1-node-20250128
+ARG ESPRESSO_GIT_FOLDER=internal/repository/postgres/schema/migrations
+ARG ESPRESSO_DEST_FOLDER=db/rollups-espresso-reader
+RUN git clone --depth 1 --branch "$ESPRESSO_TAG" --filter=blob:none --sparse "https://github.com/$ESPRESSO_REPO.git" && \
+    mkdir -p "$ESPRESSO_DEST_FOLDER" && \
+    cd "$(basename "$ESPRESSO_REPO")" && \
+    git sparse-checkout set "$ESPRESSO_GIT_FOLDER" && \
+    mv "$ESPRESSO_GIT_FOLDER" ../$ESPRESSO_DEST_FOLDER && \
+    cd .. && \
+    rm -rf "$(basename "$ESPRESSO_REPO")"
 
 WORKDIR /mnt
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
