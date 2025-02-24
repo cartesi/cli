@@ -169,5 +169,25 @@ ADD --chmod=644 \
 RUN tar -xJf /usr/share/cartesi-machine/images/linux-headers.tar.xz -C / && \
     rm /usr/share/cartesi-machine/images/linux-headers.tar.xz
 
+# Install migrate db cli
+ARG MIGRATE_VERSION=v4.18.2 
+RUN ARCH=$(dpkg --print-architecture || uname -m) && \
+    case "$ARCH" in \
+        amd64|x86_64) \
+            MIGRATE_URL="https://github.com/golang-migrate/migrate/releases/download/${MIGRATE_VERSION}/migrate.linux-amd64.deb" ;; \
+        arm64|aarch64) \
+            MIGRATE_URL="https://github.com/golang-migrate/migrate/releases/download/${MIGRATE_VERSION}/migrate.linux-arm64.deb" ;; \
+        armhf|armv7l) \
+            MIGRATE_URL="https://github.com/golang-migrate/migrate/releases/download/${MIGRATE_VERSION}/migrate.linux-armv7.deb" ;; \
+        i386) \
+            MIGRATE_URL="https://github.com/golang-migrate/migrate/releases/download/${MIGRATE_VERSION}/migrate.linux-386.deb" ;; \
+        *) \
+            echo "Unsupported architecture: $ARCH"; exit 1 ;; \
+    esac && \
+    curl -fsSL "$MIGRATE_URL" -o /tmp/migrate.deb && \
+    dpkg -i /tmp/migrate.deb && \
+    rm /tmp/migrate.deb && \
+    migrate --version
+
 WORKDIR /mnt
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
