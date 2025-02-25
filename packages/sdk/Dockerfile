@@ -84,6 +84,7 @@ USER root
 ARG DEBIAN_FRONTEND=noninteractive
 RUN <<EOF
 apt-get install -y --no-install-recommends \
+    git \
     jq \
     libarchive-tools \
     libslirp0 \
@@ -93,8 +94,7 @@ apt-get install -y --no-install-recommends \
     npm \
     squashfs-tools \
     xxd \
-    xz-utils \
-    git
+    xz-utils
 
 # Install e2fsprogs from backports
 echo 'deb http://deb.debian.org/debian bookworm-backports main' > /etc/apt/sources.list.d/backports.list
@@ -171,50 +171,66 @@ RUN tar -xJf /usr/share/cartesi-machine/images/linux-headers.tar.xz -C / && \
     rm /usr/share/cartesi-machine/images/linux-headers.tar.xz
 
 # Install migrate db cli
-ARG MIGRATE_VERSION=v4.18.2 
-RUN ARCH=$(dpkg --print-architecture || uname -m) && \
-    case "$ARCH" in \
-        amd64|x86_64) \
-            MIGRATE_URL="https://github.com/golang-migrate/migrate/releases/download/${MIGRATE_VERSION}/migrate.linux-amd64.deb" ;; \
-        arm64|aarch64) \
-            MIGRATE_URL="https://github.com/golang-migrate/migrate/releases/download/${MIGRATE_VERSION}/migrate.linux-arm64.deb" ;; \
-        armhf|armv7l) \
-            MIGRATE_URL="https://github.com/golang-migrate/migrate/releases/download/${MIGRATE_VERSION}/migrate.linux-armv7.deb" ;; \
-        i386) \
-            MIGRATE_URL="https://github.com/golang-migrate/migrate/releases/download/${MIGRATE_VERSION}/migrate.linux-386.deb" ;; \
-        *) \
-            echo "Unsupported architecture: $ARCH"; exit 1 ;; \
-    esac && \
-    curl -fsSL "$MIGRATE_URL" -o /tmp/migrate.deb && \
-    dpkg -i /tmp/migrate.deb && \
-    rm /tmp/migrate.deb && \
-    migrate --version
+ARG GO_MIGRATE_VERSION=4.18.2
+RUN <<EOF
+ARCH=$(dpkg --print-architecture || uname -m)
+case "$ARCH" in
+    amd64|x86_64)
+        MIGRATE_URL="https://github.com/golang-migrate/migrate/releases/download/v${GO_MIGRATE_VERSION}/migrate.linux-amd64.deb"
+        ;;
+    arm64|aarch64)
+        MIGRATE_URL="https://github.com/golang-migrate/migrate/releases/download/v${GO_MIGRATE_VERSION}/migrate.linux-arm64.deb"
+        ;;
+    armhf|armv7l)
+        MIGRATE_URL="https://github.com/golang-migrate/migrate/releases/download/v${GO_MIGRATE_VERSION}/migrate.linux-armv7.deb"
+        ;;
+    i386)
+        MIGRATE_URL="https://github.com/golang-migrate/migrate/releases/download/v${GO_MIGRATE_VERSION}/migrate.linux-386.deb"
+        ;;
+    *)
+        echo "Unsupported architecture: $ARCH"
+        exit 1
+        ;;
+esac
+
+curl -fsSL "$MIGRATE_URL" -o /tmp/migrate.deb
+dpkg -i /tmp/migrate.deb
+rm /tmp/migrate.deb
+migrate --version
+EOF
+
 
 # Get migration files for rollups-graphql
 ARG GRAPHQL_REPO=cartesi/rollups-graphql
-ARG GRAPHQL_TAG=v2.3.8
+ARG CARTESI_ROLLUPS_GRAPHQL_VERSION=v2.3.8
 ARG GRAPHQL_GIT_FOLDER=dev/migrations
 ARG GRAPHQL_DEST_FOLDER=db/rollups-graphql
-RUN git clone --depth 1 --branch "$GRAPHQL_TAG" --filter=blob:none --sparse "https://github.com/$GRAPHQL_REPO.git" && \
-    mkdir -p "$GRAPHQL_DEST_FOLDER" && \
-    cd "$(basename "$GRAPHQL_REPO")" && \
-    git sparse-checkout set "$GRAPHQL_GIT_FOLDER" && \
-    mv "$GRAPHQL_GIT_FOLDER" ../$GRAPHQL_DEST_FOLDER && \
-    cd .. && \
-    rm -rf "$(basename "$GRAPHQL_REPO")"
+RUN <<EOF
+git clone --depth 1 --branch "$CARTESI_ROLLUPS_GRAPHQL_VERSION" --filter=blob:none --sparse "https://github.com/$GRAPHQL_REPO.git"
+mkdir -p "$GRAPHQL_DEST_FOLDER"
+cd "$(basename "$GRAPHQL_REPO")"
+git sparse-checkout set "$GRAPHQL_GIT_FOLDER"
+mv "$GRAPHQL_GIT_FOLDER" ../$GRAPHQL_DEST_FOLDER
+cd ..
+rm -rf "$(basename "$GRAPHQL_REPO")"
+EOF
+
 
 # Get migration files for rollups-espresso-reader
 ARG ESPRESSO_REPO=cartesi/rollups-espresso-reader
-ARG ESPRESSO_TAG=v0.2.1-node-20250128
+ARG CARTESI_ESPRESSO_READER_VERSION=v0.2.1-node-20250128
 ARG ESPRESSO_GIT_FOLDER=internal/repository/postgres/schema/migrations
 ARG ESPRESSO_DEST_FOLDER=db/rollups-espresso-reader
-RUN git clone --depth 1 --branch "$ESPRESSO_TAG" --filter=blob:none --sparse "https://github.com/$ESPRESSO_REPO.git" && \
-    mkdir -p "$ESPRESSO_DEST_FOLDER" && \
-    cd "$(basename "$ESPRESSO_REPO")" && \
-    git sparse-checkout set "$ESPRESSO_GIT_FOLDER" && \
-    mv "$ESPRESSO_GIT_FOLDER" ../$ESPRESSO_DEST_FOLDER && \
-    cd .. && \
-    rm -rf "$(basename "$ESPRESSO_REPO")"
+RUN <<EOF
+git clone --depth 1 --branch "$CARTESI_ESPRESSO_READER_VERSION" --filter=blob:none --sparse "https://github.com/$ESPRESSO_REPO.git"
+mkdir -p "$ESPRESSO_DEST_FOLDER"
+cd "$(basename "$ESPRESSO_REPO")"
+git sparse-checkout set "$ESPRESSO_GIT_FOLDER"
+mv "$ESPRESSO_GIT_FOLDER" ../$ESPRESSO_DEST_FOLDER
+cd ..
+rm -rf "$(basename "$ESPRESSO_REPO")"
+EOF
+
 
 WORKDIR /mnt
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
