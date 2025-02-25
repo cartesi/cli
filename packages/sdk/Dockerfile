@@ -84,7 +84,6 @@ USER root
 ARG DEBIAN_FRONTEND=noninteractive
 RUN <<EOF
 apt-get install -y --no-install-recommends \
-    git \
     jq \
     libarchive-tools \
     libslirp0 \
@@ -201,34 +200,34 @@ EOF
 
 
 # Get migration files for rollups-graphql
-ARG GRAPHQL_REPO=cartesi/rollups-graphql
-ARG CARTESI_ROLLUPS_GRAPHQL_VERSION=v2.3.8
+ARG GRAPHQL_REPO=rollups-graphql
+ARG CARTESI_ROLLUPS_GRAPHQL_VERSION=2.3.8
 ARG GRAPHQL_GIT_FOLDER=dev/migrations
 ARG GRAPHQL_DEST_FOLDER=db/rollups-graphql
+
 RUN <<EOF
-git clone --depth 1 --branch "$CARTESI_ROLLUPS_GRAPHQL_VERSION" --filter=blob:none --sparse "https://github.com/$GRAPHQL_REPO.git"
 mkdir -p "$GRAPHQL_DEST_FOLDER"
-cd "$(basename "$GRAPHQL_REPO")"
-git sparse-checkout set "$GRAPHQL_GIT_FOLDER"
-mv "$GRAPHQL_GIT_FOLDER" ../$GRAPHQL_DEST_FOLDER
-cd ..
-rm -rf "$(basename "$GRAPHQL_REPO")"
+curl -L "https://github.com/cartesi/$GRAPHQL_REPO/archive/refs/tags/v$CARTESI_ROLLUPS_GRAPHQL_VERSION.tar.gz" -o source.tar.gz
+echo "Downloaded: https://github.com/cartesi/$GRAPHQL_REPO/archive/refs/tags/v$CARTESI_ROLLUPS_GRAPHQL_VERSION.tar.gz"
+tar --strip-components=1 -xzf source.tar.gz "$GRAPHQL_REPO-$CARTESI_ROLLUPS_GRAPHQL_VERSION/$GRAPHQL_GIT_FOLDER" && \
+  mv "$GRAPHQL_GIT_FOLDER" "$GRAPHQL_DEST_FOLDER" && \
+  rm -f source.tar.gz
 EOF
 
 
 # Get migration files for rollups-espresso-reader
-ARG ESPRESSO_REPO=cartesi/rollups-espresso-reader
-ARG CARTESI_ESPRESSO_READER_VERSION=v0.2.1-node-20250128
+ARG ESPRESSO_REPO=rollups-espresso-reader
+ARG CARTESI_ESPRESSO_READER_VERSION=0.2.1-node-20250128
 ARG ESPRESSO_GIT_FOLDER=internal/repository/postgres/schema/migrations
 ARG ESPRESSO_DEST_FOLDER=db/rollups-espresso-reader
+
 RUN <<EOF
-git clone --depth 1 --branch "$CARTESI_ESPRESSO_READER_VERSION" --filter=blob:none --sparse "https://github.com/$ESPRESSO_REPO.git"
 mkdir -p "$ESPRESSO_DEST_FOLDER"
-cd "$(basename "$ESPRESSO_REPO")"
-git sparse-checkout set "$ESPRESSO_GIT_FOLDER"
-mv "$ESPRESSO_GIT_FOLDER" ../$ESPRESSO_DEST_FOLDER
-cd ..
-rm -rf "$(basename "$ESPRESSO_REPO")"
+curl -L "https://github.com/cartesi/$ESPRESSO_REPO/archive/refs/tags/v$CARTESI_ESPRESSO_READER_VERSION.tar.gz" -o source.tar.gz
+echo "Downloaded: https://github.com/cartesi/$ESPRESSO_REPO/archive/refs/tags/v$CARTESI_ESPRESSO_READER_VERSION.tar.gz"
+tar --strip-components=1 -xzf source.tar.gz "$ESPRESSO_REPO-$CARTESI_ESPRESSO_READER_VERSION/$ESPRESSO_GIT_FOLDER" && \
+  mv "$ESPRESSO_GIT_FOLDER" "$ESPRESSO_DEST_FOLDER" && \
+  rm -f source.tar.gz
 EOF
 
 
