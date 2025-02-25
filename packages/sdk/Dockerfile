@@ -170,7 +170,7 @@ RUN tar -xJf /usr/share/cartesi-machine/images/linux-headers.tar.xz -C / && \
     rm /usr/share/cartesi-machine/images/linux-headers.tar.xz
 
 # Install migrate db cli
-ARG GO_MIGRATE_VERSION=4.18.2
+ARG GO_MIGRATE_VERSION
 RUN <<EOF
 ARCH=$(dpkg --print-architecture || uname -m)
 case "$ARCH" in
@@ -200,12 +200,13 @@ EOF
 
 
 # Get migration files for rollups-graphql
-ARG GRAPHQL_REPO=rollups-graphql
-ARG CARTESI_ROLLUPS_GRAPHQL_VERSION=2.3.8
-ARG GRAPHQL_GIT_FOLDER=dev/migrations
-ARG GRAPHQL_DEST_FOLDER=db/rollups-graphql
+ARG CARTESI_ROLLUPS_GRAPHQL_VERSION
 
 RUN <<EOF
+GRAPHQL_REPO=rollups-graphql
+GRAPHQL_GIT_FOLDER=dev/migrations
+GRAPHQL_DEST_FOLDER=db/rollups-graphql
+
 mkdir -p "$GRAPHQL_DEST_FOLDER"
 curl -L "https://github.com/cartesi/$GRAPHQL_REPO/archive/refs/tags/v$CARTESI_ROLLUPS_GRAPHQL_VERSION.tar.gz" -o source.tar.gz
 echo "Downloaded: https://github.com/cartesi/$GRAPHQL_REPO/archive/refs/tags/v$CARTESI_ROLLUPS_GRAPHQL_VERSION.tar.gz"
@@ -216,12 +217,13 @@ EOF
 
 
 # Get migration files for rollups-espresso-reader
-ARG ESPRESSO_REPO=rollups-espresso-reader
-ARG CARTESI_ESPRESSO_READER_VERSION=0.2.1-node-20250128
-ARG ESPRESSO_GIT_FOLDER=internal/repository/postgres/schema/migrations
-ARG ESPRESSO_DEST_FOLDER=db/rollups-espresso-reader
+ARG CARTESI_ESPRESSO_READER_VERSION
 
 RUN <<EOF
+ESPRESSO_REPO="rollups-espresso-reader"
+ESPRESSO_GIT_FOLDER="internal/repository/postgres/schema/migrations"
+ESPRESSO_DEST_FOLDER="db/rollups-espresso-reader"
+
 mkdir -p "$ESPRESSO_DEST_FOLDER"
 curl -L "https://github.com/cartesi/$ESPRESSO_REPO/archive/refs/tags/v$CARTESI_ESPRESSO_READER_VERSION.tar.gz" -o source.tar.gz
 echo "Downloaded: https://github.com/cartesi/$ESPRESSO_REPO/archive/refs/tags/v$CARTESI_ESPRESSO_READER_VERSION.tar.gz"
