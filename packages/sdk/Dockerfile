@@ -15,6 +15,7 @@ FROM ${BASE_IMAGE} AS base
 SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
 ARG DEBIAN_FRONTEND=noninteractive
 RUN <<EOF
+set -eu
 apt-get update
 apt-get install -y --no-install-recommends \
     ca-certificates \
@@ -27,6 +28,7 @@ FROM base AS builder
 WORKDIR /usr/local/src
 ARG DEBIAN_FRONTEND=noninteractive
 RUN <<EOF
+set -eu
 apt-get install -y --no-install-recommends \
     autoconf \
     automake \
@@ -49,6 +51,7 @@ RUN make
 FROM base AS crane
 ARG CRANE_VERSION
 RUN <<EOF
+set -eu
 #FIXME: ugly hack to download the right go-containerregistry binary
 case "$(arch)" in
 aarch64) ARCH="arm64" ;;
@@ -83,6 +86,7 @@ ARG PAYMASTER_VERSION
 USER root
 ARG DEBIAN_FRONTEND=noninteractive
 RUN <<EOF
+set -eu
 apt-get install -y --no-install-recommends \
     jq \
     libarchive-tools \
@@ -109,6 +113,7 @@ EOF
 
 # Install dpkg release of xgenext2fs
 RUN <<EOF
+set -eu
 ARCH=$(dpkg --print-architecture)
 curl -fsSL https://github.com/cartesi/genext2fs/releases/download/v${XGENEXT2_VERSION}/xgenext2fs_${ARCH}.deb \
     -o /tmp/xgenext2fs.deb
@@ -147,6 +152,7 @@ RUN mkdir -p /tmp/.cartesi && chmod 1777 /tmp/.cartesi
 
 # Install cartesi-machine emulator
 RUN <<EOF
+set -eu
 ARCH=$(dpkg --print-architecture)
 curl -fsSL https://github.com/cartesi/machine-emulator/releases/download/v${CARTESI_MACHINE_EMULATOR_VERSION}/cartesi-machine-v${CARTESI_MACHINE_EMULATOR_VERSION}_${ARCH}.deb \
     -o /tmp/cartesi-machine.deb
@@ -172,6 +178,7 @@ RUN tar -xJf /usr/share/cartesi-machine/images/linux-headers.tar.xz -C / && \
 # Install migrate db cli
 ARG GO_MIGRATE_VERSION
 RUN <<EOF
+set -eu
 ARCH=$(dpkg --print-architecture || uname -m)
 case "$ARCH" in
     amd64|x86_64)
@@ -203,6 +210,7 @@ EOF
 ARG CARTESI_ROLLUPS_GRAPHQL_VERSION
 
 RUN <<EOF
+set -eu
 GRAPHQL_REPO=rollups-graphql
 GRAPHQL_GIT_FOLDER=dev/migrations
 GRAPHQL_DEST_FOLDER=db/rollups-graphql
@@ -220,6 +228,7 @@ EOF
 ARG CARTESI_ESPRESSO_READER_VERSION
 
 RUN <<EOF
+set -eu
 ESPRESSO_REPO="rollups-espresso-reader"
 ESPRESSO_GIT_FOLDER="internal/repository/postgres/schema/migrations"
 ESPRESSO_DEST_FOLDER="db/rollups-espresso-reader"
