@@ -198,5 +198,34 @@ RUN tar -xJf /usr/share/cartesi-machine/images/linux-headers.tar.xz -C / && \
 
 COPY --from=espresso-dev-node /usr/bin/espresso-dev-node /usr/local/bin/
 
+# Install migrate db cli
+ARG GO_MIGRATE_VERSION
+RUN <<EOF
+ARCH=$(dpkg --print-architecture || uname -m)
+case "$ARCH" in
+    amd64|x86_64)
+        MIGRATE_URL="https://github.com/golang-migrate/migrate/releases/download/v${GO_MIGRATE_VERSION}/migrate.linux-amd64.deb"
+        ;;
+    arm64|aarch64)
+        MIGRATE_URL="https://github.com/golang-migrate/migrate/releases/download/v${GO_MIGRATE_VERSION}/migrate.linux-arm64.deb"
+        ;;
+    armhf|armv7l)
+        MIGRATE_URL="https://github.com/golang-migrate/migrate/releases/download/v${GO_MIGRATE_VERSION}/migrate.linux-armv7.deb"
+        ;;
+    i386)
+        MIGRATE_URL="https://github.com/golang-migrate/migrate/releases/download/v${GO_MIGRATE_VERSION}/migrate.linux-386.deb"
+        ;;
+    *)
+        echo "Unsupported architecture: $ARCH"
+        exit 1
+        ;;
+esac
+
+curl -fsSL "$MIGRATE_URL" -o /tmp/migrate.deb
+dpkg -i /tmp/migrate.deb
+rm /tmp/migrate.deb
+migrate --version
+EOF
+
 WORKDIR /mnt
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
