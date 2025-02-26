@@ -16,7 +16,7 @@ target "default" {
     NODEJS_VERSION                    = "18.19.0"
     SU_EXEC_VERSION                   = "0.2"
     ANVIL_VERSION                     = "0.3.0"
-    CARTESI_ROLLUPS_GRAPHQL_VERSION   = "2.3.5-node-20250128"
+    CARTESI_ROLLUPS_GRAPHQL_VERSION   = "2.3.8"
     ESPRESSO_DEV_NODE_TAG             = "20241120-patch5"
     CARTESI_ESPRESSO_READER_VERSION   = "0.2.1-node-20250128"
     GO_MIGRATE_VERSION                = "4.18.2"
