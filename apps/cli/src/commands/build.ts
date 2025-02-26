@@ -1,8 +1,8 @@
-import { Flags } from "@oclif/core";
+import { Command } from "@commander-js/extra-typings";
 import fs from "fs-extra";
 import path from "path";
 import tmp from "tmp";
-import { BaseCommand } from "../baseCommand.js";
+import { getApplicationConfig, getContextPath } from "../base.js";
 import {
     buildDirectory,
     buildDocker,
@@ -38,67 +38,57 @@ const buildDrive = async (
     }
 };
 
-export default class Build extends BaseCommand<typeof Build> {
-    static summary = "Build application.";
+export const registerBuildCommand = (program: Command) => {
+    program
+        .command("build")
+        .description(
+            "Build application by building Cartesi machine drives, configuring a machine and booting it.",
+        )
+        .option(
+            "-c, --config <config>",
+            "path to the configuration file",
+            "cartesi.toml",
+        )
+        .option("-d, --drives-only", "only build drives, do not boot machine")
+        .action(async ({ config, drivesOnly }) => {
+            // clean up temp files we create along the process
+            tmp.setGracefulCleanup();
 
-    static description =
-        "Build application by building Cartesi machine drives, configuring a machine and booting it";
+            // get application configuration from 'cartesi.toml'
+            const c = getApplicationConfig(config);
 
-    static examples = ["<%= config.bin %> <%= command.id %>"];
+            // destination directory for image and intermediate files
+            const destination = path.resolve(getContextPath());
 
-    static flags = {
-        config: Flags.file({
-            char: "c",
-            default: "cartesi.toml",
-            summary: "path to the configuration file",
-        }),
-        "drives-only": Flags.boolean({
-            default: false,
-            summary: "only build drives",
-        }),
-    };
+            // prepare context directory
+            await fs.emptyDir(destination); // XXX: make it less error prone
 
-    public async run(): Promise<void> {
-        const { flags } = await this.parse(Build);
+            // start build of all drives simultaneously
+            const results = Object.entries(c.drives).reduce<
+                Record<string, Promise<DriveResult>>
+            >((acc, [name, drive]) => {
+                acc[name] = buildDrive(name, drive, c.sdk, destination);
+                return acc;
+            }, {});
 
-        // clean up temp files we create along the process
-        tmp.setGracefulCleanup();
+            // await for all drives to be built
+            await Promise.all(Object.values(results));
 
-        // get application configuration from 'cartesi.toml'
-        const config = this.getApplicationConfig(flags.config);
+            if (drivesOnly) {
+                // only build drives, so quit here
+                return;
+            }
 
-        // destination directory for image and intermediate files
-        const destination = path.resolve(this.getContextPath());
+            // get image info of root drive
+            const root = await results["root"];
+            const imageInfo = root || undefined;
 
-        // prepare context directory
-        await fs.emptyDir(destination); // XXX: make it less error prone
+            // path of machine snapshot
+            const snapshotPath = getContextPath("image");
 
-        // start build of all drives simultaneously
-        const results = Object.entries(config.drives).reduce<
-            Record<string, Promise<DriveResult>>
-        >((acc, [name, drive]) => {
-            acc[name] = buildDrive(name, drive, config.sdk, destination);
-            return acc;
-        }, {});
+            // create machine snapshot
+            await bootMachine(c, imageInfo, destination);
 
-        // await for all drives to be built
-        await Promise.all(Object.values(results));
-
-        if (flags["drives-only"]) {
-            // only build drives, so quit here
-            return;
-        }
-
-        // get image info of root drive
-        const root = await results["root"];
-        const imageInfo = root || undefined;
-
-        // path of machine snapshot
-        const snapshotPath = this.getContextPath("image");
-
-        // create machine snapshot
-        await bootMachine(config, imageInfo, destination);
-
-        await fs.chmod(snapshotPath, 0o755);
-    }
-}
+            await fs.chmod(snapshotPath, 0o755);
+        });
+};

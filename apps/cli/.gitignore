@@ -6,7 +6,6 @@
 /package-lock.json
 /tmp
 node_modules
-oclif.manifest.json
 src/contracts.ts
 src/graphql/
 test/builder/output

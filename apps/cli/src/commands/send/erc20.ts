@@ -1,16 +1,20 @@
+import { Command } from "@commander-js/extra-typings";
 import input from "@inquirer/input";
+import ora from "ora";
 import {
     Address,
     erc20Abi,
+    getAddress,
     isAddress,
     parseEther,
     PublicClient,
-    WalletClient,
 } from "viem";
-
 import { erc20PortalAbi, erc20PortalAddress } from "../../contracts.js";
-import * as CustomFlags from "../../flags.js";
-import { SendBaseCommand } from "./index.js";
+import {
+    addCommonOptions,
+    connect,
+    getInputApplicationAddress,
+} from "../send.js";
 
 type ERC20Token = {
     name: string;
@@ -18,87 +22,88 @@ type ERC20Token = {
     decimals: number;
 };
 
-export default class SendERC20 extends SendBaseCommand<typeof SendERC20> {
-    static summary = "Send ERC-20 deposit to the application.";
+const readToken = async (
+    publicClient: PublicClient,
+    address: Address,
+): Promise<ERC20Token> => {
+    const args = { abi: erc20Abi, address };
+    const symbol = await publicClient.readContract({
+        ...args,
+        functionName: "symbol",
+    });
+    const name = await publicClient.readContract({
+        ...args,
+        functionName: "name",
+    });
+    const decimals = await publicClient.readContract({
+        ...args,
+        functionName: "decimals",
+    });
+    return {
+        name,
+        symbol,
+        decimals,
+    };
+};
 
-    static description =
-        "Sends ERC-20 deposits to the application, optionally in interactive mode.";
-
-    static flags = {
-        token: CustomFlags.address({ description: "token address" }),
-        amount: CustomFlags.number({ description: "amount" }),
+const ercValidator =
+    (publicClient: PublicClient) =>
+    async (value: string): Promise<string | boolean> => {
+        if (!isAddress(value)) {
+            return "Invalid address";
+        }
+        try {
+            await readToken(publicClient, value);
+        } catch (e) {
+            return "Invalid token";
+        }
+        return true;
     };
 
-    static examples = ["<%= config.bin %> <%= command.id %>"];
+export const registerErc20Command = (program: Command) => {
+    addCommonOptions(
+        program
+            .command("erc20")
+            .description(
+                "Sends ERC-20 deposits to the application, optionally in interactive mode.",
+            ),
+    )
+        .option("--token <address>", "token address")
+        .option("--amount <number>", "amount to send")
+        .action(async (options) => {
+            // connect to RPC provider
+            const { publicClient, walletClient } = await connect(options);
 
-    private async readToken(
-        publicClient: PublicClient,
-        address: Address,
-    ): Promise<ERC20Token> {
-        const args = { abi: erc20Abi, address };
-        const symbol = await publicClient.readContract({
-            ...args,
-            functionName: "symbol",
+            // get dapp address from local node, or ask
+            const applicationAddress = await getInputApplicationAddress();
+
+            const tokenAddress =
+                options.token && isAddress(options.token)
+                    ? getAddress(options.token)
+                    : ((await input({
+                          message: "Token address",
+                          validate: ercValidator(publicClient),
+                      })) as Address);
+
+            const amount =
+                options.amount || (await input({ message: "Amount" }));
+
+            const { request } = await publicClient.simulateContract({
+                address: erc20PortalAddress,
+                abi: erc20PortalAbi,
+                functionName: "depositERC20Tokens",
+                args: [
+                    tokenAddress,
+                    applicationAddress,
+                    parseEther(amount as `${number}`), // XXX: we need to use the token decimals here!
+                    "0x",
+                ],
+                account: walletClient.account,
+            });
+
+            const hash = await walletClient.writeContract(request);
+            const progress = ora("Sending input...").start();
+            await publicClient.waitForTransactionReceipt({ hash });
+            progress.succeed(`Input sent: ${hash}`);
         });
-        const name = await publicClient.readContract({
-            ...args,
-            functionName: "name",
-        });
-        const decimals = await publicClient.readContract({
-            ...args,
-            functionName: "decimals",
-        });
-        return {
-            name,
-            symbol,
-            decimals,
-        };
-    }
-
-    public async send(
-        publicClient: PublicClient,
-        walletClient: WalletClient,
-    ): Promise<Address> {
-        // get dapp address from local node, or ask
-        const applicationAddress = await super.getApplicationAddress();
-
-        const ercValidator = async (
-            value: string,
-        ): Promise<string | boolean> => {
-            if (!isAddress(value)) {
-                return "Invalid address";
-            }
-            try {
-                await this.readToken(publicClient, value);
-            } catch (e) {
-                return "Invalid token";
-            }
-            return true;
-        };
-
-        const tokenAddress =
-            this.flags.token ||
-            ((await input({
-                message: "Token address",
-                validate: ercValidator,
-            })) as Address);
-
-        const amount =
-            this.flags.amount || (await input({ message: "Amount" }));
-
-        const { request } = await publicClient.simulateContract({
-            address: erc20PortalAddress,
-            abi: erc20PortalAbi,
-            functionName: "depositERC20Tokens",
-            args: [
-                tokenAddress,
-                applicationAddress,
-                parseEther(amount as `${number}`),
-                "0x",
-            ],
-            account: walletClient.account,
-        });
-
-        return walletClient.writeContract(request);
-    }
-}
+};
