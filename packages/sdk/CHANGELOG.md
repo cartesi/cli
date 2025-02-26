@@ -1,5 +1,11 @@
 # sdk
 
+## 0.12.0-alpha.8
+
+### Patch Changes
+
+-   5982c28: fix typo in rollups-graphql migrations path
+
 ## 0.12.0-alpha.7
 
 ### Patch Changes
