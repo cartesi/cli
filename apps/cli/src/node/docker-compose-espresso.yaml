@@ -16,7 +16,7 @@ services:
         environment:
             CARTESI_FEATURE_INPUT_READER_ENABLED: false
     espresso:
-        image: cartesi/sdk:0.12.0-alpha.3
+        image: cartesi/sdk:0.12.0-alpha.8
         command: ["/usr/local/bin/espresso-dev-node"]
         deploy:
             resources:
