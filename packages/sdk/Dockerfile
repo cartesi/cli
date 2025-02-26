@@ -236,5 +236,14 @@ mkdir -p "$GRAPHQL_DEST_FOLDER"
 curl -L "https://github.com/cartesi/rollups-graphql/archive/refs/tags/v${CARTESI_ROLLUPS_GRAPHQL_VERSION}.tar.gz" | tar --wildcards -xz -C ${GRAPHQL_DEST_FOLDER} --strip-components=3 '*/migrations/*.sql'
 EOF
 
+# Get migration files for rollups-espresso-reader
+ARG CARTESI_ESPRESSO_READER_VERSION
+RUN <<EOF
+ESPRESSO_DEST_FOLDER="/usr/share/cartesi/rollups-espresso-reader/migrations"
+
+mkdir -p "$ESPRESSO_DEST_FOLDER"
+curl -L "https://github.com/cartesi/rollups-espresso-reader/archive/refs/tags/v${CARTESI_ESPRESSO_READER_VERSION}.tar.gz" | tar --wildcards -xz -C ${ESPRESSO_DEST_FOLDER} --strip-components=6 '*/migrations/*.sql'
+EOF
+
 WORKDIR /mnt
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
