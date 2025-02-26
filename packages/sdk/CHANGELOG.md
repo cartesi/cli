@@ -1,5 +1,16 @@
 # sdk
 
+## 0.12.0-alpha.7
+
+### Patch Changes
+
+-   ab85cfc: bump rollups-graphql version to v2.3.8
+-   ab85cfc: add rollups-graphql database migration code
+-   2e9ff93: bump base image to debian:bookworm-20250224
+-   ab85cfc: add go migrate package
+-   ab85cfc: add espresso-reader database migration code
+-   0973a11: bump espresso-dev-node to 20241120-patch6
+
 ## 0.12.0-alpha.6
 
 ### Patch Changes
