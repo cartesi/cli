@@ -227,5 +227,14 @@ rm /tmp/migrate.deb
 migrate --version
 EOF
 
+# Get migration files for rollups-graphql
+ARG CARTESI_ROLLUPS_GRAPHQL_VERSION
+RUN <<EOF
+GRAPHQL_DEST_FOLDER="/usr/cartesi/share/rollups-graphql/migrations"
+
+mkdir -p "$GRAPHQL_DEST_FOLDER"
+curl -L "https://github.com/cartesi/rollups-graphql/archive/refs/tags/v${CARTESI_ROLLUPS_GRAPHQL_VERSION}.tar.gz" | tar --wildcards -xz -C ${GRAPHQL_DEST_FOLDER} --strip-components=3 '*/migrations/*.sql'
+EOF
+
 WORKDIR /mnt
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
