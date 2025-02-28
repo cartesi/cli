@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 import { Command } from "@commander-js/extra-typings";
-import { version } from "../package.json";
 import { registerAddressBookCommand } from "./commands/address-book.js";
 import { registerBuildCommand } from "./commands/build.js";
 import { registerCleanCommand } from "./commands/clean.js";
@@ -23,8 +22,10 @@ const splash = String.raw`         .
         \ /   CLI
          '`;
 
-const program = new Command();
-program.name("cartesi").version(version).addHelpText("before", splash);
+const program = new Command()
+    .name("cartesi")
+    //    .version(version)
+    .addHelpText("before", splash);
 
 registerAddressBookCommand(program);
 registerBuildCommand(program);
