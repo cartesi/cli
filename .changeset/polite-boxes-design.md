@@ -2,4 +2,4 @@
 "@cartesi/cli": patch
 ---
 
-migrati away from oclif to commander
+migrate away from oclif to commander
