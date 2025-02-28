@@ -80,6 +80,7 @@ export const registerRunCommand = (program: Command) => {
                 disableBundler,
                 disablePaymaster,
                 enableEspresso,
+                disableGraphql,
                 backend,
                 verbose,
                 port,
@@ -172,7 +173,7 @@ export const registerRunCommand = (program: Command) => {
                 }
 
                 // graphql
-                if (!disableExplorer) {
+                if (!disableGraphql) {
                     composeFiles.push("docker-compose-graphql.yaml");
                 }
 
