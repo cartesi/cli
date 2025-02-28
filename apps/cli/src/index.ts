@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { Command } from "@commander-js/extra-typings";
+import { createRequire } from "node:module";
 import { registerAddressBookCommand } from "./commands/address-book.js";
 import { registerBuildCommand } from "./commands/build.js";
 import { registerCleanCommand } from "./commands/clean.js";
@@ -11,6 +12,10 @@ import { registerHashCommand } from "./commands/hash.js";
 import { registerRunCommand } from "./commands/run.js";
 import { registerSendCommand } from "./commands/send.js";
 import { registerShellCommand } from "./commands/shell.js";
+
+// Use `createRequire` to import JSON in ESM
+const require = createRequire(import.meta.url);
+const pkg = require("../package.json");
 
 const splash = String.raw`         .
         / \
@@ -24,7 +29,7 @@ const splash = String.raw`         .
 
 const program = new Command()
     .name("cartesi")
-    //    .version(version)
+    .version(pkg.version)
     .addHelpText("before", splash);
 
 registerAddressBookCommand(program);
