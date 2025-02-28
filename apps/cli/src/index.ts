@@ -43,4 +43,15 @@ registerRunCommand(program);
 registerSendCommand(program);
 registerShellCommand(program);
 
+// Global error handling
+process.on("uncaughtException", (err) => {
+    if (process.env.NODE_ENV === "development") {
+        console.error(err);
+    } else {
+        // in production, only print the error message, not the stack trace
+        console.error(err.message);
+    }
+    process.exit(1);
+});
+
 program.parse();
