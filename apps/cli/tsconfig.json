@@ -3,9 +3,11 @@
     "include": ["**/*.ts"],
     "exclude": ["node_modules"],
     "compilerOptions": {
-        "module": "ES2020",
+        "esModuleInterop": true,
+        "module": "ESNext",
         "importHelpers": true,
         "outDir": "dist",
+        "resolveJsonModule": true,
         "target": "es2020"
     },
     "ts-node": {

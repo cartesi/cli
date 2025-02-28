@@ -1,14 +1,12 @@
+import { Command } from "@commander-js/extra-typings";
 import fs from "fs-extra";
-import { BaseCommand } from "../baseCommand.js";
+import { getContextPath } from "../base.js";
 
-export default class Clean extends BaseCommand<typeof Clean> {
-    static summary = "Clean build artifacts of application.";
-
-    static description = "Deletes all cached build artifacts of application.";
-
-    static examples = ["<%= config.bin %> <%= command.id %>"];
-
-    public async run(): Promise<void> {
-        await fs.emptyDir(this.getContextPath());
-    }
-}
+export const registerCleanCommand = (program: Command) => {
+    program
+        .command("clean")
+        .description("Deletes all cached build artifacts of application.")
+        .action(async () => {
+            await fs.emptyDir(getContextPath());
+        });
+};
