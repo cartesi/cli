@@ -1,13 +1,16 @@
 import { Command } from "@commander-js/extra-typings";
+import chalk from "chalk";
 import { execa } from "execa";
+import ora, { Ora } from "ora";
 import semver from "semver";
 
 const MINIMUM_DOCKER_VERSION = "23.0.0"; // Replace with our minimum required Docker version
 const MINIMUM_DOCKER_COMPOSE_VERSION = "2.21.0"; // Replace with our minimum required Docker Compose version
 const MINIMUM_BUILDX_VERSION = "0.13.0"; // Replace with our minimum required Buildx version
 
-const checkDocker = async (): Promise<true | never> => {
+const checkDocker = async (progress: Ora): Promise<true | never> => {
     try {
+        progress.start("Checking Docker Engine version...");
         const { stdout: dockerVersion } = await execa("docker", [
             "version",
             "--format",
@@ -20,6 +23,7 @@ const checkDocker = async (): Promise<true | never> => {
                 `Unsupported Docker version. Minimum required version is ${MINIMUM_DOCKER_VERSION}. Installed version is ${v}.`,
             );
         }
+        progress.succeed(`Docker Engine ${chalk.cyan(v)}`);
     } catch (e: unknown) {
         if (
             e instanceof Error &&
@@ -34,8 +38,9 @@ const checkDocker = async (): Promise<true | never> => {
     return true;
 };
 
-const checkCompose = async (): Promise<true | never> => {
+const checkCompose = async (progress: Ora): Promise<true | never> => {
     try {
+        progress.start("Checking Docker Compose version...");
         const { stdout: dockerComposeVersion } = await execa("docker", [
             "compose",
             "version",
@@ -48,6 +53,7 @@ const checkCompose = async (): Promise<true | never> => {
                 `Unsupported Docker Compose version. Minimum required version is ${MINIMUM_DOCKER_COMPOSE_VERSION}. Installed version is ${v}.`,
             );
         }
+        progress.succeed(`Docker Compose ${chalk.cyan(dockerComposeVersion)}`);
     } catch (e: unknown) {
         if (
             e instanceof Error &&
@@ -64,8 +70,9 @@ const checkCompose = async (): Promise<true | never> => {
     return true;
 };
 
-const checkBuildx = async (): Promise<true | never> => {
+const checkBuildx = async (progress: Ora): Promise<true | never> => {
     try {
+        progress.start("Checking Docker Buildx version...");
         const { stdout: buildxOutput } = await execa("docker", [
             "buildx",
             "version",
@@ -77,7 +84,9 @@ const checkBuildx = async (): Promise<true | never> => {
                 `Unsupported Docker Buildx version. Minimum required version is ${MINIMUM_BUILDX_VERSION}. Installed version is ${v}.`,
             );
         }
+        progress.succeed(`Docker Buildx ${chalk.cyan(v)}`);
 
+        progress.start("Checking Docker RISC-V support...");
         const { stdout: platformsOutput } = await execa("docker", [
             "buildx",
             "ls",
@@ -94,6 +103,9 @@ const checkBuildx = async (): Promise<true | never> => {
                 "Your system does not support riscv64 architecture. Run `docker run --privileged --rm tonistiigi/binfmt:riscv` to enable riscv64 support.",
             );
         }
+        progress.succeed(
+            `Docker RISC-V support ${chalk.cyan("linux/riscv64")}`,
+        );
     } catch (e: unknown) {
         if (
             e instanceof Error &&
@@ -111,16 +123,16 @@ const checkBuildx = async (): Promise<true | never> => {
 };
 
 export const registerDoctorCommand = (program: Command) => {
-    program.command("doctor").action(async (_, command) => {
+    program.command("doctor").action(async () => {
+        const progress = ora();
         try {
-            if (await checkDocker()) {
-                await checkCompose();
-                await checkBuildx();
-            }
+            await checkDocker(progress);
+            await checkCompose(progress);
+            await checkBuildx(progress);
+            progress.succeed("Your system is ready.");
         } catch (e: unknown) {
-            command.error((e as Error).message);
+            progress.fail((e as Error).message);
+            process.exit(1);
         }
-
-        console.log("Your system is ready.");
     });
 };
