@@ -1,5 +1,11 @@
 # sdk
 
+## 0.12.0-alpha.9
+
+### Patch Changes
+
+-   2aef692: bump rollups-espresso-reader to 0.2.3-node-20250128
+
 ## 0.12.0-alpha.8
 
 ### Patch Changes
