@@ -8,6 +8,7 @@ services:
         restart: "no"
         env_file:
             - ${CARTESI_BIN_PATH}/compose/rollups/default.env
+
     rollups-node:
         image: cartesi/rollups-node:devel
         depends_on:
