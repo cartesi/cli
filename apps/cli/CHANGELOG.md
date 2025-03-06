@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0-alpha.5
+
+### Patch Changes
+
+-   18d2b36: migrate away from oclif to commander
+
 ## 2.0.0-alpha.4
 
 ### Minor Changes
