@@ -114,7 +114,6 @@ export const createGenericCommand = () => {
         .option("--input-abi-params <input-abi-params>", "input abi params")
         .action(async (options, command) => {
             const sendOptions = command.optsWithGlobals();
-            console.log(sendOptions, options);
 
             // connect to RPC provider
             const { publicClient, walletClient } = await connect(sendOptions);
