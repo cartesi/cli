@@ -3,18 +3,15 @@ import chalk from "chalk";
 import Table from "cli-table3";
 import { getServiceState } from "../../base.js";
 import { getDeployments } from "../../exec/rollups.js";
+import { RollupsCommandOpts } from "../rollups.js";
 
-export const registerStatusCommand = (program: Command) => {
-    program
-        .command("status")
+export const createStatusCommand = () => {
+    return new Command<[], {}, RollupsCommandOpts>("status")
         .description("Shows the status of a local rollups node environment.")
-        .option(
-            "--project-name <string>",
-            "name of environment",
-            "cartesi-rollups",
-        )
+        .configureHelp({ showGlobalOptions: true })
         .option("--json", "output in JSON format")
-        .action(async ({ json, projectName }) => {
+        .action(async ({ json }, command) => {
+            const { projectName } = command.optsWithGlobals();
             const status = await getServiceState(projectName, "rollups-node");
             const deployments = await getDeployments({ projectName });
 

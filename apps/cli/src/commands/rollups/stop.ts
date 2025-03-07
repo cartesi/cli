@@ -2,17 +2,14 @@ import { Command } from "@commander-js/extra-typings";
 import chalk from "chalk";
 import { execa } from "execa";
 import ora from "ora";
+import { RollupsCommandOpts } from "../rollups";
 
-export const registerStopCommand = (program: Command) => {
-    program
-        .command("stop")
+export const createStopCommand = () => {
+    return new Command<[], {}, RollupsCommandOpts>("stop")
         .description("Stop a local rollups node environment.")
-        .option(
-            "--project-name <project-name>",
-            "Project name",
-            "cartesi-rollups",
-        )
-        .action(async ({ projectName }) => {
+        .configureHelp({ showGlobalOptions: true })
+        .action(async (_options, command) => {
+            const { projectName } = command.optsWithGlobals();
             const progress = ora(
                 `Stopping ${chalk.cyan(projectName)} environment...`,
             ).start();

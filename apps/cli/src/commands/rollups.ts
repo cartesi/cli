@@ -1,17 +1,26 @@
 import { Command } from "@commander-js/extra-typings";
-import { registerDeployCommand } from "./rollups/deploy.js";
-import { registerStartCommand } from "./rollups/start.js";
-import { registerStatusCommand } from "./rollups/status.js";
-import { registerStopCommand } from "./rollups/stop.js";
+import { createDeployCommand } from "./rollups/deploy.js";
+import { createStartCommand } from "./rollups/start.js";
+import { createStatusCommand } from "./rollups/status.js";
+import { createStopCommand } from "./rollups/stop.js";
 
-export const registerRollupsCommand = (program: Command) => {
-    const rollupsCommand = program
-        .command("rollups")
+export const createRollupsCommand = () => {
+    const command = new Command("rollups")
+        .option(
+            "--project-name <string>",
+            "name of environment",
+            "cartesi-rollups",
+        )
         .action(async (_options, program) => {
             program.help();
         });
-    registerStartCommand(rollupsCommand);
-    registerStatusCommand(rollupsCommand);
-    registerStopCommand(rollupsCommand);
-    registerDeployCommand(rollupsCommand);
+    command.addCommand(createStartCommand());
+    command.addCommand(createStatusCommand());
+    command.addCommand(createStopCommand());
+    command.addCommand(createDeployCommand());
+    return command;
 };
+
+export type RollupsCommandOpts = ReturnType<
+    ReturnType<typeof createRollupsCommand>["opts"]
+>;

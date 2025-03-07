@@ -1,10 +1,9 @@
 import { Command } from "@commander-js/extra-typings";
 import chalk from "chalk";
-import { registerBuildCommand } from "./deploy/build.js";
+import { createBuildCommand } from "./deploy/build.js";
 
-export const registerDeployCommand = (program: Command) => {
-    const deployCommand = program
-        .command("deploy", { hidden: true })
+export const createDeployCommand = () => {
+    const command = new Command("deploy")
         .description(
             "DEPRECATED: Package and deploy the application to a supported live network.",
         )
@@ -15,5 +14,6 @@ export const registerDeployCommand = (program: Command) => {
                 ),
             );
         });
-    registerBuildCommand(deployCommand);
+    command.addCommand(createBuildCommand(), { hidden: true });
+    return command;
 };

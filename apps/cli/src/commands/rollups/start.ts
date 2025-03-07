@@ -2,6 +2,7 @@ import { Command, Option } from "@commander-js/extra-typings";
 import chalk from "chalk";
 import { execa } from "execa";
 import path from "path";
+import { RollupsCommandOpts } from "../rollups.js";
 
 const commaSeparatedList = (value: string, _previous: string[]) =>
     value.split(",");
@@ -14,9 +15,10 @@ const availableServices = [
     "paymaster",
 ];
 
-export const registerStartCommand = (program: Command) => {
-    program
-        .command("start")
+export const createStartCommand = () => {
+    return new Command<[], {}, RollupsCommandOpts>("start")
+        .description("Start a local rollups node environment.")
+        .configureHelp({ showGlobalOptions: true })
         .addOption(
             new Option(
                 "--block-time <number>",
@@ -46,11 +48,6 @@ export const registerStartCommand = (program: Command) => {
             ).argParser(Number),
         )
         .option(
-            "--project-name <string>",
-            "name of environment",
-            "cartesi-rollups",
-        )
-        .option(
             "--services <string>",
             `optional services to start, comma separated list from [${availableServices.join(", ")}]`,
             commaSeparatedList,
@@ -60,8 +57,8 @@ export const registerStartCommand = (program: Command) => {
         .option("-d, --detach", "run in detached mode", false)
         .option("--dry-run", "show the docker compose configuration", false)
         .option("-v, --verbose", "verbose output", false)
-        .description("Start a local rollups node environment.")
-        .action(async (options) => {
+        .action(async (options, command) => {
+            const { projectName } = command.optsWithGlobals();
             const {
                 blockTime,
                 cpus,
@@ -70,7 +67,6 @@ export const registerStartCommand = (program: Command) => {
                 dryRun,
                 memory,
                 port,
-                projectName,
                 services,
                 verbose,
             } = options;

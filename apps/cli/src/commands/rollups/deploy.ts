@@ -18,6 +18,7 @@ import {
     authorityFactoryAddress,
 } from "../../contracts.js";
 import { addressInput } from "../../prompts.js";
+import { RollupsCommandOpts } from "../rollups.js";
 import { connect } from "../send.js";
 
 /**
@@ -218,10 +219,10 @@ const registerApplication = async (options: {
     return name;
 };
 
-export const registerDeployCommand = (program: Command) => {
-    program
-        .command("deploy")
+export const createDeployCommand = () => {
+    return new Command<[], {}, RollupsCommandOpts>("deploy")
         .description("Deploy a rollups application to a rollups node.")
+        .configureHelp({ showGlobalOptions: true })
         .option("--chain-id <id>", "Chain ID", parseInt, 31337)
         .option("--rpc-url <url>", "RPC URL")
         .option("--mnemonic <phrase>", "Mnemonic passphrase")
@@ -230,11 +231,6 @@ export const registerDeployCommand = (program: Command) => {
             "Mnemonic account index",
             parseInt,
             0,
-        )
-        .option(
-            "--project-name <string>",
-            "name of environment",
-            "cartesi-rollups",
         )
         .option("--name <string>", "application name")
         .option(
@@ -260,7 +256,9 @@ export const registerDeployCommand = (program: Command) => {
         .option("--salt <hash>", "salt for deployment", parseHash, zeroHash)
         .option("--json", "output in JSON format")
         .action(async (options, command) => {
-            const { json, projectName } = options;
+            const rollupsOptions = command.optsWithGlobals();
+            const { projectName } = rollupsOptions;
+            const { json } = options;
             // XXX: json support is not implemented yet
             // if case of json maybe we should not support interactive mode
 
@@ -310,6 +308,7 @@ export const registerDeployCommand = (program: Command) => {
                         progress,
                         snapshotPath: containerSnapshotPath,
                         ...options,
+                        ...rollupsOptions,
                     });
                 } else {
                     const snapshotPath = getContextPath("image");

@@ -38,9 +38,8 @@ const buildDrive = async (
     }
 };
 
-export const registerBuildCommand = (program: Command) => {
-    program
-        .command("build")
+export const createBuildCommand = () => {
+    return new Command("build")
         .description(
             "Build application by building Cartesi machine drives, configuring a machine and booting it.",
         )

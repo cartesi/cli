@@ -1,9 +1,8 @@
 import { Command } from "@commander-js/extra-typings";
 import chalk from "chalk";
 
-export const registerBuildCommand = (program: Command) => {
-    program
-        .command("build", { hidden: true })
+export const createBuildCommand = () => {
+    return new Command("build")
         .description(
             "DEPRECATED: Package the application in a Docker image ready to be deployed.",
         )
