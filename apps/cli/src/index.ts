@@ -11,7 +11,7 @@ import { registerDoctorCommand } from "./commands/doctor.js";
 import { registerHashCommand } from "./commands/hash.js";
 import { registerRollupsCommand } from "./commands/rollups.js";
 import { registerRunCommand } from "./commands/run.js";
-import { registerSendCommand } from "./commands/send.js";
+import { createSendCommand } from "./commands/send.js";
 import { registerShellCommand } from "./commands/shell.js";
 
 // Use `createRequire` to import JSON in ESM
@@ -42,7 +42,7 @@ registerDoctorCommand(program);
 registerHashCommand(program);
 registerRollupsCommand(program);
 registerRunCommand(program);
-registerSendCommand(program);
+program.addCommand(createSendCommand());
 registerShellCommand(program);
 
 // Global error handling

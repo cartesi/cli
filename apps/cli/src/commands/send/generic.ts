@@ -11,9 +11,9 @@ import {
 import { inputBoxAbi, inputBoxAddress } from "../../contracts.js";
 import { bytesInput } from "../../prompts.js";
 import {
-    addCommonOptions,
     connect,
     getInputApplicationAddress,
+    SendCommandOpts,
 } from "../send.js";
 
 const getInput = async (options: {
@@ -98,14 +98,12 @@ const getInput = async (options: {
     return undefined;
 };
 
-export const registerGenericCommand = (program: Command) => {
-    addCommonOptions(
-        program
-            .command("generic")
-            .description(
-                "Sends generics inputs to the application, optionally in interactive mode.",
-            ),
-    )
+export const createGenericCommand = () => {
+    return new Command<[], {}, SendCommandOpts>("generic")
+        .description(
+            "Sends generics inputs to the application, optionally in interactive mode.",
+        )
+        .configureHelp({ showGlobalOptions: true })
         .option("--input <input>", "input payload")
         .addOption(
             new Option(
@@ -114,13 +112,16 @@ export const registerGenericCommand = (program: Command) => {
             ).choices(["hex", "string", "abi"]),
         )
         .option("--input-abi-params <input-abi-params>", "input abi params")
-        .action(async (options) => {
+        .action(async (options, command) => {
+            const sendOptions = command.optsWithGlobals();
+            console.log(sendOptions, options);
+
             // connect to RPC provider
-            const { publicClient, walletClient } = await connect(options);
+            const { publicClient, walletClient } = await connect(sendOptions);
 
             // get dapp address from local node, or ask
             const applicationAddress = await getInputApplicationAddress(
-                options.dapp,
+                sendOptions.dapp,
             );
 
             const payload =

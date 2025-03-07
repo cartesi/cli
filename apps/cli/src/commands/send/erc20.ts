@@ -11,9 +11,9 @@ import {
 } from "viem";
 import { erc20PortalAbi, erc20PortalAddress } from "../../contracts.js";
 import {
-    addCommonOptions,
     connect,
     getInputApplicationAddress,
+    SendCommandOpts,
 } from "../send.js";
 
 type ERC20Token = {
@@ -60,23 +60,23 @@ const ercValidator =
         return true;
     };
 
-export const registerErc20Command = (program: Command) => {
-    addCommonOptions(
-        program
-            .command("erc20")
-            .description(
-                "Sends ERC-20 deposits to the application, optionally in interactive mode.",
-            ),
-    )
+export const createErc20Command = () => {
+    return new Command<[], {}, SendCommandOpts>("erc20")
+        .description(
+            "Sends ERC-20 deposits to the application, optionally in interactive mode.",
+        )
+        .configureHelp({ showGlobalOptions: true })
         .option("--token <address>", "token address")
         .option("--amount <number>", "amount to send")
-        .action(async (options) => {
+        .action(async (options, command) => {
+            const sendOptions = command.optsWithGlobals();
+
             // connect to RPC provider
-            const { publicClient, walletClient } = await connect(options);
+            const { publicClient, walletClient } = await connect(sendOptions);
 
             // get dapp address from local node, or ask
             const applicationAddress = await getInputApplicationAddress(
-                options.dapp,
+                sendOptions.dapp,
             );
 
             const tokenAddress =

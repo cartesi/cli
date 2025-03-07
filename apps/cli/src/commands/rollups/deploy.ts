@@ -18,7 +18,7 @@ import {
     authorityFactoryAddress,
 } from "../../contracts.js";
 import { addressInput } from "../../prompts.js";
-import { addConnectOptions, connect } from "../send.js";
+import { connect } from "../send.js";
 
 /**
  * Deploy authority contract (if not already deployed)
@@ -219,11 +219,18 @@ const registerApplication = async (options: {
 };
 
 export const registerDeployCommand = (program: Command) => {
-    addConnectOptions(
-        program
-            .command("deploy")
-            .description("Deploy a rollups application to a rollups node."),
-    )
+    program
+        .command("deploy")
+        .description("Deploy a rollups application to a rollups node.")
+        .option("--chain-id <id>", "Chain ID", parseInt, 31337)
+        .option("--rpc-url <url>", "RPC URL")
+        .option("--mnemonic <phrase>", "Mnemonic passphrase")
+        .option(
+            "--mnemonic-index <index>",
+            "Mnemonic account index",
+            parseInt,
+            0,
+        )
         .option(
             "--project-name <string>",
             "name of environment",
