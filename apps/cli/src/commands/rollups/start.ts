@@ -6,43 +6,18 @@ import pRetry from "p-retry";
 import path from "path";
 import { getServiceHealth } from "../../base.js";
 import { DEFAULT_SDK_IMAGE, DEFAULT_SDK_VERSION } from "../../config.js";
+import {
+    Service,
+    baseServices,
+    commaSeparatedList,
+    host,
+} from "../../service.js";
 import { RollupsCommandOpts } from "../rollups.js";
 
-const commaSeparatedList = (value: string) => value.split(",");
-
-type Service = {
-    name: string; // name of the service
-    file: string; // docker compose file name
-    healthySemaphore?: string; // service to check if the service is healthy
-    healthyTitle?: string | ((port: number) => string); // title of the service when it is healthy
-    waitTitle?: string; // title of the service when it is starting
-    errorTitle?: string; // title of the service when it is not healthy
-};
-
-const host = "http://127.0.0.1";
-
-// services configuration
-const baseServices: Service[] = [
-    {
-        name: "anvil",
-        file: "docker-compose-anvil.yaml",
-        healthySemaphore: "anvil",
-        healthyTitle: (port) =>
-            `${chalk.cyan("anvil")} service ready at ${chalk.cyan(`${host}:${port}/anvil`)}`,
-        waitTitle: `${chalk.cyan("anvil")} service starting...`,
-        errorTitle: `${chalk.red("anvil")} service failed`,
-    },
-    {
-        name: "proxy",
-        file: "docker-compose-proxy.yaml",
-    },
-    {
-        name: "database",
-        file: "docker-compose-database.yaml",
-    },
+const rollupsServices: Service[] = [
     {
         name: "rpc",
-        file: "docker-compose-node.yaml",
+        file: "rollups/docker-compose-node.yaml",
         healthySemaphore: "rollups-node",
         healthyTitle: (port) =>
             `${chalk.cyan("rpc")} service ready at ${chalk.cyan(`${host}:${port}/rpc`)}`,
@@ -51,7 +26,7 @@ const baseServices: Service[] = [
     },
     {
         name: "inspect",
-        file: "docker-compose-node.yaml",
+        file: "rollups/docker-compose-node.yaml",
         healthySemaphore: "rollups-node",
         healthyTitle: (port) =>
             `${chalk.cyan("inspect")} service ready at ${chalk.cyan(`${host}:${port}/inspect/<application_address>`)}`,
@@ -63,7 +38,7 @@ const baseServices: Service[] = [
 const availableServices: Service[] = [
     {
         name: "bundler",
-        file: "docker-compose-bundler.yaml",
+        file: "rollups/docker-compose-bundler.yaml",
         healthySemaphore: "bundler",
         healthyTitle: (port) =>
             `${chalk.cyan("bundler")} service ready at ${chalk.cyan(`${host}:${port}/bundler/rpc`)}`,
@@ -72,7 +47,7 @@ const availableServices: Service[] = [
     },
     {
         name: "espresso",
-        file: "docker-compose-espresso.yaml",
+        file: "rollups/docker-compose-espresso.yaml",
         healthySemaphore: "espresso",
         healthyTitle: (port) =>
             `${chalk.cyan("espresso")} service ready at ${chalk.cyan(`${host}:${port}/transaction`)}`,
@@ -81,7 +56,7 @@ const availableServices: Service[] = [
     },
     {
         name: "explorer",
-        file: "docker-compose-explorer.yaml",
+        file: "rollups/docker-compose-explorer.yaml",
         healthySemaphore: "explorer_api",
         healthyTitle: (port) =>
             `${chalk.cyan("explorer")} service ready at ${chalk.cyan(`${host}:${port}/explorer`)}`,
@@ -90,7 +65,7 @@ const availableServices: Service[] = [
     },
     {
         name: "graphql",
-        file: "docker-compose-graphql.yaml",
+        file: "rollups/docker-compose-graphql.yaml",
         healthySemaphore: "graphql",
         healthyTitle: (port) =>
             `${chalk.cyan("graphql")} service ready at ${chalk.cyan(`${host}:${port}/graphql`)}`,
@@ -99,7 +74,7 @@ const availableServices: Service[] = [
     },
     {
         name: "paymaster",
-        file: "docker-compose-paymaster.yaml",
+        file: "rollups/docker-compose-paymaster.yaml",
         healthySemaphore: "paymaster",
         healthyTitle: (port) =>
             `${chalk.cyan("paymaster")} service ready at ${chalk.cyan(`${host}:${port}/paymaster`)}`,
@@ -213,14 +188,15 @@ export const createStartCommand = () => {
             // build a list of unique compose files
             const composeFiles = [
                 ...new Set(baseServices.map(({ file }) => file)),
+                ...new Set(rollupsServices.map(({ file }) => file)),
             ];
 
             // cpu and memory limits, mostly for testing and debuggingpurposes
             if (cpus) {
-                composeFiles.push("docker-compose-node-cpus.yaml");
+                composeFiles.push("rollups/docker-compose-node-cpus.yaml");
             }
             if (memory) {
-                composeFiles.push("docker-compose-node-memory.yaml");
+                composeFiles.push("rollups/docker-compose-node-memory.yaml");
             }
 
             // select subset of optional services
@@ -234,12 +210,20 @@ export const createStartCommand = () => {
             // add to compose files list
             composeFiles.push(...optionalServices.map(({ file }) => file));
 
+            // validate services and add to compose files
+            for (const service of optionalServices) {
+                if (!availableServices.includes(service)) {
+                    throw new Error(
+                        `Service ${chalk.cyan(service)} not available`,
+                    );
+                } else {
+                    composeFiles.push(`rollups/docker-compose-${service}.yaml`);
+                }
+            }
+
             // create the "--file <file>" list
             const files = composeFiles
-                .map((f) => [
-                    "--file",
-                    path.join(binPath, "compose", "rollups", f),
-                ])
+                .map((f) => ["--file", path.join(binPath, "compose", f)])
                 .flat();
 
             const composeArgs = [
@@ -279,7 +263,7 @@ export const createStartCommand = () => {
                 });
 
                 // create tasks to monitor services startup
-                const monitorTasks = [...baseServices, ...optionalServices]
+                const monitorTasks = [...rollupsServices, ...optionalServices]
                     .filter(({ healthySemaphore }) => !!healthySemaphore) // only services with a healthy semaphore
                     .map((service) => {
                         const healthyTitle =
