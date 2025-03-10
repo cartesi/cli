@@ -1,0 +1,12 @@
+services:
+    operator:
+        deploy:
+            resources:
+                limits:
+                    memory: "${CARTESI_COPROCESSOR_NODE_MEMORY}M"
+
+    solver:
+        deploy:
+            resources:
+                limits:
+                    memory: "${CARTESI_COPROCESSOR_NODE_MEMORY}M"

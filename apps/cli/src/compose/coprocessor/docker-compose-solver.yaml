@@ -1,0 +1,15 @@
+services:
+    solver:
+        image: ghcr.io/zippiehq/cartesi-coprocessor-solver:latest
+        container_name: cartesi-coprocessor-solver
+        ports:
+            - 127.0.0.1:3034:3034
+        depends_on:
+            anvil:
+                condition: service_healthy
+            setup-operator:
+                condition: service_completed_successfully
+        volumes:
+            - ./config-devnet.toml:/cartesi-coprocessor-solver/config.toml
+        environment:
+            RUST_LOG: ${CARTESI_LOG_LEVEL:-info}

@@ -1,0 +1,40 @@
+services:
+    setup-operator:
+        image: ghcr.io/zippiehq/cartesi-coprocessor-operator:latest
+        depends_on:
+            anvil:
+                condition: service_healthy
+        volumes:
+            - ./contracts/script/output/coprocessor_deployment_output_devnet.json:/operator/contracts/script/output/coprocessor_deployment_output_devnet.json
+            - ./contracts/script/input/deployment_parameters_devnet.json:/operator/contracts/script/input/deployment_parameters_devnet.json
+        environment:
+            OPERATOR_BLS_KEY: ${OPERATOR_BLS_KEY:-13219903133444082589215719304558031505888625714969126489655808257015621956774}
+        command:
+            - bash
+            - -c
+            - |
+                /operator/setup-operator                                                                                \
+                    --avs-registry-writer-addresses contracts/script/output/coprocessor_deployment_output_devnet.json   \
+                    --chain-writer-reader-addresses contracts/script/input/deployment_parameters_devnet.json            \
+                    --http-endpoint http://anvil:8545                                                                   \
+                    --operator-private-key 0xc276a0e2815b89e9a3d8b64cb5d745d5b4f6b84531306c97aad82156000a7dd7           \
+                    --socket http://operator:3033"
+
+    operator:
+        image: ghcr.io/zippiehq/cartesi-coprocessor-operator:latest
+        ports:
+            - 127.0.0.1:3033:3033
+            - 127.0.0.1:5001:5001
+        depends_on:
+            anvil:
+                condition: service_healthy
+            setup-operator:
+                condition: service_completed_successfully
+        volumes:
+            - ./operator1-data:/operator-snapshots
+        environment:
+            ALWAYS_CONSOLE_PUTCHAR: true
+            BLS_PRIVATE_KEY: ${OPERATOR_BLS_KEY:-13219903133444082589215719304558031505888625714969126489655808257015621956774}
+            IPFS_DAEMON_OFFLINE: ${IPFS_DAEMON_ONLINE-true}
+            LLAMA_SERVER: http://llama-server:8080
+            SNAPSHOT_DIR: /operator-snapshots

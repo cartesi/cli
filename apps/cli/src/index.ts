@@ -5,6 +5,7 @@ import { createRequire } from "node:module";
 import { createAddressBookCommand } from "./commands/address-book.js";
 import { createBuildCommand } from "./commands/build.js";
 import { createCleanCommand } from "./commands/clean.js";
+import { createCoprocessorCommand } from "./commands/coprocessor.js";
 import { createCreateCommand } from "./commands/create.js";
 import { createDeployCommand } from "./commands/deploy.js";
 import { createDoctorCommand } from "./commands/doctor.js";
@@ -36,6 +37,7 @@ const program = new Command()
     .addCommand(createAddressBookCommand())
     .addCommand(createBuildCommand())
     .addCommand(createCleanCommand())
+    .addCommand(createCoprocessorCommand())
     .addCommand(createCreateCommand())
     .addCommand(createDeployCommand(), { hidden: true })
     .addCommand(createDoctorCommand())

@@ -1,0 +1,11 @@
+services:
+    operator:
+        deploy:
+            resources:
+                limits:
+                    cpus: "${CARTESI_COPROCESSOR_NODE_CPUS}"
+    solver:
+        deploy:
+            resources:
+                limits:
+                    cpus: "${CARTESI_COPROCESSOR_NODE_CPUS}"
