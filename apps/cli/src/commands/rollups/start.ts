@@ -234,6 +234,17 @@ export const createStartCommand = () => {
             // add to compose files list
             composeFiles.push(...optionalServices.map(({ file }) => file));
 
+            // validate services and add to compose files
+            for (const service of optionalServices) {
+                if (!availableServices.includes(service)) {
+                    throw new Error(
+                        `Service ${chalk.cyan(service)} not available`,
+                    );
+                } else {
+                    composeFiles.push(`rollups/docker-compose-${service}.yaml`);
+                }
+            }
+
             // create the "--file <file>" list
             const files = composeFiles
                 .map((f) => ["--file", path.join(binPath, "compose", f)])
