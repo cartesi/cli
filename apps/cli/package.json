@@ -73,7 +73,7 @@
         "codegen:wagmi": "wagmi generate",
         "compile": "tsc -p tsconfig.build.json",
         "postcompile": "chmod +x dist/index.js",
-        "copy-files": "copyfiles -u 1 \"src/**/*.yaml\" \"src/**/*.env\" \"src/**/*.txt\" dist",
+        "copy-files": "copyfiles -u 1 \"src/**/*.yaml\" \"src/**/*.env\" \"src/**/*.txt\" \"src/**/*.toml\" \"src/**/*.json\" dist",
         "lint": "eslint \"src/**/*.ts*\"",
         "posttest": "pnpm lint",
         "test": "vitest"
