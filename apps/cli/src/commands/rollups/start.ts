@@ -25,7 +25,7 @@ const host = "http://127.0.0.1";
 const baseServices: Service[] = [
     {
         name: "anvil",
-        file: "docker-compose-anvil.yaml",
+        file: "rollups/docker-compose-anvil.yaml",
         healthySemaphore: "anvil",
         healthyTitle: (port) =>
             `${chalk.cyan("anvil")} service ready at ${chalk.cyan(`${host}:${port}/anvil`)}`,
@@ -34,15 +34,15 @@ const baseServices: Service[] = [
     },
     {
         name: "proxy",
-        file: "docker-compose-proxy.yaml",
+        file: "rollups/docker-compose-proxy.yaml",
     },
     {
         name: "database",
-        file: "docker-compose-database.yaml",
+        file: "rollups/docker-compose-database.yaml",
     },
     {
         name: "rpc",
-        file: "docker-compose-node.yaml",
+        file: "rollups/docker-compose-node.yaml",
         healthySemaphore: "rollups-node",
         healthyTitle: (port) =>
             `${chalk.cyan("rpc")} service ready at ${chalk.cyan(`${host}:${port}/rpc`)}`,
@@ -51,7 +51,7 @@ const baseServices: Service[] = [
     },
     {
         name: "inspect",
-        file: "docker-compose-node.yaml",
+        file: "rollups/docker-compose-node.yaml",
         healthySemaphore: "rollups-node",
         healthyTitle: (port) =>
             `${chalk.cyan("inspect")} service ready at ${chalk.cyan(`${host}:${port}/inspect/<application_address>`)}`,
@@ -63,7 +63,7 @@ const baseServices: Service[] = [
 const availableServices: Service[] = [
     {
         name: "bundler",
-        file: "docker-compose-bundler.yaml",
+        file: "rollups/docker-compose-bundler.yaml",
         healthySemaphore: "bundler",
         healthyTitle: (port) =>
             `${chalk.cyan("bundler")} service ready at ${chalk.cyan(`${host}:${port}/bundler/rpc`)}`,
@@ -72,7 +72,7 @@ const availableServices: Service[] = [
     },
     {
         name: "espresso",
-        file: "docker-compose-espresso.yaml",
+        file: "rollups/docker-compose-espresso.yaml",
         healthySemaphore: "espresso",
         healthyTitle: (port) =>
             `${chalk.cyan("espresso")} service ready at ${chalk.cyan(`${host}:${port}/transaction`)}`,
@@ -81,7 +81,7 @@ const availableServices: Service[] = [
     },
     {
         name: "explorer",
-        file: "docker-compose-explorer.yaml",
+        file: "rollups/docker-compose-explorer.yaml",
         healthySemaphore: "explorer_api",
         healthyTitle: (port) =>
             `${chalk.cyan("explorer")} service ready at ${chalk.cyan(`${host}:${port}/explorer`)}`,
@@ -90,7 +90,7 @@ const availableServices: Service[] = [
     },
     {
         name: "graphql",
-        file: "docker-compose-graphql.yaml",
+        file: "rollups/docker-compose-graphql.yaml",
         healthySemaphore: "graphql",
         healthyTitle: (port) =>
             `${chalk.cyan("graphql")} service ready at ${chalk.cyan(`${host}:${port}/graphql`)}`,
@@ -99,7 +99,7 @@ const availableServices: Service[] = [
     },
     {
         name: "paymaster",
-        file: "docker-compose-paymaster.yaml",
+        file: "rollups/docker-compose-paymaster.yaml",
         healthySemaphore: "paymaster",
         healthyTitle: (port) =>
             `${chalk.cyan("paymaster")} service ready at ${chalk.cyan(`${host}:${port}/paymaster`)}`,
@@ -217,10 +217,10 @@ export const createStartCommand = () => {
 
             // cpu and memory limits, mostly for testing and debuggingpurposes
             if (cpus) {
-                composeFiles.push("docker-compose-node-cpus.yaml");
+                composeFiles.push("rollups/docker-compose-node-cpus.yaml");
             }
             if (memory) {
-                composeFiles.push("docker-compose-node-memory.yaml");
+                composeFiles.push("rollups/docker-compose-node-memory.yaml");
             }
 
             // select subset of optional services
@@ -231,15 +231,20 @@ export const createStartCommand = () => {
                           services.includes(name),
                       );
 
-            // add to compose files list
-            composeFiles.push(...optionalServices.map(({ file }) => file));
+            // validate services and add to compose files
+            for (const service of optionalServices) {
+                if (!availableServices.includes(service)) {
+                    throw new Error(
+                        `Service ${chalk.cyan(service)} not available`,
+                    );
+                } else {
+                    composeFiles.push(`rollups/docker-compose-${service}.yaml`);
+                }
+            }
 
             // create the "--file <file>" list
             const files = composeFiles
-                .map((f) => [
-                    "--file",
-                    path.join(binPath, "compose", "rollups", f),
-                ])
+                .map((f) => ["--file", path.join(binPath, "compose", f)])
                 .flat();
 
             const composeArgs = [
