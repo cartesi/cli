@@ -9,6 +9,7 @@ import {
     InvalidBytesValueError,
     InvalidDriveFormatError,
     InvalidEmptyDriveFormatError,
+    InvalidFrameworkError,
     InvalidNumberValueError,
     InvalidStringValueError,
     parse,
@@ -87,6 +88,26 @@ shared = true`);
                     user: undefined,
                 },
             },
+        });
+    });
+
+    /**
+     * framework
+     */
+    describe("when parsing framework", () => {
+        it("should fail for invalid framework", () => {
+            const config = `
+                framework = "invalid"
+            `;
+
+            expect(() => parse(config)).toThrowError(
+                new InvalidFrameworkError("invalid"),
+            );
+        });
+
+        it("should pass for valid framework", () => {
+            expect(() => parse(`framework = "rollups"`)).not.toThrow();
+            expect(() => parse(`framework = "coprocessor"`)).not.toThrow();
         });
     });
 

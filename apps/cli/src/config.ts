@@ -5,6 +5,13 @@ import { TomlPrimitive, parse as parseToml } from "smol-toml";
 /**
  * Typed Errors
  */
+export class InvalidFrameworkError extends Error {
+    constructor(framework: TomlPrimitive) {
+        super(`Invalid framework: ${framework}`);
+        this.name = "InvalidFramework";
+    }
+}
+
 export class InvalidBuilderError extends Error {
     constructor(builder: TomlPrimitive) {
         super(`Invalid builder: ${builder}`);
@@ -67,6 +74,8 @@ export class InvalidStringArrayError extends Error {
         this.name = "InvalidStringArrayError";
     }
 }
+
+const DEFAULT_FRAMEWORK = "rollups";
 
 /**
  * Configuration for drives of a Cartesi Machine. A drive may already exist or be built by a builder
@@ -153,6 +162,7 @@ export type MachineConfig = {
 };
 
 export type Config = {
+    framework: "rollups" | "coprocessor";
     drives: Record<string, DriveConfig>;
     machine: MachineConfig;
     sdk: string;
@@ -184,10 +194,25 @@ export const defaultMachineConfig = (): MachineConfig => ({
 });
 
 export const defaultConfig = (): Config => ({
+    framework: DEFAULT_FRAMEWORK,
     drives: { root: defaultRootDriveConfig() },
     machine: defaultMachineConfig(),
     sdk: DEFAULT_SDK_IMAGE,
 });
+
+const parseFramework = (value: TomlPrimitive): "rollups" | "coprocessor" => {
+    if (value === undefined) {
+        return DEFAULT_FRAMEWORK;
+    } else if (typeof value === "string") {
+        switch (value) {
+            case "rollups":
+                return "rollups";
+            case "coprocessor":
+                return "coprocessor";
+        }
+    }
+    throw new InvalidFrameworkError(value);
+};
 
 const parseBoolean = (value: TomlPrimitive, defaultValue: boolean): boolean => {
     if (value === undefined) {
@@ -482,6 +507,7 @@ export const parse = (str: string): Config => {
     const toml = parseToml(str);
 
     const config: Config = {
+        framework: parseFramework(toml.framework),
         drives: parseDrives(toml.drives),
         machine: parseMachine(toml.machine),
         sdk: parseString(toml.sdk, DEFAULT_SDK_IMAGE),
