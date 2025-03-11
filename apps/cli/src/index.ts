@@ -13,6 +13,7 @@ import { createRollupsCommand } from "./commands/rollups.js";
 import { createRunCommand } from "./commands/run.js";
 import { createSendCommand } from "./commands/send.js";
 import { createShellCommand } from "./commands/shell.js";
+import { createStartCommand } from "./commands/start.js";
 
 // Use `createRequire` to import JSON in ESM
 const require = createRequire(import.meta.url);
@@ -42,6 +43,7 @@ const program = new Command()
     .addCommand(createRollupsCommand())
     .addCommand(createRunCommand(), { hidden: true })
     .addCommand(createSendCommand())
+    .addCommand(createStartCommand())
     .addCommand(createShellCommand());
 
 // Global error handling
