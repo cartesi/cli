@@ -20,9 +20,9 @@ services:
             - "10000"
         healthcheck:
             test: ["CMD", "curl", "-f", "http://127.0.0.1:10000/livez"]
-            interval: 10s
-            timeout: 1s
-            retries: 5
+            interval: 200ms
+            timeout: 500ms
+            retries: 20
         command: ["cartesi-rollups-node"]
         env_file:
             - ${CARTESI_BIN_PATH}/compose/rollups/default.env

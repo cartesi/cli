@@ -10,9 +10,9 @@ services:
             ]
         healthcheck:
             test: ["CMD", "eth_isready"]
-            interval: 10s
-            timeout: 1s
-            retries: 5
+            interval: 200ms
+            timeout: 500ms
+            retries: 20
         environment:
             ANVIL_IP_ADDR: 0.0.0.0
         ports:
