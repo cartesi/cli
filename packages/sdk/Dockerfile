@@ -9,6 +9,7 @@ ARG ESPRESSO_DEV_NODE_TAG
 ARG FOUNDRY_VERSION
 ARG LINUX_KERNEL_VERSION
 ARG NODEJS_VERSION
+ARG POSTGRES_VERSION
 ARG SU_EXEC_VERSION
 ARG XGENEXT2_VERSION
 
@@ -130,6 +131,12 @@ curl -fsSL "https://github.com/cartesi/rollups-espresso-reader/archive/refs/tags
 EOF
 
 ################################################################################
+# postgresql initdb
+FROM postgres:${POSTGRES_VERSION} AS postgresql-initdb
+ENV POSTGRES_PASSWORD=password
+RUN /usr/local/bin/docker-ensure-initdb.sh postgres
+
+################################################################################
 # sdk final image
 FROM base
 ARG ALTO_VERSION
@@ -212,6 +219,7 @@ COPY --from=graphql-migration /usr/share/cartesi/rollups-graphql/migrations /usr
 COPY --from=espresso-reader /usr/local/bin/cartesi-rollups-espresso-reader /usr/local/bin/
 COPY --from=espresso-reader-migration /usr/share/cartesi/rollups-espresso-reader/migrations /usr/share/cartesi/rollups-espresso-reader/migrations
 COPY --from=espresso-dev-node /usr/bin/espresso-dev-node /usr/local/bin/
+COPY --from=postgresql-initdb /var/lib/postgresql/data /var/lib/postgresql/data
 
 RUN mkdir -p /tmp/.cartesi && chmod 1777 /tmp/.cartesi
 
