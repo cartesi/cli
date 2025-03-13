@@ -17,8 +17,3 @@ services:
             ANVIL_IP_ADDR: 0.0.0.0
         ports:
             - 8545:8545
-
-    prompt:
-        image: debian:bookworm-slim
-        environment:
-            PROMPT_TXT_01_ANVIL: "Anvil running at http://localhost:8545"

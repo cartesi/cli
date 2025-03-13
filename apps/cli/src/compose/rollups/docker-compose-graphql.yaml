@@ -37,11 +37,6 @@ services:
             graphql_database_migration:
                 condition: service_completed_successfully
 
-    prompt:
-        image: debian:bookworm-slim
-        environment:
-            PROMPT_TXT_03_GRAPHQL: "GraphQL endpoint running at http://localhost:${CARTESI_LISTEN_PORT}/graphql/"
-
     proxy:
         volumes:
             - ./proxy/graphql.yaml:/etc/traefik/conf.d/graphql.yaml

@@ -94,7 +94,6 @@ export const createStartCommand = () => {
                 "docker-compose-proxy.yaml",
                 "docker-compose-database.yaml",
                 "docker-compose-node.yaml",
-                "docker-compose-prompt.yaml",
             ];
 
             // cpu and memory limits, mostly for testing and debuggingpurposes

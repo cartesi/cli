@@ -30,10 +30,6 @@ services:
             - "--polling-interval"
             - "100"
             - "--enable-debug-endpoints"
-    prompt:
-        image: debian:bookworm-slim
-        environment:
-            PROMPT_TXT_06_BUNDLER: "Bundler running at http://localhost:${CARTESI_LISTEN_PORT}/bundler/rpc"
 
     proxy:
         volumes:
