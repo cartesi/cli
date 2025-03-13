@@ -1,0 +1,21 @@
+name = 'cartesi-rollups-devnet'
+version = '2.0.0-alpha.3'
+description = 'Cartesi Rollups Devnet'
+
+[pull.cartesiRollups]
+source = "cartesi-rollups:2.0.0-rc.16@main"
+
+[var.Settings]
+token_owner = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+
+[deploy.TestMultiToken]
+artifact = "TestMultiToken"
+args = ["<%= settings.token_owner %>"]
+
+[deploy.TestNFT]
+artifact = "TestNFT"
+args = ["<%= settings.token_owner %>"]
+
+[deploy.TestToken]
+artifact = "TestToken"
+args = ["<%= settings.token_owner %>"]

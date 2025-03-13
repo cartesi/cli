@@ -1,19 +1,7 @@
-node_modules
-.env
-coverage
-coverage.json
-typechain
-typechain-types
-
-# Hardhat files
-artifacts
-build
+anvil_state.json
 cache
-deployments/localhost
-deployments/*/solcInputs/*.json
-dist
-docs
-export/abi/localhost.json
-
-# forge files
-forge-cache
+dependencies
+deployments
+node_modules
+out
+remappings.txt

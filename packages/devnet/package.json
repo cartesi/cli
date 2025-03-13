@@ -3,42 +3,18 @@
     "version": "2.0.0-alpha.3",
     "license": "Apache-2.0",
     "scripts": {
-        "build": "run-s compile export deploy:anvil",
-        "clean:ignored": "rimraf artifacts build cache coverage deployments/localhost dist",
-        "clean:hardhat": "hardhat clean",
-        "clean": "run-s clean:hardhat clean:ignored",
-        "compile": "hardhat compile",
-        "deploy": "hardhat deploy",
-        "deploy:anvil": "hardhat --network localhost deploy-anvil --dump-file build/anvil_state.json --silent",
-        "deploy:localhost": "hardhat deploy --network localhost --export export/abi/localhost.json --reset",
-        "dev": "hardhat node --export export/abi/localhost.json",
-        "export": "hardhat export-artifacts export/artifacts --hide-sources --including-empty-bytecode --including-no-public-functions",
-        "prepack": "run-s build tsc",
-        "tsc": "tsc"
+        "build": "run-s build:soldeer build:forge build:cannon",
+        "build:cannon": "cannon build --write-deployments deployments --anvil.dump-state anvil_state.json",
+        "build:forge": "forge build",
+        "build:soldeer": "forge soldeer install",
+        "clean": "cannon clean"
     },
     "devDependencies": {
-        "@cartesi/rollups": "2.0.0-rc.12",
-        "@nomicfoundation/hardhat-viem": "^2.0.5",
-        "@safe-global/safe-singleton-factory": "^1.0.35",
-        "@types/node": "^22.8.4",
-        "hardhat": "^2.22.15",
-        "hardhat-abi-exporter": "^2",
-        "hardhat-deploy": "^0.14.0",
-        "npm-run-all": "^4",
-        "rimraf": "^6.0.1",
-        "tsconfig": "workspace:*",
-        "typescript": "^5.6.3",
-        "viem": "^2.21.37"
-    },
-    "dependencies": {
-        "@openzeppelin/contracts": "5.1.0"
+        "@usecannon/cli": "^2.21.5",
+        "npm-run-all": "^4.1.5"
     },
     "files": [
-        "build",
-        "deployments/*/*.json",
-        "deployments/*/.chainid",
-        "dist/src",
-        "dist/deploy/*.js",
-        "export"
+        "anvil_state.json",
+        "deployments"
     ]
 }

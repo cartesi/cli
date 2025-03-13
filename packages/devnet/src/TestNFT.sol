@@ -2,9 +2,9 @@
 // Compatible with OpenZeppelin Contracts ^5.0.0
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin-contracts-5.2.0/token/ERC721/ERC721.sol";
+import "@openzeppelin-contracts-5.2.0/token/ERC721/extensions/ERC721URIStorage.sol";
+import "@openzeppelin-contracts-5.2.0/access/Ownable.sol";
 
 contract TestNFT is ERC721, ERC721URIStorage, Ownable {
     constructor(

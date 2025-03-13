@@ -1,0 +1,7 @@
+[profile.default]
+libs = ["dependencies"]
+solc_version = "0.8.23"
+optimizer = true
+
+[dependencies]
+"@openzeppelin-contracts" = "5.2.0"
