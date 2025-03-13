@@ -8,3 +8,5 @@ services:
             retries: 20
         environment:
             - POSTGRES_PASSWORD=password
+        volumes_from:
+            - anvil
