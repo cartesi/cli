@@ -18,6 +18,7 @@ target "default" {
     LINUX_KERNEL_VERSION              = "6.5.13-ctsi-1-v0.20.0"
     NODEJS_VERSION                    = "18.19.0"
     PAYMASTER_VERSION                 = "0.2.0"
+    POSTGRES_VERSION                  = "16"
     SU_EXEC_VERSION                   = "0.2"
     XGENEXT2_VERSION                  = "1.5.6"
   }
