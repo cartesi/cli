@@ -13,7 +13,7 @@ services:
             PGDATABASE: postgres
 
     graphql_database_migration:
-        image: cartesi/sdk:0.12.0-alpha.8
+        image: cartesi/sdk:devel
         command:
             - migrate
             - -path
@@ -26,7 +26,7 @@ services:
                 condition: service_completed_successfully
 
     graphql:
-        image: cartesi/sdk:0.12.0-alpha.8
+        image: cartesi/sdk:devel
         environment:
             POSTGRES_GRAPHQL_DB_URL: postgres://postgres:password@database:5432/graphql?sslmode=disable
             POSTGRES_NODE_DB_URL: postgres://postgres:password@database:5432/postgres?sslmode=disable
