@@ -20,7 +20,8 @@ services:
             - "10000"
         healthcheck:
             test: ["CMD", "curl", "-f", "http://127.0.0.1:10000/livez"]
-            interval: 200ms
+            start_period: 5s
+            start_interval: 200ms
             timeout: 500ms
             retries: 20
         command: ["cartesi-rollups-node"]

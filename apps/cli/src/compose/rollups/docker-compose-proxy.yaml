@@ -3,7 +3,8 @@ services:
         image: traefik:v3.3.4
         healthcheck:
             test: ["CMD", "traefik", "healthcheck", "--ping"]
-            interval: 200s
+            start_period: 5s
+            start_interval: 200ms
             timeout: 500s
             retries: 20
         command:
