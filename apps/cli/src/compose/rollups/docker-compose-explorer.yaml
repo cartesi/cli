@@ -23,6 +23,19 @@ services:
         expose:
             - 4350
         command: ["sqd", "serve:prod"]
+        healthcheck:
+            test:
+                [
+                    "CMD",
+                    "curl",
+                    "-f",
+                    "http://127.0.0.1:4350/graphql?query=%7B__typename%7D",
+                ]
+            start_period: 10s
+            start_interval: 200ms
+            interval: 10s
+            timeout: 1s
+            retries: 5
         depends_on:
             database_creator:
                 condition: service_completed_successfully
@@ -51,6 +64,11 @@ services:
                 condition: service_completed_successfully
 
     proxy:
+        depends_on:
+            explorer_api:
+                condition: service_healthy
+            explorer:
+                condition: service_healthy
         volumes:
             - ./proxy/explorer.yaml:/etc/traefik/conf.d/explorer.yaml
             - ./proxy/explorer-api.yaml:/etc/traefik/conf.d/explorer-api.yaml
