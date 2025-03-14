@@ -3,7 +3,7 @@ services:
         image: ${CARTESI_SDK_IMAGE}
         command: "mock-verifying-paymaster"
         environment:
-            - ALTO_RPC=http://alto:4337
+            - ALTO_RPC=http://bundler:4337
             - ANVIL_RPC=http://anvil:8545
 
     proxy:
