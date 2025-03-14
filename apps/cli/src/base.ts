@@ -92,22 +92,39 @@ export const logPrompt = ({
     console.log(`${chalk.green("?")} ${title} ${chalk.cyan(value)}`);
 };
 
-export const getServiceState = async (
-    projectName: string,
-    serviceName: string,
-): Promise<string | undefined> => {
+const getServiceInfo = async (options: {
+    projectName: string;
+    service: string;
+}): Promise<PsResponse | undefined> => {
+    const { projectName, service } = options;
+
     // get service information
     const { stdout } = await execa("docker", [
         "compose",
         "--project-name",
         projectName,
         "ps",
-        serviceName,
+        service,
         "--format",
         "json",
     ]);
-    const ps = stdout ? (JSON.parse(stdout) as PsResponse) : undefined;
-    return ps?.State;
+    return stdout ? (JSON.parse(stdout) as PsResponse) : undefined;
+};
+
+export const getServiceState = async (options: {
+    projectName: string;
+    service: string;
+}): Promise<string | undefined> => {
+    const info = await getServiceInfo(options);
+    return info?.State;
+};
+
+export const getServiceHealth = async (options: {
+    projectName: string;
+    service: string;
+}): Promise<string | undefined> => {
+    const info = await getServiceInfo(options);
+    return info?.Health;
 };
 
 export const parseAddress = (
