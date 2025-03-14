@@ -30,6 +30,17 @@ services:
             - "--polling-interval"
             - "100"
             - "--enable-debug-endpoints"
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://127.0.0.1:4337/health"]
+            start_period: 10s
+            start_interval: 200ms
+            interval: 10s
+            timeout: 1s
+            retries: 5
+
     proxy:
+        depends_on:
+            bundler:
+                condition: service_healthy
         volumes:
             - ./proxy/bundler.yaml:/etc/traefik/conf.d/bundler.yaml
