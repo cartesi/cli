@@ -1,5 +1,4 @@
 # syntax=docker.io/docker/dockerfile:1
-ARG ANVIL_VERSION
 ARG BASE_IMAGE
 ARG CARTESI_ESPRESSO_READER_VERSION
 ARG CARTESI_IMAGE_KERNEL_VERSION
@@ -7,6 +6,7 @@ ARG CARTESI_MACHINE_EMULATOR_VERSION
 ARG CARTESI_ROLLUPS_GRAPHQL_VERSION
 ARG CRANE_VERSION
 ARG ESPRESSO_DEV_NODE_TAG
+ARG FOUNDRY_VERSION
 ARG LINUX_KERNEL_VERSION
 ARG NODEJS_VERSION
 ARG SU_EXEC_VERSION
@@ -64,6 +64,15 @@ esac
 curl -fsSL https://github.com/google/go-containerregistry/releases/download/v${CRANE_VERSION}/go-containerregistry_Linux_${ARCH}.tar.gz | \
     tar -zx -C /usr/local/bin
 EOF
+
+################################################################################
+# foundry installer
+FROM base AS foundry
+ARG FOUNDRY_VERSION
+ARG TARGETARCH
+ARG TARGETOS
+RUN curl -fsSL https://github.com/foundry-rs/foundry/releases/download/v${FOUNDRY_VERSION}/foundry_v${FOUNDRY_VERSION}_${TARGETOS}_${TARGETARCH}.tar.gz | \
+    tar -zx -C /usr/local/bin
 
 ################################################################################
 # alto installer
@@ -160,11 +169,6 @@ ENV LC_ALL=en_US.UTF-8
 ENV LANG=en_US.UTF-8
 ENV LANGUAGE=en_US:en
 
-# download anvil pre-compiled binaries
-ARG ANVIL_VERSION
-RUN curl -sSL https://github.com/foundry-rs/foundry/releases/download/v${ANVIL_VERSION}/foundry_v${ANVIL_VERSION}_linux_$(dpkg --print-architecture).tar.gz | \
-    tar -zx -C /usr/local/bin
-
 # healthcheck script using net_listening JSON-RPC method
 COPY alto /usr/local/bin
 COPY devnet /usr/local/bin
@@ -179,6 +183,8 @@ COPY --from=su-exec /usr/local/src/su-exec /usr/local/bin/
 COPY --from=crane /usr/local/bin/crane /usr/local/bin/
 COPY --from=devnet /usr/local/lib/node_modules/@cartesi/devnet/export/abi/localhost.json /usr/share/cartesi/
 COPY --from=devnet /usr/local/lib/node_modules/@cartesi/devnet/build/anvil_state.json /usr/share/cartesi/
+COPY --from=foundry /usr/local/bin/anvil /usr/local/bin/
+COPY --from=foundry /usr/local/bin/cast /usr/local/bin/
 COPY --from=go-migrate /usr/local/bin/migrate /usr/local/bin/
 COPY --from=graphql /usr/local/bin/cartesi-rollups-graphql /usr/local/bin/
 COPY --from=espresso-reader /usr/local/bin/cartesi-rollups-espresso-reader /usr/local/bin/

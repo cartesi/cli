@@ -5,7 +5,6 @@ target "default" {
   inherits = ["docker-metadata-action", "docker-platforms"]
   args = {
     ALTO_VERSION                      = "0.0.4"
-    ANVIL_VERSION                     = "0.3.0"
     BASE_IMAGE                        = "debian:bookworm-20250224"
     CARTESI_ESPRESSO_READER_VERSION   = "0.2.3-node-20250128"
     CARTESI_IMAGE_KERNEL_VERSION      = "0.20.0"
@@ -14,6 +13,7 @@ target "default" {
     CRANE_VERSION                     = "0.19.1"
     DEVNET_VERSION                    = "2.0.0-alpha.3"
     ESPRESSO_DEV_NODE_TAG             = "20241120-patch6"
+    FOUNDRY_VERSION                   = "0.3.0"
     GO_MIGRATE_VERSION                = "4.18.2"
     LINUX_KERNEL_VERSION              = "6.5.13-ctsi-1-v0.20.0"
     NODEJS_VERSION                    = "18.19.0"
