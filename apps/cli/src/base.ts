@@ -1,5 +1,4 @@
 import { InvalidArgumentError } from "@commander-js/extra-typings";
-import chalk from "chalk";
 import { execa } from "execa";
 import fs from "fs";
 import path from "path";
@@ -80,16 +79,6 @@ export const getAddressBook = async (): Promise<AddressBook> => {
     }
 
     return contracts;
-};
-
-export const logPrompt = ({
-    title,
-    value,
-}: {
-    title: string;
-    value: string;
-}) => {
-    console.log(`${chalk.green("?")} ${title} ${chalk.cyan(value)}`);
 };
 
 const getServiceInfo = async (options: {
