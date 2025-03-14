@@ -148,6 +148,7 @@ ARG CARTESI_IMAGE_KERNEL_VERSION
 ARG LINUX_KERNEL_VERSION
 ARG XGENEXT2_VERSION
 ARG PAYMASTER_VERSION
+ARG TARGETARCH
 
 USER root
 ARG DEBIAN_FRONTEND=noninteractive
@@ -178,8 +179,7 @@ EOF
 
 # Install dpkg release of xgenext2fs
 RUN <<EOF
-ARCH=$(dpkg --print-architecture)
-curl -fsSL https://github.com/cartesi/genext2fs/releases/download/v${XGENEXT2_VERSION}/xgenext2fs_${ARCH}.deb \
+curl -fsSL https://github.com/cartesi/genext2fs/releases/download/v${XGENEXT2_VERSION}/xgenext2fs_${TARGETARCH}.deb \
     -o /tmp/xgenext2fs.deb
 dpkg -i /tmp/xgenext2fs.deb
 rm /tmp/xgenext2fs.deb
@@ -219,8 +219,7 @@ RUN mkdir -p /tmp/.cartesi && chmod 1777 /tmp/.cartesi
 
 # Install cartesi-machine emulator
 RUN <<EOF
-ARCH=$(dpkg --print-architecture)
-curl -fsSL https://github.com/cartesi/machine-emulator/releases/download/v${CARTESI_MACHINE_EMULATOR_VERSION}/cartesi-machine-v${CARTESI_MACHINE_EMULATOR_VERSION}_${ARCH}.deb \
+curl -fsSL https://github.com/cartesi/machine-emulator/releases/download/v${CARTESI_MACHINE_EMULATOR_VERSION}/cartesi-machine-v${CARTESI_MACHINE_EMULATOR_VERSION}_${TARGETARCH}.deb \
     -o /tmp/cartesi-machine.deb
 dpkg -i /tmp/cartesi-machine.deb
 rm /tmp/cartesi-machine.deb
