@@ -12,7 +12,10 @@ export const createStatusCommand = () => {
         .option("--json", "output in JSON format")
         .action(async ({ json }, command) => {
             const { projectName } = command.optsWithGlobals();
-            const status = await getServiceState(projectName, "rollups-node");
+            const status = await getServiceState({
+                projectName,
+                service: "rollups-node",
+            });
             const deployments = await getDeployments({ projectName });
 
             if (json) {
