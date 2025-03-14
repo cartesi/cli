@@ -225,18 +225,22 @@ cartesi-machine --version-json
 EOF
 
 # Install linux kernel image
-ADD --chmod=644 \
-    --checksum=sha256:65dd100ff6204346ac2f50f772721358b5c1451450ceb39a154542ee27b4c947 \
-    https://github.com/cartesi/image-kernel/releases/download/v${CARTESI_IMAGE_KERNEL_VERSION}/linux-${LINUX_KERNEL_VERSION}.bin \
-    /usr/share/cartesi-machine/images/linux.bin
+RUN <<EOF
+curl -fsSL "https://github.com/cartesi/image-kernel/releases/download/v${CARTESI_IMAGE_KERNEL_VERSION}/linux-${LINUX_KERNEL_VERSION}.bin" \
+    -o /usr/share/cartesi-machine/images/linux.bin
+echo "e4663365ea565792110129a6b479eca896cb31c23f561cb42214609588689f9d3d173a82b4ea27ff74ae05334747cc76ed6bc4c200a7499ac5134abfd2b3045e /usr/share/cartesi-machine/images/linux.bin" \
+    | sha512sum -c
+EOF
 
 # Install linux headers
-ADD --chmod=644 \
-    --checksum=sha256:4a4714bfa8c0028cb443db2036fad4f8da07065c1cb4ac8e0921a259fddd731b \
-    https://github.com/cartesi/image-kernel/releases/download/v$CARTESI_IMAGE_KERNEL_VERSION/linux-headers-$LINUX_KERNEL_VERSION.tar.xz \
-    /usr/share/cartesi-machine/images/linux-headers.tar.xz
-RUN tar -xJf /usr/share/cartesi-machine/images/linux-headers.tar.xz -C / && \
-    rm /usr/share/cartesi-machine/images/linux-headers.tar.xz
+RUN <<EOF
+curl -fsSL "https://github.com/cartesi/image-kernel/releases/download/v${CARTESI_IMAGE_KERNEL_VERSION}/linux-headers-${LINUX_KERNEL_VERSION}.tar.xz" \
+    -o "/tmp/linux-headers-$LINUX_KERNEL_VERSION.tar.xz"
+echo "2ecdb9c9f02a96faed2605ec811ef7188f963feb21b32d057b1ab3278f27ac42887f235a3f52eadd5f5caa56a61e141ad2bb666793d5bdd755c273adba167d45 /tmp/linux-headers-${LINUX_KERNEL_VERSION}.tar.xz" \
+    | sha512sum -c
+tar -xJf "/tmp/linux-headers-${LINUX_KERNEL_VERSION}.tar.xz" -C /
+rm "/tmp/linux-headers-${LINUX_KERNEL_VERSION}.tar.xz"
+EOF
 
 WORKDIR /mnt
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
