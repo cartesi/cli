@@ -10,6 +10,8 @@ services:
             ]
         healthcheck:
             test: ["CMD", "eth_isready"]
+            start_period: 10s
+            start_interval: 200ms
             interval: 10s
             timeout: 1s
             retries: 5
