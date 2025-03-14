@@ -108,6 +108,18 @@ RUN curl -fsSL https://github.com/cartesi/rollups-graphql/releases/download/v${C
     | tar -xzf - -C /usr/local/bin
 
 ################################################################################
+# cartesi-rollups-graphql migration code installer
+FROM base AS graphql-migration
+ARG CARTESI_ROLLUPS_GRAPHQL_VERSION
+RUN <<EOF
+GRAPHQL_DEST_FOLDER="/usr/share/cartesi/rollups-graphql/migrations"
+
+mkdir -p "$GRAPHQL_DEST_FOLDER"
+curl -fsSL "https://github.com/cartesi/rollups-graphql/archive/refs/tags/v${CARTESI_ROLLUPS_GRAPHQL_VERSION}.tar.gz" \
+    | tar --wildcards -xz -C ${GRAPHQL_DEST_FOLDER} --strip-components=3 '*/migrations/*.sql'
+EOF
+
+################################################################################
 # cartesi-rollups-espresso-reader installer
 FROM  base AS espresso-reader
 ARG CARTESI_ESPRESSO_READER_VERSION
@@ -187,6 +199,7 @@ COPY --from=foundry /usr/local/bin/anvil /usr/local/bin/
 COPY --from=foundry /usr/local/bin/cast /usr/local/bin/
 COPY --from=go-migrate /usr/local/bin/migrate /usr/local/bin/
 COPY --from=graphql /usr/local/bin/cartesi-rollups-graphql /usr/local/bin/
+COPY --from=graphql-migration /usr/share/cartesi/rollups-graphql/migrations /usr/share/cartesi/rollups-graphql/migrations
 COPY --from=espresso-reader /usr/local/bin/cartesi-rollups-espresso-reader /usr/local/bin/
 
 RUN mkdir -p /tmp/.cartesi && chmod 1777 /tmp/.cartesi
@@ -216,15 +229,6 @@ RUN tar -xJf /usr/share/cartesi-machine/images/linux-headers.tar.xz -C / && \
     rm /usr/share/cartesi-machine/images/linux-headers.tar.xz
 
 COPY --from=espresso-dev-node /usr/bin/espresso-dev-node /usr/local/bin/
-
-# Get migration files for rollups-graphql
-ARG CARTESI_ROLLUPS_GRAPHQL_VERSION
-RUN <<EOF
-GRAPHQL_DEST_FOLDER="/usr/share/cartesi/rollups-graphql/migrations"
-
-mkdir -p "$GRAPHQL_DEST_FOLDER"
-curl -L "https://github.com/cartesi/rollups-graphql/archive/refs/tags/v${CARTESI_ROLLUPS_GRAPHQL_VERSION}.tar.gz" | tar --wildcards -xz -C ${GRAPHQL_DEST_FOLDER} --strip-components=3 '*/migrations/*.sql'
-EOF
 
 # Get migration files for rollups-espresso-reader
 ARG CARTESI_ESPRESSO_READER_VERSION
