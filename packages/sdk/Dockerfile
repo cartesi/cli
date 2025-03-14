@@ -78,6 +78,18 @@ ARG DEVNET_VERSION
 RUN npm install -g @cartesi/devnet@${DEVNET_VERSION}
 
 ################################################################################
+# go migrate db cli installer
+FROM base AS go-migrate
+ARG GO_MIGRATE_VERSION
+ARG TARGETARCH
+ARG TARGETOS
+RUN <<EOF
+curl -fsSL https://github.com/golang-migrate/migrate/releases/download/v${GO_MIGRATE_VERSION}/migrate.${TARGETOS}-${TARGETARCH}.tar.gz \
+    | tar -zx -C /usr/local/bin
+migrate --version
+EOF
+
+################################################################################
 # cartesi-rollups-graphql installer
 FROM base AS graphql
 ARG CARTESI_ROLLUPS_GRAPHQL_VERSION
@@ -167,6 +179,7 @@ COPY --from=su-exec /usr/local/src/su-exec /usr/local/bin/
 COPY --from=crane /usr/local/bin/crane /usr/local/bin/
 COPY --from=devnet /usr/local/lib/node_modules/@cartesi/devnet/export/abi/localhost.json /usr/share/cartesi/
 COPY --from=devnet /usr/local/lib/node_modules/@cartesi/devnet/build/anvil_state.json /usr/share/cartesi/
+COPY --from=go-migrate /usr/local/bin/migrate /usr/local/bin/
 COPY --from=graphql /usr/local/bin/cartesi-rollups-graphql /usr/local/bin/
 COPY --from=espresso-reader /usr/local/bin/cartesi-rollups-espresso-reader /usr/local/bin/
 
@@ -197,35 +210,6 @@ RUN tar -xJf /usr/share/cartesi-machine/images/linux-headers.tar.xz -C / && \
     rm /usr/share/cartesi-machine/images/linux-headers.tar.xz
 
 COPY --from=espresso-dev-node /usr/bin/espresso-dev-node /usr/local/bin/
-
-# Install migrate db cli
-ARG GO_MIGRATE_VERSION
-RUN <<EOF
-ARCH=$(dpkg --print-architecture || uname -m)
-case "$ARCH" in
-    amd64|x86_64)
-        MIGRATE_URL="https://github.com/golang-migrate/migrate/releases/download/v${GO_MIGRATE_VERSION}/migrate.linux-amd64.deb"
-        ;;
-    arm64|aarch64)
-        MIGRATE_URL="https://github.com/golang-migrate/migrate/releases/download/v${GO_MIGRATE_VERSION}/migrate.linux-arm64.deb"
-        ;;
-    armhf|armv7l)
-        MIGRATE_URL="https://github.com/golang-migrate/migrate/releases/download/v${GO_MIGRATE_VERSION}/migrate.linux-armv7.deb"
-        ;;
-    i386)
-        MIGRATE_URL="https://github.com/golang-migrate/migrate/releases/download/v${GO_MIGRATE_VERSION}/migrate.linux-386.deb"
-        ;;
-    *)
-        echo "Unsupported architecture: $ARCH"
-        exit 1
-        ;;
-esac
-
-curl -fsSL "$MIGRATE_URL" -o /tmp/migrate.deb
-dpkg -i /tmp/migrate.deb
-rm /tmp/migrate.deb
-migrate --version
-EOF
 
 # Get migration files for rollups-graphql
 ARG CARTESI_ROLLUPS_GRAPHQL_VERSION
