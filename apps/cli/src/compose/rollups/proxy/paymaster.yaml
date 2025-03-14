@@ -14,4 +14,4 @@ http:
         paymaster:
             loadBalancer:
                 servers:
-                    - url: "http://mock-verifying-paymaster:3000"
+                    - url: "http://paymaster:3000"

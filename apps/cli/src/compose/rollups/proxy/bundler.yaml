@@ -14,4 +14,4 @@ http:
         bundler:
             loadBalancer:
                 servers:
-                    - url: "http://alto:4337"
+                    - url: "http://bundler:4337"
