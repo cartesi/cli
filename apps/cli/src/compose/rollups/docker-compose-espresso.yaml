@@ -18,7 +18,7 @@ services:
 
     espresso:
         image: ${CARTESI_SDK_IMAGE}
-        command: ["/usr/local/bin/espresso-dev-node"]
+        command: ["espresso-dev-node"]
         deploy:
             resources:
                 limits:
@@ -46,7 +46,23 @@ services:
             ESPRESSO_SEQUENCER_POSTGRES_PASSWORD: password
             ESPRESSO_SEQUENCER_POSTGRES_DATABASE: sequencer
             ESPRESSO_SEQUENCER_ETH_MNEMONIC: ${CARTESI_AUTH_MNEMONIC:-test test test test test test test test test test test junk}
+        healthcheck:
+            test:
+                [
+                    "CMD",
+                    "curl",
+                    "-f",
+                    "http://127.0.0.1:8770/status/block-height",
+                ]
+            start_period: 10s
+            start_interval: 200ms
+            interval: 10s
+            timeout: 1s
+            retries: 5
 
     proxy:
+        depends_on:
+            espresso:
+                condition: service_healthy
         volumes:
             - ./proxy/espresso.yaml:/etc/traefik/conf.d/espresso.yaml
