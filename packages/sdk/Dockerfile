@@ -76,18 +76,6 @@ RUN curl -fsSL https://github.com/foundry-rs/foundry/releases/download/v${FOUNDR
     | tar -zx -C /usr/local/bin
 
 ################################################################################
-# alto installer
-FROM node:${NODEJS_VERSION}-bookworm AS alto
-ARG ALTO_VERSION
-RUN npm install -g @pimlico/alto@${ALTO_VERSION}
-
-################################################################################
-# devnet installer
-FROM node:${NODEJS_VERSION}-bookworm AS devnet
-ARG DEVNET_VERSION
-RUN npm install -g @cartesi/devnet@${DEVNET_VERSION}
-
-################################################################################
 # go migrate db cli installer
 FROM base AS go-migrate
 ARG GO_MIGRATE_VERSION
@@ -144,12 +132,14 @@ EOF
 ################################################################################
 # sdk final image
 FROM base
-ARG CARTESI_MACHINE_EMULATOR_VERSION
+ARG ALTO_VERSION
 ARG CARTESI_IMAGE_KERNEL_VERSION
+ARG CARTESI_MACHINE_EMULATOR_VERSION
+ARG DEVNET_VERSION
 ARG LINUX_KERNEL_VERSION
-ARG XGENEXT2_VERSION
 ARG PAYMASTER_VERSION
 ARG TARGETARCH
+ARG XGENEXT2_VERSION
 
 USER root
 ARG DEBIAN_FRONTEND=noninteractive
@@ -187,8 +177,17 @@ rm /tmp/xgenext2fs.deb
 xgenext2fs --version
 EOF
 
-# Install mock-verifying-paymaster
-RUN npm install -g @cartesi/mock-verifying-paymaster@${PAYMASTER_VERSION}
+# Install nodejs packages
+RUN <<EOF
+npm install -g \
+    @cartesi/devnet@${DEVNET_VERSION} \
+    @cartesi/mock-verifying-paymaster@${PAYMASTER_VERSION} \
+    @pimlico/alto@${ALTO_VERSION}
+
+mkdir -p /usr/share/cartesi
+cp /usr/local/lib/node_modules/@cartesi/devnet/export/abi/localhost.json /usr/share/cartesi/
+cp /usr/local/lib/node_modules/@cartesi/devnet/build/anvil_state.json /usr/share/cartesi/
+EOF
 
 ENV LC_ALL=en_US.UTF-8
 ENV LANG=en_US.UTF-8
@@ -203,11 +202,8 @@ COPY eth_load /usr/local/bin
 COPY create_machine_snapshot /usr/local/bin
 
 COPY entrypoint.sh /usr/local/bin/
-COPY --from=alto /usr/local/lib/node_modules/@pimlico/alto /usr/local/lib/node_modules/@pimlico/alto
 COPY --from=su-exec /usr/local/src/su-exec /usr/local/bin/
 COPY --from=crane /usr/local/bin/crane /usr/local/bin/
-COPY --from=devnet /usr/local/lib/node_modules/@cartesi/devnet/export/abi/localhost.json /usr/share/cartesi/
-COPY --from=devnet /usr/local/lib/node_modules/@cartesi/devnet/build/anvil_state.json /usr/share/cartesi/
 COPY --from=foundry /usr/local/bin/anvil /usr/local/bin/
 COPY --from=foundry /usr/local/bin/cast /usr/local/bin/
 COPY --from=go-migrate /usr/local/bin/migrate /usr/local/bin/
