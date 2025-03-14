@@ -12,6 +12,7 @@ ARG NODEJS_VERSION
 ARG SU_EXEC_VERSION
 ARG XGENEXT2_VERSION
 
+################################################################################
 # https://github.com/EspressoSystems/espresso-sequencer/pkgs/container/espresso-sequencer%2Fespresso-dev-node
 FROM ghcr.io/espressosystems/espresso-sequencer/espresso-dev-node:${ESPRESSO_DEV_NODE_TAG} AS espresso-dev-node
 
@@ -61,8 +62,8 @@ aarch64) ARCH="arm64" ;;
 *) ARCH=$(arch) ;;
 esac
 
-curl -fsSL https://github.com/google/go-containerregistry/releases/download/v${CRANE_VERSION}/go-containerregistry_Linux_${ARCH}.tar.gz | \
-    tar -zx -C /usr/local/bin
+curl -fsSL https://github.com/google/go-containerregistry/releases/download/v${CRANE_VERSION}/go-containerregistry_Linux_${ARCH}.tar.gz \
+    | tar -zx -C /usr/local/bin
 EOF
 
 ################################################################################
@@ -71,8 +72,8 @@ FROM base AS foundry
 ARG FOUNDRY_VERSION
 ARG TARGETARCH
 ARG TARGETOS
-RUN curl -fsSL https://github.com/foundry-rs/foundry/releases/download/v${FOUNDRY_VERSION}/foundry_v${FOUNDRY_VERSION}_${TARGETOS}_${TARGETARCH}.tar.gz | \
-    tar -zx -C /usr/local/bin
+RUN curl -fsSL https://github.com/foundry-rs/foundry/releases/download/v${FOUNDRY_VERSION}/foundry_v${FOUNDRY_VERSION}_${TARGETOS}_${TARGETARCH}.tar.gz \
+    | tar -zx -C /usr/local/bin
 
 ################################################################################
 # alto installer
@@ -121,7 +122,7 @@ EOF
 
 ################################################################################
 # cartesi-rollups-espresso-reader installer
-FROM  base AS espresso-reader
+FROM base AS espresso-reader
 ARG CARTESI_ESPRESSO_READER_VERSION
 ARG TARGETOS
 ARG TARGETARCH
@@ -214,6 +215,7 @@ COPY --from=graphql /usr/local/bin/cartesi-rollups-graphql /usr/local/bin/
 COPY --from=graphql-migration /usr/share/cartesi/rollups-graphql/migrations /usr/share/cartesi/rollups-graphql/migrations
 COPY --from=espresso-reader /usr/local/bin/cartesi-rollups-espresso-reader /usr/local/bin/
 COPY --from=espresso-reader-migration /usr/share/cartesi/rollups-espresso-reader/migrations /usr/share/cartesi/rollups-espresso-reader/migrations
+COPY --from=espresso-dev-node /usr/bin/espresso-dev-node /usr/local/bin/
 
 RUN mkdir -p /tmp/.cartesi && chmod 1777 /tmp/.cartesi
 
@@ -239,8 +241,6 @@ ADD --chmod=644 \
     /usr/share/cartesi-machine/images/linux-headers.tar.xz
 RUN tar -xJf /usr/share/cartesi-machine/images/linux-headers.tar.xz -C / && \
     rm /usr/share/cartesi-machine/images/linux-headers.tar.xz
-
-COPY --from=espresso-dev-node /usr/bin/espresso-dev-node /usr/local/bin/
 
 WORKDIR /mnt
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
