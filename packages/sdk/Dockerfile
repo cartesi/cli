@@ -129,6 +129,18 @@ RUN curl -fsSL https://github.com/cartesi/rollups-espresso-reader/releases/downl
     | tar -xzf - -C /usr/local/bin
 
 ################################################################################
+# rollups-espresso-reader migration code installer
+FROM base AS espresso-reader-migration
+ARG CARTESI_ESPRESSO_READER_VERSION
+RUN <<EOF
+ESPRESSO_DEST_FOLDER="/usr/share/cartesi/rollups-espresso-reader/migrations"
+
+mkdir -p "$ESPRESSO_DEST_FOLDER"
+curl -fsSL "https://github.com/cartesi/rollups-espresso-reader/archive/refs/tags/v${CARTESI_ESPRESSO_READER_VERSION}.tar.gz" \
+    | tar --wildcards -xz -C ${ESPRESSO_DEST_FOLDER} --strip-components=6 '*/migrations/*.sql'
+EOF
+
+################################################################################
 # sdk final image
 FROM base
 ARG CARTESI_MACHINE_EMULATOR_VERSION
@@ -201,6 +213,7 @@ COPY --from=go-migrate /usr/local/bin/migrate /usr/local/bin/
 COPY --from=graphql /usr/local/bin/cartesi-rollups-graphql /usr/local/bin/
 COPY --from=graphql-migration /usr/share/cartesi/rollups-graphql/migrations /usr/share/cartesi/rollups-graphql/migrations
 COPY --from=espresso-reader /usr/local/bin/cartesi-rollups-espresso-reader /usr/local/bin/
+COPY --from=espresso-reader-migration /usr/share/cartesi/rollups-espresso-reader/migrations /usr/share/cartesi/rollups-espresso-reader/migrations
 
 RUN mkdir -p /tmp/.cartesi && chmod 1777 /tmp/.cartesi
 
@@ -229,15 +242,6 @@ RUN tar -xJf /usr/share/cartesi-machine/images/linux-headers.tar.xz -C / && \
     rm /usr/share/cartesi-machine/images/linux-headers.tar.xz
 
 COPY --from=espresso-dev-node /usr/bin/espresso-dev-node /usr/local/bin/
-
-# Get migration files for rollups-espresso-reader
-ARG CARTESI_ESPRESSO_READER_VERSION
-RUN <<EOF
-ESPRESSO_DEST_FOLDER="/usr/share/cartesi/rollups-espresso-reader/migrations"
-
-mkdir -p "$ESPRESSO_DEST_FOLDER"
-curl -L "https://github.com/cartesi/rollups-espresso-reader/archive/refs/tags/v${CARTESI_ESPRESSO_READER_VERSION}.tar.gz" | tar --wildcards -xz -C ${ESPRESSO_DEST_FOLDER} --strip-components=6 '*/migrations/*.sql'
-EOF
 
 WORKDIR /mnt
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
