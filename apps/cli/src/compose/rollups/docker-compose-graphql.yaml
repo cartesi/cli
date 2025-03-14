@@ -33,10 +33,20 @@ services:
         expose:
             - 8080
         command: ["cartesi-rollups-graphql"]
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/health"]
+            start_period: 10s
+            start_interval: 200ms
+            interval: 10s
+            timeout: 1s
+            retries: 5
         depends_on:
             graphql_database_migration:
                 condition: service_completed_successfully
 
     proxy:
+        depends_on:
+            graphql:
+                condition: service_healthy
         volumes:
             - ./proxy/graphql.yaml:/etc/traefik/conf.d/graphql.yaml
