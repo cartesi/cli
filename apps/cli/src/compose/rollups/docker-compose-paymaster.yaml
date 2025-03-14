@@ -6,11 +6,6 @@ services:
             - ALTO_RPC=http://alto:4337
             - ANVIL_RPC=http://anvil:8545
 
-    prompt:
-        image: debian:bookworm-slim
-        environment:
-            PROMPT_TXT_07_PAYMASTER: "Paymaster running at http://localhost:${CARTESI_LISTEN_PORT}/paymaster/"
-
     proxy:
         volumes:
             - ./proxy/paymaster.yaml:/etc/traefik/conf.d/paymaster.yaml

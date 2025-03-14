@@ -96,7 +96,6 @@ export const createStartCommand = () => {
                 "docker-compose-proxy.yaml",
                 "docker-compose-database.yaml",
                 "docker-compose-node.yaml",
-                "docker-compose-prompt.yaml",
             ];
 
             // cpu and memory limits, mostly for testing and debuggingpurposes
@@ -149,7 +148,6 @@ export const createStartCommand = () => {
                     // attach only to rollups-node and prompt
                     compose_args.push("--progress", "quiet");
                     up_args.push("--attach", "rollups-node");
-                    up_args.push("--attach", "prompt");
                 }
             }
 

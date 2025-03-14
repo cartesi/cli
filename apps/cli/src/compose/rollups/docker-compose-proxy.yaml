@@ -20,8 +20,3 @@ services:
             ]
         ports:
             - ${CARTESI_LISTEN_PORT:-8080}:8088
-
-    prompt:
-        depends_on:
-            proxy:
-                condition: service_healthy
