@@ -5,7 +5,17 @@ services:
         environment:
             - ALTO_RPC=http://bundler:4337
             - ANVIL_RPC=http://anvil:8545
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://127.0.0.1:3000/ping"]
+            start_period: 10s
+            start_interval: 200ms
+            interval: 10s
+            timeout: 1s
+            retries: 5
 
     proxy:
+        depends_on:
+            paymaster:
+                condition: service_healthy
         volumes:
             - ./proxy/paymaster.yaml:/etc/traefik/conf.d/paymaster.yaml
