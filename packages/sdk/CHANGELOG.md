@@ -1,5 +1,19 @@
 # sdk
 
+## 0.12.0-alpha.10
+
+### Patch Changes
+
+-   20ca171: add cartesi-rollups-node-2.0.0-alpha.1
+-   2c9b3c0: move espresso-reader migration to its own docker build stage
+-   8079499: move graphql migration to its own docker build stage
+-   e1ddfe9: add initialized postgres database
+-   787fbc2: move anvil to its own docker build stage renamed to foundry
+-   dcd0f3f: install cartesi image-kernel artifacts with proper checksum
+-   e14a29d: normalize nodejs packages install
+-   7cf4d48: sort docker-bake args
+-   2e811c7: move go migrate cli to its own docker build stage
+
 ## 0.12.0-alpha.9
 
 ### Patch Changes
