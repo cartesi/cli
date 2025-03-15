@@ -10,6 +10,7 @@ target "default" {
     CARTESI_IMAGE_KERNEL_VERSION      = "0.20.0"
     CARTESI_MACHINE_EMULATOR_VERSION  = "0.18.1"
     CARTESI_ROLLUPS_GRAPHQL_VERSION   = "2.3.8"
+    CARTESI_ROLLUPS_NODE_VERSION      = "2.0.0-alpha.1"
     CRANE_VERSION                     = "0.19.1"
     DEVNET_VERSION                    = "2.0.0-alpha.3"
     ESPRESSO_DEV_NODE_TAG             = "20241120-patch6"
