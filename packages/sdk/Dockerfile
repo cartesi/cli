@@ -142,6 +142,7 @@ FROM base
 ARG ALTO_VERSION
 ARG CARTESI_IMAGE_KERNEL_VERSION
 ARG CARTESI_MACHINE_EMULATOR_VERSION
+ARG CARTESI_ROLLUPS_NODE_VERSION
 ARG DEVNET_VERSION
 ARG LINUX_KERNEL_VERSION
 ARG PAYMASTER_VERSION
@@ -248,6 +249,15 @@ echo "2ecdb9c9f02a96faed2605ec811ef7188f963feb21b32d057b1ab3278f27ac42887f235a3f
     | sha512sum -c
 tar -xJf "/tmp/linux-headers-${LINUX_KERNEL_VERSION}.tar.xz" -C /
 rm "/tmp/linux-headers-${LINUX_KERNEL_VERSION}.tar.xz"
+EOF
+
+# Install cartesi-rollups-node
+RUN <<EOF
+curl -fsSL https://github.com/cartesi/rollups-node/releases/download/v${CARTESI_ROLLUPS_NODE_VERSION}/cartesi-rollups-node-v${CARTESI_ROLLUPS_NODE_VERSION%%-*}_${TARGETARCH}.deb \
+    -o /tmp/cartesi-rollups-node.deb
+dpkg -i /tmp/cartesi-rollups-node.deb
+rm /tmp/cartesi-rollups-node.deb
+cartesi-rollups-node --version
 EOF
 
 WORKDIR /mnt
