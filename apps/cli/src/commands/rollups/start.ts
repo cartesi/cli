@@ -156,7 +156,7 @@ export const createStartCommand = () => {
                 "default block to be used when fetching new blocks.",
             )
                 .choices(["latest", "safe", "pending", "finalized"])
-                .default("finalized"),
+                .default("latest"),
         )
         .addOption(
             new Option(
@@ -258,6 +258,13 @@ export const createStartCommand = () => {
                     stdio: "inherit",
                 });
             } else {
+                if (defaultBlock !== "finalized") {
+                    console.warn(
+                        chalk.yellow(
+                            `WARNING: default block is set to '${defaultBlock}', production configuration will likely use 'finalized'`,
+                        ),
+                    );
+                }
                 // pull images first
                 await execa("docker", [...composeArgs, "pull"], {
                     env,
