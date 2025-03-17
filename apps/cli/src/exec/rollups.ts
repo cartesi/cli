@@ -12,18 +12,18 @@ export type RollupsDeployment = {
 };
 
 type ComposeParams = {
-    projectName?: string;
+    environmentName?: string;
 };
 
 export const getDeployments = async (
     options?: ComposeParams,
 ): Promise<RollupsDeployment[]> => {
-    const projectName = options?.projectName ?? "cartesi-rollups";
+    const environmentName = options?.environmentName ?? "cartesi-rollups";
     try {
         const { stdout } = await execa("docker", [
             "compose",
             "--project-name",
-            projectName,
+            environmentName,
             "exec",
             "rollups-node",
             "cartesi-rollups-cli",

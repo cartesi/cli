@@ -11,12 +11,12 @@ export const createStatusCommand = () => {
         .configureHelp({ showGlobalOptions: true })
         .option("--json", "output in JSON format")
         .action(async ({ json }, command) => {
-            const { projectName } = command.optsWithGlobals();
+            const { environmentName } = command.optsWithGlobals();
             const status = await getServiceState({
-                projectName,
+                environmentName,
                 service: "rollups-node",
             });
-            const deployments = await getDeployments({ projectName });
+            const deployments = await getDeployments({ environmentName });
 
             if (json) {
                 process.stdout.write(
@@ -27,7 +27,7 @@ export const createStatusCommand = () => {
                 );
             } else {
                 console.log(
-                    `${chalk.cyan(projectName)} is ${status == "running" ? chalk.green("running") : chalk.red("not running")}`,
+                    `${chalk.cyan(environmentName)} is ${status == "running" ? chalk.green("running") : chalk.red("not running")}`,
                 );
 
                 if (status === "running") {

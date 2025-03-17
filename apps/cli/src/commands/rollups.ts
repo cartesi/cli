@@ -8,7 +8,7 @@ import { createStopCommand } from "./rollups/stop.js";
 export const createRollupsCommand = () => {
     const command = new Command("rollups")
         .option(
-            "--project-name <string>",
+            "--environment-name <string>",
             "name of environment",
             "cartesi-rollups",
         )

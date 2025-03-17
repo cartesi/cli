@@ -147,17 +147,17 @@ const deployApplication = async (
  */
 const publishMachine = async (options: {
     progress: Ora;
-    projectName: string;
+    environmentName: string;
     templateHash: Hash;
 }): Promise<string> => {
-    const { progress, projectName, templateHash } = options;
+    const { progress, environmentName, templateHash } = options;
     const snapshotPath = getContextPath("image");
     const containerSnapshotPath = `/var/lib/cartesi-rollups-node/snapshots/${templateHash}/`;
     progress.start("Publishing machine snapshot...");
     await execa("docker", [
         "compose",
         "--project-name",
-        projectName,
+        environmentName,
         "cp",
         snapshotPath,
         `rollups-node:${containerSnapshotPath}`,
@@ -175,10 +175,11 @@ const registerApplication = async (options: {
     applicationAddress: Address;
     name?: string;
     progress: Ora;
-    projectName: string;
+    environmentName: string;
     snapshotPath: string;
 }): Promise<string> => {
-    const { applicationAddress, progress, projectName, snapshotPath } = options;
+    const { applicationAddress, progress, environmentName, snapshotPath } =
+        options;
 
     // use template hash as the name of the deployment
     const name =
@@ -193,7 +194,7 @@ const registerApplication = async (options: {
     const { stdout } = await execa("docker", [
         "compose",
         "--project-name",
-        projectName,
+        environmentName,
         "exec",
         "rollups-node",
         "cartesi-rollups-cli",
@@ -257,7 +258,7 @@ export const createDeployCommand = () => {
         .option("--json", "output in JSON format")
         .action(async (options, command) => {
             const rollupsOptions = command.optsWithGlobals();
-            const { projectName } = rollupsOptions;
+            const { environmentName } = rollupsOptions;
             const { json } = options;
             // XXX: json support is not implemented yet
             // if case of json maybe we should not support interactive mode
@@ -300,7 +301,7 @@ export const createDeployCommand = () => {
                     const containerSnapshotPath = await publishMachine({
                         progress,
                         templateHash,
-                        projectName,
+                        environmentName,
                     });
 
                     const name = await registerApplication({

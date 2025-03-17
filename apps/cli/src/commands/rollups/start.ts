@@ -109,9 +109,9 @@ const availableServices: Service[] = [
 ];
 
 const serviceMonitorTask = (options: {
+    environmentName: string;
     errorTitle?: string;
     healthyTitle?: string;
-    projectName: string;
     service: string;
     waitTitle?: string;
 }): ListrTask => {
@@ -180,7 +180,7 @@ export const createStartCommand = () => {
         .option("--dry-run", "show the docker compose configuration", false)
         .option("-v, --verbose", "verbose output", false)
         .action(async (options, command) => {
-            const { projectName } = command.optsWithGlobals();
+            const { environmentName } = command.optsWithGlobals();
             const {
                 blockTime,
                 cpus,
@@ -245,7 +245,7 @@ export const createStartCommand = () => {
                 "compose",
                 ...files,
                 "--project-name",
-                projectName,
+                environmentName,
             ];
 
             // run in detached mode (background)
@@ -285,7 +285,7 @@ export const createStartCommand = () => {
                                 ? service.healthyTitle(port)
                                 : service.healthyTitle;
                         return serviceMonitorTask({
-                            projectName,
+                            environmentName,
                             service: service.healthySemaphore!,
                             errorTitle: service.errorTitle,
                             waitTitle: service.waitTitle,

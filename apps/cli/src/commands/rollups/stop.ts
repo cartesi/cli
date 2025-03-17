@@ -9,20 +9,20 @@ export const createStopCommand = () => {
         .description("Stop a local rollups node environment.")
         .configureHelp({ showGlobalOptions: true })
         .action(async (_options, command) => {
-            const { projectName } = command.optsWithGlobals();
+            const { environmentName } = command.optsWithGlobals();
             const progress = ora(
-                `Stopping ${chalk.cyan(projectName)} environment...`,
+                `Stopping ${chalk.cyan(environmentName)} environment...`,
             ).start();
             try {
                 await execa("docker", [
                     "compose",
                     "-p",
-                    projectName,
+                    environmentName,
                     "down",
                     "--volumes",
                 ]);
                 progress.succeed(
-                    `${chalk.cyan(projectName)} environment stopped.`,
+                    `${chalk.cyan(environmentName)} environment stopped.`,
                 );
             } catch (e: unknown) {
                 progress.fail((e as Error).message);
