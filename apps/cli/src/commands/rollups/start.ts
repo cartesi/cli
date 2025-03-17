@@ -259,6 +259,12 @@ export const createStartCommand = () => {
                     stdio: "inherit",
                 });
             } else {
+                // pull images first
+                await execa("docker", [...composeArgs, "pull"], {
+                    env,
+                    stdio: "inherit",
+                });
+
                 // run compose environment
                 const up = execa("docker", [...composeArgs, "up", ...upArgs], {
                     env,
