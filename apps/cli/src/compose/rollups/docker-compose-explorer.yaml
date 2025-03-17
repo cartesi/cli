@@ -28,7 +28,7 @@ services:
                 [
                     "CMD",
                     "curl",
-                    "-f",
+                    "-fsS",
                     "http://127.0.0.1:4350/graphql?query=%7B__typename%7D",
                 ]
             start_period: 10s
