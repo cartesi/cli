@@ -257,6 +257,7 @@ curl -fsSL https://github.com/cartesi/rollups-node/releases/download/v${CARTESI_
     -o /tmp/cartesi-rollups-node.deb
 dpkg -i /tmp/cartesi-rollups-node.deb
 rm /tmp/cartesi-rollups-node.deb
+mkdir -p /var/lib/cartesi-rollups-node/snapshots
 cartesi-rollups-node --version
 EOF
 
