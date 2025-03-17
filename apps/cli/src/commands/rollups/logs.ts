@@ -22,7 +22,7 @@ export const createLogsCommand = () => {
         )
         .configureHelp({ showGlobalOptions: true })
         .action(async ({ follow, color, since, tail, until }, command) => {
-            const { projectName } = command.optsWithGlobals();
+            const { environmentName } = command.optsWithGlobals();
             const logOptions: string[] = ["--no-log-prefix"];
             if (follow) logOptions.push("--follow");
             if (color === false) logOptions.push("--no-color");
@@ -32,8 +32,8 @@ export const createLogsCommand = () => {
                 "docker",
                 [
                     "compose",
-                    "-p",
-                    projectName,
+                    "--project-name",
+                    environmentName,
                     "logs",
                     ...logOptions,
                     "rollups-node",
