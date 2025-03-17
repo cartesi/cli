@@ -1,5 +1,6 @@
 import { Command } from "@commander-js/extra-typings";
 import { createDeployCommand } from "./rollups/deploy.js";
+import { createLogsCommand } from "./rollups/logs.js";
 import { createStartCommand } from "./rollups/start.js";
 import { createStatusCommand } from "./rollups/status.js";
 import { createStopCommand } from "./rollups/stop.js";
@@ -14,6 +15,7 @@ export const createRollupsCommand = () => {
         .action(async (_options, program) => {
             program.help();
         });
+    command.addCommand(createLogsCommand());
     command.addCommand(createStartCommand());
     command.addCommand(createStatusCommand());
     command.addCommand(createStopCommand());
