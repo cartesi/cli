@@ -51,7 +51,7 @@ services:
                 [
                     "CMD",
                     "curl",
-                    "-f",
+                    "-fsS",
                     "http://127.0.0.1:8770/status/block-height",
                 ]
             start_period: 10s
