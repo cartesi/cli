@@ -199,10 +199,9 @@ export const createStartCommand = () => {
 
             // setup the environment variable used in docker compose
             const env: NodeJS.ProcessEnv = {
-                ANVIL_VERBOSITY: verbose ? "--steps-tracing" : "--silent",
                 BLOCK_TIME: blockTime.toString(),
                 CARTESI_BLOCKCHAIN_DEFAULT_BLOCK: defaultBlock,
-                CARTESI_LOG_LEVEL: verbose ? "info" : "error",
+                CARTESI_LOG_LEVEL: verbose ? "debug" : "info",
                 CARTESI_BIN_PATH: binPath,
                 CARTESI_LISTEN_PORT: port.toString(),
                 CARTESI_ROLLUPS_NODE_CPUS: cpus?.toString(),
