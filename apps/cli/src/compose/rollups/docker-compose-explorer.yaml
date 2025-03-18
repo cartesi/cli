@@ -64,11 +64,6 @@ services:
                 condition: service_completed_successfully
 
     proxy:
-        depends_on:
-            explorer_api:
-                condition: service_healthy
-            explorer:
-                condition: service_healthy
         volumes:
             - ./proxy/explorer.yaml:/etc/traefik/conf.d/explorer.yaml
             - ./proxy/explorer-api.yaml:/etc/traefik/conf.d/explorer-api.yaml

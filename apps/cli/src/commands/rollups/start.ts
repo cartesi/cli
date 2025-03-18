@@ -42,7 +42,7 @@ const baseServices: Service[] = [
     {
         name: "rpc",
         file: "docker-compose-node.yaml",
-        healthySemaphore: "proxy",
+        healthySemaphore: "rollups-node",
         healthyTitle: (port) =>
             `${chalk.cyan("rpc")} service ready at ${chalk.cyan(`${host}:${port}/rpc`)}`,
         waitTitle: `${chalk.cyan("rpc")} service starting...`,
@@ -51,7 +51,7 @@ const baseServices: Service[] = [
     {
         name: "inspect",
         file: "docker-compose-node.yaml",
-        healthySemaphore: "proxy",
+        healthySemaphore: "rollups-node",
         healthyTitle: (port) =>
             `${chalk.cyan("inspect")} service ready at ${chalk.cyan(`${host}:${port}/inspect/<application_address>`)}`,
         waitTitle: `${chalk.cyan("inspect")} service starting...`,
@@ -63,7 +63,7 @@ const availableServices: Service[] = [
     {
         name: "bundler",
         file: "docker-compose-bundler.yaml",
-        healthySemaphore: "proxy",
+        healthySemaphore: "bundler",
         healthyTitle: (port) =>
             `${chalk.cyan("bundler")} service ready at ${chalk.cyan(`${host}:${port}/bundler/rpc`)}`,
         waitTitle: `${chalk.cyan("bundler")} service starting...`,
@@ -72,7 +72,7 @@ const availableServices: Service[] = [
     {
         name: "espresso",
         file: "docker-compose-espresso.yaml",
-        healthySemaphore: "proxy",
+        healthySemaphore: "espresso",
         healthyTitle: (port) =>
             `${chalk.cyan("espresso")} service ready at ${chalk.cyan(`${host}:${port}/espresso`)}`,
         waitTitle: `${chalk.cyan("espresso")} service starting...`,
@@ -81,7 +81,7 @@ const availableServices: Service[] = [
     {
         name: "explorer",
         file: "docker-compose-explorer.yaml",
-        healthySemaphore: "proxy",
+        healthySemaphore: "explorer_api",
         healthyTitle: (port) =>
             `${chalk.cyan("explorer")} service ready at ${chalk.cyan(`${host}:${port}/explorer`)}`,
         waitTitle: `${chalk.cyan("explorer")} service starting...`,
@@ -90,7 +90,7 @@ const availableServices: Service[] = [
     {
         name: "graphql",
         file: "docker-compose-graphql.yaml",
-        healthySemaphore: "proxy",
+        healthySemaphore: "graphql",
         healthyTitle: (port) =>
             `${chalk.cyan("graphql")} service ready at ${chalk.cyan(`${host}:${port}/graphql`)}`,
         waitTitle: `${chalk.cyan("graphql")} service starting...`,
@@ -99,7 +99,7 @@ const availableServices: Service[] = [
     {
         name: "paymaster",
         file: "docker-compose-paymaster.yaml",
-        healthySemaphore: "proxy",
+        healthySemaphore: "paymaster",
         healthyTitle: (port) =>
             `${chalk.cyan("paymaster")} service ready at ${chalk.cyan(`${host}:${port}/paymaster`)}`,
         waitTitle: `${chalk.cyan("paymaster")} service starting...`,

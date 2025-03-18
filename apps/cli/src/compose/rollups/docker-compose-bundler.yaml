@@ -39,8 +39,5 @@ services:
             retries: 5
 
     proxy:
-        depends_on:
-            bundler:
-                condition: service_healthy
         volumes:
             - ./proxy/bundler.yaml:/etc/traefik/conf.d/bundler.yaml

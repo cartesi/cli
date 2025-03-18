@@ -95,9 +95,6 @@ services:
             ESPRESSO_STARTING_BLOCK: 101
 
     proxy:
-        depends_on:
-            espresso:
-                condition: service_healthy
         volumes:
             - ./proxy/espresso.yaml:/etc/traefik/conf.d/espresso.yaml
             - ./proxy/espresso-reader.yaml:/etc/traefik/conf.d/espresso-reader.yaml
