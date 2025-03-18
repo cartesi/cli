@@ -45,8 +45,5 @@ services:
                 condition: service_completed_successfully
 
     proxy:
-        depends_on:
-            graphql:
-                condition: service_healthy
         volumes:
             - ./proxy/graphql.yaml:/etc/traefik/conf.d/graphql.yaml

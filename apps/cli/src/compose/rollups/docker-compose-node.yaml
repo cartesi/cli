@@ -32,8 +32,5 @@ services:
             - ${CARTESI_BIN_PATH}/compose/rollups/default.env
 
     proxy:
-        depends_on:
-            rollups-node:
-                condition: service_healthy
         volumes:
             - ./proxy/rollups-node.yaml:/etc/traefik/conf.d/rollups-node.yaml

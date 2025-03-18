@@ -14,8 +14,5 @@ services:
             retries: 5
 
     proxy:
-        depends_on:
-            paymaster:
-                condition: service_healthy
         volumes:
             - ./proxy/paymaster.yaml:/etc/traefik/conf.d/paymaster.yaml
