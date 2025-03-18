@@ -1,6 +1,6 @@
 services:
     graphql_database_creator:
-        image: postgres:16-alpine
+        image: postgres:16
         command: ["createdb", "graphql"]
         depends_on:
             database:

@@ -1,6 +1,6 @@
 services:
     database_creator:
-        image: postgres:16-alpine
+        image: postgres:16
         command: ["createdb", "squid"]
         depends_on:
             database:

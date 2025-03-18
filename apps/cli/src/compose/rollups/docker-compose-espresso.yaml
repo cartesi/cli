@@ -1,6 +1,6 @@
 services:
     espresso_database_creator:
-        image: postgres:16-alpine
+        image: postgres:16
         command: ["createdb", "sequencer"]
         depends_on:
             database:
