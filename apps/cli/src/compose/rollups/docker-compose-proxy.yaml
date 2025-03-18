@@ -17,6 +17,8 @@ services:
                 "--metrics.prometheus.addServicesLabels=true",
                 "--providers.file.directory=/etc/traefik/conf.d",
                 "--providers.file.watch=true",
+                "--log",
+                "--log.level=INFO",
             ]
         ports:
             - ${CARTESI_LISTEN_PORT:-8080}:8088
