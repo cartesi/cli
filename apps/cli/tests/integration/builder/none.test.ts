@@ -1,9 +1,9 @@
 import fs from "fs-extra";
 import path from "path";
 import { describe, expect } from "vitest";
-import { build } from "../../../src/builder/none";
-import { ExistingDriveConfig } from "../../../src/config";
-import { tmpdirTest } from "./tmpdirTest";
+import { build } from "../../../src/builder/none.js";
+import { ExistingDriveConfig } from "../../../src/config.js";
+import { tmpdirTest } from "./tmpdirTest.js";
 
 describe("when building with the none builder", () => {
     tmpdirTest("should not build a missing file", async ({ tmpdir }) => {

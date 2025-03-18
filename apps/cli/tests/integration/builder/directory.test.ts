@@ -1,12 +1,13 @@
 import fs from "fs-extra";
 import path from "path";
 import { describe, expect } from "vitest";
-import { build } from "../../../src/builder/directory";
-import { DEFAULT_SDK, DirectoryDriveConfig } from "../../../src/config";
-import { tmpdirTest } from "./tmpdirTest";
+import { build } from "../../../src/builder/directory.js";
+import { DirectoryDriveConfig } from "../../../src/config.js";
+import { TEST_SDK } from "../config.js";
+import { tmpdirTest } from "./tmpdirTest.js";
 
 describe("when building with the directory builder", () => {
-    const image = DEFAULT_SDK;
+    const image = TEST_SDK;
 
     tmpdirTest(
         "should fail when the directory doesn't exists",
