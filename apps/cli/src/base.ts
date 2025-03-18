@@ -116,10 +116,7 @@ export const getServiceHealth = async (options: {
     return info?.Health;
 };
 
-export const parseAddress = (
-    value: string,
-    _previous: Address | undefined,
-): Address | undefined => {
+export const parseAddress = (value: string): Address | undefined => {
     if (isAddress(value)) {
         return getAddress(value);
     } else {
@@ -130,7 +127,7 @@ export const parseAddress = (
     }
 };
 
-export const parseHash = (value: string, _previous: Hash): Hash => {
+export const parseHash = (value: string): Hash => {
     if (isHash(value)) {
         return value;
     } else {

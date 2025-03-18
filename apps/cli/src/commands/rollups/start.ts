@@ -8,8 +8,7 @@ import { getServiceHealth } from "../../base.js";
 import { DEFAULT_SDK } from "../../config.js";
 import { RollupsCommandOpts } from "../rollups.js";
 
-const commaSeparatedList = (value: string, _previous: string[]) =>
-    value.split(",");
+const commaSeparatedList = (value: string) => value.split(",");
 
 type Service = {
     name: string; // name of the service
