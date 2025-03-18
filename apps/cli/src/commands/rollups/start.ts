@@ -66,8 +66,8 @@ const availableServices: Service[] = [
         healthySemaphore: "proxy",
         healthyTitle: (port) =>
             `Service ${chalk.cyan("bundler")} ready at ${chalk.cyan(`${host}:${port}/bundler/rpc`)}`,
-        waitTitle: `Starting ${chalk.cyan("bundler")}...`,
-        errorTitle: `Service ${chalk.red("bundler")} failed`,
+        waitTitle: `${chalk.cyan("bundler")} service starting...`,
+        errorTitle: `${chalk.red("bundler")} service failed`,
     },
     {
         name: "espresso",
@@ -75,8 +75,8 @@ const availableServices: Service[] = [
         healthySemaphore: "proxy",
         healthyTitle: (port) =>
             `Service ${chalk.cyan("espresso")} ready at ${chalk.cyan(`${host}:${port}/espresso`)}`,
-        waitTitle: `Starting ${chalk.cyan("espresso")}...`,
-        errorTitle: `Service ${chalk.red("espresso")} failed`,
+        waitTitle: `${chalk.cyan("espresso")} service starting...`,
+        errorTitle: `${chalk.red("espresso")} service failed`,
     },
     {
         name: "explorer",
@@ -84,8 +84,8 @@ const availableServices: Service[] = [
         healthySemaphore: "proxy",
         healthyTitle: (port) =>
             `Service ${chalk.cyan("explorer")} ready at ${chalk.cyan(`${host}:${port}/explorer`)}`,
-        waitTitle: `Starting ${chalk.cyan("explorer")}...`,
-        errorTitle: `Service ${chalk.red("explorer")} failed`,
+        waitTitle: `${chalk.cyan("explorer")} service starting...`,
+        errorTitle: `${chalk.red("explorer")} service failed`,
     },
     {
         name: "graphql",
@@ -93,8 +93,8 @@ const availableServices: Service[] = [
         healthySemaphore: "proxy",
         healthyTitle: (port) =>
             `Service ${chalk.cyan("graphql")} ready at ${chalk.cyan(`${host}:${port}/graphql`)}`,
-        waitTitle: `Starting ${chalk.cyan("graphql")}...`,
-        errorTitle: `Service ${chalk.red("graphql")} failed`,
+        waitTitle: `${chalk.cyan("graphql")} service starting...`,
+        errorTitle: `${chalk.red("graphql")} service failed`,
     },
     {
         name: "paymaster",
