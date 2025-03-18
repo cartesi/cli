@@ -1,5 +1,4 @@
 # syntax=docker.io/docker/dockerfile:1
-ARG BASE_IMAGE
 ARG CARTESI_ESPRESSO_READER_VERSION
 ARG CARTESI_IMAGE_KERNEL_VERSION
 ARG CARTESI_MACHINE_EMULATOR_VERSION
@@ -10,6 +9,8 @@ ARG FOUNDRY_VERSION
 ARG LINUX_KERNEL_VERSION
 ARG NODEJS_VERSION
 ARG POSTGRES_VERSION
+ARG ROLLUPS_NODE_BASE_IMAGE
+ARG SDK_BASE_IMAGE
 ARG SU_EXEC_VERSION
 ARG XGENEXT2_VERSION
 
@@ -18,8 +19,20 @@ ARG XGENEXT2_VERSION
 FROM ghcr.io/espressosystems/espresso-sequencer/espresso-dev-node:${ESPRESSO_DEV_NODE_TAG} AS espresso-dev-node
 
 ################################################################################
-# base image
-FROM ${BASE_IMAGE} AS base
+# sdk-base image
+FROM ${SDK_BASE_IMAGE} AS sdk-base
+SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
+ARG DEBIAN_FRONTEND=noninteractive
+RUN <<EOF
+apt-get update
+apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl
+EOF
+
+################################################################################
+# rollups-base image
+FROM ${ROLLUPS_NODE_BASE_IMAGE} AS rollups-node-base
 SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
 ARG DEBIAN_FRONTEND=noninteractive
 RUN <<EOF
@@ -31,7 +44,7 @@ EOF
 
 ################################################################################
 # builder image
-FROM base AS builder
+FROM sdk-base AS builder
 WORKDIR /usr/local/src
 ARG DEBIAN_FRONTEND=noninteractive
 RUN <<EOF
@@ -54,7 +67,7 @@ RUN make
 
 ################################################################################
 # crane installer
-FROM base AS crane
+FROM sdk-base AS crane
 ARG CRANE_VERSION
 RUN <<EOF
 #FIXME: ugly hack to download the right go-containerregistry binary
@@ -69,7 +82,7 @@ EOF
 
 ################################################################################
 # foundry installer
-FROM base AS foundry
+FROM sdk-base AS foundry
 ARG FOUNDRY_VERSION
 ARG TARGETARCH
 ARG TARGETOS
@@ -78,7 +91,7 @@ RUN curl -fsSL https://github.com/foundry-rs/foundry/releases/download/v${FOUNDR
 
 ################################################################################
 # go migrate db cli installer
-FROM base AS go-migrate
+FROM sdk-base AS go-migrate
 ARG GO_MIGRATE_VERSION
 ARG TARGETARCH
 ARG TARGETOS
@@ -90,7 +103,7 @@ EOF
 
 ################################################################################
 # cartesi-rollups-graphql installer
-FROM base AS graphql
+FROM sdk-base AS graphql
 ARG CARTESI_ROLLUPS_GRAPHQL_VERSION
 ARG TARGETOS
 ARG TARGETARCH
@@ -99,7 +112,7 @@ RUN curl -fsSL https://github.com/cartesi/rollups-graphql/releases/download/v${C
 
 ################################################################################
 # cartesi-rollups-graphql migration code installer
-FROM base AS graphql-migration
+FROM sdk-base AS graphql-migration
 ARG CARTESI_ROLLUPS_GRAPHQL_VERSION
 RUN <<EOF
 GRAPHQL_DEST_FOLDER="/usr/share/cartesi/rollups-graphql/migrations"
@@ -111,7 +124,7 @@ EOF
 
 ################################################################################
 # cartesi-rollups-espresso-reader installer
-FROM base AS espresso-reader
+FROM sdk-base AS espresso-reader
 ARG CARTESI_ESPRESSO_READER_VERSION
 ARG TARGETOS
 ARG TARGETARCH
@@ -120,7 +133,7 @@ RUN curl -fsSL https://github.com/cartesi/rollups-espresso-reader/releases/downl
 
 ################################################################################
 # rollups-espresso-reader migration code installer
-FROM base AS espresso-reader-migration
+FROM sdk-base AS espresso-reader-migration
 ARG CARTESI_ESPRESSO_READER_VERSION
 RUN <<EOF
 ESPRESSO_DEST_FOLDER="/usr/share/cartesi/rollups-espresso-reader/migrations"
@@ -137,8 +150,69 @@ ENV POSTGRES_PASSWORD=password
 RUN /usr/local/bin/docker-ensure-initdb.sh postgres
 
 ################################################################################
+# cartesi rollups-node target
+FROM rollups-node-base AS rollups-node
+ARG CARTESI_MACHINE_EMULATOR_VERSION
+ARG CARTESI_ROLLUPS_NODE_VERSION
+ARG TARGETARCH
+
+USER root
+ARG DEBIAN_FRONTEND=noninteractive
+RUN <<EOF
+apt-get install -y --no-install-recommends \
+    libslirp0 \
+    lua5.4 \
+    xz-utils
+rm -rf /var/lib/apt/lists/*
+EOF
+
+RUN <<EOF
+set -e
+addgroup --system --gid 102 cartesi
+adduser --system --uid 102 \
+    --disabled-login \
+    --gecos "cartesi user" \
+    --home /nonexistent \
+    --ingroup cartesi \
+    --no-create-home \
+    --shell /bin/false \
+    cartesi
+EOF
+
+RUN mkdir -p /tmp/.cartesi && chmod 1777 /tmp/.cartesi
+
+# Install cartesi-machine emulator
+RUN <<EOF
+curl -fsSL https://github.com/cartesi/machine-emulator/releases/download/v${CARTESI_MACHINE_EMULATOR_VERSION}/cartesi-machine-v${CARTESI_MACHINE_EMULATOR_VERSION}_${TARGETARCH}.deb \
+    -o /tmp/cartesi-machine.deb
+dpkg -i /tmp/cartesi-machine.deb
+rm /tmp/cartesi-machine.deb
+cartesi-machine --version-json
+EOF
+
+# Install cartesi-rollups-node
+RUN <<EOF
+curl -fsSL https://github.com/cartesi/rollups-node/releases/download/v${CARTESI_ROLLUPS_NODE_VERSION}/cartesi-rollups-node-v${CARTESI_ROLLUPS_NODE_VERSION%%-*}_${TARGETARCH}.deb \
+    -o /tmp/cartesi-rollups-node.deb
+dpkg -i /tmp/cartesi-rollups-node.deb
+rm /tmp/cartesi-rollups-node.deb
+mkdir -p /var/lib/cartesi-rollups-node/snapshots
+chmod 755 /var/lib/cartesi-rollups-node/snapshots
+chown cartesi:cartesi /var/lib/cartesi-rollups-node/snapshots
+cartesi-rollups-node --version
+EOF
+
+COPY --from=go-migrate /usr/local/bin/migrate /usr/local/bin/
+COPY --from=graphql /usr/local/bin/cartesi-rollups-graphql /usr/local/bin/
+COPY --from=graphql-migration /usr/share/cartesi/rollups-graphql/migrations /usr/share/cartesi/rollups-graphql/migrations
+COPY --from=espresso-reader /usr/local/bin/cartesi-rollups-espresso-reader /usr/local/bin/
+COPY --from=espresso-reader-migration /usr/share/cartesi/rollups-espresso-reader/migrations /usr/share/cartesi/rollups-espresso-reader/migrations
+
+USER cartesi
+
+################################################################################
 # sdk final image
-FROM base
+FROM sdk-base
 ARG ALTO_VERSION
 ARG CARTESI_IMAGE_KERNEL_VERSION
 ARG CARTESI_MACHINE_EMULATOR_VERSION
@@ -146,6 +220,7 @@ ARG CARTESI_ROLLUPS_NODE_VERSION
 ARG DEVNET_VERSION
 ARG LINUX_KERNEL_VERSION
 ARG PAYMASTER_VERSION
+ARG TARGETARCH
 ARG TARGETARCH
 ARG XGENEXT2_VERSION
 
@@ -163,8 +238,11 @@ apt-get install -y --no-install-recommends \
     squashfs-tools \
     xxd \
     xz-utils
+rm -rf /var/lib/apt/lists/*
+EOF
 
 # Install e2fsprogs from backports
+RUN <<EOF
 echo 'deb http://deb.debian.org/debian bookworm-backports main' > /etc/apt/sources.list.d/backports.list
 apt-get update
 apt-get install -y --no-install-recommends -t bookworm-backports \
@@ -197,33 +275,6 @@ cp /usr/local/lib/node_modules/@cartesi/devnet/export/abi/localhost.json /usr/sh
 cp /usr/local/lib/node_modules/@cartesi/devnet/build/anvil_state.json /usr/share/cartesi/
 EOF
 
-ENV LC_ALL=en_US.UTF-8
-ENV LANG=en_US.UTF-8
-ENV LANGUAGE=en_US:en
-
-# healthcheck script using net_listening JSON-RPC method
-COPY alto /usr/local/bin
-COPY devnet /usr/local/bin
-COPY eth_isready /usr/local/bin
-COPY eth_dump /usr/local/bin
-COPY eth_load /usr/local/bin
-COPY create_machine_snapshot /usr/local/bin
-
-COPY entrypoint.sh /usr/local/bin/
-COPY --from=su-exec /usr/local/src/su-exec /usr/local/bin/
-COPY --from=crane /usr/local/bin/crane /usr/local/bin/
-COPY --from=foundry /usr/local/bin/anvil /usr/local/bin/
-COPY --from=foundry /usr/local/bin/cast /usr/local/bin/
-COPY --from=go-migrate /usr/local/bin/migrate /usr/local/bin/
-COPY --from=graphql /usr/local/bin/cartesi-rollups-graphql /usr/local/bin/
-COPY --from=graphql-migration /usr/share/cartesi/rollups-graphql/migrations /usr/share/cartesi/rollups-graphql/migrations
-COPY --from=espresso-reader /usr/local/bin/cartesi-rollups-espresso-reader /usr/local/bin/
-COPY --from=espresso-reader-migration /usr/share/cartesi/rollups-espresso-reader/migrations /usr/share/cartesi/rollups-espresso-reader/migrations
-COPY --from=espresso-dev-node /usr/bin/espresso-dev-node /usr/local/bin/
-COPY --from=postgresql-initdb /var/lib/postgresql/data /var/lib/postgresql/data
-
-RUN mkdir -p /tmp/.cartesi && chmod 1777 /tmp/.cartesi
-
 # Install cartesi-machine emulator
 RUN <<EOF
 curl -fsSL https://github.com/cartesi/machine-emulator/releases/download/v${CARTESI_MACHINE_EMULATOR_VERSION}/cartesi-machine-v${CARTESI_MACHINE_EMULATOR_VERSION}_${TARGETARCH}.deb \
@@ -231,6 +282,16 @@ curl -fsSL https://github.com/cartesi/machine-emulator/releases/download/v${CART
 dpkg -i /tmp/cartesi-machine.deb
 rm /tmp/cartesi-machine.deb
 cartesi-machine --version-json
+EOF
+
+# Install cartesi-rollups-node
+RUN <<EOF
+curl -fsSL https://github.com/cartesi/rollups-node/releases/download/v${CARTESI_ROLLUPS_NODE_VERSION}/cartesi-rollups-node-v${CARTESI_ROLLUPS_NODE_VERSION%%-*}_${TARGETARCH}.deb \
+    -o /tmp/cartesi-rollups-node.deb
+dpkg -i /tmp/cartesi-rollups-node.deb
+rm /tmp/cartesi-rollups-node.deb
+mkdir -p /var/lib/cartesi-rollups-node/snapshots
+cartesi-rollups-node --version
 EOF
 
 # Install linux kernel image
@@ -251,15 +312,25 @@ tar -xJf "/tmp/linux-headers-${LINUX_KERNEL_VERSION}.tar.xz" -C /
 rm "/tmp/linux-headers-${LINUX_KERNEL_VERSION}.tar.xz"
 EOF
 
-# Install cartesi-rollups-node
-RUN <<EOF
-curl -fsSL https://github.com/cartesi/rollups-node/releases/download/v${CARTESI_ROLLUPS_NODE_VERSION}/cartesi-rollups-node-v${CARTESI_ROLLUPS_NODE_VERSION%%-*}_${TARGETARCH}.deb \
-    -o /tmp/cartesi-rollups-node.deb
-dpkg -i /tmp/cartesi-rollups-node.deb
-rm /tmp/cartesi-rollups-node.deb
-mkdir -p /var/lib/cartesi-rollups-node/snapshots
-cartesi-rollups-node --version
-EOF
+ENV LC_ALL=en_US.UTF-8
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US:en
+
+# healthcheck script using net_listening JSON-RPC method
+COPY alto /usr/local/bin
+COPY devnet /usr/local/bin
+COPY eth_isready /usr/local/bin
+COPY eth_dump /usr/local/bin
+COPY eth_load /usr/local/bin
+COPY create_machine_snapshot /usr/local/bin
+
+COPY entrypoint.sh /usr/local/bin/
+COPY --from=su-exec /usr/local/src/su-exec /usr/local/bin/
+COPY --from=crane /usr/local/bin/crane /usr/local/bin/
+COPY --from=foundry /usr/local/bin/anvil /usr/local/bin/
+COPY --from=foundry /usr/local/bin/cast /usr/local/bin/
+COPY --from=espresso-dev-node /usr/bin/espresso-dev-node /usr/local/bin/
+COPY --from=postgresql-initdb /var/lib/postgresql/data /var/lib/postgresql/data
 
 WORKDIR /mnt
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
