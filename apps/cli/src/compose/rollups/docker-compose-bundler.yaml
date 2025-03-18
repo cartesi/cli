@@ -1,5 +1,5 @@
 services:
-    alto:
+    bundler:
         image: ${CARTESI_SDK_IMAGE}
         command:
             - "alto"
