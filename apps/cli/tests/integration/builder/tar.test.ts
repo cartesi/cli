@@ -1,12 +1,13 @@
 import fs from "fs-extra";
 import path from "path";
 import { describe, expect } from "vitest";
-import { build } from "../../../src/builder/tar";
-import { DEFAULT_SDK, TarDriveConfig } from "../../../src/config";
-import { tmpdirTest } from "./tmpdirTest";
+import { build } from "../../../src/builder/tar.js";
+import { TarDriveConfig } from "../../../src/config.js";
+import { TEST_SDK } from "../config.js";
+import { tmpdirTest } from "./tmpdirTest.js";
 
 describe("when building with the tar builder", () => {
-    const image = DEFAULT_SDK;
+    const image = TEST_SDK;
 
     tmpdirTest("should not build a missing file", async ({ tmpdir }) => {
         const destination = tmpdir;

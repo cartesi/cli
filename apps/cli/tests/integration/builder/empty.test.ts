@@ -1,12 +1,13 @@
 import fs from "fs-extra";
 import path from "path";
 import { describe, expect } from "vitest";
-import { build } from "../../../src/builder/empty";
-import { DEFAULT_SDK, EmptyDriveConfig } from "../../../src/config";
-import { tmpdirTest } from "./tmpdirTest";
+import { build } from "../../../src/builder/empty.js";
+import { EmptyDriveConfig } from "../../../src/config.js";
+import { TEST_SDK } from "../config.js";
+import { tmpdirTest } from "./tmpdirTest.js";
 
 describe("when building with the empty builder", () => {
-    const image = DEFAULT_SDK;
+    const image = TEST_SDK;
 
     tmpdirTest("should fail with an invalid size", async ({ tmpdir }) => {
         const destination = tmpdir;
