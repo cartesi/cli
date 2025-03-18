@@ -1,5 +1,5 @@
 services:
-    mock-verifying-paymaster:
+    paymaster:
         image: ${CARTESI_SDK_IMAGE}
         command: "mock-verifying-paymaster"
         environment:
