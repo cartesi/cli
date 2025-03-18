@@ -1,19 +1,9 @@
 services:
-    rollups-node-migration:
-        image: ${CARTESI_SDK_IMAGE}
-        command: ["cartesi-rollups-cli", "db", "upgrade"]
-        depends_on:
-            database:
-                condition: service_healthy
-        restart: "no"
-        env_file:
-            - ${CARTESI_BIN_PATH}/compose/rollups/default.env
-
     rollups-node:
         image: ${CARTESI_SDK_IMAGE}
         depends_on:
-            rollups-node-migration:
-                condition: service_completed_successfully
+            database:
+                condition: service_healthy
             anvil:
                 condition: service_healthy
         expose:
@@ -27,6 +17,10 @@ services:
             interval: 10s
             timeout: 1s
             retries: 5
+        entrypoint:
+            - /bin/sh
+            - -c
+            - 'cartesi-rollups-cli db upgrade && exec "$0" "$@"'
         command: ["cartesi-rollups-node"]
         env_file:
             - ${CARTESI_BIN_PATH}/compose/rollups/default.env

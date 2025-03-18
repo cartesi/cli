@@ -12,19 +12,6 @@ services:
             PGPASSWORD: password
             PGDATABASE: postgres
 
-    graphql_database_migration:
-        image: ${CARTESI_SDK_IMAGE}
-        command:
-            - migrate
-            - -path
-            - /usr/share/cartesi/rollups-graphql/migrations
-            - -database
-            - postgres://postgres:password@database:5432/graphql?sslmode=disable
-            - up
-        depends_on:
-            graphql_database_creator:
-                condition: service_completed_successfully
-
     graphql:
         image: ${CARTESI_SDK_IMAGE}
         environment:
@@ -32,6 +19,15 @@ services:
             POSTGRES_NODE_DB_URL: postgres://postgres:password@database:5432/postgres?sslmode=disable
         expose:
             - 8080
+        entrypoint:
+            - /bin/sh
+            - -c
+            - |
+                migrate \
+                    -path /usr/share/cartesi/rollups-graphql/migrations \
+                    -database postgres://postgres:password@database:5432/graphql?sslmode=disable \
+                    up && \
+                exec "$0" "$@"
         command: ["cartesi-rollups-graphql"]
         healthcheck:
             test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/health"]
@@ -41,7 +37,7 @@ services:
             timeout: 1s
             retries: 5
         depends_on:
-            graphql_database_migration:
+            graphql_database_creator:
                 condition: service_completed_successfully
 
     proxy:
