@@ -15,7 +15,7 @@ jobs:
                 image:
                     - sdk
         steps:
-            - uses: vlaurin/action-ghcr-prune@v0.6.0
+            - uses: vlaurin/action-ghcr-prune@0cf7d39f88546edd31965acba78cdcb0be14d641 # v0.6.0
               with:
                   organization: cartesi
                   container: ${{ matrix.image }}
