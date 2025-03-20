@@ -11,5 +11,7 @@ services:
             retries: 5
         environment:
             ANVIL_IP_ADDR: 0.0.0.0
-        ports:
-            - 8545:8545
+
+    proxy:
+        volumes:
+            - ./proxy/anvil.yaml:/etc/traefik/conf.d/anvil.yaml

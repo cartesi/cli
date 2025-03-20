@@ -77,14 +77,15 @@ const walletChoices = (chain: Chain): Choice<WalletType>[] => {
 };
 
 /**
- * Test if the default RPC URL for a chain is working
+ * Test if a RPC URL for a chain is working
  * @param chain chain to test
- * @returns true if the default RPC URL is valid, false otherwise
+ * @param url url to test
+ * @returns true if the RPC URL is valid and chainId matches, false otherwise
  */
-const testDefaultPublicClient = async (chain: Chain): Promise<boolean> => {
+const testChainUrl = async (chain: Chain, url: string): Promise<boolean> => {
     try {
         const publicClient = viemCreatePublicClient({
-            transport: http(chain.rpcUrls.default.http[0]),
+            transport: http(url),
             chain,
         });
         const chainId = await publicClient.getChainId();
@@ -92,6 +93,15 @@ const testDefaultPublicClient = async (chain: Chain): Promise<boolean> => {
     } catch (e) {
         return false;
     }
+};
+
+/**
+ * Test if the default RPC URL for a chain is working
+ * @param chain chain to test
+ * @returns true if the default RPC URL is valid, false otherwise
+ */
+const testDefaultPublicClient = async (chain: Chain): Promise<boolean> => {
+    return testChainUrl(chain, chain.rpcUrls.default.http[0]);
 };
 
 export interface EthereumPromptOptions {
@@ -142,9 +152,17 @@ const selectTransport = async (
     } else {
         const defaultUrl = chain.rpcUrls.default.http[0];
 
-        // if the chain is anvil and the default URL is valid, use it without asking the user
-        if (chain.id === anvil.id && (await testDefaultPublicClient(chain))) {
-            return http(defaultUrl);
+        // if the chain is anvil and URL is valid, use it without asking the user
+        if (chain.id === anvil.id) {
+            const port = 8080; // XXX: how to get environment port?
+            const url = `http://127.0.0.1:${port}/anvil`;
+            if (await testChainUrl(chain, url)) {
+                return http(url);
+            }
+
+            if (await testDefaultPublicClient(chain)) {
+                return http(defaultUrl);
+            }
         }
 
         const url = await input({

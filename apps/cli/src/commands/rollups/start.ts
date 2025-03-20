@@ -27,7 +27,8 @@ const baseServices: Service[] = [
         name: "anvil",
         file: "docker-compose-anvil.yaml",
         healthySemaphore: "anvil",
-        healthyTitle: `${chalk.cyan("anvil")} service ready at ${chalk.cyan(`${host}:8545`)}`,
+        healthyTitle: (port) =>
+            `${chalk.cyan("anvil")} service ready at ${chalk.cyan(`${host}:${port}/anvil`)}`,
         waitTitle: `${chalk.cyan("anvil")} service starting...`,
         errorTitle: `${chalk.red("anvil")} service failed`,
     },
