@@ -20,11 +20,6 @@ services:
                 limits:
                     cpus: "4"
                     memory: "1G"
-        ports:
-            - 8770:8770
-            - 8771:8771
-            - 8772:8772
-            - 20000:20000
         depends_on:
             espresso_database_creator:
                 condition: service_completed_successfully
@@ -97,4 +92,3 @@ services:
     proxy:
         volumes:
             - ./proxy/espresso.yaml:/etc/traefik/conf.d/espresso.yaml
-            - ./proxy/espresso-reader.yaml:/etc/traefik/conf.d/espresso-reader.yaml

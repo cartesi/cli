@@ -74,7 +74,7 @@ const availableServices: Service[] = [
         file: "docker-compose-espresso.yaml",
         healthySemaphore: "espresso",
         healthyTitle: (port) =>
-            `${chalk.cyan("espresso")} service ready at ${chalk.cyan(`${host}:${port}/espresso`)}`,
+            `${chalk.cyan("espresso")} service ready at ${chalk.cyan(`${host}:${port}/transaction`)}`,
         waitTitle: `${chalk.cyan("espresso")} service starting...`,
         errorTitle: `${chalk.red("espresso")} service failed`,
     },
