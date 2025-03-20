@@ -1,16 +1,16 @@
 # syntax=docker.io/docker/dockerfile:1
 ARG CARTESI_ESPRESSO_READER_VERSION
 ARG CARTESI_IMAGE_KERNEL_VERSION
+ARG CARTESI_LINUX_KERNEL_VERSION
 ARG CARTESI_MACHINE_EMULATOR_VERSION
 ARG CARTESI_ROLLUPS_GRAPHQL_VERSION
+ARG CARTESI_ROLLUPS_NODE_BASE_IMAGE
+ARG CARTESI_SDK_BASE_IMAGE
 ARG CRANE_VERSION
 ARG ESPRESSO_DEV_NODE_TAG
 ARG FOUNDRY_VERSION
-ARG LINUX_KERNEL_VERSION
 ARG NODEJS_VERSION
 ARG POSTGRES_VERSION
-ARG ROLLUPS_NODE_BASE_IMAGE
-ARG SDK_BASE_IMAGE
 ARG SU_EXEC_VERSION
 ARG XGENEXT2_VERSION
 
@@ -20,7 +20,7 @@ FROM ghcr.io/espressosystems/espresso-sequencer/espresso-dev-node:${ESPRESSO_DEV
 
 ################################################################################
 # sdk-base image
-FROM ${SDK_BASE_IMAGE} AS sdk-base
+FROM ${CARTESI_SDK_BASE_IMAGE} AS sdk-base
 SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
 ARG DEBIAN_FRONTEND=noninteractive
 RUN <<EOF
@@ -32,7 +32,7 @@ EOF
 
 ################################################################################
 # rollups-base image
-FROM ${ROLLUPS_NODE_BASE_IMAGE} AS rollups-node-base
+FROM ${CARTESI_ROLLUPS_NODE_BASE_IMAGE} AS rollups-node-base
 SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
 ARG DEBIAN_FRONTEND=noninteractive
 RUN <<EOF
@@ -214,12 +214,12 @@ USER cartesi
 # sdk final image
 FROM sdk-base
 ARG ALTO_VERSION
+ARG CARTESI_DEVNET_VERSION
 ARG CARTESI_IMAGE_KERNEL_VERSION
+ARG CARTESI_LINUX_KERNEL_VERSION
 ARG CARTESI_MACHINE_EMULATOR_VERSION
+ARG CARTESI_PAYMASTER_VERSION
 ARG CARTESI_ROLLUPS_NODE_VERSION
-ARG DEVNET_VERSION
-ARG LINUX_KERNEL_VERSION
-ARG PAYMASTER_VERSION
 ARG TARGETARCH
 ARG TARGETARCH
 ARG XGENEXT2_VERSION
@@ -266,8 +266,8 @@ EOF
 # Install nodejs packages
 RUN <<EOF
 npm install -g \
-    @cartesi/devnet@${DEVNET_VERSION} \
-    @cartesi/mock-verifying-paymaster@${PAYMASTER_VERSION} \
+    @cartesi/devnet@${CARTESI_DEVNET_VERSION} \
+    @cartesi/mock-verifying-paymaster@${CARTESI_PAYMASTER_VERSION} \
     @pimlico/alto@${ALTO_VERSION}
 
 mkdir -p /usr/share/cartesi
@@ -296,7 +296,7 @@ EOF
 
 # Install linux kernel image
 RUN <<EOF
-curl -fsSL "https://github.com/cartesi/image-kernel/releases/download/v${CARTESI_IMAGE_KERNEL_VERSION}/linux-${LINUX_KERNEL_VERSION}.bin" \
+curl -fsSL "https://github.com/cartesi/image-kernel/releases/download/v${CARTESI_IMAGE_KERNEL_VERSION}/linux-${CARTESI_LINUX_KERNEL_VERSION}.bin" \
     -o /usr/share/cartesi-machine/images/linux.bin
 echo "e4663365ea565792110129a6b479eca896cb31c23f561cb42214609588689f9d3d173a82b4ea27ff74ae05334747cc76ed6bc4c200a7499ac5134abfd2b3045e /usr/share/cartesi-machine/images/linux.bin" \
     | sha512sum -c
@@ -304,12 +304,12 @@ EOF
 
 # Install linux headers
 RUN <<EOF
-curl -fsSL "https://github.com/cartesi/image-kernel/releases/download/v${CARTESI_IMAGE_KERNEL_VERSION}/linux-headers-${LINUX_KERNEL_VERSION}.tar.xz" \
-    -o "/tmp/linux-headers-$LINUX_KERNEL_VERSION.tar.xz"
-echo "2ecdb9c9f02a96faed2605ec811ef7188f963feb21b32d057b1ab3278f27ac42887f235a3f52eadd5f5caa56a61e141ad2bb666793d5bdd755c273adba167d45 /tmp/linux-headers-${LINUX_KERNEL_VERSION}.tar.xz" \
+curl -fsSL "https://github.com/cartesi/image-kernel/releases/download/v${CARTESI_IMAGE_KERNEL_VERSION}/linux-headers-${CARTESI_LINUX_KERNEL_VERSION}.tar.xz" \
+    -o "/tmp/linux-headers-${CARTESI_LINUX_KERNEL_VERSION}.tar.xz"
+echo "2ecdb9c9f02a96faed2605ec811ef7188f963feb21b32d057b1ab3278f27ac42887f235a3f52eadd5f5caa56a61e141ad2bb666793d5bdd755c273adba167d45 /tmp/linux-headers-${CARTESI_LINUX_KERNEL_VERSION}.tar.xz" \
     | sha512sum -c
-tar -xJf "/tmp/linux-headers-${LINUX_KERNEL_VERSION}.tar.xz" -C /
-rm "/tmp/linux-headers-${LINUX_KERNEL_VERSION}.tar.xz"
+tar -xJf "/tmp/linux-headers-${CARTESI_LINUX_KERNEL_VERSION}.tar.xz" -C /
+rm "/tmp/linux-headers-${CARTESI_LINUX_KERNEL_VERSION}.tar.xz"
 EOF
 
 ENV LC_ALL=en_US.UTF-8
