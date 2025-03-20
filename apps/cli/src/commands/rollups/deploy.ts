@@ -3,8 +3,15 @@ import input from "@inquirer/input";
 import chalk from "chalk";
 import { execa } from "execa";
 import ora, { Ora } from "ora";
-import { Address, Hash, PublicClient, WalletClient, zeroHash } from "viem";
-import { anvil } from "viem/chains";
+import {
+    Address,
+    encodeFunctionData,
+    Hash,
+    PublicClient,
+    WalletClient,
+    zeroHash,
+} from "viem";
+import { cannon } from "viem/chains";
 import {
     getContextPath,
     getMachineHash,
@@ -16,6 +23,8 @@ import {
     applicationFactoryAddress,
     authorityFactoryAbi,
     authorityFactoryAddress,
+    dataAvailabilityAbi,
+    inputBoxAddress,
 } from "../../contracts.js";
 import { addressInput } from "../../prompts.js";
 import { RollupsCommandOpts } from "../rollups.js";
@@ -100,6 +109,13 @@ const deployApplication = async (
             default: walletClient.account?.address,
         }));
 
+    // create data availability descriptor for InputBox only
+    const dataAvailability = encodeFunctionData({
+        abi: dataAvailabilityAbi,
+        functionName: "InputBox",
+        args: [inputBoxAddress],
+    });
+
     const applicationAddress = await publicClient.readContract({
         abi: applicationFactoryAbi,
         address: applicationFactoryAddress,
@@ -108,7 +124,7 @@ const deployApplication = async (
             authorityAddress,
             applicationOwner,
             templateHash,
-            // "0x", // XXX: update to latest rollups contract
+            dataAvailability,
             salt,
         ],
     });
@@ -224,7 +240,7 @@ export const createDeployCommand = () => {
     return new Command<[], {}, RollupsCommandOpts>("deploy")
         .description("Deploy a rollups application to a rollups node.")
         .configureHelp({ showGlobalOptions: true })
-        .option("--chain-id <id>", "Chain ID", parseInt, 31337)
+        .option("--chain-id <id>", "Chain ID", parseInt, 13370)
         .option("--rpc-url <url>", "RPC URL")
         .option("--mnemonic <phrase>", "Mnemonic passphrase")
         .option(
@@ -296,7 +312,7 @@ export const createDeployCommand = () => {
                     { authorityAddress, progress, templateHash, ...options },
                 );
 
-                if (publicClient.chain?.id === anvil.id) {
+                if (publicClient.chain?.id === cannon.id) {
                     // copy machine snapshot to rollups node container
                     const containerSnapshotPath = await publishMachine({
                         progress,

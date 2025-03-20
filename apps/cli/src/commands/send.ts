@@ -58,7 +58,7 @@ export const createSendCommand = () => {
         .description(
             "Sends different kinds of input to the application in interactive mode.",
         )
-        .option("--chain-id <id>", "Chain ID", parseInt, 31337)
+        .option("--chain-id <id>", "Chain ID", parseInt, 13370)
         .option("--rpc-url <url>", "RPC URL")
         .option("--mnemonic <phrase>", "Mnemonic passphrase")
         .option(
