@@ -1,22 +1,12 @@
 # syntax=docker.io/docker/dockerfile:1
-ARG CARTESI_ESPRESSO_READER_VERSION
-ARG CARTESI_IMAGE_KERNEL_VERSION
-ARG CARTESI_LINUX_KERNEL_VERSION
-ARG CARTESI_MACHINE_EMULATOR_VERSION
-ARG CARTESI_ROLLUPS_GRAPHQL_VERSION
 ARG CARTESI_ROLLUPS_NODE_BASE_IMAGE
 ARG CARTESI_SDK_BASE_IMAGE
-ARG CRANE_VERSION
-ARG ESPRESSO_DEV_NODE_TAG
-ARG FOUNDRY_VERSION
-ARG NODEJS_VERSION
-ARG POSTGRES_VERSION
-ARG SU_EXEC_VERSION
-ARG XGENEXT2_VERSION
+ARG ESPRESSO_DEV_NODE_BASE_IMAGE
+ARG POSTGRES_BASE_IMAGE
 
 ################################################################################
 # https://github.com/EspressoSystems/espresso-sequencer/pkgs/container/espresso-sequencer%2Fespresso-dev-node
-FROM ghcr.io/espressosystems/espresso-sequencer/espresso-dev-node:${ESPRESSO_DEV_NODE_TAG} AS espresso-dev-node
+FROM ${ESPRESSO_DEV_NODE_BASE_IMAGE} AS espresso-dev-node
 
 ################################################################################
 # sdk-base image
@@ -145,7 +135,7 @@ EOF
 
 ################################################################################
 # postgresql initdb
-FROM postgres:${POSTGRES_VERSION} AS postgresql-initdb
+FROM ${POSTGRES_BASE_IMAGE} AS postgresql-initdb
 ENV POSTGRES_PASSWORD=password
 RUN /usr/local/bin/docker-ensure-initdb.sh postgres
 
