@@ -9,7 +9,6 @@ ARG CARTESI_SDK_BASE_IMAGE
 ARG CRANE_VERSION
 ARG ESPRESSO_DEV_NODE_TAG
 ARG FOUNDRY_VERSION
-ARG NODEJS_VERSION
 ARG POSTGRES_VERSION
 ARG SU_EXEC_VERSION
 ARG XGENEXT2_VERSION
@@ -233,8 +232,6 @@ apt-get install -y --no-install-recommends \
     libslirp0 \
     locales \
     lua5.4 \
-    nodejs \
-    npm \
     squashfs-tools \
     xxd \
     xz-utils
