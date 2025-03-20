@@ -1,0 +1,17 @@
+http:
+    routers:
+        anvil:
+            rule: "PathPrefix(`/anvil`)"
+            middlewares:
+                - "remove-anvil-prefix"
+            service: anvil
+    middlewares:
+        remove-anvil-prefix:
+            replacePathRegex:
+                regex: "^/anvil(.*)"
+                replacement: "$1"
+    services:
+        anvil:
+            loadBalancer:
+                servers:
+                    - url: "http://anvil:8545"
