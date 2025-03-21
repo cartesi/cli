@@ -295,8 +295,8 @@ npm install -g \
     @pimlico/alto@${ALTO_VERSION}
 
 mkdir -p /usr/share/cartesi
-cp /usr/local/lib/node_modules/@cartesi/devnet/export/abi/localhost.json /usr/share/cartesi/
-cp /usr/local/lib/node_modules/@cartesi/devnet/build/anvil_state.json /usr/share/cartesi/
+cp -r /usr/local/lib/node_modules/@cartesi/devnet/deployments /usr/share/cartesi/
+cp /usr/local/lib/node_modules/@cartesi/devnet/anvil_state.json /usr/share/cartesi/
 EOF
 
 # Install linux kernel image
