@@ -5,7 +5,7 @@ import { Listr, ListrTask } from "listr2";
 import pRetry from "p-retry";
 import path from "path";
 import { getServiceHealth } from "../../base.js";
-import { DEFAULT_SDK } from "../../config.js";
+import { DEFAULT_SDK_IMAGE, DEFAULT_SDK_VERSION } from "../../config.js";
 import { RollupsCommandOpts } from "../rollups.js";
 
 const commaSeparatedList = (value: string) => value.split(",");
@@ -205,7 +205,8 @@ export const createStartCommand = () => {
                 CARTESI_LISTEN_PORT: port.toString(),
                 CARTESI_ROLLUPS_NODE_CPUS: cpus?.toString(),
                 CARTESI_ROLLUPS_NODE_MEMORY: memory?.toString(),
-                CARTESI_SDK_IMAGE: DEFAULT_SDK,
+                CARTESI_SDK_IMAGE: DEFAULT_SDK_IMAGE,
+                CARTESI_SDK_VERSION: DEFAULT_SDK_VERSION,
             };
 
             // build a list of unique compose files

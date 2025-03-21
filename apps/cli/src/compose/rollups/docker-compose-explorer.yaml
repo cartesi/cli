@@ -1,17 +1,4 @@
 services:
-    database_creator:
-        image: postgres:16
-        command: ["createdb", "squid"]
-        depends_on:
-            database:
-                condition: service_healthy
-        environment:
-            PGHOST: ${PGHOST:-database}
-            PGPORT: ${PGPORT:-5432}
-            PGUSER: ${PGUSER:-postgres}
-            PGPASSWORD: ${PGPASSWORD:-password}
-            PGDATABASE: ${PGDATABASE:-postgres}
-
     explorer_api:
         image: cartesi/rollups-explorer-api:0.5.0
         environment:
@@ -37,8 +24,8 @@ services:
             timeout: 1s
             retries: 5
         depends_on:
-            database_creator:
-                condition: service_completed_successfully
+            database:
+                condition: service_healthy
 
     squid_processor:
         image: cartesi/rollups-explorer-api:0.5.0
@@ -52,16 +39,16 @@ services:
             DB_PASS: ${PGPASSWORD:-password}
         command: ["sqd", "process:prod"]
         depends_on:
-            database_creator:
-                condition: service_completed_successfully
+            database:
+                condition: service_healthy
 
     explorer:
         image: cartesi/rollups-explorer:0.12.0
         expose:
             - 3000
         depends_on:
-            database_creator:
-                condition: service_completed_successfully
+            database:
+                condition: service_healthy
 
     proxy:
         volumes:

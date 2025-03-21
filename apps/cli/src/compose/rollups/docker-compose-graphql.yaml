@@ -1,35 +1,9 @@
 services:
-    graphql_database_creator:
-        image: postgres:16
-        command: ["createdb", "graphql"]
-        depends_on:
-            database:
-                condition: service_healthy
-        environment:
-            PGHOST: database
-            PGPORT: 5432
-            PGUSER: postgres
-            PGPASSWORD: password
-            PGDATABASE: postgres
-
-    graphql_database_migration:
-        image: ${CARTESI_SDK_IMAGE}
-        command:
-            - migrate
-            - -path
-            - /usr/share/cartesi/rollups-graphql/migrations
-            - -database
-            - postgres://postgres:password@database:5432/graphql?sslmode=disable
-            - up
-        depends_on:
-            graphql_database_creator:
-                condition: service_completed_successfully
-
     graphql:
         image: ${CARTESI_SDK_IMAGE}
         environment:
             POSTGRES_GRAPHQL_DB_URL: postgres://postgres:password@database:5432/graphql?sslmode=disable
-            POSTGRES_NODE_DB_URL: postgres://postgres:password@database:5432/postgres?sslmode=disable
+            POSTGRES_NODE_DB_URL: postgres://postgres:password@database:5432/rollupsdb?sslmode=disable
         expose:
             - 8080
         command: ["cartesi-rollups-graphql"]
@@ -41,8 +15,8 @@ services:
             timeout: 1s
             retries: 5
         depends_on:
-            graphql_database_migration:
-                condition: service_completed_successfully
+            database:
+                condition: service_healthy
 
     proxy:
         volumes:

@@ -1,17 +1,4 @@
 services:
-    espresso_database_creator:
-        image: postgres:16
-        command: ["createdb", "sequencer"]
-        depends_on:
-            database:
-                condition: service_healthy
-        environment:
-            PGHOST: database
-            PGPORT: 5432
-            PGUSER: postgres
-            PGPASSWORD: password
-            PGDATABASE: postgres
-
     espresso:
         image: ${CARTESI_SDK_IMAGE}
         command: ["espresso-dev-node"]
@@ -21,8 +8,8 @@ services:
                     cpus: "4"
                     memory: "1G"
         depends_on:
-            espresso_database_creator:
-                condition: service_completed_successfully
+            database:
+                condition: service_healthy
             anvil:
                 condition: service_healthy
         environment:
@@ -35,7 +22,7 @@ services:
             ESPRESSO_SEQUENCER_POSTGRES_PORT: 5432
             ESPRESSO_SEQUENCER_POSTGRES_USER: postgres
             ESPRESSO_SEQUENCER_POSTGRES_PASSWORD: password
-            ESPRESSO_SEQUENCER_POSTGRES_DATABASE: sequencer
+            ESPRESSO_SEQUENCER_POSTGRES_DATABASE: espresso
             ESPRESSO_SEQUENCER_ETH_MNEMONIC: ${CARTESI_AUTH_MNEMONIC:-test test test test test test test test test test test junk}
             ESPRESSO_SEQUENCER_L1_POLLING_INTERVAL: "1s"
             ESPRESSO_STATE_PROVER_UPDATE_INTERVAL: "1s"
@@ -57,19 +44,6 @@ services:
         environment:
             CARTESI_FEATURE_INPUT_READER_ENABLED: false
 
-    espresso_reader_migration:
-        image: ${CARTESI_SDK_IMAGE}
-        command:
-            - migrate
-            - -source
-            - file:///usr/share/cartesi/rollups-espresso-reader/migrations
-            - -database
-            - postgres://postgres:password@database:5432/postgres?sslmode=disable&x-migrations-table=espresso_schema_migrations
-            - up
-        depends_on:
-            rollups-node-migration:
-                condition: service_completed_successfully
-
     espresso_reader:
         image: ${CARTESI_SDK_IMAGE}
         command: ["cartesi-rollups-espresso-reader"]
@@ -78,12 +52,12 @@ services:
         ports:
             - 8081
         depends_on:
-            espresso_reader_migration:
-                condition: service_completed_successfully
+            database:
+                condition: service_healthy
             espresso:
                 condition: service_healthy
         environment:
-            CARTESI_POSTGRES_ENDPOINT: postgres://postgres:password@database:5432/postgres?sslmode=disable
+            CARTESI_POSTGRES_ENDPOINT: postgres://postgres:password@database:5432/rollupsdb?sslmode=disable
             ESPRESSO_SERVICE_ENDPOINT: ":8081"
             ESPRESSO_BASE_URL: http://espresso:8770
             ESPRESSO_NAMESPACE: 51025
