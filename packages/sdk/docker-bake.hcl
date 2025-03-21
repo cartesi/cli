@@ -28,3 +28,8 @@ target "runtime"  {
   inherits = ["default", "docker-metadata-action", "docker-platforms"]
   target = "runtime"
 }
+
+target "database"  {
+  inherits = ["default", "docker-metadata-action", "docker-platforms"]
+  target = "database"
+}

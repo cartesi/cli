@@ -121,12 +121,6 @@ curl -fsSL "https://github.com/cartesi/rollups-espresso-reader/archive/refs/tags
 EOF
 
 ################################################################################
-# postgresql initdb
-FROM ${POSTGRES_BASE_IMAGE} AS postgresql-initdb
-ENV POSTGRES_PASSWORD=password
-RUN /usr/local/bin/docker-ensure-initdb.sh postgres
-
-################################################################################
 # cartesi runtime target
 FROM base AS runtime
 ARG CARTESI_MACHINE_EMULATOR_VERSION
@@ -183,6 +177,62 @@ COPY --from=graphql /usr/local/bin/cartesi-rollups-graphql /usr/local/bin/
 COPY --from=espresso-reader /usr/local/bin/cartesi-rollups-espresso-reader /usr/local/bin/
 
 USER cartesi
+
+################################################################################
+# postgresql initdb
+FROM ${POSTGRES_BASE_IMAGE} AS postgresql-initdb
+
+ARG DEBIAN_FRONTEND=noninteractive
+RUN <<EOF
+set -eo
+apt-get update
+apt-get install -y --no-install-recommends \
+    libslirp0
+EOF
+
+COPY --from=runtime /usr/bin/cartesi-rollups-cli /usr/bin/
+COPY --from=runtime /usr/lib/libcartesi* /usr/lib/
+COPY --from=go-migrate /usr/local/bin/migrate /usr/local/bin/
+COPY --from=graphql-migration /usr/share/cartesi/rollups-graphql/migrations /usr/share/cartesi/rollups-graphql/migrations
+COPY --from=espresso-reader-migration /usr/share/cartesi/rollups-espresso-reader/migrations /usr/share/cartesi/rollups-espresso-reader/migrations
+
+ARG POSTGRES_PASSWORD=password
+
+# create rollupsdb, graphql and espresso databases
+COPY <<EOF /docker-entrypoint-initdb.d/00-createdb.sql
+CREATE DATABASE rollupsdb;
+CREATE DATABASE graphql;
+CREATE DATABASE espresso;
+EOF
+
+# rollups-node migrations
+COPY <<EOF /docker-entrypoint-initdb.d/01-rollups-node-migrations.sh
+#!/usr/bin/env bash
+set -e
+export CARTESI_DATABASE_CONNECTION="postgres://postgres@/rollupsdb?host=/var/run/postgresql"
+cartesi-rollups-cli db upgrade --verbose
+EOF
+
+# rollups-graphql migrations
+COPY <<EOF /docker-entrypoint-initdb.d/02-graphql-migrations.sh
+#!/usr/bin/env bash
+set -e
+migrate -verbose -path /usr/share/cartesi/rollups-graphql/migrations -database 'postgres://postgres@/graphql?host=/var/run/postgresql' up
+EOF
+
+# espresso-reader migrations
+COPY <<EOF /docker-entrypoint-initdb.d/03-espresso-reader-migrations.sh
+#!/usr/bin/env bash
+set -e
+migrate -verbose -path /usr/share/cartesi/rollups-espresso-reader/migrations -database 'postgres://postgres@/rollupsdb?host=/var/run/postgresql' up
+EOF
+
+RUN /usr/local/bin/docker-ensure-initdb.sh postgres
+
+################################################################################
+# rollups-database image
+FROM ${POSTGRES_BASE_IMAGE} AS database
+COPY --from=postgresql-initdb /var/lib/postgresql/data /var/lib/postgresql/data
 
 ################################################################################
 # sdk final image
@@ -286,7 +336,6 @@ COPY --from=crane /usr/local/bin/crane /usr/local/bin/
 COPY --from=foundry /usr/local/bin/anvil /usr/local/bin/
 COPY --from=foundry /usr/local/bin/cast /usr/local/bin/
 COPY --from=espresso-dev-node /usr/bin/espresso-dev-node /usr/local/bin/
-COPY --from=postgresql-initdb /var/lib/postgresql/data /var/lib/postgresql/data
 COPY --from=go-migrate /usr/local/bin/migrate /usr/local/bin/
 COPY --from=graphql-migration /usr/share/cartesi/rollups-graphql/migrations /usr/share/cartesi/rollups-graphql/migrations
 COPY --from=espresso-reader-migration /usr/share/cartesi/rollups-espresso-reader/migrations /usr/share/cartesi/rollups-espresso-reader/migrations
