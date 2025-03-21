@@ -94,8 +94,8 @@ importers:
         version: 2.23.6(typescript@5.8.2)(zod@3.23.8)
     devDependencies:
       '@cartesi/devnet':
-        specifier: workspace:*
-        version: link:../../packages/devnet
+        specifier: 2.0.0-alpha.3
+        version: 2.0.0-alpha.3
       '@cartesi/eslint-config':
         specifier: workspace:*
         version: link:../../packages/eslint-config
@@ -339,6 +339,9 @@ packages:
   '@babel/types@7.25.9':
     resolution: {integrity: sha512-OwS2CM5KocvQ/k7dFJa8i5bNGJP0hXWfVCfDkqRFP1IreH1JDC7wG6eCYCi0+McbfT8OR/kNqsI0UU0xP9H6PQ==}
     engines: {node: '>=6.9.0'}
+
+  '@cartesi/devnet@2.0.0-alpha.3':
+    resolution: {integrity: sha512-CAtk4xbFSnNB5qLGb8eqs8BtlcdjHJBw+9YBK+tldYW8czYQK7Mz3c2nLRVsxGHv/n5Ef5Rhy/4rVR3CnrpaVA==}
 
   '@changesets/apply-release-plan@7.0.10':
     resolution: {integrity: sha512-wNyeIJ3yDsVspYvHnEz1xQDq18D9ifed3lI+wxRQRK4pArUcuHgCTrHv0QRnnwjhVCQACxZ+CBih3wgOct6UXw==}
@@ -1068,6 +1071,9 @@ packages:
   '@nolyfill/is-core-module@1.0.39':
     resolution: {integrity: sha512-nn5ozdjYQpUCZlWGuxcJY/KpxkWQs4DcbMCmKojjyrYDEAGy4Ce19NN4v5MduafTwJlbKc99UA8YhSVqq9yPZA==}
     engines: {node: '>=12.4.0'}
+
+  '@openzeppelin/contracts@5.1.0':
+    resolution: {integrity: sha512-p1ULhl7BXzjjbha5aqst+QMLY+4/LCWADXOCsmLHRM77AqiPjnd9vvUN9sosUfhL9JGKpZ0TjEGxgvnizmWGSA==}
 
   '@pkgjs/parseargs@0.11.0':
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
@@ -4796,6 +4802,10 @@ snapshots:
       '@babel/helper-string-parser': 7.25.9
       '@babel/helper-validator-identifier': 7.25.9
 
+  '@cartesi/devnet@2.0.0-alpha.3':
+    dependencies:
+      '@openzeppelin/contracts': 5.1.0
+
   '@changesets/apply-release-plan@7.0.10':
     dependencies:
       '@changesets/config': 3.1.1
@@ -5480,6 +5490,8 @@ snapshots:
       fastq: 1.17.1
 
   '@nolyfill/is-core-module@1.0.39': {}
+
+  '@openzeppelin/contracts@5.1.0': {}
 
   '@pkgjs/parseargs@0.11.0':
     optional: true
