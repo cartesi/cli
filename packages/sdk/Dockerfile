@@ -230,6 +230,11 @@ EOF
 RUN /usr/local/bin/docker-ensure-initdb.sh postgres
 
 ################################################################################
+# rollups-database image
+FROM ${POSTGRES_BASE_IMAGE} AS database
+COPY --from=postgresql-initdb /var/lib/postgresql/data /var/lib/postgresql/data
+
+################################################################################
 # sdk final image
 FROM runtime
 ARG ALTO_VERSION
@@ -331,7 +336,6 @@ COPY --from=crane /usr/local/bin/crane /usr/local/bin/
 COPY --from=foundry /usr/local/bin/anvil /usr/local/bin/
 COPY --from=foundry /usr/local/bin/cast /usr/local/bin/
 COPY --from=espresso-dev-node /usr/bin/espresso-dev-node /usr/local/bin/
-COPY --from=postgresql-initdb /var/lib/postgresql/data /var/lib/postgresql/data
 COPY --from=go-migrate /usr/local/bin/migrate /usr/local/bin/
 COPY --from=graphql-migration /usr/share/cartesi/rollups-graphql/migrations /usr/share/cartesi/rollups-graphql/migrations
 COPY --from=espresso-reader-migration /usr/share/cartesi/rollups-espresso-reader/migrations /usr/share/cartesi/rollups-espresso-reader/migrations
