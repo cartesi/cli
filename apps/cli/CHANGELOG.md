@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.0.0-alpha.7
+
+### Major Changes
+
+- 1fede95: change espresso endpoint to /transaction
+- c1f8ba8: fix name of bundler service
+- c4b139d: improve startup time
+
 ## 2.0.0-alpha.6
 
 ### Major Changes
