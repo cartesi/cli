@@ -1,8 +1,10 @@
-target "docker-metadata-action" {}
+target "docker-metadata-sdk" {}
+target "docker-metadata-rollups-runtime" {}
+target "docker-metadata-rollups-database" {}
 target "docker-platforms" {}
 
 target "default" {
-  inherits = ["docker-metadata-action", "docker-platforms"]
+  inherits = ["docker-platforms"]
   args = {
     ALTO_VERSION                      = "0.0.4"
     CARTESI_BASE_IMAGE                = "docker.io/library/debian:bookworm-20250317-slim@sha256:1209d8fd77def86ceb6663deef7956481cc6c14a25e1e64daec12c0ceffcc19d"
@@ -25,7 +27,7 @@ target "default" {
 }
 
 target "sdk"  {
-  inherits = ["default", "docker-metadata-action", "docker-platforms"]
+  inherits = ["default", "docker-metadata-sdk"]
   labels = {
     "org.opencontainers.image.title" = "Cartesi SDK Image"
     "org.opencontainers.image.description" = "Cartesi SDK tools image"
@@ -33,7 +35,7 @@ target "sdk"  {
 }
 
 target "rollups-runtime"  {
-  inherits = ["default", "docker-metadata-action", "docker-platforms"]
+  inherits = ["default", "docker-metadata-rollups-runtime"]
   target = "rollups-runtime"
   labels = {
     "org.opencontainers.image.title" = "Cartesi Rollups Runtime image"
@@ -42,7 +44,7 @@ target "rollups-runtime"  {
 }
 
 target "rollups-database"  {
-  inherits = ["default", "docker-metadata-action", "docker-platforms"]
+  inherits = ["default", "docker-metadata-rollups-database"]
   target = "rollups-database"
   labels = {
     "org.opencontainers.image.title" = "Cartesi SDK Rollups Database image"
