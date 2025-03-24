@@ -26,14 +26,26 @@ target "default" {
 
 target "sdk"  {
   inherits = ["default", "docker-metadata-action", "docker-platforms"]
+  labels = {
+    "org.opencontainers.image.title" = "Cartesi SDK Image"
+    "org.opencontainers.image.description" = "Cartesi SDK tools image"
+  }
 }
 
 target "rollups-runtime"  {
   inherits = ["default", "docker-metadata-action", "docker-platforms"]
   target = "rollups-runtime"
+  labels = {
+    "org.opencontainers.image.title" = "Cartesi Rollups Runtime image"
+    "org.opencontainers.image.description" = "Cartesi Rollups Runtime for production usage"
+  }
 }
 
 target "rollups-database"  {
   inherits = ["default", "docker-metadata-action", "docker-platforms"]
   target = "rollups-database"
+  labels = {
+    "org.opencontainers.image.title" = "Cartesi SDK Rollups Database image"
+    "org.opencontainers.image.description" = "Cartesi SDK PostgreSQL Database with preinitialized database for local development"
+  }
 }
