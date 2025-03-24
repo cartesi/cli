@@ -150,8 +150,6 @@ adduser --system --uid 102 \
     cartesi
 EOF
 
-RUN mkdir -p /tmp/.cartesi && chmod 1777 /tmp/.cartesi
-
 # Install cartesi-machine emulator
 RUN <<EOF
 curl -fsSL https://github.com/cartesi/machine-emulator/releases/download/v${CARTESI_MACHINE_EMULATOR_VERSION}/cartesi-machine-v${CARTESI_MACHINE_EMULATOR_VERSION}_${TARGETARCH}.deb \
