@@ -23,3 +23,17 @@ target "default" {
     XGENEXT2_VERSION                  = "1.5.6"
   }
 }
+
+target "sdk"  {
+  inherits = ["default", "docker-metadata-action", "docker-platforms"]
+}
+
+target "runtime"  {
+  inherits = ["default", "docker-metadata-action", "docker-platforms"]
+  target = "runtime"
+}
+
+target "database"  {
+  inherits = ["default", "docker-metadata-action", "docker-platforms"]
+  target = "database"
+}

@@ -1,4 +1,4 @@
-name: sdk
+name: runtime
 on:
     workflow_call:
         secrets:
@@ -8,7 +8,7 @@ on:
                 required: true
     pull_request:
         paths:
-            - .github/workflows/sdk.yaml
+            - .github/workflows/runtime.yaml
             - packages/sdk/**
 concurrency:
     group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
@@ -36,14 +36,14 @@ jobs:
               uses: docker/metadata-action@902fa8ec7d6ecbf8d84d538b9b233a880e428804 # v5.7.0
               with:
                   images: |
-                      docker.io/cartesi/sdk,enable=${{ github.event_name != 'pull_request' }}
-                      ghcr.io/cartesi/sdk
+                      docker.io/cartesi/sdk-node,enable=${{ github.event_name != 'pull_request' }}
+                      ghcr.io/cartesi/sdk-node
                   tags: |
                       type=raw,value=${{ steps.package-version.outputs.PACKAGE_VERSION }},enable=${{ github.event_name == 'push' }}
                       type=ref,event=pr
                   labels: |
-                      org.opencontainers.image.title=Cartesi SDK
-                      org.opencontainers.image.description=Cartesi SDK tools image
+                      org.opencontainers.image.title=Cartesi Rollups SDK Node
+                      org.opencontainers.image.description=Cartesi Rollups SDK Node with optional services
 
             - name: Set up Docker Buildx
               uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
@@ -66,7 +66,7 @@ jobs:
               if: ${{ !startsWith(github.ref, 'refs/tags/sdk@') }}
               with:
                   workdir: packages/sdk
-                  targets: sdk
+                  targets: runtime
                   files: |
                       ./docker-bake.hcl
                       ./docker-bake.platforms.hcl
@@ -82,8 +82,8 @@ jobs:
               if: ${{ startsWith(github.ref, 'refs/tags/sdk@') }}
               with:
                   project: ${{ vars.DEPOT_PROJECT }}
-                  targets: sdk
                   workdir: packages/sdk
+                  targets: runtime
                   files: |
                       ./docker-bake.hcl
                       ./docker-bake.platforms.hcl
