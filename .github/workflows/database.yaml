@@ -1,4 +1,4 @@
-name: rollups-database
+name: database
 on:
     workflow_call:
         secrets:
@@ -8,7 +8,7 @@ on:
                 required: true
     pull_request:
         paths:
-            - .github/workflows/rollups-database.yaml
+            - .github/workflows/database.yaml
             - packages/sdk/**
 concurrency:
     group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
