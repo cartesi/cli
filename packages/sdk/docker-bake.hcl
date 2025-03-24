@@ -28,12 +28,12 @@ target "sdk"  {
   inherits = ["default", "docker-metadata-action", "docker-platforms"]
 }
 
-target "runtime"  {
+target "rollups-runtime"  {
   inherits = ["default", "docker-metadata-action", "docker-platforms"]
-  target = "runtime"
+  target = "rollups-runtime"
 }
 
-target "database"  {
+target "rollups-database"  {
   inherits = ["default", "docker-metadata-action", "docker-platforms"]
-  target = "database"
+  target = "rollups-database"
 }

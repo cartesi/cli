@@ -121,8 +121,8 @@ curl -fsSL "https://github.com/cartesi/rollups-espresso-reader/archive/refs/tags
 EOF
 
 ################################################################################
-# cartesi runtime target
-FROM base AS runtime
+# cartesi rollups-runtime target
+FROM base AS rollups-runtime
 ARG CARTESI_MACHINE_EMULATOR_VERSION
 ARG CARTESI_ROLLUPS_NODE_VERSION
 ARG TARGETARCH
@@ -188,8 +188,8 @@ apt-get install -y --no-install-recommends \
     libslirp0
 EOF
 
-COPY --from=runtime /usr/bin/cartesi-rollups-cli /usr/bin/
-COPY --from=runtime /usr/lib/libcartesi* /usr/lib/
+COPY --from=rollups-runtime /usr/bin/cartesi-rollups-cli /usr/bin/
+COPY --from=rollups-runtime /usr/lib/libcartesi* /usr/lib/
 COPY --from=go-migrate /usr/local/bin/migrate /usr/local/bin/
 COPY --from=graphql-migration /usr/share/cartesi/rollups-graphql/migrations /usr/share/cartesi/rollups-graphql/migrations
 COPY --from=espresso-reader-migration /usr/share/cartesi/rollups-espresso-reader/migrations /usr/share/cartesi/rollups-espresso-reader/migrations
@@ -229,12 +229,12 @@ RUN /usr/local/bin/docker-ensure-initdb.sh postgres
 
 ################################################################################
 # rollups-database image
-FROM ${POSTGRES_BASE_IMAGE} AS database
+FROM ${POSTGRES_BASE_IMAGE} AS rollups-database
 COPY --from=postgresql-initdb /var/lib/postgresql/data /var/lib/postgresql/data
 
 ################################################################################
 # sdk final image
-FROM runtime
+FROM rollups-runtime
 ARG ALTO_VERSION
 ARG CARTESI_DEVNET_VERSION
 ARG CARTESI_IMAGE_KERNEL_VERSION
