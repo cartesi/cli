@@ -71,8 +71,8 @@ jobs:
                       ./docker-bake.platforms.hcl
                       ${{ steps.meta.outputs.bake-file }}
                   set: |
-                      *.cache-from=type=gha
-                      *.cache-to=type=gha,mode=max
+                      *.cache-from=type=registry,ref=ghcr.io/cartesi/sdk-cache:shared
+                      *.cache-to=type=registry,ref=ghcr.io/cartesi/sdk-cache:shared,mode=max
                   push: true
 
             - uses: depot/setup-action@b0b1ea4f69e92ebf5dea3f8713a1b0c37b2126a5 # v1.6.0
