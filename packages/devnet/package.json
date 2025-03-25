@@ -7,7 +7,10 @@
         "build:cannon": "cannon build --write-deployments deployments --anvil.dump-state anvil_state.json",
         "build:forge": "forge build",
         "build:soldeer": "forge soldeer install",
-        "clean": "cannon clean"
+        "clean": "run-s clean:cannon clean:dump clean:forge",
+        "clean:cannon": "cannon clean",
+        "clean:dump": "rm -rf deployments anvil_state.json",
+        "clean:forge": "forge clean"
     },
     "devDependencies": {
         "@usecannon/cli": "^2.21.5",
