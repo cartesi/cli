@@ -266,7 +266,8 @@ export const createStartCommand = () => {
                     );
                 }
                 // pull images first
-                await execa("docker", [...composeArgs, "pull"], {
+                const pullArgs = ["--policy", "missing"];
+                await execa("docker", [...composeArgs, "pull", ...pullArgs], {
                     env,
                     stdio: "inherit",
                 });
