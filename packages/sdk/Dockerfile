@@ -201,6 +201,7 @@ COPY <<EOF /docker-entrypoint-initdb.d/00-createdb.sql
 CREATE DATABASE rollupsdb;
 CREATE DATABASE graphql;
 CREATE DATABASE espresso;
+CREATE DATABASE explorer;
 EOF
 
 # rollups-node migrations
