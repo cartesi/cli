@@ -3,7 +3,7 @@ version = '2.0.0-alpha.4'
 description = 'Cartesi Rollups Devnet'
 
 [pull.cartesiRollups]
-source = "cartesi-rollups:2.0.0-rc.16@main"
+source = "cartesi-rollups:2.0.0-rc.17@main"
 
 [var.Settings]
 token_owner = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
