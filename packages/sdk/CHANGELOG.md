@@ -1,5 +1,12 @@
 # sdk
 
+## 0.12.0-alpha.12
+
+### Patch Changes
+
+- c772e6a: refactor Dockerfile for additional runtime and database targets
+- 311d01a: add rollups-database and rollups-runtime container image releases
+
 ## 0.12.0-alpha.11
 
 ### Patch Changes
