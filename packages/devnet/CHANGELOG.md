@@ -1,5 +1,11 @@
 # devnet
 
+## 2.0.0-alpha.5
+
+### Patch Changes
+
+- dd97795: rollups-contract:2.0.0-rc.17
+
 ## 2.0.0-alpha.4
 
 ### Major Changes
