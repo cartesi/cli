@@ -7,16 +7,8 @@ import "@openzeppelin-contracts-5.2.0/token/ERC20/extensions/ERC20Pausable.sol";
 import "@openzeppelin-contracts-5.2.0/access/manager/AccessManaged.sol";
 import "@openzeppelin-contracts-5.2.0/token/ERC20/extensions/ERC20Permit.sol";
 
-contract TestToken is
-    ERC20,
-    ERC20Burnable,
-    ERC20Pausable,
-    AccessManaged,
-    ERC20Permit
-{
-    constructor(
-        address initialAuthority
-    )
+contract TestToken is ERC20, ERC20Burnable, ERC20Pausable, AccessManaged, ERC20Permit {
+    constructor(address initialAuthority)
         ERC20("TestToken", "TEST")
         AccessManaged(initialAuthority)
         ERC20Permit("TestToken")
@@ -34,11 +26,7 @@ contract TestToken is
 
     // The following functions are overrides required by Solidity.
 
-    function _update(
-        address from,
-        address to,
-        uint256 value
-    ) internal override(ERC20, ERC20Pausable) {
+    function _update(address from, address to, uint256 value) internal override(ERC20, ERC20Pausable) {
         super._update(from, to, value);
     }
 }

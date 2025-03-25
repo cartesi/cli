@@ -10,7 +10,9 @@
         "clean": "run-s clean:cannon clean:dump clean:forge",
         "clean:cannon": "cannon clean",
         "clean:dump": "rm -rf deployments anvil_state.json",
-        "clean:forge": "forge clean"
+        "clean:forge": "forge clean",
+        "fmt:check": "forge fmt --check",
+        "fmt:write": "forge fmt"
     },
     "devDependencies": {
         "@usecannon/cli": "^2.21.5",
