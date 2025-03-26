@@ -166,7 +166,7 @@ EOF
 
 # Install cartesi-rollups-node
 RUN <<EOF
-curl -fsSL https://github.com/cartesi/rollups-node/releases/download/v${CARTESI_ROLLUPS_NODE_VERSION}/cartesi-rollups-node-v${CARTESI_ROLLUPS_NODE_VERSION%%-*}_${TARGETARCH}.deb \
+curl -fsSL https://github.com/cartesi/rollups-node/releases/download/v${CARTESI_ROLLUPS_NODE_VERSION}/cartesi-rollups-node-v${CARTESI_ROLLUPS_NODE_VERSION}_${TARGETARCH}.deb \
     -o /tmp/cartesi-rollups-node.deb
 dpkg -i /tmp/cartesi-rollups-node.deb
 rm /tmp/cartesi-rollups-node.deb
