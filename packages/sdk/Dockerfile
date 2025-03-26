@@ -133,6 +133,7 @@ RUN <<EOF
 apt-get install -y --no-install-recommends \
     libslirp0 \
     lua5.4 \
+    unzip \
     xz-utils
 rm -rf /var/lib/apt/lists/*
 EOF
@@ -160,9 +161,20 @@ cartesi-machine --version-json
 EOF
 
 # Install cartesi-rollups-node
+#XXX: this is temporary, to allow using an artifact downloaded from rollups-node
+# Download this URL https://github.com/cartesi/rollups-node/actions/runs/14071575964
+# and save it as ./packages/sdk/artifacts.zip file.
+COPY ./artifacts.zip /tmp/
 RUN <<EOF
-curl -fsSL https://github.com/cartesi/rollups-node/releases/download/v${CARTESI_ROLLUPS_NODE_VERSION}/cartesi-rollups-node-v${CARTESI_ROLLUPS_NODE_VERSION%%-*}_${TARGETARCH}.deb \
-    -o /tmp/cartesi-rollups-node.deb
+echo "5226ac015b5fb84b249ef38c777201967874169c6cff7664955211ed9661ae12 /tmp/artifacts.zip" | sha256sum -c
+unzip /tmp/artifacts.zip cartesi-rollups-node-v${CARTESI_ROLLUPS_NODE_VERSION%%-*}_${TARGETARCH}.deb -d /tmp
+mv /tmp/cartesi-rollups-node-v${CARTESI_ROLLUPS_NODE_VERSION%%-*}_${TARGETARCH}.deb /tmp/cartesi-rollups-node.deb
+rm /tmp/artifacts.zip
+EOF
+
+RUN <<EOF
+#curl -fsSL https://github.com/cartesi/rollups-node/releases/download/v${CARTESI_ROLLUPS_NODE_VERSION}/cartesi-rollups-node-v${CARTESI_ROLLUPS_NODE_VERSION%%-*}_${TARGETARCH}.deb \
+#    -o /tmp/cartesi-rollups-node.deb
 dpkg -i /tmp/cartesi-rollups-node.deb
 rm /tmp/cartesi-rollups-node.deb
 mkdir -p /var/lib/cartesi-rollups-node/snapshots
