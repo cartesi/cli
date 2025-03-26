@@ -141,7 +141,13 @@ const deployApplication = async (
             address: applicationFactoryAddress,
             account: walletClient.account,
             functionName: "newApplication",
-            args: [authorityAddress, applicationOwner, templateHash, salt],
+            args: [
+                authorityAddress,
+                applicationOwner,
+                templateHash,
+                dataAvailability,
+                salt,
+            ],
         });
         progress.start("Deploying application...");
         const hash = await walletClient.writeContract(request);
