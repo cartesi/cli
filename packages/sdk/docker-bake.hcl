@@ -15,7 +15,7 @@ target "default" {
     CARTESI_MACHINE_EMULATOR_VERSION  = "0.18.1"
     CARTESI_PAYMASTER_VERSION         = "0.2.0"
     CARTESI_ROLLUPS_GRAPHQL_VERSION   = "2.3.8"
-    CARTESI_ROLLUPS_NODE_VERSION      = "2.0.0-alpha.1"
+    CARTESI_ROLLUPS_NODE_VERSION      = "2.0.0-alpha.2"
     CRANE_VERSION                     = "0.19.1"
     ESPRESSO_DEV_NODE_BASE_IMAGE      = "ghcr.io/espressosystems/espresso-sequencer/espresso-dev-node:20241120-patch6@sha256:453264eab19e3313c85a8720c784f16f15e36bacb28ae917034e24342cecf3c3"
     FOUNDRY_VERSION                   = "1.0.0"
