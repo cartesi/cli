@@ -232,8 +232,8 @@ const registerApplication = async (options: {
     ]);
     const registration = stdout ? JSON.parse(stdout) : undefined;
     if (registration) {
-        if (registration.State !== "ENABLED") {
-            throw new Error(registration.Reason);
+        if (registration.state !== "ENABLED") {
+            throw new Error(registration.reason);
         }
         progress.succeed(`Registration ${chalk.cyan(name)}`);
     } else {
