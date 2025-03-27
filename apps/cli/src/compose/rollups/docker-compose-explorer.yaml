@@ -30,9 +30,9 @@ services:
     squid_processor:
         image: cartesi/rollups-explorer-api:0.5.0
         environment:
-            CHAIN_ID: ${CHAIN_ID:-31337}
+            CHAIN_ID: ${CHAIN_ID:-13370}
             RPC_URL_31337: ${RPC_URL:-http://anvil:8545}
-            BLOCK_CONFIRMATIONS_31337: 0
+            BLOCK_CONFIRMATIONS_13370: 0
             DB_NAME: ${PGDATABASE:-squid}
             DB_PORT: ${PGPORT:-5432}
             DB_HOST: ${PGHOST:-database}
