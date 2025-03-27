@@ -3,6 +3,8 @@ on:
     pull_request:
         branches:
             - main
+            - release/*
+            - prerelease/*
         types: [closed]
 jobs:
     cleanup:
