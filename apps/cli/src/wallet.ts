@@ -16,11 +16,11 @@ import {
 } from "viem";
 import { mnemonicToAccount, privateKeyToAccount } from "viem/accounts";
 import {
-    anvil,
     arbitrum,
     arbitrumSepolia,
     base,
     baseSepolia,
+    cannon,
     mainnet,
     optimism,
     optimismSepolia,
@@ -47,7 +47,7 @@ export const supportedChains = (options?: SupportedChainsOptions): Chain[] => {
 
     const chains: Chain[] = [];
     if (options.includeDevnet) {
-        chains.push(anvil);
+        chains.push(cannon);
     }
     if (options.includeTestnets) {
         chains.push(arbitrumSepolia, baseSepolia, optimismSepolia, sepolia);
@@ -63,7 +63,7 @@ export const DEFAULT_DEVNET_MNEMONIC =
 
 export type WalletType = "mnemonic" | "private-key";
 const walletChoices = (chain: Chain): Choice<WalletType>[] => {
-    const dev = chain.id === anvil.id;
+    const dev = chain.id === cannon.id;
     return [
         {
             name: `Mnemonic${dev ? "" : chalk.red(" (UNSAFE)")}`,
@@ -152,8 +152,8 @@ const selectTransport = async (
     } else {
         const defaultUrl = chain.rpcUrls.default.http[0];
 
-        // if the chain is anvil and URL is valid, use it without asking the user
-        if (chain.id === anvil.id) {
+        // if the chain is cannon and URL is valid, use it without asking the user
+        if (chain.id === cannon.id) {
             const port = 8080; // XXX: how to get environment port?
             const url = `http://127.0.0.1:${port}/anvil`;
             if (await testChainUrl(chain, url)) {
@@ -259,7 +259,9 @@ const createWalletClient = async (
             const mnemonic = await input({
                 message: "Mnemonic",
                 default:
-                    chain.id === anvil.id ? DEFAULT_DEVNET_MNEMONIC : undefined,
+                    chain.id === cannon.id
+                        ? DEFAULT_DEVNET_MNEMONIC
+                        : undefined,
             });
 
             // select account from mnemonic

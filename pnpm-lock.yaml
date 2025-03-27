@@ -94,14 +94,14 @@ importers:
         version: 2.23.6(typescript@5.8.2)(zod@3.23.8)
     devDependencies:
       '@cartesi/devnet':
-        specifier: 2.0.0-alpha.3
-        version: 2.0.0-alpha.3
+        specifier: 2.0.0-alpha.5
+        version: 2.0.0-alpha.5
       '@cartesi/eslint-config':
         specifier: workspace:*
         version: link:../../packages/eslint-config
-      '@sunodo/wagmi-plugin-hardhat-deploy':
-        specifier: ^0.3.0
-        version: 0.3.0(abitype@1.0.8(typescript@5.8.2)(zod@3.23.8))(typescript@5.8.2)
+      '@cartesi/rollups':
+        specifier: 2.0.0-rc.17
+        version: 2.0.0-rc.17
       '@types/bytes':
         specifier: ^3.1.5
         version: 3.1.5
@@ -340,8 +340,11 @@ packages:
     resolution: {integrity: sha512-OwS2CM5KocvQ/k7dFJa8i5bNGJP0hXWfVCfDkqRFP1IreH1JDC7wG6eCYCi0+McbfT8OR/kNqsI0UU0xP9H6PQ==}
     engines: {node: '>=6.9.0'}
 
-  '@cartesi/devnet@2.0.0-alpha.3':
-    resolution: {integrity: sha512-CAtk4xbFSnNB5qLGb8eqs8BtlcdjHJBw+9YBK+tldYW8czYQK7Mz3c2nLRVsxGHv/n5Ef5Rhy/4rVR3CnrpaVA==}
+  '@cartesi/devnet@2.0.0-alpha.5':
+    resolution: {integrity: sha512-fTkJcSnW4JsAF/yg2WRBXCnGNo0sG0mC/0AkZxqUgkiniY7BU8wA/zf06nZaBnHQybnnDSY0DJuPcazOPGoFnw==}
+
+  '@cartesi/rollups@2.0.0-rc.17':
+    resolution: {integrity: sha512-W3yCVyRsbgv8t4qwSogKNT8Zy4bcdDxTIuK4rDNPKFvuDuppSQbZfKaaG2fx0NJGfbmm2c7M/t+on8aB+IN9mg==}
 
   '@changesets/apply-release-plan@7.0.10':
     resolution: {integrity: sha512-wNyeIJ3yDsVspYvHnEz1xQDq18D9ifed3lI+wxRQRK4pArUcuHgCTrHv0QRnnwjhVCQACxZ+CBih3wgOct6UXw==}
@@ -1072,9 +1075,6 @@ packages:
     resolution: {integrity: sha512-nn5ozdjYQpUCZlWGuxcJY/KpxkWQs4DcbMCmKojjyrYDEAGy4Ce19NN4v5MduafTwJlbKc99UA8YhSVqq9yPZA==}
     engines: {node: '>=12.4.0'}
 
-  '@openzeppelin/contracts@5.1.0':
-    resolution: {integrity: sha512-p1ULhl7BXzjjbha5aqst+QMLY+4/LCWADXOCsmLHRM77AqiPjnd9vvUN9sosUfhL9JGKpZ0TjEGxgvnizmWGSA==}
-
   '@pkgjs/parseargs@0.11.0':
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
     engines: {node: '>=14'}
@@ -1223,21 +1223,6 @@ packages:
   '@sindresorhus/merge-streams@4.0.0':
     resolution: {integrity: sha512-tlqY9xq5ukxTUZBmoOp+m61cqwQD5pHJtFY3Mn8CA8ps6yghLH/Hw8UPdqg4OLmFW3IFlcXnQNmo/dh8HzXYIQ==}
     engines: {node: '>=18'}
-
-  '@sunodo/wagmi-plugin-hardhat-deploy@0.3.0':
-    resolution: {integrity: sha512-O7LL6vgnz+PtyFGthbe8TyQoRYwb/e+Qp5rLJ905MQyEQQLKIeLXJJSk6GEZaWijMPwtKXHkAHUSCiHUgH+kCw==}
-    peerDependencies:
-      '@wagmi/core': '>=2.0.0'
-      abitype: '>=0.10.0'
-      typescript: '>=5.0.4'
-      wagmi: '>=2.0.0'
-    peerDependenciesMeta:
-      '@wagmi/core':
-        optional: true
-      typescript:
-        optional: true
-      wagmi:
-        optional: true
 
   '@tsconfig/node10@1.0.11':
     resolution: {integrity: sha512-DcRjDCujK/kCk/cUe8Xz8ZSpm8mS3mNNpta+jGCA6USEDfktlNvm1+IuZ9eTcDbNk41BHwpHHeW+N1lKCz4zOw==}
@@ -4802,9 +4787,9 @@ snapshots:
       '@babel/helper-string-parser': 7.25.9
       '@babel/helper-validator-identifier': 7.25.9
 
-  '@cartesi/devnet@2.0.0-alpha.3':
-    dependencies:
-      '@openzeppelin/contracts': 5.1.0
+  '@cartesi/devnet@2.0.0-alpha.5': {}
+
+  '@cartesi/rollups@2.0.0-rc.17': {}
 
   '@changesets/apply-release-plan@7.0.10':
     dependencies:
@@ -5491,8 +5476,6 @@ snapshots:
 
   '@nolyfill/is-core-module@1.0.39': {}
 
-  '@openzeppelin/contracts@5.1.0': {}
-
   '@pkgjs/parseargs@0.11.0':
     optional: true
 
@@ -5602,12 +5585,6 @@ snapshots:
   '@sec-ant/readable-stream@0.4.1': {}
 
   '@sindresorhus/merge-streams@4.0.0': {}
-
-  '@sunodo/wagmi-plugin-hardhat-deploy@0.3.0(abitype@1.0.8(typescript@5.8.2)(zod@3.23.8))(typescript@5.8.2)':
-    dependencies:
-      abitype: 1.0.8(typescript@5.8.2)(zod@3.23.8)
-    optionalDependencies:
-      typescript: 5.8.2
 
   '@tsconfig/node10@1.0.11': {}
 
