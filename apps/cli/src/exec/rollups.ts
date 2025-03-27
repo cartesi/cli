@@ -31,12 +31,12 @@ export const getDeployments = async (
             "list",
         ]);
         return JSON.parse(stdout).map((deployment: any) => ({
-            id: deployment.ID,
-            name: deployment.Name,
-            address: deployment.IApplicationAddress,
-            templateHash: deployment.TemplateHash,
-            epochLength: deployment.EpochLength,
-            state: deployment.State,
+            id: deployment.id,
+            name: deployment.name,
+            address: deployment.iapplication_address,
+            templateHash: deployment.template_hash,
+            epochLength: deployment.epoch_lenght,
+            state: deployment.state,
         }));
     } catch (e: unknown) {
         return [];
