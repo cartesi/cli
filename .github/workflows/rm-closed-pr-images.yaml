@@ -3,6 +3,8 @@ on:
     pull_request:
         branches:
             - main
+            - release/*
+            - prerelease/*
         types: [closed]
 jobs:
     cleanup:
@@ -13,6 +15,8 @@ jobs:
         strategy:
             matrix:
                 image:
+                    - rollups-database
+                    - rollups-runtime
                     - sdk
         steps:
             - uses: vlaurin/action-ghcr-prune@0cf7d39f88546edd31965acba78cdcb0be14d641 # v0.6.0
