@@ -4,7 +4,7 @@ import type { TemplateProvider } from "giget";
 import { DownloadTemplateResult, downloadTemplate } from "giget";
 import ora from "ora";
 
-export const DEFAULT_TEMPLATES_BRANCH = "sdk-0.9";
+export const DEFAULT_TEMPLATES_BRANCH = "prerelease/sdk-12";
 
 const TEMPLATES = [
     "cpp",
