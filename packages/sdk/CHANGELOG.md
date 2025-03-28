@@ -1,5 +1,18 @@
 # sdk
 
+## 0.12.0-alpha.13
+
+### Minor Changes
+
+- 9a8f97a: bump PostgreSQL to v17
+
+### Patch Changes
+
+- 9a05154: bump machine-emulator to 0.19.0-alpha3
+- 4430af9: bump rollups-node to v2.0.0-alpha.2
+- 64eed47: bump rollups-graphql to v2.3.11-node-20250128
+- 56dbcda: use devnet 2.0.0-alpha.5
+
 ## 0.12.0-alpha.12
 
 ### Patch Changes
