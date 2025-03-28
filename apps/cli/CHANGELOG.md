@@ -1,5 +1,22 @@
 # Changelog
 
+## 2.0.0-alpha.8
+
+### Major Changes
+
+- 82728ca: move anvil service from http://127.0.0.1:8545 to http://127.0.0.1:8080/anvil
+- 9ee46f1: use devnet 2.0.0-alpha.5
+
+### Patch Changes
+
+- b57698a: bump machine-emulator to 0.19.0-alpha3
+- b57698a: bump rollups-graphql to v2.3.11-node-20250128
+- b57698a: bump rollups-contracts version to v2.0.0-rc.17
+- b57698a: bump rollups-node version to v2.0.0-alpha.2
+- b57698a: change anvil chainId from 31337 to 13370
+- 40fca20: use prerelease/sdk-12 branch for create command
+- b57698a: bump PostgreSQL to v17
+
 ## 2.0.0-alpha.7
 
 ### Major Changes
