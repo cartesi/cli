@@ -79,6 +79,24 @@ migrate --version
 EOF
 
 ################################################################################
+# kubo installer
+FROM base AS kubo
+ARG KUBO_VERSION
+ARG TARGETARCH
+ARG TARGETOS
+RUN <<EOF
+curl -fssL "https://github.com/ipfs/kubo/releases/download/v${KUBO_VERSION}/kubo_v${KUBO_VERSION}_${TARGETOS}-${TARGETARCH}.tar.gz" \
+    -o /tmp/kubo.tar.gz
+case "${TARGETARCH}" in
+    amd64) echo "4e4b13c600d5a9422f2d0a03e674b65e14defa65dfc6048facdea3a195f967ece0573b8a2292800d902d69fd6ef5aad825b95d8147cbf902f55b60ee0b4c419e /tmp/kubo.tar.gz" | sha512sum --check ;;
+    arm64) echo "04dd6e9caaf6f287d19a0c11d90f907e578022b4369209830ec00ccb315d865469779013a856bcb72be54a83d2215100ae76dd9181a40cfa920233d1de93c94b /tmp/kubo.tar.gz" | sha512sum --check ;;
+    *) echo "unsupported architecture: $ARCH"; exit 1 ;;
+esac
+tar -zxf /tmp/kubo.tar.gz -C /usr/local/bin --strip-components=1 kubo
+ls -lha /usr/local/bin
+EOF
+
+################################################################################
 # cartesi-rollups-graphql installer
 FROM base AS graphql
 ARG CARTESI_ROLLUPS_GRAPHQL_VERSION
@@ -353,6 +371,7 @@ COPY --from=crane /usr/local/bin/crane /usr/local/bin/
 COPY --from=foundry /usr/local/bin/anvil /usr/local/bin/
 COPY --from=foundry /usr/local/bin/cast /usr/local/bin/
 COPY --from=espresso-dev-node /usr/bin/espresso-dev-node /usr/local/bin/
+COPY --from=kubo /usr/local/bin/ipfs /usr/local/bin/
 
 WORKDIR /mnt
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
