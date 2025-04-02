@@ -238,6 +238,7 @@ CREATE DATABASE rollupsdb;
 CREATE DATABASE graphql;
 CREATE DATABASE espresso;
 CREATE DATABASE explorer;
+CREATE DATABASE coprocessor;
 EOF
 
 # rollups-node migrations
