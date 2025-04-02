@@ -6,7 +6,7 @@ export const createCoprocessorCommand = () => {
         .option(
             "--project-name <string>",
             "name of environment",
-            "cartesi-croprocessor",
+            "cartesi-coprocessor",
         )
         .action(async (_options, program) => {
             program.help();
