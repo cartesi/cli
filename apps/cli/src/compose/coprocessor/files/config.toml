@@ -1,0 +1,22 @@
+l1_http_endpoint = "http://anvil:8545"
+l2_http_endpoint = "http://anvil:8545"
+l1_ws_endpoint = "ws://anvil:8545"
+l2_ws_endpoint = "ws://anvil:8545"
+registry_coordinator_address = "0x1291Be112d480055DaFd8a610b7d1e203891C274"
+operator_state_retriever_address = "0x5081a39b8A5f0E35a8D959395a630b68B74Dd30f"
+current_first_block = 1
+task_issuer = "0x8f86403A4DE0BB5791fa46B8e795C547942fE4Cf"
+callback_address = "0x8f86403A4DE0BB5791fa46B8e795C547942fE4Cf"
+ruleset = "8f86403A4DE0BB5791fa46B8e795C547942fE4Cf"
+socket = "http://operator:3033"
+secret_key = "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+payment_phrase = "test test test test test test test test test test test junk"
+postgre_connect_request = "host=postgres dbname=db user=user password=password"
+payment_token = "0xc5a5C42992dECbae36851359345FE25997F5C42d"
+max_ops = 1
+l2Sender = "0x82e01223d51Eb87e16A03E24687EDF0F294da6f1"
+eth_value = "0"
+senderData = [0]
+listen_network = "L1"
+l2_coprocessor_address = "0xCD8a1C3ba11CF5ECfa6267617243239504a98d90"
+l1_coprocessor_address = "0x7969c5eD335650692Bc04293B07F5BF2e7A673C0"
