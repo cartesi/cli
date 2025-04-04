@@ -231,7 +231,7 @@ EOF
 COPY <<EOF /docker-entrypoint-initdb.d/03-espresso-reader-migrations.sh
 #!/usr/bin/env bash
 set -e
-migrate -verbose -path /usr/share/cartesi/rollups-espresso-reader/migrations -database 'postgres://postgres@/rollupsdb?host=/var/run/postgresql' up
+migrate -verbose -path /usr/share/cartesi/rollups-espresso-reader/migrations -database 'postgres://postgres@/rollupsdb?host=/var/run/postgresql&x-migrations-table=espresso_reader_schema_migrations' up
 EOF
 
 RUN /usr/local/bin/docker-ensure-initdb.sh postgres
