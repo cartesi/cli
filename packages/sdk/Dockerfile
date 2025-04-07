@@ -217,7 +217,7 @@ COPY <<EOF /docker-entrypoint-initdb.d/01-rollups-node-migrations.sh
 #!/usr/bin/env bash
 set -e
 export CARTESI_DATABASE_CONNECTION="postgres://postgres@/rollupsdb?host=/var/run/postgresql"
-cartesi-rollups-cli db upgrade --verbose
+cartesi-rollups-cli db init --upgrade --verbose
 EOF
 
 # rollups-graphql migrations
