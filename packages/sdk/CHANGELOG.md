@@ -1,5 +1,13 @@
 # sdk
 
+## 0.12.0-alpha.14
+
+### Patch Changes
+
+- 308af49: use differente table to control espresso-reader migrations to avoid conflict with rollups-node migrations
+- 2d0e037: move migration to rollups-runtime
+- f46f666: bump rollups-node to v2.0.0-alpha.3
+
 ## 0.12.0-alpha.13
 
 ### Minor Changes
