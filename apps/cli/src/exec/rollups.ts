@@ -3,7 +3,6 @@ import { Address, Hash } from "viem";
 import { getMachineHash } from "../base.js";
 
 export type RollupsDeployment = {
-    id: number;
     name: string;
     address: Address;
     templateHash: Hash;
@@ -31,7 +30,6 @@ export const getDeployments = async (
             "list",
         ]);
         return JSON.parse(stdout).map((deployment: any) => ({
-            id: deployment.id,
             name: deployment.name,
             address: deployment.iapplication_address,
             templateHash: deployment.template_hash,
