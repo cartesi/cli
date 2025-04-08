@@ -7,7 +7,7 @@ target "default" {
   inherits = ["docker-platforms"]
   args = {
     ALTO_VERSION                      = "0.0.4"
-    CARTESI_BASE_IMAGE                = "docker.io/library/debian:bookworm-20250317-slim@sha256:1209d8fd77def86ceb6663deef7956481cc6c14a25e1e64daec12c0ceffcc19d"
+    CARTESI_BASE_IMAGE                = "docker.io/library/debian:bookworm-20250407-slim@sha256:b1211f6d19afd012477bd34fdcabb6b663d680e0f4b0537da6e6b0fd057a3ec3"
     CARTESI_DEVNET_VERSION            = "2.0.0-alpha.5"
     CARTESI_ESPRESSO_READER_VERSION   = "0.2.3-node-20250128"
     CARTESI_IMAGE_KERNEL_VERSION      = "0.20.0"
