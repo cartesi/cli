@@ -1,4 +1,5 @@
 import { Command } from "@commander-js/extra-typings";
+import { createCreateCommand } from "./coprocessor/create.js";
 import { createStartCommand } from "./coprocessor/start.js";
 
 export const createCoprocessorCommand = () => {
@@ -12,6 +13,7 @@ export const createCoprocessorCommand = () => {
             program.help();
         });
     command.addCommand(createStartCommand());
+    command.addCommand(createCreateCommand());
     return command;
 };
 
