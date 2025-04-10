@@ -17,7 +17,7 @@ target "default" {
     CARTESI_ROLLUPS_GRAPHQL_VERSION   = "2.3.11-node-20250128"
     CARTESI_ROLLUPS_NODE_VERSION      = "2.0.0-alpha.3"
     CRANE_VERSION                     = "0.19.1"
-    ESPRESSO_DEV_NODE_BASE_IMAGE      = "ghcr.io/espressosystems/espresso-sequencer/espresso-dev-node:20241120-patch6@sha256:453264eab19e3313c85a8720c784f16f15e36bacb28ae917034e24342cecf3c3"
+    ESPRESSO_DEV_NODE_BASE_IMAGE      = "ghcr.io/espressosystems/espresso-sequencer/espresso-dev-node:20250409-dev-node-pos-preview@sha256:70f5c35fe1158ef571d755f37d8c09fc5168c993cf79ba8998205e6bf4370271"
     FOUNDRY_VERSION                   = "1.0.0"
     GO_MIGRATE_VERSION                = "4.18.2"
     POSTGRES_BASE_IMAGE               = "docker.io/library/postgres:17@sha256:7f29c02ba9eeff4de9a9f414d803faa0e6fe5e8d15ebe217e3e418c82e652b35"
