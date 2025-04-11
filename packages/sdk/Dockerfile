@@ -84,8 +84,18 @@ FROM base AS graphql
 ARG CARTESI_ROLLUPS_GRAPHQL_VERSION
 ARG TARGETOS
 ARG TARGETARCH
-RUN curl -fsSL https://github.com/cartesi/rollups-graphql/releases/download/v${CARTESI_ROLLUPS_GRAPHQL_VERSION}/cartesi-rollups-graphql-v${CARTESI_ROLLUPS_GRAPHQL_VERSION}-${TARGETOS}-${TARGETARCH}.tar.gz \
-    | tar -xzf - -C /usr/local/bin
+RUN <<EOF
+curl -fsSL https://github.com/cartesi/rollups-graphql/releases/download/v${CARTESI_ROLLUPS_GRAPHQL_VERSION}/cartesi-rollups-graphql-v${CARTESI_ROLLUPS_GRAPHQL_VERSION}-${TARGETOS}-${TARGETARCH}.tar.gz \
+    -o /tmp/cartesi-rollups-graphql.tar.gz
+
+case "${TARGETARCH}" in
+    amd64) echo "0882a1c7a608ae6e1631ab9b3a04d531  /tmp/cartesi-rollups-graphql.tar.gz" | md5sum --check ;;
+    arm64) echo "759e7edc97ad39908fef56c3bd971a9b  /tmp/cartesi-rollups-graphql.tar.gz" | md5sum --check ;;
+    *) echo "unsupported architecture: ${TARGEARCH}"; exit 1 ;;
+esac
+
+tar -xzf /tmp/cartesi-rollups-graphql.tar.gz -C /usr/local/bin
+EOF
 
 ################################################################################
 # cartesi-rollups-graphql migration code installer
