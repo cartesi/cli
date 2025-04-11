@@ -22,3 +22,17 @@ export const download = async (
         providers: { cartesi: cartesiProvider },
     });
 };
+
+export const DEFAULT_TEMPLATES_BRANCH = "prerelease/sdk-12";
+
+export const TEMPLATES = [
+    "cpp",
+    "cpp-low-level",
+    "go",
+    "javascript",
+    "lua",
+    "python",
+    "ruby",
+    "rust",
+    "typescript",
+];
