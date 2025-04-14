@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.0.0-alpha.9
+
+### Major Changes
+
+- 7af451f: DEPRECATED: cartesi create
+- 7af451f: new: cartesi rollups create
+
+### Patch Changes
+
+- c0d7108: bump cartesi/sdk to v0.12.0-alpha.15
+
 ## 2.0.0-alpha.8
 
 ### Major Changes

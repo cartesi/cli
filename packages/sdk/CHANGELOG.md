@@ -1,5 +1,13 @@
 # sdk
 
+## 0.12.0-alpha.15
+
+### Patch Changes
+
+- e30b934: bump rollups-node to 2.0.0-alpha.4
+- f09651b: bump bookworm baseimage to 20250407
+- 66a555e: bump cartesi-rollups-graphql to v2.3.13
+
 ## 0.12.0-alpha.14
 
 ### Patch Changes
