@@ -1,0 +1,7 @@
+services:
+    carize:
+        image: ghcr.io/zippiehq/cartesi-carize:latest
+        container_name: cartesi-carize
+        volumes:
+            - ${CARIZE_DATA}:/data
+            - ${CARIZE_OUTPUT}:/output
