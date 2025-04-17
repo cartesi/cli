@@ -1,6 +1,7 @@
 import { Command } from "@commander-js/extra-typings";
 import { createBuildCommand } from "./coprocessor/build.js";
 import { createCreateCommand } from "./coprocessor/create.js";
+import { createPublishCommand } from "./coprocessor/publish.js";
 import { createStartCommand } from "./coprocessor/start.js";
 
 export const createCoprocessorCommand = () => {
@@ -16,6 +17,8 @@ export const createCoprocessorCommand = () => {
     command.addCommand(createStartCommand());
     command.addCommand(createCreateCommand());
     command.addCommand(createBuildCommand());
+    command.addCommand(createPublishCommand());
+
     return command;
 };
 
