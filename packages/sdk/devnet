@@ -1,4 +1,4 @@
 #!/bin/sh
 set -e
-jq -rs '.[] | "\(.address) \(.contractName)"' /usr/share/cartesi/deployments/*.json
-exec anvil --chain-id 13370 --load-state /usr/share/cartesi/anvil_state.json "$@"
+jq -rs '.[] | "\(.address) \(.contractName)"' /usr/share/cartesi/rollups/deployments/*.json
+exec anvil --chain-id 13370 --load-state /usr/share/cartesi/rollups/anvil_state.json "$@"

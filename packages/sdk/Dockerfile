@@ -331,9 +331,9 @@ npm install -g \
     @cartesi/mock-verifying-paymaster@${CARTESI_PAYMASTER_VERSION} \
     @pimlico/alto@${ALTO_VERSION}
 
-mkdir -p /usr/share/cartesi
-cp -r /usr/local/lib/node_modules/@cartesi/devnet/deployments /usr/share/cartesi/
-cp /usr/local/lib/node_modules/@cartesi/devnet/anvil_state.json /usr/share/cartesi/
+mkdir -p /usr/share/cartesi/rollups
+cp -r /usr/local/lib/node_modules/@cartesi/devnet/deployments /usr/share/cartesi/rollups/
+cp /usr/local/lib/node_modules/@cartesi/devnet/anvil_state.json /usr/share/cartesi/rollups/
 EOF
 
 # Install linux kernel image
