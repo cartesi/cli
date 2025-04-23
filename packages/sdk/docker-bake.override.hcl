@@ -9,3 +9,7 @@ target "rollups-runtime" {
 target "rollups-database" {
   tags = ["cartesi/rollups-database:devel"]
 }
+
+target "coprocessor-database" {
+  tags = ["cartesi/coprocessor-database:devel"]
+}

@@ -213,7 +213,7 @@ COPY --from=espresso-reader-migration /usr/share/cartesi/rollups-espresso-reader
 USER cartesi
 
 ################################################################################
-# postgresql initdb
+# postgresql rollups initdb
 FROM ${POSTGRES_BASE_IMAGE} AS postgresql-initdb
 
 ARG DEBIAN_FRONTEND=noninteractive
@@ -269,6 +269,14 @@ RUN /usr/local/bin/docker-ensure-initdb.sh postgres
 # rollups-database image
 FROM ${POSTGRES_BASE_IMAGE} AS rollups-database
 COPY --from=postgresql-initdb /var/lib/postgresql/data /var/lib/postgresql/data
+
+################################################################################
+# coprocessor-database image
+FROM ${POSTGRES_BASE_IMAGE} AS coprocessor-database
+COPY <<EOF /docker-entrypoint-initdb.d/00-createdb.sql
+CREATE DATABASE coprocessor;
+EOF
+RUN /usr/local/bin/docker-ensure-initdb.sh postgres
 
 ################################################################################
 # sdk final image

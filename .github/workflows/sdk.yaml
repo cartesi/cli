@@ -24,6 +24,7 @@ jobs:
         strategy:
             matrix:
                 target:
+                    - coprocessor-database
                     - rollups-database
                     - rollups-runtime
                     - sdk
@@ -98,6 +99,7 @@ jobs:
                       ./docker-metadata-sdk/docker-metadata-action-bake.json
                       ./docker-metadata-rollups-runtime/docker-metadata-action-bake.json
                       ./docker-metadata-rollups-database/docker-metadata-action-bake.json
+                      ./docker-metadata-coprocessor-database/docker-metadata-action-bake.json
                   set: |
                       *.cache-from=type=gha
                       *.cache-to=type=gha,mode=max
@@ -120,4 +122,5 @@ jobs:
                       ./docker-metadata-sdk/docker-metadata-action-bake.json
                       ./docker-metadata-rollups-runtime/docker-metadata-action-bake.json
                       ./docker-metadata-rollups-database/docker-metadata-action-bake.json
+                      ./docker-metadata-coprocessor-database/docker-metadata-action-bake.json
                   push: true

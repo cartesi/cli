@@ -55,6 +55,15 @@ target "rollups-database" {
   }
 }
 
+target "coprocessor-database" {
+  inherits = ["default", "docker-metadata-coprocessor-database"]
+  target = "coprocessor-database"
+  labels = {
+    "org.opencontainers.image.title" = "Cartesi SDK Coprocessor Database image"
+    "org.opencontainers.image.description" = "Cartesi SDK Coprocessor PostgreSQL Database with preinitialized database for local development"
+  }
+}
+
 group "default" {
-  targets = ["sdk", "rollups-runtime", "rollups-database"]
+  targets = ["sdk", "rollups-runtime", "rollups-database", "coprocessor-database"]
 }
