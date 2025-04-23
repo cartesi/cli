@@ -9,5 +9,7 @@ services:
                 condition: service_healthy
             setup-operator:
                 condition: service_completed_successfully
+            database:
+                condition: service_healthy
         volumes:
             - ./files/config.toml:/cartesi-coprocessor-solver/config.toml

@@ -1,0 +1,13 @@
+services:
+    anvil:
+        image: ${CARTESI_SDK_IMAGE}
+        command: ["devnet", "--block-time", "${BLOCK_TIME:-5}"]
+        healthcheck:
+            test: ["CMD", "eth_isready"]
+            start_period: 10s
+            start_interval: 200ms
+            interval: 10s
+            timeout: 1s
+            retries: 5
+        environment:
+            ANVIL_IP_ADDR: 0.0.0.0
