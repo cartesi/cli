@@ -37,6 +37,18 @@ export const getMachineHash = (): Hash | undefined => {
     return undefined;
 };
 
+export const getMachineHashFromDir = (dir: string): Hash | undefined => {
+    // read hash of the cartesi machine snapshot, if one exists
+    const hashPath = path.resolve(dir, ".cartesi", "image", "hash");
+    if (fs.existsSync(hashPath)) {
+        const hash = fs.readFileSync(hashPath).toString("hex");
+        if (isHash(`0x${hash}`)) {
+            return `0x${hash}`;
+        }
+    }
+    return undefined;
+};
+
 export const getApplicationConfig = (configPath: string): Config => {
     return fs.existsSync(configPath)
         ? parse(fs.readFileSync(configPath).toString())
