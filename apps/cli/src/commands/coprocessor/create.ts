@@ -29,14 +29,14 @@ export const createCreateCommand = () => {
                     "coprocessor",
                     template,
                     branch,
-                    `${name}/coprocessor_program`,
+                    path.join(name, "app"),
                 );
 
                 await download(
                     "coprocessor",
                     "solidity",
                     branch,
-                    `${name}/contracts`,
+                    path.join(name, "contracts"),
                 );
 
                 spinner.succeed(
