@@ -1,6 +1,7 @@
 import { Command, Option } from "@commander-js/extra-typings";
 import chalk from "chalk";
 import ora from "ora";
+import path from "path";
 import {
     DEFAULT_TEMPLATES_BRANCH,
     download,
@@ -10,6 +11,7 @@ import {
 export const createCreateCommand = () => {
     return new Command("create")
         .argument("<name>", "application and directory name")
+        .description("Create a coprocessor application template.")
         .addOption(
             new Option("-t, --template <template>", "template name to use")
                 .choices(TEMPLATES)
@@ -23,13 +25,23 @@ export const createCreateCommand = () => {
         .action(async (name, { branch, template }) => {
             const spinner = ora("Creating application...").start();
             try {
-                const { dir } = await download(
-                    "rollups",
+                let { dir } = await download(
+                    "coprocessor",
                     template,
                     branch,
-                    name,
+                    path.join(name, "app"),
                 );
-                spinner.succeed(`Application created at ${chalk.cyan(dir)}`);
+
+                await download(
+                    "coprocessor",
+                    "solidity",
+                    branch,
+                    path.join(name, "contracts"),
+                );
+
+                spinner.succeed(
+                    `Application created at ${chalk.cyan(path.dirname(dir))}`,
+                );
             } catch (e: unknown) {
                 spinner.fail(
                     e instanceof Error
