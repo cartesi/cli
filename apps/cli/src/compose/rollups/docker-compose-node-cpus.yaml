@@ -1,6 +1,5 @@
 services:
     rollups-node:
-        ptofiles: [cpu]
         deploy:
             resources:
                 limits:
