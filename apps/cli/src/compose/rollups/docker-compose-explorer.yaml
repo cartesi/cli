@@ -1,11 +1,14 @@
+x-explorer_db_env: &explorer_db_env
+    DB_NAME: explorer
+    DB_PORT: 5432
+    DB_HOST: database
+    DB_PASS: password
+
 services:
     explorer_api:
-        image: cartesi/rollups-explorer-api:0.5.0
+        image: cartesi/rollups-explorer-api:1.0.0-alpha.3
         environment:
-            DB_NAME: ${PGDATABASE:-squid}
-            DB_PORT: ${PGPORT:-5432}
-            DB_HOST: ${PGHOST:-database}
-            DB_PASS: ${PGPASSWORD:-password}
+            <<: *explorer_db_env
             GQL_PORT: 4350
         expose:
             - 4350
@@ -28,22 +31,20 @@ services:
                 condition: service_healthy
 
     squid_processor:
-        image: cartesi/rollups-explorer-api:0.5.0
+        image: cartesi/rollups-explorer-api:1.0.0-alpha.3
         environment:
-            CHAIN_ID: ${CHAIN_ID:-13370}
-            RPC_URL_31337: ${RPC_URL:-http://anvil:8545}
+            <<: *explorer_db_env
+            CHAIN_IDS: ${CARTESI_BLOCKCHAIN_ID:-13370}
+            RPC_URL_13370: ${RPC_URL:-http://anvil:8545}
             BLOCK_CONFIRMATIONS_13370: 0
-            DB_NAME: ${PGDATABASE:-squid}
-            DB_PORT: ${PGPORT:-5432}
-            DB_HOST: ${PGHOST:-database}
-            DB_PASS: ${PGPASSWORD:-password}
+            GENESIS_BLOCK_13370: 1
         command: ["sqd", "process:prod"]
         depends_on:
             database:
                 condition: service_healthy
 
     explorer:
-        image: cartesi/rollups-explorer:0.12.0
+        image: cartesi/rollups-explorer:1.0.0-alpha.2
         expose:
             - 3000
         depends_on:
