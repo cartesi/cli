@@ -1,6 +1,5 @@
 import { Command } from "@commander-js/extra-typings";
 import chalk from "chalk";
-import { execa } from "execa";
 import fs from "fs-extra";
 import ora from "ora";
 import path from "path";
@@ -8,7 +7,13 @@ import { createWalletClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { waitForTransactionReceipt } from "viem/actions";
 import { foundry } from "viem/chains";
-import { getMachineHashFromDir } from "../../base.js";
+import { getContextPath, getMachineHashFromDir } from "../../base.js";
+import { carDetails, createCarFromDirectory } from "../../carize.js";
+
+type DefaultUrls = {
+    operatorUrl: string;
+    solverUrl: string;
+};
 
 export const createDeployCommand = () => {
     return new Command("deploy")
@@ -23,6 +28,11 @@ export const createDeployCommand = () => {
         )
         .configureHelp({ showGlobalOptions: true })
         .action(async (contractName: string, options) => {
+            const defaultUrls: DefaultUrls = {
+                operatorUrl: "http://127.0.0.1:5001",
+                solverUrl: "http://127.0.0.1:3034",
+            };
+
             try {
                 let constructorArgs: string[] | [] = [];
                 if (
@@ -35,20 +45,15 @@ export const createDeployCommand = () => {
                 }
 
                 const { cartesiDir, foundryDir } = await findSubdirectories();
+
                 if (cartesiDir && foundryDir) {
-                    if (await generateCarFiles(cartesiDir)) {
-                        if (await publishCarFiles(cartesiDir)) {
-                            await deploySolidityContract(
-                                contractName,
-                                constructorArgs,
-                                foundryDir,
-                            );
-                        } else {
-                            return;
-                        }
-                    } else {
-                        return;
-                    }
+                    const jsonOutput = await generateCarFiles(cartesiDir);
+                    await publishCarFiles(cartesiDir, defaultUrls, jsonOutput);
+                    await deploySolidityContract(
+                        contractName,
+                        constructorArgs,
+                        foundryDir,
+                    );
                 }
             } catch (e: unknown) {
                 console.log(`❌ Error deploying program: ${e}`);
@@ -56,45 +61,26 @@ export const createDeployCommand = () => {
         });
 };
 
-const publishCarFiles = async (cartesiDir: string): Promise<boolean> => {
-    const DEFAULT_OPERATOR_URL = "http://127.0.0.1:5001";
-    const DEFAULT_SOLVER_URL = "http://127.0.0.1:3034";
-    const carFileName: string = "output.car";
-    const artifactsDir = path.resolve(cartesiDir, ".cartesi", "artifacts");
+const publishCarFiles = async (
+    cartesiDir: string,
+    DefaultUrls: DefaultUrls,
+    jsonOutput: carDetails,
+) => {
+    const carFileName: string = "image.car";
+    const artifactsDir = path.resolve(cartesiDir, getContextPath("artifacts"));
     const carFilePath = path.resolve(artifactsDir, carFileName);
-    const cidFilePath = path.resolve(artifactsDir, "output.cid");
-    const sizeFilePath = path.resolve(artifactsDir, "output.size");
-    const publish_url = `${DEFAULT_OPERATOR_URL}/api/v0/dag/import`;
+    const publish_url = `${DefaultUrls.operatorUrl}/api/v0/dag/import`;
     const hash = getMachineHashFromDir(cartesiDir);
 
-    const getEnsureRoute = (
-        cid: string,
-        machineHash: string,
-        size: string,
-    ): string => {
-        return `${DEFAULT_SOLVER_URL}/ensure/${cid}/${machineHash}/${size}`;
+    const getEnsureRoute = (): string => {
+        return `${DefaultUrls.solverUrl}/ensure/${jsonOutput.Hash}/${hash!.slice(2)}/${jsonOutput.CumulativeSize}`;
     };
 
-    const readFile = (filePath: string, label: string) => {
-        try {
-            return fs.readFileSync(filePath, "utf-8").trim();
-        } catch (err) {
-            console.log(chalk.red(`Failed to read ${label}: ${err}`));
-            return undefined;
-        }
-    };
-
-    const checkCarFilesExist = (carFilePath: string): boolean => {
+    const checkCarFilesExist = (): boolean => {
         const spinner = ora("Checking for CAR file...").start();
 
         if (!fs.existsSync(carFilePath)) {
             spinner.fail(`No CAR file found at: ${carFilePath}`);
-            return false;
-        } else if (!fs.existsSync(cidFilePath)) {
-            spinner.fail("Missing required CAR output file: output.cid");
-            return false;
-        } else if (!fs.existsSync(sizeFilePath)) {
-            spinner.fail("Missing required CAR output file: output.size");
             return false;
         } else if (hash == undefined) {
             spinner.fail(
@@ -116,14 +102,16 @@ const publishCarFiles = async (cartesiDir: string): Promise<boolean> => {
             return true;
         } else {
             if (retries < 5) {
-                publishProgramToCoprocessor(retries + 1);
+                await new Promise((resolve) => setTimeout(resolve, 3000));
+                await publishProgramToCoprocessor(retries + 1);
             } else {
+                console.log(response);
                 spinner.fail(
                     chalk.red(
                         `Solver failed to publish application after ${retries} retries`,
                     ),
                 );
-                return false;
+                process.exit(1);
             }
         }
         return false;
@@ -133,13 +121,7 @@ const publishCarFiles = async (cartesiDir: string): Promise<boolean> => {
         retries: number,
     ): Promise<boolean> => {
         const spinner = ora("Publishing application to solver...").start();
-        const cid = readFile(cidFilePath, "CID File");
-        const size = readFile(sizeFilePath, "SIZE File");
-        const ensure_url = getEnsureRoute(
-            cid as string,
-            hash!.slice(2) as string,
-            size as string,
-        );
+        const ensure_url = getEnsureRoute();
 
         try {
             const response = await fetch(ensure_url, {
@@ -157,7 +139,7 @@ const publishCarFiles = async (cartesiDir: string): Promise<boolean> => {
             if (publishStatus) {
                 spinner.succeed(
                     chalk.green(
-                        `Application sucessfully published to solver at: ${chalk.cyan(DEFAULT_SOLVER_URL)}`,
+                        `Application sucessfully published to solver at: ${chalk.cyan(DefaultUrls.solverUrl)}`,
                     ),
                 );
                 return true;
@@ -182,7 +164,7 @@ const publishCarFiles = async (cartesiDir: string): Promise<boolean> => {
                 );
             } else {
                 spinner.fail(
-                    chalk.red("Error Publishing application:", message),
+                    chalk.red("Error Publishing application: \n", message),
                 );
             }
             return false;
@@ -192,7 +174,7 @@ const publishCarFiles = async (cartesiDir: string): Promise<boolean> => {
     const UploadCarFile = async (): Promise<boolean> => {
         const spinner = ora("Uploading car files...").start();
 
-        if (!checkCarFilesExist(carFilePath)) {
+        if (!checkCarFilesExist()) {
             spinner.stop();
             return false;
         }
@@ -205,7 +187,7 @@ const publishCarFiles = async (cartesiDir: string): Promise<boolean> => {
                 new Blob([fs.readFileSync(carFilePath)], {
                     type: "application/octet-stream",
                 }),
-                "output.car",
+                "image.car",
             );
 
             const response = await fetch(publish_url, {
@@ -221,7 +203,10 @@ const publishCarFiles = async (cartesiDir: string): Promise<boolean> => {
                 return false;
             }
         } catch (e: any) {
-            if (e.message.includes("ECONNREFUSED")) {
+            if (
+                e.message.includes("ECONNREFUSED") ||
+                e.message == "fetch failed"
+            ) {
                 spinner.fail(
                     chalk.red(
                         "Devnet container not active, please run the `start devnet` command!",
@@ -239,23 +224,22 @@ const publishCarFiles = async (cartesiDir: string): Promise<boolean> => {
         }
     };
 
-    return (await UploadCarFile())
-        ? await publishProgramToCoprocessor(0)
-        : false;
+    if (await UploadCarFile()) {
+        if (await publishProgramToCoprocessor(0)) {
+            return;
+        } else {
+            process.exit(1);
+        }
+    } else {
+        process.exit(1);
+    }
 };
 
-const generateCarFiles = async (cartesiDir: string) => {
-    type Service = {
-        name: string; // name of the service
-        file: string; // docker compose file name
-        healthySemaphore?: string; // service to check if the service is healthy
-        healthyTitle?: string | ((port: number) => string); // title of the service when it is healthy
-        waitTitle?: string; // title of the service when it is starting
-        errorTitle?: string; // title of the service when it is not healthy
-    };
-
-    const snapshotPath = path.resolve(cartesiDir, ".cartesi/image");
+const generateCarFiles = async (cartesiDir: string): Promise<carDetails> => {
+    const artifactsDir = path.resolve(cartesiDir, getContextPath("artifacts"));
+    const snapshotPath = path.resolve(cartesiDir, getContextPath("image"));
     const pathExists = await fs.pathExists(snapshotPath);
+    await fs.promises.mkdir(artifactsDir, { recursive: true });
 
     if (!pathExists) {
         console.log(
@@ -263,77 +247,22 @@ const generateCarFiles = async (cartesiDir: string) => {
                 `${chalk.red("✖")} Machine snapshot not found, run the 'coprocessor build' command!`,
             ),
         );
-        return false;
+        process.exit(1);
     } else {
-        const coprocessorCarizeServices: Service[] = [
-            {
-                name: "carize",
-                file: "coprocessor/docker-compose-carize.yaml",
-                waitTitle: `${chalk.cyan("Generating Car files.....")}`,
-                errorTitle: `${chalk.red("Error cenerating car files")}`,
-            },
-        ];
-
-        // path of the tool instalation
-        const binPath = path.join(
-            path.dirname(new URL(import.meta.url).pathname),
-            "../..",
-        );
-
-        const dataPath = path.resolve(cartesiDir, ".cartesi/image");
-        const outputPath = path.resolve(cartesiDir, ".cartesi/artifacts");
-
-        const env: NodeJS.ProcessEnv = {
-            CARIZE_DATA: dataPath,
-            CARIZE_OUTPUT: outputPath,
-        };
-
-        // build a list of unique compose files
-        const composeFiles = [
-            ...new Set(coprocessorCarizeServices.map(({ file }) => file)),
-        ];
-
-        // create the "--file <file>" list
-        const files = composeFiles
-            .map((f) => ["--file", path.join(binPath, "compose", f)])
-            .flat();
-
-        const compose_args = [
-            "compose",
-            ...files,
-            "--project-name",
-            `coprocessor_carize`,
-            "--progress",
-            "quiet",
-        ];
-
-        const up_args = ["--attach", "carize"];
-
-        // XXX: need this handler, so SIGINT can still call the finally block below
-        process.on("SIGINT", () => {});
-
         try {
-            await execa("docker", [...compose_args, "up", ...up_args], {
-                env,
-                stdio: "inherit",
-            });
-            console.log(
-                `${chalk.green("✔")} Car files generated sucessfully!`,
+            const jsonOutput = await createCarFromDirectory(
+                snapshotPath,
+                artifactsDir,
             );
-            return true;
+            console.log(
+                chalk.green("🎉 CAR and JSON files successfully created!"),
+            );
+            return jsonOutput;
         } catch (e: unknown) {
-            // 130 is a graceful shutdown, so we can swallow it
-            if ((e as any).exitCode !== 130) {
-                console.log(
-                    `${chalk.red("✖")} Error creating car files: ${chalk.red(e)}`,
-                );
-            }
-            return false;
-        } finally {
-            await execa("docker", [...compose_args, "down", "--volumes"], {
-                env,
-                stdio: "inherit",
-            });
+            console.log(
+                `${chalk.red("✖")} Error creating car files: ${chalk.red(e)}`,
+            );
+            process.exit(1);
         }
     }
 };
@@ -393,7 +322,7 @@ const deploySolidityContract = async (
     const spinner = ora("📦 Deploying contract to localhost...").start();
 
     try {
-        // 🚀 Deploy
+        // Deploy
         const hash = await client.deployContract({
             abi,
             bytecode: bytecode as `0x${string}`,
@@ -407,15 +336,15 @@ const deploySolidityContract = async (
         );
     } catch (e: any) {
         spinner.fail(chalk.red("Error deploying solidity contract!!"));
-        let error = `${e.shortMessage ? e.shortMessage : e}`;
-        if (error.includes("Execution reverted for an unknown")) {
+        const ERROR = `${e.shortMessage ? e.shortMessage : e}`;
+        if (ERROR.includes("Execution reverted for an unknown")) {
             console.log(
                 chalk.red(
-                    `❌ Viem:: ${error}. Please ensure constructor arguments are well passed`,
+                    `❌ Viem:: ${ERROR}. Please ensure constructor arguments are well passed`,
                 ),
             );
         } else {
-            console.log(chalk.red(`❌ Viem::   ${error}`));
+            console.log(chalk.red(`❌ Viem::   ${ERROR}`));
         }
     }
 };
@@ -445,7 +374,7 @@ const findSubdirectories = async (): Promise<{
         let foundryDir: string | null = null;
 
         for (const dir of subdirs) {
-            if (!cartesiDir && (await hasChild(dir, ".cartesi"))) {
+            if (!cartesiDir && (await hasChild(dir, getContextPath()))) {
                 cartesiDir = dir;
             }
             if (!foundryDir && (await hasChild(dir, "foundry.toml"))) {
