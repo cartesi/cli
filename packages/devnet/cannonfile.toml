@@ -5,6 +5,27 @@ description = 'Cartesi Rollups Devnet'
 [pull.cartesiRollups]
 source = "cartesi-rollups:2.0.0-rc.17@main"
 
+[pull.entrypointSimulations]
+source = "pimlico-entrypoint-simulations:0.7.0@main"
+
+[pull.zerodevKernel30]
+source = "zerodev-kernel:3.0@main"
+
+[pull.zerodevKernel31]
+source = "zerodev-kernel:3.1@main"
+
+[pull.zerodevKernel32]
+source = "zerodev-kernel:3.2@main"
+
+[pull.alchemyLightAccountV1]
+source = "alchemy-light-account:1.1.0@main"
+
+[pull.alchemyLightAccountV2]
+source = "alchemy-light-account:2.0.0@main"
+
+[pull.alchemyModularAccountV2]
+source = "alchemy-modular-account:2.0.0@main"
+
 [var.Settings]
 token_owner = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
 
