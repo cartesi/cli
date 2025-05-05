@@ -1,5 +1,12 @@
 # sdk
 
+## 0.12.0-alpha.17
+
+### Patch Changes
+
+- 220e8fe: sort smart contract list by name
+- 435079f: bump devnet to 2.0.0-alpha.6
+
 ## 0.12.0-alpha.16
 
 ### Patch Changes
