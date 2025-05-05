@@ -1,6 +1,6 @@
 {
     "name": "@cartesi/cli",
-    "version": "2.0.0-alpha.9",
+    "version": "2.0.0-alpha.10",
     "description": "Cartesi CLI",
     "author": "Danilo Tuler <tuler@pobox.com>",
     "bin": {
@@ -42,7 +42,7 @@
         "viem": "^2.23.6"
     },
     "devDependencies": {
-        "@cartesi/devnet": "2.0.0-alpha.5",
+        "@cartesi/devnet": "2.0.0-alpha.6",
         "@cartesi/eslint-config": "workspace:*",
         "@cartesi/rollups": "2.0.0-rc.17",
         "@types/bytes": "^3.1.5",
