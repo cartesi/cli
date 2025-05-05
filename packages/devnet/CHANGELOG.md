@@ -1,5 +1,12 @@
 # devnet
 
+## 2.0.0-alpha.6
+
+### Patch Changes
+
+- 9c7aea5: add ERC-4337 contracts from cannon
+- a91c91a: add ERC-4377 simple account
+
 ## 2.0.0-alpha.5
 
 ### Patch Changes

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.0-alpha.10
+
+### Minor Changes
+
+- 2074af1: bump explorer-api to v1.0.0-alpha.3
+- 2074af1: bump explorer to v1.0.0-alpha.2
+
 ## 2.0.0-alpha.9
 
 ### Major Changes

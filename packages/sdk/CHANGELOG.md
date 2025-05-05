@@ -1,5 +1,11 @@
 # sdk
 
+## 0.12.0-alpha.16
+
+### Patch Changes
+
+- 6bcc7d6: bump bookworm baseimage to 20250428
+
 ## 0.12.0-alpha.15
 
 ### Patch Changes
