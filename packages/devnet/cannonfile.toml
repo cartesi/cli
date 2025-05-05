@@ -8,6 +8,15 @@ source = "cartesi-rollups:2.0.0-rc.17@main"
 [pull.entrypointSimulations]
 source = "pimlico-entrypoint-simulations:0.7.0@main"
 
+[pull.simpleAccount06]
+source = "eth-infinitism-simple-account:0.6.0@main"
+
+[pull.simpleAccount07]
+source = "eth-infinitism-simple-account:0.7.0@main"
+
+[pull.simpleAccount08]
+source = "eth-infinitism-simple-account:0.8.0@main"
+
 [pull.zerodevKernel30]
 source = "zerodev-kernel:3.0@main"
 
