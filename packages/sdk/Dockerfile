@@ -173,15 +173,15 @@ EOF
 
 # Install cartesi-machine emulator
 RUN <<EOF
-curl -fsSL https://github.com/cartesi/machine-emulator/releases/download/v${CARTESI_MACHINE_EMULATOR_VERSION}/cartesi-machine-v${CARTESI_MACHINE_EMULATOR_VERSION%%-*}_${TARGETARCH}.deb \
-    -o /tmp/cartesi-machine.deb
+curl -fsSL https://github.com/cartesi/machine-emulator/releases/download/v${CARTESI_MACHINE_EMULATOR_VERSION}/machine-emulator_${TARGETARCH}.deb \
+    -o /tmp/machine-emulator.deb
 case "${TARGETARCH}" in
-    amd64) echo "726c510632eedad51aec366634711f5062808c5aedf34b7fb7e6b2263de88e1f  /tmp/cartesi-machine.deb" | sha256sum --check ;;
-    arm64) echo "45712294ddd9cef0130074066b800d3b090a5e576ec9215e1a16f3ddcb146d29  /tmp/cartesi-machine.deb" | sha256sum --check ;;
+    amd64) echo "adae6b030a8990e316997aad53d175192bfeaa84ad12ee19491366377073572b  /tmp/machine-emulator.deb" | sha256sum --check ;;
+    arm64) echo "15ebb64d8cd3296564d2297dd809d1d72c13a938976bb4ecc5e5c82e71bb8069  /tmp/machine-emulator.deb" | sha256sum --check ;;
     *) echo "unsupported architecture: $ARCH"; exit 1 ;;
 esac
-apt-get install -y --no-install-recommends /tmp/cartesi-machine.deb
-rm /tmp/cartesi-machine.deb
+apt-get install -y --no-install-recommends /tmp/machine-emulator.deb
+rm /tmp/machine-emulator.deb
 cartesi-machine --version-json
 EOF
 
