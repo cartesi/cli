@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0-alpha.11
+
+### Patch Changes
+
+- a87d0a1: rollback devnet to alpha.5
+
 ## 2.0.0-alpha.10
 
 ### Minor Changes
