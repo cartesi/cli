@@ -42,7 +42,7 @@
         "viem": "^2.23.6"
     },
     "devDependencies": {
-        "@cartesi/devnet": "2.0.0-alpha.6",
+        "@cartesi/devnet": "2.0.0-alpha.5",
         "@cartesi/eslint-config": "workspace:*",
         "@cartesi/rollups": "2.0.0-rc.17",
         "@types/bytes": "^3.1.5",
