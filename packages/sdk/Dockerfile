@@ -115,8 +115,18 @@ FROM base AS espresso-reader
 ARG CARTESI_ESPRESSO_READER_VERSION
 ARG TARGETOS
 ARG TARGETARCH
-RUN curl -fsSL https://github.com/cartesi/rollups-espresso-reader/releases/download/v${CARTESI_ESPRESSO_READER_VERSION}/cartesi-rollups-espresso-reader-v${CARTESI_ESPRESSO_READER_VERSION}-${TARGETOS}-${TARGETARCH}.tar.gz \
-    | tar -xzf - -C /usr/local/bin
+RUN <<EOF
+curl -fsSL https://github.com/cartesi/rollups-espresso-reader/releases/download/v${CARTESI_ESPRESSO_READER_VERSION}/cartesi-rollups-espresso-reader-v${CARTESI_ESPRESSO_READER_VERSION}-${TARGETOS}-${TARGETARCH}.tar.gz \
+    -o /tmp/cartesi-rollups-espresso-reader.tar.gz
+
+case "${TARGETARCH}" in
+    amd64) echo "8eb9082fd47572a67d45b0642b7394b5  /tmp/cartesi-rollups-espresso-reader.tar.gz" | md5sum --check ;;
+    arm64) echo "8c38eb171b2e81fa1ab44080a33bed99  /tmp/cartesi-rollups-espresso-reader.tar.gz" | md5sum --check ;;
+    *) echo "unsupported architecture: ${TARGEARCH}"; exit 1 ;;
+esac
+
+tar -xzf /tmp/cartesi-rollups-espresso-reader.tar.gz -C /usr/local/bin
+EOF
 
 ################################################################################
 # rollups-espresso-reader migration code installer
