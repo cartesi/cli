@@ -89,8 +89,8 @@ curl -fsSL https://github.com/cartesi/rollups-graphql/releases/download/v${CARTE
     -o /tmp/cartesi-rollups-graphql.tar.gz
 
 case "${TARGETARCH}" in
-    amd64) echo "0882a1c7a608ae6e1631ab9b3a04d531  /tmp/cartesi-rollups-graphql.tar.gz" | md5sum --check ;;
-    arm64) echo "759e7edc97ad39908fef56c3bd971a9b  /tmp/cartesi-rollups-graphql.tar.gz" | md5sum --check ;;
+    amd64) echo "b1b27069956c379e29d5668504bb02db  /tmp/cartesi-rollups-graphql.tar.gz" | md5sum --check ;;
+    arm64) echo "ca41f76ab2e6c1a8b15ac0c1ab96e951  /tmp/cartesi-rollups-graphql.tar.gz" | md5sum --check ;;
     *) echo "unsupported architecture: ${TARGEARCH}"; exit 1 ;;
 esac
 
