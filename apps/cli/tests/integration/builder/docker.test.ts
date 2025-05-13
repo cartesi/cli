@@ -65,7 +65,7 @@ describe("when building with the docker builder", () => {
             await build("root", drive, image, destination);
             const filename = path.join(destination, "root.ext2");
             const stat = fs.statSync(filename);
-            expect(stat.size).toEqual(76079104);
+            expect(stat.size).toEqual(85917696);
         },
     );
 
@@ -84,7 +84,7 @@ describe("when building with the docker builder", () => {
         await build("root", drive, image, destination);
         const filename = path.join(destination, "root.ext2");
         const stat = fs.statSync(filename);
-        expect(stat.size).toEqual(76079104);
+        expect(stat.size).toEqual(85917696);
     });
 
     tmpdirTest.skip("should build a sqfs drive", async ({ tmpdir }) => {
