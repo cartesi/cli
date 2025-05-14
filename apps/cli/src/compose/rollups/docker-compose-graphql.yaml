@@ -2,8 +2,8 @@ services:
     graphql:
         image: ${CARTESI_SDK_IMAGE}
         environment:
-            POSTGRES_GRAPHQL_DB_URL: postgres://postgres:password@database:5432/graphql?sslmode=disable
-            POSTGRES_NODE_DB_URL: postgres://postgres:password@database:5432/rollupsdb?sslmode=disable
+            CARTESI_GRAPHQL_DATABASE_CONNECTION: postgres://postgres:password@database:5432/graphql?sslmode=disable
+            CARTESI_DATABASE_CONNECTION: postgres://postgres:password@database:5432/rollupsdb?sslmode=disable
         expose:
             - 8080
         command: ["cartesi-rollups-graphql"]
