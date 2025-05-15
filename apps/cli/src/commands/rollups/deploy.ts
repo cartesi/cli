@@ -2,15 +2,9 @@ import { Command, Option } from "@commander-js/extra-typings";
 import input from "@inquirer/input";
 import chalk from "chalk";
 import { execa } from "execa";
-import ora, { Ora } from "ora";
-import {
-    Address,
-    encodeFunctionData,
-    Hash,
-    PublicClient,
-    WalletClient,
-    zeroHash,
-} from "viem";
+import ora, { type Ora } from "ora";
+import type { Address, Hash, Hex, PublicClient, WalletClient } from "viem";
+import { encodeFunctionData, zeroHash } from "viem";
 import { cannon } from "viem/chains";
 import {
     getContextPath,
@@ -27,11 +21,8 @@ import {
     inputBoxAddress,
 } from "../../contracts.js";
 import { addressInput } from "../../prompts.js";
-import { RollupsCommandOpts } from "../rollups.js";
+import type { RollupsCommandOpts } from "../rollups.js";
 import { connect } from "../send.js";
-
-const DEFAULT_ESPRESSO_BLOCK = 1;
-const DEFAULT_ESPRESSO_NAMESPACE_ID = 1;
 
 /**
  * Deploy authority contract (if not already deployed)
@@ -87,30 +78,6 @@ const deployAuthority = async (
     return authorityAddress;
 };
 
-const createDataAvailabilityDescriptor = async (
-    daType: "inputbox" | "espresso",
-    espressoBlock: number | undefined,
-    espressoNamespaceId: number | undefined,
-) => {
-    if (daType === "espresso") {
-        return encodeFunctionData({
-            abi: dataAvailabilityAbi,
-            functionName: "InputBoxAndEspresso",
-            args: [
-                inputBoxAddress,
-                BigInt(espressoBlock!),
-                espressoNamespaceId!,
-            ],
-        });
-    } else {
-        return encodeFunctionData({
-            abi: dataAvailabilityAbi,
-            functionName: "InputBox",
-            args: [inputBoxAddress],
-        });
-    }
-};
-
 /**
  * Deploy application contract
  * @param options
@@ -125,20 +92,11 @@ const deployApplication = async (
         progress: Ora;
         salt: Hash;
         templateHash: Hash;
-        dataAvailability: "inputbox" | "espresso";
-        espressoBlock?: number;
-        espressoNamespaceId?: number;
+        dataAvailability: Hex;
     },
 ): Promise<Address> => {
-    const {
-        authorityAddress,
-        progress,
-        salt,
-        templateHash,
-        dataAvailability: daType,
-        espressoBlock,
-        espressoNamespaceId,
-    } = options;
+    const { authorityAddress, progress, salt, templateHash, dataAvailability } =
+        options;
 
     const applicationOwner =
         options.applicationOwner ||
@@ -146,13 +104,6 @@ const deployApplication = async (
             message: "Application Owner",
             default: walletClient.account?.address,
         }));
-
-    // create data availability descriptor
-    const dataAvailability = await createDataAvailabilityDescriptor(
-        daType,
-        espressoBlock,
-        espressoNamespaceId,
-    );
 
     const applicationAddress = await publicClient.readContract({
         abi: applicationFactoryAbi,
@@ -237,16 +188,14 @@ const registerApplication = async (options: {
     progress: Ora;
     environmentName: string;
     snapshotPath: string;
-    dataAvailability: "inputbox" | "espresso";
-    espressoNamespaceId?: number;
-    espressoBlock?: number;
+    dataAvailability: Hex;
 }): Promise<string> => {
     const {
         applicationAddress,
         progress,
         environmentName,
         snapshotPath,
-        dataAvailability: daType,
+        dataAvailability,
     } = options;
 
     // use template hash as the name of the deployment
@@ -265,18 +214,10 @@ const registerApplication = async (options: {
         applicationAddress,
         "--template-path",
         snapshotPath,
+        "--data-availability",
+        dataAvailability,
         "--print-json",
     ];
-
-    // espresso specific args
-    if (daType === "espresso") {
-        const dataAvailability = await createDataAvailabilityDescriptor(
-            daType,
-            options.espressoBlock,
-            options.espressoNamespaceId,
-        );
-        registerArgs.push("--data-availability", `${dataAvailability}`);
-    }
 
     // deploy application
     progress.start("Registering application...");
@@ -303,17 +244,36 @@ const registerApplication = async (options: {
     return name;
 };
 
+const parseDataAvailability = (
+    type: "input-box" | "espresso",
+    espressoBlock: number,
+    espressoNamespace: number,
+) => {
+    if (type === "espresso") {
+        return encodeFunctionData({
+            abi: dataAvailabilityAbi,
+            functionName: "InputBoxAndEspresso",
+            args: [inputBoxAddress, BigInt(espressoBlock), espressoNamespace],
+        });
+    }
+    return encodeFunctionData({
+        abi: dataAvailabilityAbi,
+        functionName: "InputBox",
+        args: [inputBoxAddress],
+    });
+};
+
 export const createDeployCommand = () => {
     return new Command<[], {}, RollupsCommandOpts>("deploy")
         .description("Deploy a rollups application to a rollups node.")
         .configureHelp({ showGlobalOptions: true })
-        .option("--chain-id <id>", "Chain ID", parseInt, 13370)
+        .option("--chain-id <id>", "Chain ID", Number.parseInt, 13370)
         .option("--rpc-url <url>", "RPC URL")
         .option("--mnemonic <phrase>", "Mnemonic passphrase")
         .option(
             "--mnemonic-index <index>",
             "Mnemonic account index",
-            parseInt,
+            Number.parseInt,
             0,
         )
         .option("--name <string>", "application name")
@@ -342,16 +302,20 @@ export const createDeployCommand = () => {
         .addOption(
             new Option(
                 "--data-availability <type>",
-                "Data availability layer to use (inputbox or espresso)",
+                "Data availability layer to use (input-box or espresso)",
             )
-                .choices(["inputbox", "espresso"])
-                .default("inputbox"),
+                .choices(["input-box", "espresso"])
+                .default("input-box"),
         )
-        .option("--espresso-block <number>", "Espresso block for DA", Number)
-        .option(
-            "--espresso-namespace-id <number>",
-            "Espresso namespace ID for DA",
-            Number,
+        .addOption(
+            new Option("--espresso-block <number>", "espresso starting block")
+                .argParser(Number)
+                .default(1),
+        )
+        .addOption(
+            new Option("--espresso-namespace <number>", "espresso namespace Id")
+                .argParser(Number)
+                .default(1),
         )
         .action(async (options, command) => {
             const rollupsOptions = command.optsWithGlobals();
@@ -360,18 +324,17 @@ export const createDeployCommand = () => {
                 json,
                 dataAvailability: daType,
                 espressoBlock,
-                espressoNamespaceId,
+                espressoNamespace,
             } = options;
 
             // If inputbox is chosen, warn if espresso args are provided
             if (
-                daType === "inputbox" &&
-                (espressoBlock !== undefined ||
-                    espressoNamespaceId !== undefined)
+                daType === "input-box" &&
+                (espressoBlock !== undefined || espressoNamespace !== undefined)
             ) {
                 console.warn(
                     chalk.yellow(
-                        "Warning: --espresso-block and --espresso-namespace-id are ignored when --data-availability is inputbox.",
+                        "WARNING: --espresso-block and --espresso-namespace-id are ignored when --data-availability is input-box",
                     ),
                 );
             }
@@ -391,25 +354,17 @@ export const createDeployCommand = () => {
                 `Cartesi machine template hash ${chalk.cyan(templateHash)}`,
             );
 
-            // If espresso is chosen, set default espresso args values
-            if (
-                daType === "espresso" &&
-                (espressoBlock === undefined ||
-                    espressoNamespaceId === undefined)
-            ) {
-                progress.info(
-                    `Using defaults ${chalk.cyan(
-                        `--espresso-block=${DEFAULT_ESPRESSO_BLOCK}`,
-                    )} and ${chalk.cyan(`--espresso-namespace-id=${DEFAULT_ESPRESSO_NAMESPACE_ID}`)}`,
-                );
-                options.espressoBlock = DEFAULT_ESPRESSO_BLOCK;
-                options.espressoNamespaceId = DEFAULT_ESPRESSO_NAMESPACE_ID;
-            }
-
             // connect to some chain
             const { publicClient, walletClient } = await connect(options);
 
             try {
+                // parse dataAvailability
+                const dataAvailability = parseDataAvailability(
+                    daType,
+                    espressoBlock,
+                    espressoNamespace,
+                );
+
                 // deploy authority contract (if not already deployed)
                 const authorityAddress = await deployAuthority(
                     publicClient,
@@ -426,6 +381,7 @@ export const createDeployCommand = () => {
                         progress,
                         templateHash,
                         ...options,
+                        dataAvailability,
                     },
                 );
 
@@ -443,6 +399,7 @@ export const createDeployCommand = () => {
                         snapshotPath: containerSnapshotPath,
                         ...options,
                         ...rollupsOptions,
+                        dataAvailability,
                     });
                 } else {
                     const snapshotPath = getContextPath("image");
