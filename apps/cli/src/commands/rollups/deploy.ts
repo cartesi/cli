@@ -84,6 +84,30 @@ const deployAuthority = async (
     return authorityAddress;
 };
 
+const createDataAvailabilityDescriptor = async (
+    daType: "inputbox" | "espresso",
+    espressoBlock: number | undefined,
+    espressoNamespaceId: number | undefined,
+) => {
+    if (daType === "espresso") {
+        return encodeFunctionData({
+            abi: dataAvailabilityAbi,
+            functionName: "InputBoxAndEspresso",
+            args: [
+                inputBoxAddress,
+                BigInt(espressoBlock!),
+                espressoNamespaceId!,
+            ],
+        });
+    } else {
+        return encodeFunctionData({
+            abi: dataAvailabilityAbi,
+            functionName: "InputBox",
+            args: [inputBoxAddress],
+        });
+    }
+};
+
 /**
  * Deploy application contract
  * @param options
@@ -121,24 +145,11 @@ const deployApplication = async (
         }));
 
     // create data availability descriptor
-    let dataAvailability;
-    if (daType === "espresso") {
-        dataAvailability = encodeFunctionData({
-            abi: dataAvailabilityAbi,
-            functionName: "InputBoxAndEspresso",
-            args: [
-                inputBoxAddress,
-                BigInt(espressoBlock!),
-                espressoNamespaceId!,
-            ],
-        });
-    } else {
-        dataAvailability = encodeFunctionData({
-            abi: dataAvailabilityAbi,
-            functionName: "InputBox",
-            args: [inputBoxAddress],
-        });
-    }
+    const dataAvailability = await createDataAvailabilityDescriptor(
+        daType,
+        espressoBlock,
+        espressoNamespaceId,
+    );
 
     const applicationAddress = await publicClient.readContract({
         abi: applicationFactoryAbi,
@@ -256,11 +267,11 @@ const registerApplication = async (options: {
 
     // espresso specific args
     if (daType === "espresso") {
-        const dataAvailability = encodeFunctionData({
-            abi: dataAvailabilityAbi,
-            functionName: "InputBox",
-            args: [inputBoxAddress],
-        });
+        const dataAvailability = await createDataAvailabilityDescriptor(
+            daType,
+            options.espressoBlock,
+            options.espressoNamespaceId,
+        );
         registerArgs.push("--data-availability", `${dataAvailability}`);
     }
 
