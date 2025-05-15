@@ -2,6 +2,7 @@ services:
     espresso:
         image: ${CARTESI_SDK_IMAGE}
         command: ["espresso-dev-node"]
+        init: true
         deploy:
             resources:
                 limits:
@@ -14,25 +15,21 @@ services:
                 condition: service_healthy
         environment:
             ESPRESSO_SEQUENCER_L1_PROVIDER: ${CARTESI_BLOCKCHAIN_HTTP_ENDPOINT:-http://anvil:8545}
-            ESPRESSO_SEQUENCER_API_PORT: 8770
-            ESPRESSO_BUILDER_PORT: 8771
-            ESPRESSO_PROVER_PORT: 8772
+            ESPRESSO_SEQUENCER_API_PORT: 24000
+            ESPRESSO_BUILDER_PORT: 23000
             ESPRESSO_DEV_NODE_PORT: 20000
-            ESPRESSO_SEQUENCER_POSTGRES_HOST: database
-            ESPRESSO_SEQUENCER_POSTGRES_PORT: 5432
-            ESPRESSO_SEQUENCER_POSTGRES_USER: postgres
-            ESPRESSO_SEQUENCER_POSTGRES_PASSWORD: password
-            ESPRESSO_SEQUENCER_POSTGRES_DATABASE: espresso
             ESPRESSO_SEQUENCER_ETH_MNEMONIC: ${CARTESI_AUTH_MNEMONIC:-test test test test test test test test test test test junk}
-            ESPRESSO_SEQUENCER_L1_POLLING_INTERVAL: "1s"
-            ESPRESSO_STATE_PROVER_UPDATE_INTERVAL: "1s"
+            ESPRESSO_SEQUENCER_L1_POLLING_INTERVAL: "${BLOCK_TIME}s"
+            ESPRESSO_STATE_PROVER_UPDATE_INTERVAL: "10s"
+            ESPRESSO_SEQUENCER_DATABASE_MAX_CONNECTIONS: 25
+            ESPRESSO_SEQUENCER_STORAGE_PATH: /data/espresso
         healthcheck:
             test:
                 [
                     "CMD",
                     "curl",
                     "-fsS",
-                    "http://127.0.0.1:8770/status/block-height",
+                    "http://127.0.0.1:24000/status/block-height",
                 ]
             start_period: 10s
             start_interval: 200ms
@@ -53,11 +50,9 @@ services:
             espresso:
                 condition: service_healthy
         environment:
-            CARTESI_POSTGRES_ENDPOINT: postgres://postgres:password@database:5432/rollupsdb?sslmode=disable
+            CARTESI_DATABASE_CONNECTION: postgres://postgres:password@database:5432/rollupsdb?sslmode=disable
             ESPRESSO_SERVICE_ENDPOINT: ":8081"
-            ESPRESSO_BASE_URL: http://espresso:8770
-            ESPRESSO_NAMESPACE: 51025
-            ESPRESSO_STARTING_BLOCK: 101
+            ESPRESSO_BASE_URL: http://espresso:24000
 
     proxy:
         volumes:
