@@ -30,8 +30,8 @@ import { addressInput } from "../../prompts.js";
 import { RollupsCommandOpts } from "../rollups.js";
 import { connect } from "../send.js";
 
-const DEFAULT_ESPRESSO_BLOCK = 3;
-const DEFAULT_ESPRESSO_NAMESPACE_ID = 55555;
+const DEFAULT_ESPRESSO_BLOCK = 1;
+const DEFAULT_ESPRESSO_NAMESPACE_ID = 1;
 
 /**
  * Deploy authority contract (if not already deployed)
