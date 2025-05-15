@@ -30,6 +30,9 @@ import { addressInput } from "../../prompts.js";
 import { RollupsCommandOpts } from "../rollups.js";
 import { connect } from "../send.js";
 
+const DEFAULT_ESPRESSO_BLOCK = 3;
+const DEFAULT_ESPRESSO_NAMESPACE_ID = 55555;
+
 /**
  * Deploy authority contract (if not already deployed)
  * @param options
@@ -388,16 +391,19 @@ export const createDeployCommand = () => {
                 `Cartesi machine template hash ${chalk.cyan(templateHash)}`,
             );
 
-            // If espresso is chosen, require both espresso arguments
+            // If espresso is chosen, set default espresso args values
             if (
                 daType === "espresso" &&
                 (espressoBlock === undefined ||
                     espressoNamespaceId === undefined)
             ) {
-                progress.fail(
-                    "When using --data-availability espresso, both --espresso-block and --espresso-namespace-id must be provided.",
+                progress.info(
+                    `Using defaults ${chalk.cyan(
+                        `--espresso-block=${DEFAULT_ESPRESSO_BLOCK}`,
+                    )} and ${chalk.cyan(`--espresso-namespace-id=${DEFAULT_ESPRESSO_NAMESPACE_ID}`)}`,
                 );
-                return;
+                options.espressoBlock = DEFAULT_ESPRESSO_BLOCK;
+                options.espressoNamespaceId = DEFAULT_ESPRESSO_NAMESPACE_ID;
             }
 
             // connect to some chain
