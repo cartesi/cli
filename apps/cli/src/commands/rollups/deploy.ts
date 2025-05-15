@@ -98,9 +98,20 @@ const deployApplication = async (
         progress: Ora;
         salt: Hash;
         templateHash: Hash;
+        dataAvailability: "inputbox" | "espresso";
+        espressoBlock?: number;
+        espressoNamespaceId?: number;
     },
 ): Promise<Address> => {
-    const { authorityAddress, progress, salt, templateHash } = options;
+    const {
+        authorityAddress,
+        progress,
+        salt,
+        templateHash,
+        dataAvailability: daType,
+        espressoBlock,
+        espressoNamespaceId,
+    } = options;
 
     const applicationOwner =
         options.applicationOwner ||
@@ -109,12 +120,25 @@ const deployApplication = async (
             default: walletClient.account?.address,
         }));
 
-    // create data availability descriptor for InputBox only
-    const dataAvailability = encodeFunctionData({
-        abi: dataAvailabilityAbi,
-        functionName: "InputBox",
-        args: [inputBoxAddress],
-    });
+    // create data availability descriptor
+    let dataAvailability;
+    if (daType === "espresso") {
+        dataAvailability = encodeFunctionData({
+            abi: dataAvailabilityAbi,
+            functionName: "InputBoxAndEspresso",
+            args: [
+                inputBoxAddress,
+                BigInt(espressoBlock!),
+                espressoNamespaceId!,
+            ],
+        });
+    } else {
+        dataAvailability = encodeFunctionData({
+            abi: dataAvailabilityAbi,
+            functionName: "InputBox",
+            args: [inputBoxAddress],
+        });
+    }
 
     const applicationAddress = await publicClient.readContract({
         abi: applicationFactoryAbi,
@@ -199,9 +223,17 @@ const registerApplication = async (options: {
     progress: Ora;
     environmentName: string;
     snapshotPath: string;
+    dataAvailability: "inputbox" | "espresso";
+    espressoNamespaceId?: number;
+    espressoBlock?: number;
 }): Promise<string> => {
-    const { applicationAddress, progress, environmentName, snapshotPath } =
-        options;
+    const {
+        applicationAddress,
+        progress,
+        environmentName,
+        snapshotPath,
+        dataAvailability: daType,
+    } = options;
 
     // use template hash as the name of the deployment
     const name =
@@ -210,6 +242,27 @@ const registerApplication = async (options: {
             message: "Application Name",
             default: applicationAddress.toLowerCase(),
         }));
+
+    // common app register args
+    const registerArgs = [
+        "--name",
+        name,
+        "--address",
+        applicationAddress,
+        "--template-path",
+        snapshotPath,
+        "--print-json",
+    ];
+
+    // espresso specific args
+    if (daType === "espresso") {
+        const dataAvailability = encodeFunctionData({
+            abi: dataAvailabilityAbi,
+            functionName: "InputBox",
+            args: [inputBoxAddress],
+        });
+        registerArgs.push("--data-availability", `${dataAvailability}`);
+    }
 
     // deploy application
     progress.start("Registering application...");
@@ -222,13 +275,7 @@ const registerApplication = async (options: {
         "cartesi-rollups-cli",
         "app",
         "register",
-        "--name",
-        name,
-        "--address",
-        applicationAddress,
-        "--template-path",
-        snapshotPath,
-        "--print-json",
+        ...registerArgs,
     ]);
     const registration = stdout ? JSON.parse(stdout) : undefined;
     if (registration) {
@@ -278,12 +325,42 @@ export const createDeployCommand = () => {
         )
         .option("--salt <hash>", "salt for deployment", parseHash, zeroHash)
         .option("--json", "output in JSON format")
+        .addOption(
+            new Option(
+                "--data-availability <type>",
+                "Data availability layer to use (inputbox or espresso)",
+            )
+                .choices(["inputbox", "espresso"])
+                .default("inputbox"),
+        )
+        .option("--espresso-block <number>", "Espresso block for DA", Number)
+        .option(
+            "--espresso-namespace-id <number>",
+            "Espresso namespace ID for DA",
+            Number,
+        )
         .action(async (options, command) => {
             const rollupsOptions = command.optsWithGlobals();
             const { environmentName } = rollupsOptions;
-            const { json } = options;
-            // XXX: json support is not implemented yet
-            // if case of json maybe we should not support interactive mode
+            const {
+                json,
+                dataAvailability: daType,
+                espressoBlock,
+                espressoNamespaceId,
+            } = options;
+
+            // If inputbox is chosen, warn if espresso args are provided
+            if (
+                daType === "inputbox" &&
+                (espressoBlock !== undefined ||
+                    espressoNamespaceId !== undefined)
+            ) {
+                console.warn(
+                    chalk.yellow(
+                        "Warning: --espresso-block and --espresso-namespace-id are ignored when --data-availability is inputbox.",
+                    ),
+                );
+            }
 
             const progress = ora();
 
@@ -300,6 +377,18 @@ export const createDeployCommand = () => {
                 `Cartesi machine template hash ${chalk.cyan(templateHash)}`,
             );
 
+            // If espresso is chosen, require both espresso arguments
+            if (
+                daType === "espresso" &&
+                (espressoBlock === undefined ||
+                    espressoNamespaceId === undefined)
+            ) {
+                progress.fail(
+                    "When using --data-availability espresso, both --espresso-block and --espresso-namespace-id must be provided.",
+                );
+                return;
+            }
+
             // connect to some chain
             const { publicClient, walletClient } = await connect(options);
 
@@ -315,7 +404,12 @@ export const createDeployCommand = () => {
                 const applicationAddress = await deployApplication(
                     publicClient,
                     walletClient,
-                    { authorityAddress, progress, templateHash, ...options },
+                    {
+                        authorityAddress,
+                        progress,
+                        templateHash,
+                        ...options,
+                    },
                 );
 
                 if (publicClient.chain?.id === cannon.id) {
