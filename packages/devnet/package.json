@@ -15,7 +15,7 @@
         "fmt:write": "forge fmt"
     },
     "devDependencies": {
-        "@usecannon/cli": "^2.21.5",
+        "@usecannon/cli": "^2.20.0",
         "npm-run-all": "^4.1.5"
     },
     "files": [
