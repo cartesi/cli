@@ -42,8 +42,8 @@
         "viem": "^2.23.6"
     },
     "devDependencies": {
+        "@biomejs/biome": "catalog:",
         "@cartesi/devnet": "2.0.0-alpha.5",
-        "@cartesi/eslint-config": "workspace:*",
         "@cartesi/rollups": "2.0.0-rc.17",
         "@types/bytes": "^3.1.5",
         "@types/fs-extra": "^11.0.4",
@@ -57,7 +57,6 @@
         "@vitest/coverage-istanbul": "^2.1.3",
         "@wagmi/cli": "^2.2.0",
         "copyfiles": "^2.4.1",
-        "eslint": "^8.57.0",
         "npm-run-all": "^4.1.5",
         "rimraf": "^6.0.1",
         "ts-node": "^10.9.2",
@@ -74,7 +73,7 @@
         "compile": "tsc -p tsconfig.build.json",
         "postcompile": "chmod +x dist/index.js",
         "copy-files": "copyfiles -u 1 \"src/**/*.yaml\" \"src/**/*.env\" \"src/**/*.txt\" dist",
-        "lint": "eslint \"src/**/*.ts*\"",
+        "lint": "biome lint",
         "posttest": "pnpm lint",
         "test": "vitest"
     },
