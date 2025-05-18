@@ -4,7 +4,6 @@ on:
         paths:
             - .github/workflows/paymaster.yaml
             - packages/mock-verifying-paymaster/**
-            - packages/eslint-config/**
             - packages/tsconfig/**
 concurrency:
     group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}

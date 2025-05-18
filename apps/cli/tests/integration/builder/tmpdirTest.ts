@@ -14,7 +14,6 @@ const createTempDir = async () => {
 };
 
 export const tmpdirTest = test.extend<TmpDirFixture>({
-    // eslint-disable-next-line no-empty-pattern
     tmpdir: async ({}, use) => {
         const directory = await createTempDir();
         await use(directory);
