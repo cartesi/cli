@@ -1,6 +1,6 @@
-import { parse, Range, SemVer } from "semver";
-import { Stream } from "stream";
-import { DockerFallbackOptions, spawnSyncDockerFallback } from "./util.js";
+import type { Stream } from "node:stream";
+import { Range, type SemVer, parse } from "semver";
+import { type DockerFallbackOptions, spawnSyncDockerFallback } from "./util.js";
 
 export const requiredVersion = new Range("^0.19.1");
 

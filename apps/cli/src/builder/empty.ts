@@ -1,6 +1,6 @@
 import fs from "fs-extra";
-import path from "path";
-import { EmptyDriveConfig } from "../config.js";
+import path from "node:path";
+import type { EmptyDriveConfig } from "../config.js";
 import { genext2fs } from "../exec/index.js";
 
 export const build = async (
@@ -8,7 +8,7 @@ export const build = async (
     drive: EmptyDriveConfig,
     sdkImage: string,
     destination: string,
-): Promise<void> => {
+): Promise<undefined> => {
     const filename = `${name}.${drive.format}`;
     switch (drive.format) {
         case "ext2": {

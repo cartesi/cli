@@ -1,6 +1,7 @@
-import { defineConfig, type Plugin } from "@wagmi/cli";
-import { readdirSync, readFileSync } from "fs";
-import path from "path";
+import { type Plugin, defineConfig } from "@wagmi/cli";
+import { readFileSync, readdirSync } from "node:fs";
+import path from "node:path";
+import type { Abi } from "viem";
 
 const DataAvailability = JSON.parse(
     readFileSync(
@@ -32,10 +33,9 @@ const shouldIncludeFile = (name: string, config: CannonOptions): boolean => {
             }
         }
         return false;
-    } else {
-        // if there is no list of includes, then include everything
-        return true;
     }
+    // if there is no list of includes, then include everything
+    return true;
 };
 
 const cannonDeployments = (config: CannonOptions): Plugin => {
@@ -70,7 +70,7 @@ export default defineConfig({
     contracts: [
         {
             name: "DataAvailability",
-            abi: DataAvailability.abi as any,
+            abi: DataAvailability.abi as Abi,
         },
     ],
     plugins: [

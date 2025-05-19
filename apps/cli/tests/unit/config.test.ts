@@ -1,9 +1,7 @@
-import * as fs from "fs";
-import * as path from "path";
+import * as fs from "node:fs";
+import * as path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
-    defaultConfig,
-    defaultMachineConfig,
     InvalidBooleanValueError,
     InvalidBuilderError,
     InvalidBytesValueError,
@@ -11,8 +9,10 @@ import {
     InvalidEmptyDriveFormatError,
     InvalidNumberValueError,
     InvalidStringValueError,
-    parse,
     RequiredFieldError,
+    defaultConfig,
+    defaultMachineConfig,
+    parse,
 } from "../../src/config.js";
 
 const loadDriveConfig = (driveName: string) => {

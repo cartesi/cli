@@ -1,5 +1,5 @@
 import { execa } from "execa";
-import { Address, Hash } from "viem";
+import type { Address, Hash } from "viem";
 import { getMachineHash } from "../base.js";
 
 export type RollupsDeployment = {
@@ -8,6 +8,14 @@ export type RollupsDeployment = {
     templateHash: Hash;
     epochLength: number;
     state: "ENABLED" | "DISABLED";
+};
+
+type CliRollupsDeployment = {
+    name: string;
+    iapplication_address: string;
+    template_hash: string;
+    epoch_lenght: number;
+    state: string;
 };
 
 type ComposeParams = {
@@ -29,7 +37,7 @@ export const getDeployments = async (
             "app",
             "list",
         ]);
-        return JSON.parse(stdout).map((deployment: any) => ({
+        return JSON.parse(stdout).map((deployment: CliRollupsDeployment) => ({
             name: deployment.name,
             address: deployment.iapplication_address,
             templateHash: deployment.template_hash,

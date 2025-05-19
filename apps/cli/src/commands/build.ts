@@ -1,6 +1,6 @@
 import { Command } from "@commander-js/extra-typings";
 import fs from "fs-extra";
-import path from "path";
+import path from "node:path";
 import tmp from "tmp";
 import { getApplicationConfig, getContextPath } from "../base.js";
 import {
@@ -10,7 +10,7 @@ import {
     buildNone,
     buildTar,
 } from "../builder/index.js";
-import { DriveConfig, DriveResult } from "../config.js";
+import type { DriveConfig, DriveResult } from "../config.js";
 import { bootMachine } from "../machine.js";
 
 const buildDrive = async (
@@ -79,7 +79,7 @@ export const createBuildCommand = () => {
             }
 
             // get image info of root drive
-            const root = await results["root"];
+            const root = await results.root;
             const imageInfo = root || undefined;
 
             // path of machine snapshot

@@ -1,6 +1,6 @@
 import fs from "fs-extra";
-import path from "path";
-import { TarDriveConfig } from "../config.js";
+import path from "node:path";
+import type { TarDriveConfig } from "../config.js";
 import { genext2fs, mksquashfs } from "../exec/index.js";
 
 export const build = async (
@@ -8,7 +8,7 @@ export const build = async (
     drive: TarDriveConfig,
     sdkImage: string,
     destination: string,
-): Promise<void> => {
+): Promise<undefined> => {
     const tar = `${name}.tar`;
     const filename = `${name}.${drive.format}`;
 

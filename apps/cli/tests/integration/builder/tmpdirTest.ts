@@ -14,6 +14,7 @@ const createTempDir = async () => {
 };
 
 export const tmpdirTest = test.extend<TmpDirFixture>({
+    // biome-ignore lint/correctness/noEmptyPattern: test fixture pattern
     tmpdir: async ({}, use) => {
         const directory = await createTempDir();
         await use(directory);

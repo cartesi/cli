@@ -1,8 +1,8 @@
 import { Command } from "@commander-js/extra-typings";
 import fs from "fs-extra";
-import path from "path";
+import path from "node:path";
 import { getApplicationConfig, getContextPath } from "../base.js";
-import { ImageInfo } from "../config.js";
+import type { ImageInfo } from "../config.js";
 import { bootMachine } from "../machine.js";
 
 export const createShellCommand = () => {

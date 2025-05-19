@@ -2,18 +2,18 @@ import { Command } from "@commander-js/extra-typings";
 import input from "@inquirer/input";
 import ora from "ora";
 import {
-    Address,
+    type Address,
+    type PublicClient,
     erc20Abi,
     getAddress,
     isAddress,
     parseEther,
-    PublicClient,
 } from "viem";
 import { erc20PortalAbi, erc20PortalAddress } from "../../contracts.js";
 import {
+    type SendCommandOpts,
     connect,
     getInputApplicationAddress,
-    SendCommandOpts,
 } from "../send.js";
 
 type ERC20Token = {

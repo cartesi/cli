@@ -4,9 +4,9 @@ import ora from "ora";
 import { isHex, parseEther } from "viem";
 import { etherPortalAbi, etherPortalAddress } from "../../contracts.js";
 import {
+    type SendCommandOpts,
     connect,
     getInputApplicationAddress,
-    SendCommandOpts,
 } from "../send.js";
 
 export const createEtherCommand = () => {
