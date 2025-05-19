@@ -109,6 +109,15 @@ const availableServices: Service[] = [
         waitTitle: `${chalk.cyan("paymaster")} service starting...`,
         errorTitle: `${chalk.red("paymaster")} service failed`,
     },
+    {
+        name: "passkey",
+        file: "docker-compose-passkey-server.yaml",
+        healthySemaphore: "passkey-server",
+        healthyTitle: (port) =>
+            `${chalk.cyan("passkey")} service ready at ${chalk.cyan(`${host}:${port}/passkey`)}`,
+        waitTitle: `${chalk.cyan("passkey")} service starting...`,
+        errorTitle: `${chalk.red("passkey")} service failed`,
+    },
 ];
 
 const serviceMonitorTask = (options: {
