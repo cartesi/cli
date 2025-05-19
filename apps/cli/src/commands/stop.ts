@@ -2,14 +2,18 @@ import { Command } from "@commander-js/extra-typings";
 import chalk from "chalk";
 import { execa } from "execa";
 import ora from "ora";
-import { RollupsCommandOpts } from "../rollups";
+import { DEFAULT_COMPOSE_ENVIRONMENT_NAME } from "../config.js";
 
 export const createStopCommand = () => {
-    return new Command<[], {}, RollupsCommandOpts>("stop")
-        .description("Stop a local rollups node environment.")
+    return new Command("stop")
+        .description("Stop a local environment.")
         .configureHelp({ showGlobalOptions: true })
-        .action(async (_options, command) => {
-            const { environmentName } = command.optsWithGlobals();
+        .option(
+            "--environment-name <string>",
+            "name of environment",
+            DEFAULT_COMPOSE_ENVIRONMENT_NAME,
+        )
+        .action(async ({ environmentName }, command) => {
             const progress = ora(
                 `Stopping ${chalk.cyan(environmentName)} environment...`,
             ).start();

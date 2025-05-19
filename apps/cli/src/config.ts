@@ -1,6 +1,6 @@
 import bytes from "bytes";
-import { extname } from "path";
-import { TomlPrimitive, parse as parseToml } from "smol-toml";
+import { extname } from "node:path";
+import { type TomlPrimitive, parse as parseToml } from "smol-toml";
 
 /**
  * Typed Errors
@@ -63,10 +63,12 @@ export class RequiredFieldError extends Error {
 
 export class InvalidStringArrayError extends Error {
     constructor() {
-        super(`Invalid string array`);
+        super("Invalid string array");
         this.name = "InvalidStringArrayError";
     }
 }
+
+export const DEFAULT_COMPOSE_ENVIRONMENT_NAME = "cartesi-rollups";
 
 /**
  * Configuration for drives of a Cartesi Machine. A drive may already exist or be built by a builder

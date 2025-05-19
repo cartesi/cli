@@ -1,8 +1,7 @@
 import type { TemplateProvider } from "giget";
-import { DownloadTemplateResult, downloadTemplate } from "giget";
+import { type DownloadTemplateResult, downloadTemplate } from "giget";
 
 export const download = async (
-    framework: string,
     template: string,
     branch: string,
     out: string,
@@ -10,7 +9,7 @@ export const download = async (
     const cartesiProvider: TemplateProvider = async (input) => {
         return {
             name: "cartesi",
-            subdir: `${framework}/${input}`,
+            subdir: input,
             url: "https://github.com/cartesi/application-templates",
             tar: `https://codeload.github.com/cartesi/application-templates/tar.gz/refs/heads/${branch}`,
         };

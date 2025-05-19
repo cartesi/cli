@@ -41,7 +41,7 @@ services:
         image: ${CARTESI_SDK_IMAGE}
         command: ["cartesi-rollups-espresso-reader"]
         env_file:
-            - ${CARTESI_BIN_PATH}/compose/rollups/default.env
+            - ${CARTESI_BIN_PATH}/compose/default.env
         ports:
             - 8081
         depends_on:
