@@ -1,17 +1,21 @@
 import { Command } from "@commander-js/extra-typings";
 import chalk from "chalk";
 import Table from "cli-table3";
-import { getServiceState } from "../../base.js";
-import { getDeployments } from "../../exec/rollups.js";
-import { RollupsCommandOpts } from "../rollups.js";
+import { getServiceState } from "../base.js";
+import { DEFAULT_COMPOSE_ENVIRONMENT_NAME } from "../config.js";
+import { getDeployments } from "../exec/rollups.js";
 
 export const createStatusCommand = () => {
-    return new Command<[], {}, RollupsCommandOpts>("status")
-        .description("Shows the status of a local rollups node environment.")
+    return new Command("status")
+        .description("Shows the status of a local environment.")
         .configureHelp({ showGlobalOptions: true })
+        .option(
+            "--environment-name <string>",
+            "name of environment",
+            DEFAULT_COMPOSE_ENVIRONMENT_NAME,
+        )
         .option("--json", "output in JSON format")
-        .action(async ({ json }, command) => {
-            const { environmentName } = command.optsWithGlobals();
+        .action(async ({ environmentName, json }, command) => {
             const status = await getServiceState({
                 environmentName,
                 service: "rollups-node",
@@ -27,7 +31,7 @@ export const createStatusCommand = () => {
                 );
             } else {
                 console.log(
-                    `${chalk.cyan(environmentName)} is ${status == "running" ? chalk.green("running") : chalk.red("not running")}`,
+                    `${chalk.cyan(environmentName)} is ${status === "running" ? chalk.green("running") : chalk.red("not running")}`,
                 );
 
                 if (status === "running") {

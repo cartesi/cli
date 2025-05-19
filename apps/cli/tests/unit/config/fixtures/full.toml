@@ -1,6 +1,4 @@
 # sdk = "cartesi/sdk:0.12.0"
-# runtime = "rollups"
-# runtime = "lambada"
 
 # [machine]
 # assert-rolling-update = true

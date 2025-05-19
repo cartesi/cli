@@ -9,10 +9,13 @@ import { createCreateCommand } from "./commands/create.js";
 import { createDeployCommand } from "./commands/deploy.js";
 import { createDoctorCommand } from "./commands/doctor.js";
 import { createHashCommand } from "./commands/hash.js";
-import { createRollupsCommand } from "./commands/rollups.js";
+import { createLogsCommand } from "./commands/logs.js";
 import { createRunCommand } from "./commands/run.js";
 import { createSendCommand } from "./commands/send.js";
 import { createShellCommand } from "./commands/shell.js";
+import { createStartCommand } from "./commands/start.js";
+import { createStatusCommand } from "./commands/status.js";
+import { createStopCommand } from "./commands/stop.js";
 
 // Use `createRequire` to import JSON in ESM
 const require = createRequire(import.meta.url);
@@ -38,11 +41,14 @@ const program = new Command()
     .addCommand(createCreateCommand())
     .addCommand(createDeployCommand(), { hidden: true })
     .addCommand(createDoctorCommand())
+    .addCommand(createLogsCommand())
     .addCommand(createHashCommand())
-    .addCommand(createRollupsCommand())
     .addCommand(createRunCommand(), { hidden: true })
     .addCommand(createSendCommand())
-    .addCommand(createShellCommand());
+    .addCommand(createShellCommand())
+    .addCommand(createStartCommand())
+    .addCommand(createStatusCommand())
+    .addCommand(createStopCommand());
 
 // Global error handling
 process.on("uncaughtException", (err) => {

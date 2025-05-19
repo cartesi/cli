@@ -1,12 +1,15 @@
 import { Command, Option } from "@commander-js/extra-typings";
 import chalk from "chalk";
 import { execa } from "execa";
-import { Listr, ListrTask } from "listr2";
+import { Listr, type ListrTask } from "listr2";
+import path from "node:path";
 import pRetry from "p-retry";
-import path from "path";
-import { getServiceHealth } from "../../base.js";
-import { DEFAULT_SDK_IMAGE, DEFAULT_SDK_VERSION } from "../../config.js";
-import { RollupsCommandOpts } from "../rollups.js";
+import { getServiceHealth } from "../base.js";
+import {
+    DEFAULT_COMPOSE_ENVIRONMENT_NAME,
+    DEFAULT_SDK_IMAGE,
+    DEFAULT_SDK_VERSION,
+} from "../config.js";
 
 const commaSeparatedList = (value: string) => value.split(",");
 
@@ -139,9 +142,14 @@ const serviceMonitorTask = (options: {
 };
 
 export const createStartCommand = () => {
-    return new Command<[], {}, RollupsCommandOpts>("start")
-        .description("Start a local rollups node environment.")
+    return new Command("start")
+        .description("Start a local environment.")
         .configureHelp({ showGlobalOptions: true })
+        .option(
+            "--environment-name <string>",
+            "name of environment",
+            DEFAULT_COMPOSE_ENVIRONMENT_NAME,
+        )
         .addOption(
             new Option(
                 "--block-time <number>",
@@ -176,16 +184,21 @@ export const createStartCommand = () => {
             commaSeparatedList,
             [],
         )
-        .option("-p, --port <number>", "port to listen on", parseInt, 8080)
+        .option(
+            "-p, --port <number>",
+            "port to listen on",
+            Number.parseInt,
+            8080,
+        )
         .option("--dry-run", "show the docker compose configuration", false)
         .option("-v, --verbose", "verbose output", false)
         .action(async (options, command) => {
-            const { environmentName } = command.optsWithGlobals();
             const {
                 blockTime,
                 cpus,
                 defaultBlock,
                 dryRun,
+                environmentName,
                 memory,
                 port,
                 services,
@@ -194,7 +207,7 @@ export const createStartCommand = () => {
             // path of the tool instalation
             const binPath = path.join(
                 path.dirname(new URL(import.meta.url).pathname),
-                "../..",
+                "..",
             );
 
             // setup the environment variable used in docker compose
@@ -235,12 +248,10 @@ export const createStartCommand = () => {
             composeFiles.push(...optionalServices.map(({ file }) => file));
 
             // create the "--file <file>" list
-            const files = composeFiles
-                .map((f) => [
-                    "--file",
-                    path.join(binPath, "compose", "rollups", f),
-                ])
-                .flat();
+            const files = composeFiles.flatMap((f) => [
+                "--file",
+                path.join(binPath, "compose", f),
+            ]);
 
             const composeArgs = [
                 "compose",
@@ -288,7 +299,7 @@ export const createStartCommand = () => {
                                 : service.healthyTitle;
                         return serviceMonitorTask({
                             environmentName,
-                            service: service.healthySemaphore!,
+                            service: service.healthySemaphore as string,
                             errorTitle: service.errorTitle,
                             waitTitle: service.waitTitle,
                             healthyTitle,
