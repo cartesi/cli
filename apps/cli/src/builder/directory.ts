@@ -1,6 +1,6 @@
 import fs from "fs-extra";
-import path from "path";
-import { DirectoryDriveConfig } from "../config.js";
+import path from "node:path";
+import type { DirectoryDriveConfig } from "../config.js";
 import { genext2fs, mksquashfs } from "../exec/index.js";
 
 export const build = async (
@@ -8,7 +8,7 @@ export const build = async (
     drive: DirectoryDriveConfig,
     sdkImage: string,
     destination: string,
-): Promise<void> => {
+): Promise<undefined> => {
     const filename = `${name}.${drive.format}`;
 
     // copy directory to destination

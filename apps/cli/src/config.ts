@@ -89,7 +89,7 @@ export type ImageInfo = {
     workdir: string;
 };
 
-export type DriveResult = ImageInfo | undefined | void;
+export type DriveResult = ImageInfo | undefined;
 
 export type DirectoryDriveConfig = {
     builder: "directory";
@@ -194,7 +194,8 @@ export const defaultConfig = (): Config => ({
 const parseBoolean = (value: TomlPrimitive, defaultValue: boolean): boolean => {
     if (value === undefined) {
         return defaultValue;
-    } else if (typeof value === "boolean") {
+    }
+    if (typeof value === "boolean") {
         return value;
     }
     throw new InvalidBooleanValueError(value);
@@ -203,7 +204,8 @@ const parseBoolean = (value: TomlPrimitive, defaultValue: boolean): boolean => {
 const parseOptionalBoolean = (value: TomlPrimitive): boolean | undefined => {
     if (value === undefined) {
         return undefined;
-    } else if (typeof value === "boolean") {
+    }
+    if (typeof value === "boolean") {
         return value;
     }
     throw new InvalidBooleanValueError(value);
@@ -212,7 +214,8 @@ const parseOptionalBoolean = (value: TomlPrimitive): boolean | undefined => {
 const parseString = (value: TomlPrimitive, defaultValue: string): string => {
     if (value === undefined) {
         return defaultValue;
-    } else if (typeof value === "string") {
+    }
+    if (typeof value === "string") {
         return value;
     }
     throw new InvalidStringValueError(value);
@@ -221,9 +224,11 @@ const parseString = (value: TomlPrimitive, defaultValue: string): string => {
 const parseStringArray = (value: TomlPrimitive): string[] => {
     if (value === undefined) {
         return [];
-    } else if (typeof value === "string") {
+    }
+    if (typeof value === "string") {
         return [value];
-    } else if (typeof value === "object" && Array.isArray(value)) {
+    }
+    if (typeof value === "object" && Array.isArray(value)) {
         return value.map((v) => {
             if (typeof v === "string") {
                 return v;
@@ -237,7 +242,8 @@ const parseStringArray = (value: TomlPrimitive): string[] => {
 const parseRequiredString = (value: TomlPrimitive, key: string): string => {
     if (value === undefined) {
         throw new RequiredFieldError(key);
-    } else if (typeof value === "string") {
+    }
+    if (typeof value === "string") {
         return value;
     }
     throw new InvalidStringValueError(value);
@@ -246,7 +252,8 @@ const parseRequiredString = (value: TomlPrimitive, key: string): string => {
 const parseOptionalString = (value: TomlPrimitive): string | undefined => {
     if (value === undefined) {
         return undefined;
-    } else if (typeof value === "string") {
+    }
+    if (typeof value === "string") {
         return value;
     }
     throw new InvalidStringValueError(value);
@@ -257,9 +264,11 @@ const parseOptionalStringBoolean = (
 ): string | boolean | undefined => {
     if (value === undefined) {
         return undefined;
-    } else if (typeof value === "string") {
+    }
+    if (typeof value === "string") {
         return value;
-    } else if (typeof value === "boolean") {
+    }
+    if (typeof value === "boolean") {
         return value;
     }
     throw new InvalidStringValueError(value);
@@ -268,9 +277,11 @@ const parseOptionalStringBoolean = (
 const parseOptionalNumber = (value: TomlPrimitive): bigint | undefined => {
     if (value === undefined) {
         return undefined;
-    } else if (typeof value === "bigint") {
+    }
+    if (typeof value === "bigint") {
         return value;
-    } else if (typeof value === "number") {
+    }
+    if (typeof value === "number") {
         return BigInt(value);
     }
     throw new InvalidNumberValueError(value);
@@ -279,9 +290,11 @@ const parseOptionalNumber = (value: TomlPrimitive): bigint | undefined => {
 const parseBytes = (value: TomlPrimitive, defaultValue: number): number => {
     if (value === undefined) {
         return defaultValue;
-    } else if (typeof value === "bigint") {
+    }
+    if (typeof value === "bigint") {
         return Number(value);
-    } else if (typeof value === "number" || typeof value === "string") {
+    }
+    if (typeof value === "number" || typeof value === "string") {
         const output = bytes.parse(value);
         if (output !== null) {
             return output;
@@ -293,7 +306,8 @@ const parseBytes = (value: TomlPrimitive, defaultValue: number): number => {
 const parseBuilder = (value: TomlPrimitive): Builder => {
     if (value === undefined) {
         return "docker";
-    } else if (typeof value === "string") {
+    }
+    if (typeof value === "string") {
         switch (value) {
             case "directory":
                 return "directory";
@@ -313,7 +327,8 @@ const parseBuilder = (value: TomlPrimitive): Builder => {
 const parseFormat = (value: TomlPrimitive): DriveFormat => {
     if (value === undefined) {
         return DEFAULT_FORMAT;
-    } else if (typeof value === "string") {
+    }
+    if (typeof value === "string") {
         switch (value) {
             case "ext2":
                 return "ext2";
@@ -327,7 +342,8 @@ const parseFormat = (value: TomlPrimitive): DriveFormat => {
 const parseEmptyFormat = (value: TomlPrimitive): "ext2" | "raw" => {
     if (value === undefined) {
         return DEFAULT_FORMAT;
-    } else if (typeof value === "string") {
+    }
+    if (typeof value === "string") {
         switch (value) {
             case "ext2":
                 return "ext2";

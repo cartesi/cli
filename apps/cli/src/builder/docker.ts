@@ -1,8 +1,8 @@
 import { execa } from "execa";
 import fs from "fs-extra";
-import path from "path";
+import path from "node:path";
 import tmp from "tmp";
-import { DockerDriveConfig } from "../config.js";
+import type { DockerDriveConfig } from "../config.js";
 import { crane, genext2fs, mksquashfs } from "../exec/index.js";
 
 type ImageBuildOptions = Pick<
@@ -37,7 +37,7 @@ const buildImage = async (options: ImageBuildOptions): Promise<string> => {
     ];
 
     // set tags for the image built
-    args.push(...tags.map((tag) => ["--tag", tag]).flat());
+    args.push(...tags.flatMap((tag) => ["--tag", tag]));
 
     if (target) {
         args.push("--target", target);
@@ -62,17 +62,17 @@ const getImageInfo = async (image: string): Promise<ImageInfo> => {
     const [imageInfo] = JSON.parse(jsonStr);
 
     // validate image architecture (must be riscv64)
-    if (imageInfo["Architecture"] !== "riscv64") {
+    if (imageInfo.Architecture !== "riscv64") {
         throw new Error(
-            `Invalid image Architecture: ${imageInfo["Architecture"]}. Expected riscv64`,
+            `Invalid image Architecture: ${imageInfo.Architecture}. Expected riscv64`,
         );
     }
 
     const info: ImageInfo = {
-        cmd: imageInfo["Config"]["Cmd"] ?? [],
-        entrypoint: imageInfo["Config"]["Entrypoint"] ?? [],
-        env: imageInfo["Config"]["Env"] || [],
-        workdir: imageInfo["Config"]["WorkingDir"],
+        cmd: imageInfo.Config.Cmd ?? [],
+        entrypoint: imageInfo.Config.Entrypoint ?? [],
+        env: imageInfo.Config.Env || [],
+        workdir: imageInfo.Config.WorkingDir,
     };
 
     return info;

@@ -1,9 +1,16 @@
 import { InvalidArgumentError } from "@commander-js/extra-typings";
 import { execa } from "execa";
-import fs from "fs";
-import path from "path";
-import { Address, getAddress, Hash, isAddress, isHash, zeroHash } from "viem";
-import { Config, parse } from "./config.js";
+import fs from "node:fs";
+import path from "node:path";
+import {
+    type Address,
+    type Hash,
+    getAddress,
+    isAddress,
+    isHash,
+    zeroHash,
+} from "viem";
+import { type Config, parse } from "./config.js";
 import {
     applicationFactoryAddress,
     authorityFactoryAddress,
@@ -19,7 +26,7 @@ import {
     testTokenAddress,
 } from "./contracts.js";
 import { getApplicationAddress } from "./exec/rollups.js";
-import { PsResponse } from "./types/docker.js";
+import type { PsResponse } from "./types/docker.js";
 
 export const getContextPath = (...paths: string[]): string => {
     return path.join(".cartesi", ...paths);
@@ -119,21 +126,19 @@ export const getServiceHealth = async (options: {
 export const parseAddress = (value: string): Address | undefined => {
     if (isAddress(value)) {
         return getAddress(value);
-    } else {
-        if (value !== "") {
-            throw new InvalidArgumentError(`Invalid address: ${value}`);
-        }
-        return undefined;
     }
+    if (value !== "") {
+        throw new InvalidArgumentError(`Invalid address: ${value}`);
+    }
+    return undefined;
 };
 
 export const parseHash = (value: string): Hash => {
     if (isHash(value)) {
         return value;
-    } else {
-        if (value !== "") {
-            throw new InvalidArgumentError(`Invalid hash: ${value}`);
-        }
-        return zeroHash;
     }
+    if (value !== "") {
+        throw new InvalidArgumentError(`Invalid hash: ${value}`);
+    }
+    return zeroHash;
 };

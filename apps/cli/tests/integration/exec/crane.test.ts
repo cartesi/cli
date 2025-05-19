@@ -1,4 +1,4 @@
-import { satisfies } from "semver";
+import { type SemVer, satisfies } from "semver";
 import { describe, expect, it } from "vitest";
 import { crane } from "../../../src/exec/index.js";
 import { TEST_SDK } from "../config.js";
@@ -11,7 +11,7 @@ describe("crane", () => {
         });
         expect(version).toBeDefined();
         expect(
-            satisfies(version!.format(), crane.requiredVersion),
+            satisfies((version as SemVer).format(), crane.requiredVersion),
         ).toBeTruthy();
     });
 });

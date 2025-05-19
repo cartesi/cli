@@ -1,12 +1,12 @@
 import confirm from "@inquirer/confirm";
-import { Separator } from "@inquirer/core";
+import type { Separator } from "@inquirer/core";
 import input from "@inquirer/input";
 import select from "@inquirer/select";
-import { Context } from "@inquirer/type";
+import type { Context } from "@inquirer/type";
 import chalk from "chalk";
 import {
-    Address,
-    Hex,
+    type Address,
+    type Hex,
     encodeAbiParameters,
     formatUnits,
     getAddress,
@@ -58,7 +58,7 @@ export const bigintInput = async (
     config: BigintPromptConfig,
 ): Promise<bigint> => {
     const defaultValue =
-        config.default != undefined
+        config.default !== undefined
             ? formatUnits(config.default, config.decimals)
             : undefined;
     const value = await input({

@@ -1,6 +1,6 @@
-import { spawnSync, SpawnSyncOptions } from "child_process";
-import { execa, ExecaError, Options } from "execa";
-import os from "os";
+import { ExecaError, type Options, execa } from "execa";
+import { type SpawnSyncOptions, spawnSync } from "node:child_process";
+import os from "node:os";
 
 export type DockerFallbackOptions =
     | { image: string; forceDocker: true }
@@ -50,9 +50,8 @@ export const execaDockerFallback = async (
                     ["run", ...dockerOpts, options.image, command, ...args],
                     options,
                 );
-            } else {
-                console.error(`error executing '${command}'`, error);
             }
+            console.error(`error executing '${command}'`, error);
         }
         throw error;
     }
@@ -76,7 +75,7 @@ export const spawnSyncDockerFallback = (
         ? { error: { code: "ENOENT" }, stdout: "" }
         : spawnSync(command, args, options);
     if (result.error) {
-        const code = (result.error as any).code;
+        const code = (result.error as NodeJS.ErrnoException).code;
         if (code === "ENOENT" && options.image) {
             if (!options.forceDocker) {
                 console.warn(
@@ -110,10 +109,9 @@ export const spawnSyncDockerFallback = (
                 throw dockerResult.error;
             }
             return dockerResult;
-        } else {
-            console.error(`error executing '${command}'`, result.error);
-            throw result.error;
         }
+        console.error(`error executing '${command}'`, result.error);
+        throw result.error;
     }
     return result;
 };

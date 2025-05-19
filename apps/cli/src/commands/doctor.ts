@@ -1,7 +1,7 @@
 import { Command } from "@commander-js/extra-typings";
 import chalk from "chalk";
 import { execa } from "execa";
-import ora, { Ora } from "ora";
+import ora, { type Ora } from "ora";
 import semver from "semver";
 
 const MINIMUM_DOCKER_VERSION = "23.0.0"; // Replace with our minimum required Docker version
@@ -30,9 +30,8 @@ const checkDocker = async (progress: Ora): Promise<true | never> => {
             (e as NodeJS.ErrnoException).code === "ENOENT"
         ) {
             throw new Error("Docker not found");
-        } else {
-            throw e;
         }
+        throw e;
     }
 
     return true;
@@ -62,9 +61,8 @@ const checkCompose = async (progress: Ora): Promise<true | never> => {
             throw new Error(
                 "Docker Compose is required but not installed or the command execution failed. Please refer to the Docker Compose documentation for installation instructions: https://docs.docker.com/compose/install/",
             );
-        } else {
-            throw e;
         }
+        throw e;
     }
 
     return true;
@@ -114,9 +112,8 @@ const checkBuildx = async (progress: Ora): Promise<true | never> => {
             throw new Error(
                 "Docker Buildx is required but not installed. Please refer to the Docker Desktop documentation for installation instructions: https://docs.docker.com/desktop/",
             );
-        } else {
-            throw e;
         }
+        throw e;
     }
 
     return true;

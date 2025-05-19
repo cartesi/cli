@@ -1,8 +1,8 @@
 import fs from "fs-extra";
-import path from "path";
+import path from "node:path";
 import { describe, expect } from "vitest";
 import { build } from "../../../src/builder/empty.js";
-import { EmptyDriveConfig } from "../../../src/config.js";
+import type { EmptyDriveConfig } from "../../../src/config.js";
 import { TEST_SDK } from "../config.js";
 import { tmpdirTest } from "./tmpdirTest.js";
 

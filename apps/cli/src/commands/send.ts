@@ -1,7 +1,12 @@
 import { Command } from "@commander-js/extra-typings";
 import input from "@inquirer/input";
 import select from "@inquirer/select";
-import { Address, isAddress, PublicClient, WalletClient } from "viem";
+import {
+    type Address,
+    type PublicClient,
+    type WalletClient,
+    isAddress,
+} from "viem";
 import { parseAddress } from "../base.js";
 import { getApplicationAddress } from "../exec/rollups.js";
 import createClients, { supportedChains } from "../wallet.js";
@@ -24,7 +29,7 @@ export const connect = (options: {
     // create viem clients
     return createClients({
         chain: supportedChains({ includeDevnet: true }).find(
-            (c) => c.id == chainId,
+            (c) => c.id === chainId,
         ),
         rpcUrl,
         mnemonicPassphrase: mnemonic,
@@ -58,13 +63,13 @@ export const createSendCommand = () => {
         .description(
             "Sends different kinds of input to the application in interactive mode.",
         )
-        .option("--chain-id <id>", "Chain ID", parseInt, 13370)
+        .option("--chain-id <id>", "Chain ID", Number.parseInt, 13370)
         .option("--rpc-url <url>", "RPC URL")
         .option("--mnemonic <phrase>", "Mnemonic passphrase")
         .option(
             "--mnemonic-index <index>",
             "Mnemonic account index",
-            parseInt,
+            Number.parseInt,
             0,
         )
         .option(

@@ -1,5 +1,5 @@
-import { parse, Range, SemVer } from "semver";
-import { DockerFallbackOptions, execaDockerFallback } from "./util.js";
+import { Range, type SemVer, parse } from "semver";
+import { type DockerFallbackOptions, execaDockerFallback } from "./util.js";
 
 const COMPRESSION = "lzo"; // make customizable? default is gzip
 
@@ -61,7 +61,7 @@ export const version = async (
             const regex =
                 /(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?/gm;
             const m = stdout.match(regex);
-            if (m && m[0]) {
+            if (m?.[0]) {
                 return parse(m[0]);
             }
         }

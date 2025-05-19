@@ -1,9 +1,9 @@
 import fs from "fs-extra";
+import path from "node:path";
 import { beforeEach } from "node:test";
-import path from "path";
 import { describe, expect } from "vitest";
 import { build } from "../../../src/builder/docker.js";
-import { DockerDriveConfig } from "../../../src/config.js";
+import type { DockerDriveConfig } from "../../../src/config.js";
 import { TEST_SDK } from "../config.js";
 import { tmpdirTest } from "./tmpdirTest.js";
 

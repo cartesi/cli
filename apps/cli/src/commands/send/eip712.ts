@@ -1,5 +1,5 @@
-import { Hex, WalletClient } from "viem";
-import { Address } from "viem/accounts";
+import type { Hex, WalletClient } from "viem";
+import type { Address } from "viem/accounts";
 
 type SendOptions = {
     eip712TxUrl: string;
@@ -28,7 +28,9 @@ type TypedData = {
 const fetchJSON = async <T>(url: string, options: RequestInit): Promise<T> => {
     const response = await fetch(url, options);
     if (!response.ok) {
-        throw new Error(`HTTP Error: ${response.status} - ${await response.text()}`);
+        throw new Error(
+            `HTTP Error: ${response.status} - ${await response.text()}`,
+        );
     }
     return response.json();
 };
@@ -36,8 +38,10 @@ const fetchJSON = async <T>(url: string, options: RequestInit): Promise<T> => {
 const serializeBigInt = (_key: string, value: unknown): unknown =>
     typeof value === "bigint" ? value.toString() : value;
 
-
-const createTypedDataTemplate = (chainId: number, verifyingContract: Address): TypedData => ({
+const createTypedDataTemplate = (
+    chainId: number,
+    verifyingContract: Address,
+): TypedData => ({
     domain: {
         name: "Cartesi",
         version: "0.1.0",
@@ -66,7 +70,7 @@ const createTypedDataTemplate = (chainId: number, verifyingContract: Address): T
 export const getNonceForEip712 = async (
     application: Address,
     user: Address,
-    sendOptions: SendOptions
+    sendOptions: SendOptions,
 ): Promise<number> => {
     return fetchJSON<{ nonce: number }>(`${sendOptions.eip712TxUrl}/nonce`, {
         method: "POST",
@@ -78,7 +82,7 @@ export const getNonceForEip712 = async (
 /** Submits a transaction to L2 */
 export const postEip712Transaction = async (
     data: Record<string, unknown>,
-    sendOptions: SendOptions
+    sendOptions: SendOptions,
 ): Promise<{ id: string }> => {
     return fetchJSON<{ id: string }>(`${sendOptions.eip712TxUrl}/submit`, {
         method: "POST",
@@ -92,7 +96,7 @@ export const createEip712TypedData = async (
     app: Address,
     data: Hex,
     nonce: number,
-    sendOptions: SendOptions
+    sendOptions: SendOptions,
 ): Promise<TypedData> => {
     return {
         ...createTypedDataTemplate(sendOptions.chainId, app),
@@ -110,7 +114,7 @@ export const sendEip712 = async (
     walletClient: WalletClient,
     applicationAddress: Address,
     payload: Hex,
-    sendOptions?: Partial<SendOptions>
+    sendOptions?: Partial<SendOptions>,
 ): Promise<string> => {
     if (!walletClient.account) {
         throw new Error("Wallet account is missing.");
@@ -120,9 +124,20 @@ export const sendEip712 = async (
     const account = walletClient.account.address;
 
     const nonce = await getNonceForEip712(applicationAddress, account, options);
-    const typedData = await createEip712TypedData(applicationAddress, payload, nonce, options);
-    const signature = await walletClient.signTypedData({ account, ...typedData });
+    const typedData = await createEip712TypedData(
+        applicationAddress,
+        payload,
+        nonce,
+        options,
+    );
+    const signature = await walletClient.signTypedData({
+        account,
+        ...typedData,
+    });
 
-    const { id } = await postEip712Transaction({ typedData, account, signature }, options);
+    const { id } = await postEip712Transaction(
+        { typedData, account, signature },
+        options,
+    );
     return id;
 };

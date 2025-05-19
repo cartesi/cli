@@ -11,9 +11,9 @@ import {
 import { inputBoxAbi, inputBoxAddress } from "../../contracts.js";
 import { bytesInput } from "../../prompts.js";
 import {
+    type SendCommandOpts,
     connect,
     getInputApplicationAddress,
-    SendCommandOpts,
 } from "../send.js";
 import { DEFAULT_SEND_CONFIG, sendEip712 } from "./eip712.js";
 
@@ -31,10 +31,12 @@ const getInput = async (options: {
                 throw new Error("input encoded as hex must start with 0x");
             }
             return input as `0x${string}`;
-        } else if (encoding === "string") {
+        }
+        if (encoding === "string") {
             // encode UTF-8 string as hex
             return stringToHex(input);
-        } else if (encoding === "abi") {
+        }
+        if (encoding === "abi") {
             const abiParams = options.inputAbiParams;
             if (!abiParams) {
                 throw new Error("Undefined input-abi-params");
@@ -87,14 +89,12 @@ const getInput = async (options: {
                 );
             }
             return encodeAbiParameters(abiParameters, values);
-        } else {
-            if (isHex(input)) {
-                return input as `0x${string}`;
-            } else {
-                // encode UTF-8 string as hex
-                return stringToHex(input);
-            }
         }
+        if (isHex(input)) {
+            return input as `0x${string}`;
+        }
+        // encode UTF-8 string as hex
+        return stringToHex(input);
     }
     return undefined;
 };

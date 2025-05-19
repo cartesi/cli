@@ -1,4 +1,4 @@
-import { Config, DriveConfig, ImageInfo } from "./config.js";
+import type { Config, DriveConfig, ImageInfo } from "./config.js";
 import { cartesiMachine } from "./exec/index.js";
 
 const flashDrive = (label: string, drive: DriveConfig): string => {

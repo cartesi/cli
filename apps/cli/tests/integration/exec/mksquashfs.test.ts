@@ -1,4 +1,4 @@
-import { satisfies } from "semver";
+import { type SemVer, satisfies } from "semver";
 import { describe, expect, it } from "vitest";
 import { mksquashfs } from "../../../src/exec/index.js";
 import { TEST_SDK } from "../config.js";
@@ -11,7 +11,7 @@ describe("mksquashfs", () => {
         });
         expect(version).toBeDefined();
         expect(
-            satisfies(version!.format(), mksquashfs.requiredVersion),
+            satisfies((version as SemVer).format(), mksquashfs.requiredVersion),
         ).toBeTruthy();
     });
 });

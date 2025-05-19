@@ -1,8 +1,8 @@
-import { parse, Range, SemVer } from "semver";
+import { Range, type SemVer, parse } from "semver";
 import {
-    DockerFallbackOptions,
+    type DockerFallbackOptions,
+    type ExecaOptionsDockerFallback,
     execaDockerFallback,
-    ExecaOptionsDockerFallback,
 } from "./util.js";
 
 export const requiredVersion = new Range("^0.18.1");

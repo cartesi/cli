@@ -1,8 +1,8 @@
 import fs from "fs-extra";
-import path from "path";
+import path from "node:path";
 import { describe, expect } from "vitest";
 import { build } from "../../../src/builder/none.js";
-import { ExistingDriveConfig } from "../../../src/config.js";
+import type { ExistingDriveConfig } from "../../../src/config.js";
 import { tmpdirTest } from "./tmpdirTest.js";
 
 describe("when building with the none builder", () => {

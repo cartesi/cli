@@ -1,12 +1,12 @@
 import fs from "fs-extra";
-import path from "path";
-import { ExistingDriveConfig, getDriveFormat } from "../config.js";
+import path from "node:path";
+import { type ExistingDriveConfig, getDriveFormat } from "../config.js";
 
 export const build = async (
     name: string,
     drive: ExistingDriveConfig,
     destination: string,
-): Promise<void> => {
+): Promise<undefined> => {
     // no need to build, drive already exists
     const src = drive.filename;
     const format = getDriveFormat(src);
