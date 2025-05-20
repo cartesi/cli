@@ -77,6 +77,9 @@ source = "alchemy-light-account:2.0.0@main"
 [pull.alchemyModularAccountV2]
 source = "alchemy-modular-account:2.0.0@main"
 
+[pull.espressoNetwork]
+source = "espresso-network:20250528@main"
+
 [var.Settings]
 token_owner = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
 
