@@ -37,6 +37,10 @@ services:
             timeout: 1s
             retries: 5
 
+    rollups-node:
+        environment:
+            CARTESI_FEATURE_INPUT_READER_ENABLED: false
+
     espresso_reader:
         image: ${CARTESI_SDK_IMAGE}
         command: ["cartesi-rollups-espresso-reader"]
