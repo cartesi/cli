@@ -21,6 +21,8 @@ target "default" {
     ESPRESSO_DEV_NODE_BASE_IMAGE      = "ghcr.io/espressosystems/espresso-sequencer/espresso-dev-node:20250428-dev-node-decaf-pos@sha256:78024bc092d51b47e81c0f715dc7a87ac9da81f62a4f8bf3165b3a199f9867fb"
     FOUNDRY_VERSION                   = "1.0.0"
     GO_MIGRATE_VERSION                = "4.18.2"
+    NODE_VERSION                      = "22.15.1"
+    NVM_VERSION                       = "977563e97ddc66facf3a8e31c6cff01d236f09bd" # 0.40.3
     POSTGRES_BASE_IMAGE               = "docker.io/library/postgres:17@sha256:7f29c02ba9eeff4de9a9f414d803faa0e6fe5e8d15ebe217e3e418c82e652b35"
     SU_EXEC_VERSION                   = "0.2"
     XGENEXT2_VERSION                  = "1.5.6"
