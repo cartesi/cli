@@ -272,6 +272,8 @@ ARG CARTESI_MACHINE_EMULATOR_VERSION
 ARG CARTESI_PAYMASTER_VERSION
 ARG CARTESI_PASSKEY_SERVER_VERSION
 ARG CARTESI_ROLLUPS_NODE_VERSION
+ARG NODE_VERSION
+ARG NVM_VERSION
 ARG TARGETARCH
 ARG TARGETARCH
 ARG XGENEXT2_VERSION
@@ -286,13 +288,22 @@ apt-get install -y --no-install-recommends \
     libslirp0 \
     locales \
     lua5.4 \
-    nodejs \
-    npm \
     squashfs-tools \
     xxd \
     xz-utils
 rm -rf /var/lib/apt/lists/*
 EOF
+
+# Install nvm and node
+ENV NVM_DIR=/root/.nvm
+RUN <<EOF
+curl -o- --fail --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_VERSION}/install.sh | bash
+. "$NVM_DIR/nvm.sh"
+nvm install $NODE_VERSION
+nvm use $NODE_VERSION
+nvm alias default $NODE_VERSION
+EOF
+ENV PATH="${NVM_DIR}/versions/node/v${NODE_VERSION}/bin:$PATH"
 
 # Install e2fsprogs from backports
 RUN <<EOF
@@ -325,8 +336,8 @@ npm install -g \
     @pimlico/alto@${ALTO_VERSION}
 
 mkdir -p /usr/share/cartesi
-cp -r /usr/local/lib/node_modules/@cartesi/devnet/deployments /usr/share/cartesi/
-cp /usr/local/lib/node_modules/@cartesi/devnet/anvil_state.json /usr/share/cartesi/
+cp -r "$(npm root -g)/@cartesi/devnet/deployments" /usr/share/cartesi/
+cp "$(npm root -g)/@cartesi/devnet/anvil_state.json" /usr/share/cartesi/
 EOF
 
 # Install linux kernel image
