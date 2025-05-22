@@ -77,7 +77,7 @@ const DEFAULT_FORMAT = "ext2";
 const DEFAULT_RAM = "128Mi";
 const DEFAULT_RAM_IMAGE = "/usr/share/cartesi-machine/images/linux.bin";
 export const DEFAULT_SDK_VERSION = "0.12.0-alpha.15";
-export const DEFAULT_SDK_IMAGE = `cartesi/sdk:${DEFAULT_SDK_VERSION}`;
+export const DEFAULT_SDK_IMAGE = "cartesi/sdk";
 
 type Builder = "directory" | "docker" | "empty" | "none" | "tar";
 type DriveFormat = "ext2" | "sqfs";
@@ -188,7 +188,7 @@ export const defaultMachineConfig = (): MachineConfig => ({
 export const defaultConfig = (): Config => ({
     drives: { root: defaultRootDriveConfig() },
     machine: defaultMachineConfig(),
-    sdk: DEFAULT_SDK_IMAGE,
+    sdk: `${DEFAULT_SDK_IMAGE}:${DEFAULT_SDK_VERSION}`,
 });
 
 const parseBoolean = (value: TomlPrimitive, defaultValue: boolean): boolean => {
@@ -486,7 +486,10 @@ export const parse = (str: string): Config => {
     const config: Config = {
         drives: parseDrives(toml.drives),
         machine: parseMachine(toml.machine),
-        sdk: parseString(toml.sdk, DEFAULT_SDK_IMAGE),
+        sdk: parseString(
+            toml.sdk,
+            `${DEFAULT_SDK_IMAGE}:${DEFAULT_SDK_VERSION}`,
+        ),
     };
 
     return config;
