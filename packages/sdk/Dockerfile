@@ -352,9 +352,9 @@ npm install -g \
 
 rm /tmp/pimlico-alto.tgz
 mkdir -p /usr/share/cartesi
-cp -r "$(npm root -g)/@cartesi/devnet/deployments" /usr/share/cartesi/
-cp "$(npm root -g)/@cartesi/devnet/anvil_state.json" /usr/share/cartesi/
 EOF
+COPY deployments /usr/share/cartesi/deployments/
+COPY anvil_state.json /usr/share/cartesi/
 
 # Install linux kernel image
 RUN <<EOF
