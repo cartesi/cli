@@ -1,0 +1,28 @@
+From a099789dc4175cf90b6ca60f6e57b01d24fb1373 Mon Sep 17 00:00:00 2001
+From: Danilo Tuler <tuler@pobox.com>
+Date: Thu, 22 May 2025 14:05:21 -0400
+Subject: [PATCH] fixing package to include missing contract jsons
+
+---
+ src/package.json | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/src/package.json b/src/package.json
+index 9020c26..ef37f87 100644
+--- a/src/package.json
++++ b/src/package.json
+@@ -14,9 +14,11 @@
+         "esm/**/*.d.ts",
+         "esm/**/*.js",
+         "esm/**/*.js.map",
++        "esm/**/*.json",
+         "lib/**/*.d.ts",
+         "lib/**/*.js",
+         "lib/**/*.js.map",
++        "lib/**/*.json",
+         "contracts/**/*",
+         "*.d.ts",
+         "*.js"
+-- 
+2.48.1
+

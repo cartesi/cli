@@ -2,6 +2,7 @@
 ARG CARTESI_BASE_IMAGE
 ARG ESPRESSO_DEV_NODE_BASE_IMAGE
 ARG POSTGRES_BASE_IMAGE
+ARG NODE_VERSION
 
 ################################################################################
 # https://github.com/EspressoSystems/espresso-sequencer/pkgs/container/espresso-sequencer%2Fespresso-dev-node
@@ -262,9 +263,37 @@ FROM ${POSTGRES_BASE_IMAGE} AS rollups-database
 COPY --from=postgresql-initdb /var/lib/postgresql/data /var/lib/postgresql/data
 
 ################################################################################
+# alto build
+FROM node:${NODE_VERSION} AS alto
+ARG ALTO_VERSION
+ARG NODE_VERSION
+ARG FOUNDRY_VERSION
+ARG TARGETARCH
+ARG TARGETOS
+
+# install foundry, necessary for building alto
+RUN curl -fsSL https://github.com/foundry-rs/foundry/releases/download/v${FOUNDRY_VERSION}/foundry_v${FOUNDRY_VERSION}_${TARGETOS}_${TARGETARCH}.tar.gz \
+    | tar -zx -C /usr/local/bin
+
+WORKDIR /app
+COPY alto.patch /app/alto.patch
+
+RUN <<EOF
+npm install -g pnpm
+git clone --branch v${ALTO_VERSION} --depth 1 --recurse-submodules https://github.com/pimlicolabs/alto.git
+cd alto
+patch -p1 < /app/alto.patch
+pnpm install
+pnpm run build:contracts
+pnpm run build
+cd src && pnpm pack # produces pimlico-alto-${ALTO_PACKAGE_VERSION}.tgz
+EOF
+
+################################################################################
 # sdk final image
 FROM rollups-runtime
 ARG ALTO_VERSION
+ARG ALTO_PACKAGE_VERSION
 ARG CARTESI_DEVNET_VERSION
 ARG CARTESI_IMAGE_KERNEL_VERSION
 ARG CARTESI_LINUX_KERNEL_VERSION
@@ -328,13 +357,15 @@ xgenext2fs --version
 EOF
 
 # Install nodejs packages
+COPY --from=alto /app/alto/src/pimlico-alto-${ALTO_PACKAGE_VERSION}.tgz /tmp/pimlico-alto.tgz
 RUN <<EOF
 npm install -g \
     @cartesi/devnet@${CARTESI_DEVNET_VERSION} \
     @cartesi/mock-verifying-paymaster@${CARTESI_PAYMASTER_VERSION} \
     @cartesi/passkey-server@${CARTESI_PASSKEY_SERVER_VERSION} \
-    @pimlico/alto@${ALTO_VERSION}
+    /tmp/pimlico-alto.tgz
 
+rm /tmp/pimlico-alto.tgz
 mkdir -p /usr/share/cartesi
 cp -r "$(npm root -g)/@cartesi/devnet/deployments" /usr/share/cartesi/
 cp "$(npm root -g)/@cartesi/devnet/anvil_state.json" /usr/share/cartesi/
