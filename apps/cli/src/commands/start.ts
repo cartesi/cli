@@ -154,6 +154,14 @@ export const createStartCommand = () => {
     return new Command("start")
         .description("Start a local environment.")
         .configureHelp({ showGlobalOptions: true })
+        .addOption(
+            new Option(
+                "--runtime-version <version>",
+                "version for Cartesi Rollups Runtime to use",
+            )
+                .default(DEFAULT_SDK_VERSION)
+                .hideHelp(),
+        )
         .option(
             "--environment-name <string>",
             "name of environment",
@@ -212,6 +220,7 @@ export const createStartCommand = () => {
                 port,
                 services,
                 verbose,
+                runtimeVersion,
             } = options;
             // path of the tool instalation
             const binPath = path.join(
@@ -229,7 +238,7 @@ export const createStartCommand = () => {
                 CARTESI_ROLLUPS_NODE_CPUS: cpus?.toString(),
                 CARTESI_ROLLUPS_NODE_MEMORY: memory?.toString(),
                 CARTESI_SDK_IMAGE: DEFAULT_SDK_IMAGE,
-                CARTESI_SDK_VERSION: DEFAULT_SDK_VERSION,
+                CARTESI_SDK_VERSION: runtimeVersion,
             };
 
             // build a list of unique compose files
