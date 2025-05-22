@@ -220,6 +220,7 @@ export const createStartCommand = () => {
                 port,
                 services,
                 verbose,
+                runtimeVersion,
             } = options;
             // path of the tool instalation
             const binPath = path.join(
@@ -237,7 +238,7 @@ export const createStartCommand = () => {
                 CARTESI_ROLLUPS_NODE_CPUS: cpus?.toString(),
                 CARTESI_ROLLUPS_NODE_MEMORY: memory?.toString(),
                 CARTESI_SDK_IMAGE: DEFAULT_SDK_IMAGE,
-                CARTESI_SDK_VERSION: options.runtimeVersion.toString(),
+                CARTESI_SDK_VERSION: runtimeVersion?.toString(),
             };
 
             // build a list of unique compose files
