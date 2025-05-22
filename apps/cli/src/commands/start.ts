@@ -237,7 +237,7 @@ export const createStartCommand = () => {
                 CARTESI_LISTEN_PORT: port.toString(),
                 CARTESI_ROLLUPS_NODE_CPUS: cpus?.toString(),
                 CARTESI_ROLLUPS_NODE_MEMORY: memory?.toString(),
-                CARTESI_SDK_IMAGE: DEFAULT_SDK_IMAGE,
+                CARTESI_SDK_IMAGE: `${DEFAULT_SDK_IMAGE}:${runtimeVersion}`,
                 CARTESI_SDK_VERSION: runtimeVersion,
             };
 
