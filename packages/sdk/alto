@@ -1,2 +1,2 @@
 #!/bin/sh
-node "$(npm root -g)/@pimlico/alto/esm/cli/index.js" $@
+node "$(npm root -g)/@pimlico/alto/lib/cli/alto.js" $@
