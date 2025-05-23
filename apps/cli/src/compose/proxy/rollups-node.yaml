@@ -10,8 +10,8 @@ http:
         inspect_server:
             loadBalancer:
                 servers:
-                    - url: "http://rollups-node:10012/inspect"
+                    - url: "http://rollups-node:10012"
         rpc_server:
             loadBalancer:
                 servers:
-                    - url: "http://rollups-node:10011/inspect"
+                    - url: "http://rollups-node:10011"
