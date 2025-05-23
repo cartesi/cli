@@ -198,7 +198,7 @@ const registerApplication = async (options: {
         dataAvailability,
     } = options;
 
-    // use template hash as the name of the deployment
+    // use application address as the name of the deployment
     const name =
         options.name ??
         (await input({
