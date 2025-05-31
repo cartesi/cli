@@ -76,6 +76,7 @@ export default defineConfig({
     plugins: [
         cannonDeployments({
             directory: "node_modules/@cartesi/devnet/deployments",
+            includes: [/^cartesiRollups*/, /^Test*/],
         }),
     ],
 });

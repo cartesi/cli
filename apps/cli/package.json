@@ -44,7 +44,7 @@
     "devDependencies": {
         "@biomejs/biome": "catalog:",
         "@cartesi/devnet": "2.0.0-alpha.5",
-        "@cartesi/rollups": "2.0.0-rc.17",
+        "@cartesi/rollups": "2.0.0",
         "@types/bytes": "^3.1.5",
         "@types/fs-extra": "^11.0.4",
         "@types/inquirer": "^9.0.7",

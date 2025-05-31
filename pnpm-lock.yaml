@@ -103,8 +103,8 @@ importers:
         specifier: 2.0.0-alpha.5
         version: 2.0.0-alpha.5
       '@cartesi/rollups':
-        specifier: 2.0.0-rc.17
-        version: 2.0.0-rc.17
+        specifier: 2.0.0
+        version: 2.0.0
       '@types/bytes':
         specifier: ^3.1.5
         version: 3.1.5
@@ -365,8 +365,8 @@ packages:
   '@cartesi/devnet@2.0.0-alpha.5':
     resolution: {integrity: sha512-fTkJcSnW4JsAF/yg2WRBXCnGNo0sG0mC/0AkZxqUgkiniY7BU8wA/zf06nZaBnHQybnnDSY0DJuPcazOPGoFnw==}
 
-  '@cartesi/rollups@2.0.0-rc.17':
-    resolution: {integrity: sha512-W3yCVyRsbgv8t4qwSogKNT8Zy4bcdDxTIuK4rDNPKFvuDuppSQbZfKaaG2fx0NJGfbmm2c7M/t+on8aB+IN9mg==}
+  '@cartesi/rollups@2.0.0':
+    resolution: {integrity: sha512-41Dtq73wD5JTepuryUiXumjMNx/e5AlOROKlao4/A0rG34R8emblnTGwvMaMpzKd+USDk2M/aLtIPZ6tnDXD/g==}
 
   '@changesets/apply-release-plan@7.0.10':
     resolution: {integrity: sha512-wNyeIJ3yDsVspYvHnEz1xQDq18D9ifed3lI+wxRQRK4pArUcuHgCTrHv0QRnnwjhVCQACxZ+CBih3wgOct6UXw==}
@@ -4151,7 +4151,7 @@ snapshots:
 
   '@cartesi/devnet@2.0.0-alpha.5': {}
 
-  '@cartesi/rollups@2.0.0-rc.17': {}
+  '@cartesi/rollups@2.0.0': {}
 
   '@changesets/apply-release-plan@7.0.10':
     dependencies:
