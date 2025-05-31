@@ -20,7 +20,7 @@ target "default" {
     CARTESI_ROLLUPS_NODE_VERSION      = "2.0.0-alpha.4"
     CRANE_VERSION                     = "0.19.1"
     ESPRESSO_DEV_NODE_BASE_IMAGE      = "ghcr.io/espressosystems/espresso-sequencer/espresso-dev-node:20250428-dev-node-decaf-pos@sha256:78024bc092d51b47e81c0f715dc7a87ac9da81f62a4f8bf3165b3a199f9867fb"
-    FOUNDRY_VERSION                   = "1.0.0"
+    FOUNDRY_VERSION                   = "1.2.1"
     GO_MIGRATE_VERSION                = "4.18.2"
     NODE_VERSION                      = "22.15.1"
     NVM_VERSION                       = "977563e97ddc66facf3a8e31c6cff01d236f09bd" # 0.40.3
