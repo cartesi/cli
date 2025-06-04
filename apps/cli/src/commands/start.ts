@@ -201,7 +201,7 @@ export const createStartCommand = () => {
             commaSeparatedList,
             [],
         )
-        .option("-p, --port <number>", "port to listen on", Number, 8080)
+        .option("-p, --port <number>", "port to listen on", Number, 6751)
         .option("--dry-run", "show the docker compose configuration", false)
         .option("-v, --verbose", "verbose output", false)
         .action(async (options, command) => {
