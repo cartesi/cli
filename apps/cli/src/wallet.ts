@@ -150,7 +150,7 @@ const selectTransport = async (
 
     // if the chain is cannon and URL is valid, use it without asking the user
     if (chain.id === cannon.id) {
-        const port = 8080; // XXX: how to get environment port?
+        const port = 6751; // XXX: how to get environment port?
         const url = `http://127.0.0.1:${port}/anvil`;
         if (await testChainUrl(chain, url)) {
             return http(url);

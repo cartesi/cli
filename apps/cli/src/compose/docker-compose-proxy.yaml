@@ -21,4 +21,4 @@ services:
                 "--log.level=INFO",
             ]
         ports:
-            - ${CARTESI_LISTEN_PORT:-8080}:8088
+            - ${CARTESI_LISTEN_PORT:-6751}:8088

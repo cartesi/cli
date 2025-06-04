@@ -8,7 +8,7 @@ type SendOptions = {
 };
 
 export const DEFAULT_SEND_CONFIG: Readonly<SendOptions> = {
-    eip712TxUrl: "http://localhost:8080/transaction",
+    eip712TxUrl: "http://127.0.0.1:6751/transaction",
     chainId: 31337,
     maxGasPrice: 10,
 } as const;
