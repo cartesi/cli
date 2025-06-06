@@ -20,7 +20,12 @@ services:
         command: ["cartesi-rollups-node"]
         env_file:
             - ${CARTESI_BIN_PATH}/compose/default.env
+        volumes:
+            - snapshots:/var/lib/cartesi-rollups-node/snapshots
 
     proxy:
         volumes:
             - ./proxy/rollups-node.yaml:/etc/traefik/conf.d/rollups-node.yaml
+
+volumes:
+    snapshots:
