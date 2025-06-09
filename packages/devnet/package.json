@@ -1,6 +1,6 @@
 {
     "name": "@cartesi/devnet",
-    "version": "2.0.0-alpha.6",
+    "version": "2.0.0-alpha.7",
     "license": "Apache-2.0",
     "scripts": {
         "build": "run-s build:soldeer build:forge build:cannon",

@@ -1,5 +1,22 @@
 # sdk
 
+## 0.12.0-alpha.18
+
+### Minor Changes
+
+- 51b69f7: bump machine-emulator to 0.19.0
+
+### Patch Changes
+
+- 83390eb: bump cartesi-rollups-graphql to v2.3.14
+- 7134975: bump rollups-espresso-reader to 0.3.0
+- fca1d88: bump alto
+- 2faaa26: bump cartesi-rollups-node to 2.0.0-alpha.5
+- 0bfaca9: bump foundry to 1.2.1
+- 0b0bd82: remove unused script
+- 36875f0: add passkey-server
+- c3eac57: install modern nodejs using nvm
+
 ## 0.12.0-alpha.17
 
 ### Patch Changes
