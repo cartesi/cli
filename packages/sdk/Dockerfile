@@ -216,6 +216,22 @@ FROM ${POSTGRES_BASE_IMAGE} AS rollups-database
 COPY --from=postgresql-initdb /var/lib/postgresql/data /var/lib/postgresql/data
 
 ################################################################################
+# porto build
+FROM node:${NODE_VERSION} AS porto
+ARG PORTO_VERSION
+
+WORKDIR /src/app
+
+RUN <<EOF
+corepack enable pnpm
+git clone --branch feature/cartesi --depth 1 --recurse-submodules https://github.com/tuler/porto
+cd porto
+pnpm install
+ANVIL=true pnpm --filter dialog build --base /porto/dialog
+ANVIL=true pnpm --filter manager build --base /porto/manager
+EOF
+
+################################################################################
 # alto build
 FROM node:${NODE_VERSION} AS alto
 ARG ALTO_VERSION
@@ -265,6 +281,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 RUN <<EOF
 apt-get update
 apt-get install -y --no-install-recommends \
+    busybox \
     jq \
     libarchive-tools \
     libslirp0 \
@@ -323,6 +340,10 @@ mkdir -p /usr/share/cartesi
 cp -r "$(npm root -g)/@cartesi/devnet/deployments" /usr/share/cartesi/
 cp "$(npm root -g)/@cartesi/devnet/anvil_state.json" /usr/share/cartesi/
 EOF
+
+# porto webapps
+COPY --from=porto /src/app/porto/apps/dialog/dist/dialog /usr/share/porto/dialog
+COPY --from=porto /src/app/porto/apps/manager/dist /usr/share/porto/manager
 
 # Install linux kernel image
 RUN <<EOF
