@@ -1,0 +1,74 @@
+services:
+    porto-relay:
+        image: ghcr.io/ithacaxyz/relay:3fc0de2
+        platform: linux/x86_64
+        depends_on:
+            anvil:
+                condition: service_healthy
+        expose:
+            - 9119
+        environment:
+            RUST_LOG: warn
+            RELAY_MNEMONIC: ${CARTESI_AUTH_MNEMONIC:-test test test test test test test test test test test junk}
+        command: ["--config-only"]
+        healthcheck:
+            test:
+                [
+                    "CMD",
+                    "cast",
+                    "rpc",
+                    "--rpc-url",
+                    "http://localhost:9119",
+                    "health",
+                ]
+            interval: 2s
+            retries: 5
+        volumes:
+            - ./porto:/app
+
+    porto-rpc:
+        image: oven/bun:latest
+        expose:
+            - 9220
+        volumes:
+            - ./porto/proxy.ts:/app/proxy.ts
+        command: ["bun", "run", "/app/proxy.ts"]
+        depends_on:
+            anvil:
+                condition: service_healthy
+        environment:
+            PORT: 9220
+            RELAY_URL: http://porto-relay:9119
+            ANVIL_URL: http://anvil:8545
+
+    porto-dialog:
+        image: ${CARTESI_SDK_IMAGE}
+        command:
+            ["busybox", "httpd", "-f", "-h", "/usr/share/porto/dialog", "-vv"]
+        expose:
+            - 80
+        healthcheck:
+            test: ["CMD", "curl", "-fsS", "http://127.0.0.1/"]
+            start_period: 10s
+            start_interval: 200ms
+            interval: 10s
+            timeout: 1s
+            retries: 5
+
+    porto-manager:
+        image: ${CARTESI_SDK_IMAGE}
+        command:
+            ["busybox", "httpd", "-f", "-h", "/usr/share/porto/manager", "-vv"]
+        expose:
+            - 80
+        healthcheck:
+            test: ["CMD", "curl", "-fsS", "http://127.0.0.1/"]
+            start_period: 10s
+            start_interval: 200ms
+            interval: 10s
+            timeout: 1s
+            retries: 5
+
+    proxy:
+        volumes:
+            - ./proxy/porto.yaml:/etc/traefik/conf.d/porto.yaml

@@ -1,0 +1,55 @@
+http:
+    routers:
+        porto-rpc:
+            rule: "Path(`/porto/rpc`)"
+            middlewares:
+                - cors
+                - remove-porto-rpc-prefix
+            service: porto-rpc
+        porto-dialog:
+            rule: "PathPrefix(`/porto/dialog`)"
+            middlewares:
+                - remove-porto-dialog-prefix
+            service: porto-dialog
+        porto-manager:
+            rule: "PathPrefix(`/porto/manager`)"
+            middlewares:
+                - remove-porto-manager-prefix
+            service: porto-manager
+    middlewares:
+        remove-porto-rpc-prefix:
+            replacePathRegex:
+                regex: "^/porto/rpc"
+                replacement: ""
+        remove-porto-dialog-prefix:
+            replacePathRegex:
+                regex: "^/porto/dialog/(.*)"
+                replacement: "/$1"
+        remove-porto-manager-prefix:
+            replacePathRegex:
+                regex: "^/porto/manager/(.*)"
+                replacement: "/$1"
+        cors:
+            headers:
+                accessControlAllowMethods:
+                    - GET
+                    - OPTIONS
+                    - PUT
+                accessControlAllowHeaders: "*"
+                accessControlAllowOriginList:
+                    - "*"
+                accessControlMaxAge: 100
+                addVaryHeader: true
+    services:
+        porto-rpc:
+            loadBalancer:
+                servers:
+                    - url: "http://porto-rpc:9220"
+        porto-dialog:
+            loadBalancer:
+                servers:
+                    - url: "http://porto-dialog:80"
+        porto-manager:
+            loadBalancer:
+                servers:
+                    - url: "http://porto-manager:80"

@@ -1,6 +1,6 @@
 services:
     proxy:
-        image: traefik:v3.3.4
+        image: traefik:v3.4.1
         healthcheck:
             test: ["CMD", "traefik", "healthcheck", "--ping"]
             start_period: 10s
@@ -18,7 +18,8 @@ services:
                 "--providers.file.directory=/etc/traefik/conf.d",
                 "--providers.file.watch=true",
                 "--log",
-                "--log.level=INFO",
+                "--log.level=DEBUG",
+                "--accesslog=true",
             ]
         ports:
             - ${CARTESI_LISTEN_PORT:-6751}:8088
