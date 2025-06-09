@@ -1,5 +1,14 @@
 # devnet
 
+## 2.0.0-alpha.7
+
+### Patch Changes
+
+- 881281a: bump foundry to 1.2.1
+- 95b179b: bump cannon
+- 04239c5: bump rollups-contracts to 2.0.0
+- f1847c7: new kernel packages
+
 ## 2.0.0-alpha.6
 
 ### Patch Changes

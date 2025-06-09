@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.0.0-alpha.12
+
+### Minor Changes
+
+- f2697a5: add option to deploy an espresso application
+
+### Patch Changes
+
+- f32a8a5: bump alto
+- 6121e73: bump rollups-contracts to 2.0.0
+- d7b7635: fix start port parsing
+- 8054c99: unhide deploy command
+- a947d74: remove need of rollups subcommand
+- 97dcad5: adapt espresso service to updated espresso-dev-node
+- f15a404: add optional passkey service
+
 ## 2.0.0-alpha.11
 
 ### Patch Changes
