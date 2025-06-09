@@ -77,6 +77,12 @@ source = "alchemy-light-account:2.0.0@main"
 [pull.alchemyModularAccountV2]
 source = "alchemy-modular-account:2.0.0@main"
 
+[pull.portoAccount]
+source = "porto-account:0.2.0@main"
+
+[pull.portoDemo]
+source = "porto-demo:0.0.28@main"
+
 [var.Settings]
 token_owner = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
 
