@@ -100,8 +100,8 @@ importers:
         specifier: 'catalog:'
         version: 1.9.4
       '@cartesi/devnet':
-        specifier: 2.0.0-alpha.6
-        version: 2.0.0-alpha.6
+        specifier: 2.0.0-alpha.7
+        version: 2.0.0-alpha.7
       '@cartesi/rollups':
         specifier: 2.0.0
         version: 2.0.0
@@ -362,8 +362,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@cartesi/devnet@2.0.0-alpha.6':
-    resolution: {integrity: sha512-l3Hl7e9xl9jrVFuYXTkBYtiSUZTQJySv6Tp8OHfIaHsxta0sJhSLsQuhMjIBXKIZmE0wb6zBJeSHQ19GJpQEQA==}
+  '@cartesi/devnet@2.0.0-alpha.7':
+    resolution: {integrity: sha512-uZMt9qRCNVw48FMI+ymjCL/B6S0PekSe0DTlF2ycDeO1T/6GS7zXgI2Qjvraga1fNyGXxU02jNjJGGhWIKD9IQ==}
 
   '@cartesi/rollups@2.0.0':
     resolution: {integrity: sha512-41Dtq73wD5JTepuryUiXumjMNx/e5AlOROKlao4/A0rG34R8emblnTGwvMaMpzKd+USDk2M/aLtIPZ6tnDXD/g==}
@@ -4149,7 +4149,7 @@ snapshots:
   '@biomejs/cli-win32-x64@1.9.4':
     optional: true
 
-  '@cartesi/devnet@2.0.0-alpha.6': {}
+  '@cartesi/devnet@2.0.0-alpha.7': {}
 
   '@cartesi/rollups@2.0.0': {}
 
