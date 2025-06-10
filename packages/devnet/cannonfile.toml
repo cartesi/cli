@@ -1,5 +1,5 @@
 name = 'cartesi-rollups-devnet'
-version = '2.0.0-alpha.6'
+version = '<%= package.version %>'
 description = 'Cartesi Rollups Devnet'
 
 [pull.cartesiRollups]
