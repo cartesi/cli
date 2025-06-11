@@ -146,15 +146,6 @@ const availableServices: Service[] = [
         errorTitle: `${chalk.red("bundler")} service failed`,
     },
     {
-        name: "espresso",
-        file: "docker-compose-espresso.yaml",
-        healthySemaphore: "espresso",
-        healthyTitle: (port) =>
-            `${chalk.cyan("espresso")} service ready at ${chalk.cyan(`${host}:${port}/transaction`)}`,
-        waitTitle: `${chalk.cyan("espresso")} service starting...`,
-        errorTitle: `${chalk.red("espresso")} service failed`,
-    },
-    {
         name: "explorer",
         file: "docker-compose-explorer.yaml",
         healthySemaphore: "explorer_api",
