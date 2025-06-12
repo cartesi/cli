@@ -1,3 +1,36 @@
+configs:
+    bundler_proxy:
+        content: |
+            http:
+                routers:
+                    bundler:
+                        rule: "PathPrefix(`/bundler`)"
+                        middlewares:
+                            - "cors"
+                            - "remove-bundler-prefix"
+                        service: bundler
+                middlewares:
+                    cors:
+                        headers:
+                            accessControlAllowMethods:
+                                - GET
+                                - OPTIONS
+                                - PUT
+                            accessControlAllowHeaders: "*"
+                            accessControlAllowOriginList:
+                                - "*"
+                            accessControlMaxAge: 100
+                            addVaryHeader: true
+                    remove-bundler-prefix:
+                        replacePathRegex:
+                            regex: "^/bundler/(.*)"
+                            replacement: "/$1"
+                services:
+                    bundler:
+                        loadBalancer:
+                            servers:
+                                - url: "http://bundler:4337"
+
 services:
     bundler:
         image: ${CARTESI_SDK_IMAGE}
@@ -33,5 +66,6 @@ services:
             retries: 5
 
     proxy:
-        volumes:
-            - ./proxy/bundler.yaml:/etc/traefik/conf.d/bundler.yaml
+        configs:
+            - source: bundler_proxy
+              target: /etc/traefik/conf.d/bundler.yaml

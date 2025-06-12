@@ -1,3 +1,24 @@
+configs:
+    rollups_node_proxy:
+        content: |
+            http:
+                routers:
+                    inspect_server:
+                        rule: "PathPrefix(`/inspect`)"
+                        service: inspect_server
+                    rpc_server:
+                        rule: "PathPrefix(`/rpc`)"
+                        service: rpc_server
+                services:
+                    inspect_server:
+                        loadBalancer:
+                            servers:
+                                - url: "http://rollups-node:10012"
+                    rpc_server:
+                        loadBalancer:
+                            servers:
+                                - url: "http://rollups-node:10011"
+
 services:
     rollups-node:
         image: cartesi/rollups-runtime:${CARTESI_SDK_VERSION}
@@ -24,8 +45,9 @@ services:
             - snapshots:/var/lib/cartesi-rollups-node/snapshots
 
     proxy:
-        volumes:
-            - ./proxy/rollups-node.yaml:/etc/traefik/conf.d/rollups-node.yaml
+        configs:
+            - source: rollups_node_proxy
+              target: /etc/traefik/conf.d/rollups-node.yaml
 
 volumes:
     snapshots:

@@ -4,6 +4,39 @@ x-explorer_db_env: &explorer_db_env
     DB_HOST: database
     DB_PASS: password
 
+configs:
+    explorer_api_proxy:
+        content: |
+            http:
+                routers:
+                    explorer-api:
+                        rule: "PathPrefix(`/explorer-api`)"
+                        middlewares:
+                            - "remove-explorer-api-prefix"
+                        service: explorer-api
+                middlewares:
+                    remove-explorer-api-prefix:
+                        replacePathRegex:
+                            regex: "^/explorer-api/(.*)"
+                            replacement: "/$1"
+                services:
+                    explorer-api:
+                        loadBalancer:
+                            servers:
+                                - url: "http://explorer_api:4350"
+    explorer_proxy:
+        content: |
+            http:
+                routers:
+                    explorer:
+                        rule: "PathPrefix(`/explorer`)"
+                        service: explorer
+                services:
+                    explorer:
+                        loadBalancer:
+                            servers:
+                                - url: "http://explorer:3000"
+
 services:
     explorer_api:
         image: cartesi/rollups-explorer-api:1.0.0-alpha.4
@@ -52,6 +85,8 @@ services:
                 condition: service_healthy
 
     proxy:
-        volumes:
-            - ./proxy/explorer.yaml:/etc/traefik/conf.d/explorer.yaml
-            - ./proxy/explorer-api.yaml:/etc/traefik/conf.d/explorer-api.yaml
+        configs:
+            - source: explorer_proxy
+              target: /etc/traefik/conf.d/explorer.yaml
+            - source: explorer_api_proxy
+              target: /etc/traefik/conf.d/explorer-api.yaml

@@ -1,3 +1,24 @@
+configs:
+    passkey_server_proxy:
+        content: |
+            http:
+                routers:
+                    passkey-server:
+                        rule: "PathPrefix(`/passkey`)"
+                        middlewares:
+                            - "remove-passkey-server-prefix"
+                        service: passkey-server
+                middlewares:
+                    remove-passkey-server-prefix:
+                        replacePathRegex:
+                            regex: "^/passkey/(.*)"
+                            replacement: "/$1"
+                services:
+                    passkey-server:
+                        loadBalancer:
+                            servers:
+                                - url: "http://passkey-server:3000"
+
 services:
     passkey-server:
         image: ${CARTESI_SDK_IMAGE}
@@ -11,5 +32,6 @@ services:
             retries: 5
 
     proxy:
-        volumes:
-            - ./proxy/passkey-server.yaml:/etc/traefik/conf.d/passkey-server.yaml
+        configs:
+            - source: passkey_server_proxy
+              target: /etc/traefik/conf.d/passkey-server.yaml

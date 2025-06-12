@@ -1,3 +1,24 @@
+configs:
+    anvil_proxy:
+        content: |
+            http:
+                routers:
+                    anvil:
+                        rule: "PathPrefix(`/anvil`)"
+                        middlewares:
+                            - "remove-anvil-prefix"
+                        service: anvil
+                middlewares:
+                    remove-anvil-prefix:
+                        replacePathRegex:
+                            regex: "^/anvil(.*)"
+                            replacement: "$1"
+                services:
+                    anvil:
+                        loadBalancer:
+                            servers:
+                                - url: "http://anvil:8545"
+
 services:
     anvil:
         image: ${CARTESI_SDK_IMAGE}
@@ -13,5 +34,6 @@ services:
             ANVIL_IP_ADDR: 0.0.0.0
 
     proxy:
-        volumes:
-            - ./proxy/anvil.yaml:/etc/traefik/conf.d/anvil.yaml
+        configs:
+            - source: anvil_proxy
+              target: /etc/traefik/conf.d/anvil.yaml

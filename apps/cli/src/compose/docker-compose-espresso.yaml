@@ -1,3 +1,24 @@
+configs:
+    espresso_proxy:
+        content: |
+            http:
+                routers:
+                    espresso-reader:
+                        rule: "PathPrefix(`/transaction`)"
+                        middlewares:
+                            - "remove-espresso-reader-prefix"
+                        service: espresso-reader
+                middlewares:
+                    remove-espresso-reader-prefix:
+                        replacePathRegex:
+                            regex: "^/transaction/(.*)"
+                            replacement: "/$1"
+                services:
+                    espresso-reader:
+                        loadBalancer:
+                            servers:
+                                - url: "http://espresso_reader:8081"
+
 services:
     espresso:
         image: ${CARTESI_SDK_IMAGE}
@@ -55,5 +76,6 @@ services:
             ESPRESSO_BASE_URL: http://espresso:24000
 
     proxy:
-        volumes:
-            - ./proxy/espresso.yaml:/etc/traefik/conf.d/espresso.yaml
+        configs:
+            - source: espresso_proxy
+              target: /etc/traefik/conf.d/espresso.yaml
