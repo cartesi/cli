@@ -1,3 +1,17 @@
+configs:
+    graphql_proxy:
+        content: |
+            http:
+                routers:
+                    graphql:
+                        rule: "PathPrefix(`/graphql`)"
+                        service: graphql
+                services:
+                    graphql:
+                        loadBalancer:
+                            servers:
+                                - url: "http://graphql:8080"
+
 services:
     graphql:
         image: ${CARTESI_SDK_IMAGE}
@@ -19,5 +33,6 @@ services:
                 condition: service_healthy
 
     proxy:
-        volumes:
-            - ./proxy/graphql.yaml:/etc/traefik/conf.d/graphql.yaml
+        configs:
+            - source: graphql_proxy
+              target: /etc/traefik/conf.d/graphql.yaml

@@ -1,3 +1,24 @@
+configs:
+    paymaster_proxy:
+        content: |
+            http:
+                routers:
+                    paymaster:
+                        rule: "PathPrefix(`/paymaster`)"
+                        middlewares:
+                            - "remove-paymaster-prefix"
+                        service: paymaster
+                middlewares:
+                    remove-paymaster-prefix:
+                        replacePathRegex:
+                            regex: "^/paymaster/(.*)"
+                            replacement: "/$1"
+                services:
+                    paymaster:
+                        loadBalancer:
+                            servers:
+                                - url: "http://paymaster:3000"
+
 services:
     paymaster:
         image: ${CARTESI_SDK_IMAGE}
@@ -14,5 +35,6 @@ services:
             retries: 5
 
     proxy:
-        volumes:
-            - ./proxy/paymaster.yaml:/etc/traefik/conf.d/paymaster.yaml
+        configs:
+            - source: paymaster_proxy
+              target: /etc/traefik/conf.d/paymaster.yaml
