@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.0.0-alpha.13
+
+### Patch Changes
+
+- 6740fbe: bump @cartesi/devnet to 2.0.0-alpha.7
+- 9b41979: bump explorer
+- 98cfd0b: change default port from 8080 to 6751
+- f7a4a63: bump cartesi/sdk to v0.12.0-alpha.19
+
 ## 2.0.0-alpha.12
 
 ### Minor Changes
