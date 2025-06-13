@@ -1,5 +1,12 @@
 # sdk
 
+## 0.12.0-alpha.20
+
+### Patch Changes
+
+- 90c1cbe: bump cartesi-rollups-node to 2.0.0-alpha.6
+- 1f753e1: bump bookworm baseimage to 20250610
+
 ## 0.12.0-alpha.19
 
 ### Patch Changes
