@@ -8,7 +8,7 @@ target "default" {
   args = {
     ALTO_VERSION                      = "1.2.5"
     ALTO_PACKAGE_VERSION              = "0.0.18"
-    CARTESI_BASE_IMAGE                = "docker.io/library/debian:bookworm-20250520-slim@sha256:90522eeb7e5923ee2b871c639059537b30521272f10ca86fdbbbb2b75a8c40cd"
+    CARTESI_BASE_IMAGE                = "docker.io/library/debian:bookworm-20250610-slim@sha256:0d8498a0e9e6a60011df39aab78534cfe940785e7c59d19dfae1eb53ea59babe"
     CARTESI_DEVNET_VERSION            = "2.0.0-alpha.7"
     CARTESI_ESPRESSO_READER_VERSION   = "0.3.0"
     CARTESI_IMAGE_KERNEL_VERSION      = "0.20.0"
