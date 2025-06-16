@@ -68,8 +68,6 @@ export class InvalidStringArrayError extends Error {
     }
 }
 
-export const DEFAULT_COMPOSE_ENVIRONMENT_NAME = "cartesi-rollups";
-
 /**
  * Configuration for drives of a Cartesi Machine. A drive may already exist or be built by a builder
  */

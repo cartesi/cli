@@ -113,17 +113,14 @@ export const createGenericCommand = () => {
             ).choices(["hex", "string", "abi"]),
         )
         .addOption(
-            new Option(
-                "--type <type>",
-                "Transaction type",
-            ).choices(["evm", "eip712"])
-            .default("evm"),
+            new Option("--type <type>", "Transaction type")
+                .choices(["evm", "eip712"])
+                .default("evm"),
         )
         .addOption(
-            new Option(
-                "--eip712-tx-url <url>",
-                "EIP-712 base url",
-            ).default(DEFAULT_SEND_CONFIG.eip712TxUrl),
+            new Option("--eip712-tx-url <url>", "EIP-712 base url").default(
+                DEFAULT_SEND_CONFIG.eip712TxUrl,
+            ),
         )
         .option("--input-abi-params <input-abi-params>", "input abi params")
         .action(async (options, command) => {
@@ -140,13 +137,18 @@ export const createGenericCommand = () => {
             const payload =
                 (await getInput(options)) ||
                 (await bytesInput({ message: "Input" }));
-            if (options.type === 'eip712') {
+            if (options.type === "eip712") {
                 const progress = ora("Sending input...").start();
-                const hash = await sendEip712(walletClient, applicationAddress, payload, {
-                    eip712TxUrl: options.eip712TxUrl,
-                })
+                const hash = await sendEip712(
+                    walletClient,
+                    applicationAddress,
+                    payload,
+                    {
+                        eip712TxUrl: options.eip712TxUrl,
+                    },
+                );
                 progress.succeed(`Input sent: ${hash}`);
-                return
+                return;
             }
             const { request } = await publicClient.simulateContract({
                 address: inputBoxAddress,

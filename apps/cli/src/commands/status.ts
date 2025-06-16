@@ -1,8 +1,7 @@
 import { Command } from "@commander-js/extra-typings";
 import chalk from "chalk";
 import Table from "cli-table3";
-import { getServiceState } from "../base.js";
-import { DEFAULT_COMPOSE_ENVIRONMENT_NAME } from "../config.js";
+import { getProjectName, getServiceState } from "../base.js";
 import { getDeployments } from "../exec/rollups.js";
 
 export const createStatusCommand = () => {
@@ -10,18 +9,21 @@ export const createStatusCommand = () => {
         .description("Shows the status of a local environment.")
         .configureHelp({ showGlobalOptions: true })
         .option(
-            "--environment-name <string>",
-            "name of environment",
-            DEFAULT_COMPOSE_ENVIRONMENT_NAME,
+            "--project-name <string>",
+            "name of project (used by docker compose and cartesi-rollups-node)",
         )
         .option("--json", "output in JSON format")
-        .action(async ({ environmentName, json }, command) => {
+        .action(async (options) => {
+            const { json } = options;
+
+            const projectName = getProjectName(options);
+
             const status = await getServiceState({
-                projectName: environmentName,
+                projectName,
                 service: "rollups-node",
             });
             const deployments = await getDeployments({
-                projectName: environmentName,
+                projectName,
             });
 
             if (json) {
@@ -33,7 +35,7 @@ export const createStatusCommand = () => {
                 );
             } else {
                 console.log(
-                    `${chalk.cyan(environmentName)} is ${status === "running" ? chalk.green("running") : chalk.red("not running")}`,
+                    `${chalk.cyan(projectName)} is ${status === "running" ? chalk.green("running") : chalk.red("not running")}`,
                 );
 
                 if (status === "running") {
