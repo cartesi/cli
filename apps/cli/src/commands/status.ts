@@ -17,10 +17,12 @@ export const createStatusCommand = () => {
         .option("--json", "output in JSON format")
         .action(async ({ environmentName, json }, command) => {
             const status = await getServiceState({
-                environmentName,
+                projectName: environmentName,
                 service: "rollups-node",
             });
-            const deployments = await getDeployments({ environmentName });
+            const deployments = await getDeployments({
+                projectName: environmentName,
+            });
 
             if (json) {
                 process.stdout.write(

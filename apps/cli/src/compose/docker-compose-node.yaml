@@ -42,12 +42,9 @@ services:
         env_file:
             - ${CARTESI_BIN_PATH}/compose/default.env
         volumes:
-            - snapshots:/var/lib/cartesi-rollups-node/snapshots
+            - ./.cartesi:/var/lib/cartesi-rollups-node/snapshots:ro
 
     proxy:
         configs:
             - source: rollups_node_proxy
               target: /etc/traefik/conf.d/rollups-node.yaml
-
-volumes:
-    snapshots:

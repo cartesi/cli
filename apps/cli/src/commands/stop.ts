@@ -1,8 +1,8 @@
 import { Command } from "@commander-js/extra-typings";
 import chalk from "chalk";
-import { execa } from "execa";
 import ora from "ora";
 import { DEFAULT_COMPOSE_ENVIRONMENT_NAME } from "../config.js";
+import { stopEnvironment } from "../exec/rollups.js";
 
 export const createStopCommand = () => {
     return new Command("stop")
@@ -18,13 +18,7 @@ export const createStopCommand = () => {
                 `Stopping ${chalk.cyan(environmentName)} environment...`,
             ).start();
             try {
-                await execa("docker", [
-                    "compose",
-                    "-p",
-                    environmentName,
-                    "down",
-                    "--volumes",
-                ]);
+                await stopEnvironment({ projectName: environmentName });
                 progress.succeed(
                     `${chalk.cyan(environmentName)} environment stopped.`,
                 );

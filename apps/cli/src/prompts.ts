@@ -1,5 +1,5 @@
 import confirm from "@inquirer/confirm";
-import type { Separator } from "@inquirer/core";
+import { Separator, createPrompt, useKeypress } from "@inquirer/core";
 import input from "@inquirer/input";
 import select from "@inquirer/select";
 import type { Context } from "@inquirer/type";
@@ -216,12 +216,13 @@ export const selectAuto = <ValueType>(
     const choices = config.choices;
 
     const list = config.discardDisabled
-        ? choices.filter((c) => c.type !== "separator" && !c.disabled)
+        ? choices.filter((c) => !(c instanceof Separator) && !c.disabled)
         : choices;
+    const a = choices.filter((c) => c.type !== "separator");
 
     if (list.length === 1) {
         const choice = list[0];
-        if (choice.type !== "separator") {
+        if (!(choice instanceof Separator)) {
             const output = context?.output || process.stdout;
             const prefix = chalk.green("?");
             const message: string = chalk.bold(config.message);
@@ -235,3 +236,27 @@ export const selectAuto = <ValueType>(
     }
     return select(config, context);
 };
+
+type KeySelectConfig<Value> = {
+    choices: ReadonlyArray<Choice<Value>>;
+    separator?: string;
+};
+
+export const keySelect = createPrompt(
+    <Value>(config: KeySelectConfig<Value>, done: (value: Value) => void) => {
+        const choices = config.choices;
+        const separator = config.separator ?? "\t";
+
+        const options = choices
+            .map((c) => `(${chalk.cyan(c.value)}) ${c.name ?? ""}`)
+            .join(separator);
+
+        useKeypress((key) => {
+            const selected = choices.find((c) => c.value === key.name);
+            if (selected) {
+                done(selected.value);
+            }
+        });
+        return `${options} `;
+    },
+);
