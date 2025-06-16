@@ -17,7 +17,7 @@
         "/npm-shrinkwrap.json"
     ],
     "dependencies": {
-        "@commander-js/extra-typings": "^13.1.0",
+        "@commander-js/extra-typings": "^14.0.0",
         "@inquirer/confirm": "^5.1.12",
         "@inquirer/core": "^10.1.13",
         "@inquirer/input": "^4.1.12",
@@ -26,7 +26,7 @@
         "bytes": "^3.1.2",
         "chalk": "^5.4.1",
         "cli-table3": "^0.6.5",
-        "commander": "^13.1.0",
+        "commander": "^14.0.0",
         "execa": "^9.5.2",
         "fs-extra": "^11.3.0",
         "get-port": "^7.1.0",
@@ -79,7 +79,7 @@
         "test": "vitest"
     },
     "engines": {
-        "node": ">=18.0.0"
+        "node": ">=20.0.0"
     },
     "bugs": "https://github.com/cartesi/cli/issues",
     "types": "dist/index.d.ts"
