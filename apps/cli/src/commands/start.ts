@@ -173,7 +173,7 @@ export const createStartCommand = () => {
                 "interval between blocks (in seconds)",
             )
                 .argParser(Number)
-                .default(5),
+                .default(2),
         )
         .addOption(
             new Option(

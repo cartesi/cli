@@ -22,7 +22,7 @@ configs:
 services:
     anvil:
         image: ${CARTESI_SDK_IMAGE}
-        command: ["devnet", "--block-time", "${CARTESI_BLOCK_TIME:-5}"]
+        command: ["devnet", "--block-time", "${CARTESI_BLOCK_TIME:-2}"]
         healthcheck:
             test: ["CMD", "eth_isready"]
             start_period: 10s
