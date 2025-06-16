@@ -100,6 +100,7 @@ const getInput = async (options: {
 };
 
 export const createGenericCommand = () => {
+    // biome-ignore lint/complexity/noBannedTypes: command pattern
     return new Command<[], {}, SendCommandOpts>("generic")
         .description(
             "Sends generics inputs to the application, optionally in interactive mode.",
