@@ -7,9 +7,10 @@ import { ExitPromptError } from "@inquirer/core";
 import chalk from "chalk";
 import getPort, { portNumbers } from "get-port";
 import ora from "ora";
-import { type Address, type Hex, numberToHex } from "viem";
+import { type Address, type Hex, encodeFunctionData, numberToHex } from "viem";
 import { getMachineHash, getProjectName } from "../base.js";
 import { DEFAULT_SDK_VERSION, PREFERRED_PORT } from "../config.js";
+import { dataAvailabilityAbi, inputBoxAddress } from "../contracts.js";
 import {
     AVAILABLE_SERVICES,
     type RollupsDeployment,
@@ -25,11 +26,12 @@ const commaSeparatedList = (value: string) => value.split(",");
 
 const shell = async (options: {
     build?: CommandUnknownOpts;
+    dataAvailability?: Hex;
     epochLength: number;
     log?: CommandUnknownOpts;
     projectName: string;
 }) => {
-    const { build, epochLength, log, projectName } = options;
+    const { build, dataAvailability, epochLength, log, projectName } = options;
 
     // keep track of last deployment
     let lastDeployment: RollupsDeployment | undefined = undefined;
@@ -39,6 +41,7 @@ const shell = async (options: {
     const hash = getMachineHash();
     if (hash) {
         lastDeployment = await deploy({
+            dataAvailability,
             epochLength,
             hash,
             projectName,
@@ -81,6 +84,7 @@ const shell = async (options: {
                         }
                         lastDeployment = await deploy({
                             consensus: lastDeployment?.consensus,
+                            dataAvailability: lastDeployment?.dataAvailability,
                             epochLength,
                             hash,
                             projectName,
@@ -118,12 +122,20 @@ const undeploy = async (options: { projectName: string }) => {
 
 const deploy = async (options: {
     consensus?: Address;
+    dataAvailability?: Hex;
     epochLength: number;
     hash: Hex;
     projectName: string;
     salt: Hex;
 }) => {
-    const { consensus, epochLength, hash, projectName, salt } = options;
+    const {
+        consensus,
+        dataAvailability,
+        epochLength,
+        hash,
+        projectName,
+        salt,
+    } = options;
 
     // deploy application to node (onchain and offchain)
     const progress = ora(
@@ -132,6 +144,7 @@ const deploy = async (options: {
 
     const application = await deployApplication({
         consensus,
+        dataAvailability,
         epochLength,
         name: projectName,
         projectName,
@@ -145,6 +158,14 @@ const deploy = async (options: {
         `${chalk.cyan(projectName)} contract deployed at ${chalk.cyan(application.address)}`,
     );
     return application;
+};
+
+const createEspressoDataAvailability = (block: bigint, namespace: number) => {
+    return encodeFunctionData({
+        abi: dataAvailabilityAbi,
+        functionName: "InputBoxAndEspresso",
+        args: [inputBoxAddress, block, namespace],
+    });
 };
 
 export const createRunCommand = () => {
@@ -272,6 +293,11 @@ export const createRunCommand = () => {
                 services,
             });
 
+            // use 1 as the starting block and 1 for namespace for espresso dev
+            const dataAvailability = services.includes("espresso")
+                ? createEspressoDataAvailability(1n, 1)
+                : undefined;
+
             const shutdown = async () => {
                 progress.start(`${chalk.cyan(projectName)} stopping...`);
                 try {
@@ -301,6 +327,7 @@ export const createRunCommand = () => {
             );
             await shell({
                 build,
+                dataAvailability,
                 epochLength,
                 log,
                 projectName,
