@@ -1,7 +1,12 @@
 # syntax=docker.io/docker/dockerfile:1
 ARG CARTESI_BASE_IMAGE
+ARG ESPRESSO_DEV_NODE_BASE_IMAGE
 ARG POSTGRES_BASE_IMAGE
 ARG NODE_VERSION
+
+################################################################################
+# https://github.com/EspressoSystems/espresso-sequencer/pkgs/container/espresso-sequencer%2Fespresso-dev-node
+FROM ${ESPRESSO_DEV_NODE_BASE_IMAGE} AS espresso-dev-node
 
 ################################################################################
 # base image
@@ -106,6 +111,37 @@ curl -fsSL "https://github.com/cartesi/rollups-graphql/archive/refs/tags/v${CART
 EOF
 
 ################################################################################
+# cartesi-rollups-espresso-reader installer
+FROM base AS espresso-reader
+ARG CARTESI_ESPRESSO_READER_VERSION
+ARG TARGETOS
+ARG TARGETARCH
+RUN <<EOF
+curl -fsSL https://github.com/cartesi/rollups-espresso-reader/releases/download/v${CARTESI_ESPRESSO_READER_VERSION}/cartesi-rollups-espresso-reader-v${CARTESI_ESPRESSO_READER_VERSION}-${TARGETOS}-${TARGETARCH}.tar.gz \
+    -o /tmp/cartesi-rollups-espresso-reader.tar.gz
+
+case "${TARGETARCH}" in
+    amd64) echo "8eb9082fd47572a67d45b0642b7394b5  /tmp/cartesi-rollups-espresso-reader.tar.gz" | md5sum --check ;;
+    arm64) echo "8c38eb171b2e81fa1ab44080a33bed99  /tmp/cartesi-rollups-espresso-reader.tar.gz" | md5sum --check ;;
+    *) echo "unsupported architecture: ${TARGEARCH}"; exit 1 ;;
+esac
+
+tar -xzf /tmp/cartesi-rollups-espresso-reader.tar.gz -C /usr/local/bin
+EOF
+
+################################################################################
+# rollups-espresso-reader migration code installer
+FROM base AS espresso-reader-migration
+ARG CARTESI_ESPRESSO_READER_VERSION
+RUN <<EOF
+ESPRESSO_DEST_FOLDER="/usr/share/cartesi/rollups-espresso-reader/migrations"
+
+mkdir -p "$ESPRESSO_DEST_FOLDER"
+curl -fsSL "https://github.com/cartesi/rollups-espresso-reader/archive/refs/tags/v${CARTESI_ESPRESSO_READER_VERSION}.tar.gz" \
+    | tar --wildcards -xz -C ${ESPRESSO_DEST_FOLDER} --strip-components=6 '*/migrations/*.sql'
+EOF
+
+################################################################################
 # cartesi rollups-runtime target
 FROM base AS rollups-runtime
 ARG CARTESI_MACHINE_EMULATOR_VERSION
@@ -162,8 +198,10 @@ cartesi-rollups-node --version
 EOF
 
 COPY --from=graphql /usr/local/bin/cartesi-rollups-graphql /usr/local/bin/
+COPY --from=espresso-reader /usr/local/bin/cartesi-rollups-espresso-reader /usr/local/bin/
 COPY --from=go-migrate /usr/local/bin/migrate /usr/local/bin/
 COPY --from=graphql-migration /usr/share/cartesi/rollups-graphql/migrations /usr/share/cartesi/rollups-graphql/migrations
+COPY --from=espresso-reader-migration /usr/share/cartesi/rollups-espresso-reader/migrations /usr/share/cartesi/rollups-espresso-reader/migrations
 
 USER cartesi
 
@@ -183,13 +221,15 @@ COPY --from=rollups-runtime /usr/bin/cartesi-rollups-cli /usr/bin/
 COPY --from=rollups-runtime /usr/lib/libcartesi* /usr/lib/
 COPY --from=go-migrate /usr/local/bin/migrate /usr/local/bin/
 COPY --from=graphql-migration /usr/share/cartesi/rollups-graphql/migrations /usr/share/cartesi/rollups-graphql/migrations
+COPY --from=espresso-reader-migration /usr/share/cartesi/rollups-espresso-reader/migrations /usr/share/cartesi/rollups-espresso-reader/migrations
 
 ARG POSTGRES_PASSWORD=password
 
-# create rollupsdb and graphql databases
+# create rollupsdb, graphql and espresso databases
 COPY <<EOF /docker-entrypoint-initdb.d/00-createdb.sql
 CREATE DATABASE rollupsdb;
 CREATE DATABASE graphql;
+CREATE DATABASE espresso;
 CREATE DATABASE explorer;
 EOF
 
@@ -206,6 +246,13 @@ COPY <<EOF /docker-entrypoint-initdb.d/02-graphql-migrations.sh
 #!/usr/bin/env bash
 set -e
 migrate -verbose -path /usr/share/cartesi/rollups-graphql/migrations -database 'postgres://postgres@/graphql?host=/var/run/postgresql' up
+EOF
+
+# espresso-reader migrations
+COPY <<EOF /docker-entrypoint-initdb.d/03-espresso-reader-migrations.sh
+#!/usr/bin/env bash
+set -e
+migrate -verbose -path /usr/share/cartesi/rollups-espresso-reader/migrations -database 'postgres://postgres@/rollupsdb?host=/var/run/postgresql&x-migrations-table=espresso_reader_schema_migrations' up
 EOF
 
 RUN /usr/local/bin/docker-ensure-initdb.sh postgres
@@ -358,6 +405,7 @@ COPY --from=su-exec /usr/local/src/su-exec /usr/local/bin/
 COPY --from=crane /usr/local/bin/crane /usr/local/bin/
 COPY --from=foundry /usr/local/bin/anvil /usr/local/bin/
 COPY --from=foundry /usr/local/bin/cast /usr/local/bin/
+COPY --from=espresso-dev-node /usr/bin/espresso-dev-node /usr/local/bin/
 
 WORKDIR /mnt
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
