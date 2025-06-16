@@ -29,6 +29,7 @@
         "commander": "^13.1.0",
         "execa": "^9.5.2",
         "fs-extra": "^11.3.0",
+        "get-port": "^7.1.0",
         "giget": "^2.0.0",
         "listr2": "^8.2.5",
         "lookpath": "^1.2.3",

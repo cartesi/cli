@@ -5,10 +5,11 @@ import {
 } from "@commander-js/extra-typings";
 import { ExitPromptError } from "@inquirer/core";
 import chalk from "chalk";
+import getPort, { portNumbers } from "get-port";
 import ora from "ora";
 import { type Address, type Hex, numberToHex } from "viem";
 import { getMachineHash, getProjectName } from "../base.js";
-import { DEFAULT_SDK_VERSION } from "../config.js";
+import { DEFAULT_SDK_VERSION, PREFERRED_PORT } from "../config.js";
 import {
     AVAILABLE_SERVICES,
     type RollupsDeployment,
@@ -186,7 +187,7 @@ export const createRunCommand = () => {
                 .argParser(Number)
                 .default(720),
         )
-        .option("-p, --port <number>", "port to listen on", Number, 6751)
+        .option("-p, --port <number>", "port to listen on", Number)
         .addOption(
             new Option(
                 "--runtime-version <version>",
@@ -214,7 +215,6 @@ export const createRunCommand = () => {
                 dryRun,
                 epochLength,
                 memory,
-                port,
                 runtimeVersion,
                 services,
                 verbose,
@@ -232,6 +232,13 @@ export const createRunCommand = () => {
 
             // project name explicitly defined or the current directory name
             const projectName = getProjectName(options);
+
+            // resolve port number, using the first free port in a range, unless explicitly set
+            const port =
+                options.port ||
+                (await getPort({
+                    port: portNumbers(PREFERRED_PORT, PREFERRED_PORT + 10),
+                }));
 
             // run compose environment (detached)
             const { address, config } = await startEnvironment({
