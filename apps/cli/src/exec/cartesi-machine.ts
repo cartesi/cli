@@ -5,7 +5,7 @@ import {
     execaDockerFallback,
 } from "./util.js";
 
-export const requiredVersion = new Range("^0.18.1");
+export const requiredVersion = new Range("^0.19.0");
 
 export const boot = async (
     args: readonly string[],
