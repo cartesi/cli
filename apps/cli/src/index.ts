@@ -39,16 +39,16 @@ const program = new Command()
     .addCommand(createBuildCommand())
     .addCommand(createCleanCommand())
     .addCommand(createCreateCommand())
-    .addCommand(createDeployCommand())
+    .addCommand(createDeployCommand(), { hidden: true })
     .addCommand(createDoctorCommand())
-    .addCommand(createLogsCommand())
+    .addCommand(createLogsCommand(), { hidden: true })
     .addCommand(createHashCommand())
-    .addCommand(createRunCommand(), { hidden: true })
+    .addCommand(createRunCommand())
     .addCommand(createSendCommand())
     .addCommand(createShellCommand())
-    .addCommand(createStartCommand())
-    .addCommand(createStatusCommand())
-    .addCommand(createStopCommand());
+    .addCommand(createStartCommand(), { hidden: true })
+    .addCommand(createStatusCommand(), { hidden: true })
+    .addCommand(createStopCommand(), { hidden: true });
 
 // Global error handling
 process.on("uncaughtException", (err) => {

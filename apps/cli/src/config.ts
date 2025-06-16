@@ -76,7 +76,7 @@ export const DEFAULT_COMPOSE_ENVIRONMENT_NAME = "cartesi-rollups";
 const DEFAULT_FORMAT = "ext2";
 const DEFAULT_RAM = "128Mi";
 const DEFAULT_RAM_IMAGE = "/usr/share/cartesi-machine/images/linux.bin";
-export const DEFAULT_SDK_VERSION = "0.12.0-alpha.19";
+export const DEFAULT_SDK_VERSION = "0.12.0-alpha.20";
 export const DEFAULT_SDK_IMAGE = "cartesi/sdk";
 
 type Builder = "directory" | "docker" | "empty" | "none" | "tar";

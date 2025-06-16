@@ -89,16 +89,16 @@ export const getAddressBook = async (): Promise<AddressBook> => {
 };
 
 const getServiceInfo = async (options: {
-    environmentName: string;
+    projectName: string;
     service: string;
 }): Promise<PsResponse | undefined> => {
-    const { environmentName, service } = options;
+    const { projectName, service } = options;
 
     // get service information
     const { stdout } = await execa("docker", [
         "compose",
         "--project-name",
-        environmentName,
+        projectName,
         "ps",
         service,
         "--format",
@@ -108,7 +108,7 @@ const getServiceInfo = async (options: {
 };
 
 export const getServiceState = async (options: {
-    environmentName: string;
+    projectName: string;
     service: string;
 }): Promise<string | undefined> => {
     const info = await getServiceInfo(options);
@@ -116,7 +116,7 @@ export const getServiceState = async (options: {
 };
 
 export const getServiceHealth = async (options: {
-    environmentName: string;
+    projectName: string;
     service: string;
 }): Promise<string | undefined> => {
     const info = await getServiceInfo(options);
