@@ -1,0 +1,93 @@
+configs:
+    espresso_proxy:
+        content: |
+            http:
+                routers:
+                    espresso-reader:
+                        rule: "PathPrefix(`/transaction`)"
+                        middlewares:
+                            - "remove-espresso-reader-prefix"
+                        service: espresso-reader
+                middlewares:
+                    remove-espresso-reader-prefix:
+                        replacePathRegex:
+                            regex: "^/transaction/(.*)"
+                            replacement: "/$1"
+                services:
+                    espresso-reader:
+                        loadBalancer:
+                            servers:
+                                - url: "http://espresso_reader:8081"
+
+services:
+    espresso:
+        image: ${CARTESI_SDK_IMAGE}
+        command: ["espresso-dev-node"]
+        init: true
+        deploy:
+            resources:
+                limits:
+                    cpus: "4"
+                    memory: "1G"
+        depends_on:
+            database:
+                condition: service_healthy
+            anvil:
+                condition: service_healthy
+        environment:
+            ESPRESSO_SEQUENCER_L1_PROVIDER: ${CARTESI_BLOCKCHAIN_HTTP_ENDPOINT:-http://anvil:8545}
+            ESPRESSO_SEQUENCER_API_PORT: 24000
+            ESPRESSO_BUILDER_PORT: 23000
+            ESPRESSO_DEV_NODE_PORT: 20000
+            ESPRESSO_SEQUENCER_ETH_MNEMONIC: ${CARTESI_AUTH_MNEMONIC:-test test test test test test test test test test test junk}
+            ESPRESSO_SEQUENCER_L1_POLLING_INTERVAL: "${CARTESI_BLOCK_TIME}s"
+            ESPRESSO_STATE_PROVER_UPDATE_INTERVAL: "10s"
+            ESPRESSO_SEQUENCER_DATABASE_MAX_CONNECTIONS: 25
+            ESPRESSO_SEQUENCER_STORAGE_PATH: /data/espresso
+            ESPRESSO_DEV_NODE_L1_DEPLOYMENT: skip
+            ESPRESSO_SEQUENCER_PLONK_VERIFIER_ADDRESS: 0x778A77F0E040d1FAB9c9404Cf0dA70f4D27cf8D9
+            ESPRESSO_SEQUENCER_PLONK_VERIFIER_V2_ADDRESS: 0x619A55588bf1c816d2D43E9af8aAcc76F5a368b2
+            ESPRESSO_SEQUENCER_LIGHT_CLIENT_ADDRESS: 0x2934188b53791C7a62d8734c3052D385c5B92BD6
+            ESPRESSO_SEQUENCER_LIGHT_CLIENT_V2_ADDRESS: 0x877d75e703dC87cb3B0B2ff7805c429eFb1E403b
+            ESPRESSO_SEQUENCER_LIGHT_CLIENT_PROXY_ADDRESS: 0x8cf5D822b9c5193bacF8ff5308669Df222A6052A
+            ESPRESSO_SEQUENCER_FEE_CONTRACT_ADDRESS: 0x5Ee852755a9062eFAe4844f4B8ba6eF30a082E3C
+            ESPRESSO_SEQUENCER_FEE_CONTRACT_PROXY_ADDRESS: 0x291026B50a8398F08D228727931d9e0D0616201D
+            ESPRESSO_SEQUENCER_ESP_TOKEN_ADDRESS: 0xe17E0d1fD317C2119d9869dD7249eC742492f42b
+            ESPRESSO_SEQUENCER_ESP_TOKEN_PROXY_ADDRESS: 0x40FB3a6f5a48C34DDcf80C0A5f958aA2850275fe
+            ESPRESSO_SEQUENCER_STAKE_TABLE_ADDRESS: 0x2E2030F9f1134B776ED467ddB58A17018853d45f
+            ESPRESSO_SEQUENCER_STAKE_TABLE_PROXY_ADDRESS: 0x08CA9404967765C4947069d8A0DFbb1f8f4b9c21
+        healthcheck:
+            test:
+                [
+                    "CMD",
+                    "curl",
+                    "-fsS",
+                    "http://127.0.0.1:24000/status/block-height",
+                ]
+            start_period: 10s
+            start_interval: 200ms
+            interval: 10s
+            timeout: 1s
+            retries: 5
+
+    espresso_reader:
+        image: ${CARTESI_SDK_IMAGE}
+        command: ["cartesi-rollups-espresso-reader"]
+        env_file:
+            - ${CARTESI_BIN_PATH}/compose/default.env
+        ports:
+            - 8081
+        depends_on:
+            database:
+                condition: service_healthy
+            espresso:
+                condition: service_healthy
+        environment:
+            CARTESI_DATABASE_CONNECTION: postgres://postgres:password@database:5432/rollupsdb?sslmode=disable
+            ESPRESSO_SERVICE_ENDPOINT: ":8081"
+            ESPRESSO_BASE_URL: http://espresso:24000
+
+    proxy:
+        configs:
+            - source: espresso_proxy
+              target: /etc/traefik/conf.d/espresso.yaml

@@ -22,12 +22,14 @@ export type RollupsDeployment = {
     name: string;
     address: Address;
     consensus: Address;
+    dataAvailability: Hex;
     templateHash: Hash;
     epochLength: number;
     state: "ENABLED" | "DISABLED";
 };
 
 type CliRollupsDeployment = {
+    data_availability: string;
     name: string;
     iapplication_address: string;
     iconsensus_address: string;
@@ -45,6 +47,7 @@ const parseDeployment = (
 ): RollupsDeployment => ({
     address: deployment.iapplication_address as Address,
     consensus: deployment.iconsensus_address as Address,
+    dataAvailability: deployment.data_availability as Hex,
     epochLength: hexToNumber(deployment.epoch_length as Hex),
     name: deployment.name,
     state: deployment.state as "ENABLED" | "DISABLED",
@@ -151,6 +154,15 @@ const availableServices: Service[] = [
             `${chalk.cyan("bundler")} service ready at ${chalk.cyan(`${host}:${port}/bundler/rpc`)}`,
         waitTitle: `${chalk.cyan("bundler")} service starting...`,
         errorTitle: `${chalk.red("bundler")} service failed`,
+    },
+    {
+        name: "espresso",
+        file: "docker-compose-espresso.yaml",
+        healthySemaphore: "espresso",
+        healthyTitle: (port) =>
+            `${chalk.cyan("espresso")} service ready at ${chalk.cyan(`${host}:${port}/transaction`)}`,
+        waitTitle: `${chalk.cyan("espresso")} service starting...`,
+        errorTitle: `${chalk.red("espresso")} service failed`,
     },
     {
         name: "explorer",
@@ -447,14 +459,22 @@ export const deployAuthority = async (options: {
  */
 export const deployApplication = async (options: {
     consensus?: Address;
+    dataAvailability?: Hex;
     epochLength: number;
     name: string;
     projectName: string;
     salt?: Hex;
     snapshotPath: string;
 }): Promise<RollupsDeployment> => {
-    const { consensus, epochLength, name, projectName, salt, snapshotPath } =
-        options;
+    const {
+        consensus,
+        dataAvailability,
+        epochLength,
+        name,
+        projectName,
+        salt,
+        snapshotPath,
+    } = options;
 
     // app deploy args
     const deployArgs = [name, snapshotPath];
@@ -470,6 +490,9 @@ export const deployApplication = async (options: {
     }
     if (salt) {
         deployArgs.push("--salt", salt);
+    }
+    if (dataAvailability) {
+        deployArgs.push("--data-availability", dataAvailability);
     }
     deployArgs.push("--json");
 
