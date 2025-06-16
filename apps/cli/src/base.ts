@@ -50,6 +50,10 @@ export const getApplicationConfig = (configPath: string): Config => {
         : parse("");
 };
 
+export const getProjectName = (options: { projectName?: string }) => {
+    return options.projectName ?? path.basename(process.cwd());
+};
+
 export type AddressBook = Record<string, Address>;
 
 export const getAddressBook = async (): Promise<AddressBook> => {

@@ -7,7 +7,7 @@ import { ExitPromptError } from "@inquirer/core";
 import chalk from "chalk";
 import ora from "ora";
 import { type Address, type Hex, numberToHex } from "viem";
-import { getMachineHash } from "../base.js";
+import { getMachineHash, getProjectName } from "../base.js";
 import { DEFAULT_SDK_VERSION } from "../config.js";
 import {
     AVAILABLE_SERVICES,
@@ -63,7 +63,7 @@ const shell = async (options: {
             );
             switch (option) {
                 case "l": {
-                    await log?.parseAsync(["--environment-name", projectName], {
+                    await log?.parseAsync(["--project-name", projectName], {
                         from: "user",
                     });
                     break;
@@ -230,21 +230,24 @@ export const createRunCommand = () => {
                 );
             }
 
+            // project name explicitly defined or the current directory name
+            const projectName = getProjectName(options);
+
             // run compose environment (detached)
-            const { address, config, projectName } = await startEnvironment({
+            const { address, config } = await startEnvironment({
                 blockTime,
                 cpus,
                 defaultBlock,
                 dryRun,
                 memory,
                 port,
-                projectName: options.projectName,
+                projectName,
                 runtimeVersion,
                 services,
                 verbose,
             });
 
-            if (dryRun) {
+            if (dryRun && config) {
                 // just show the docker compose configuration and quit
                 process.stdout.write(config);
                 return;

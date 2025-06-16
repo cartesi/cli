@@ -5,11 +5,13 @@ import path from "node:path";
 import pRetry from "p-retry";
 import type { Address, Hash, Hex } from "viem";
 import { getAddress, hexToNumber } from "viem";
-import { getContextPath, getMachineHash, getServiceHealth } from "../base.js";
 import {
-    DEFAULT_COMPOSE_ENVIRONMENT_NAME,
-    DEFAULT_SDK_IMAGE,
-} from "../config.js";
+    getContextPath,
+    getMachineHash,
+    getProjectName,
+    getServiceHealth,
+} from "../base.js";
+import { DEFAULT_SDK_IMAGE } from "../config.js";
 
 export type RollupsDeployment = {
     name: string;
@@ -30,7 +32,7 @@ type CliRollupsDeployment = {
 };
 
 type ComposeParams = {
-    projectName?: string;
+    projectName: string;
 };
 
 const parseDeployment = (
@@ -45,15 +47,13 @@ const parseDeployment = (
 });
 
 export const getDeployments = async (
-    options?: ComposeParams,
+    options: ComposeParams,
 ): Promise<RollupsDeployment[]> => {
-    const projectName =
-        options?.projectName ?? DEFAULT_COMPOSE_ENVIRONMENT_NAME;
     try {
         const { stdout } = await execa("docker", [
             "compose",
             "--project-name",
-            projectName,
+            options.projectName,
             "exec",
             "rollups-node",
             "cartesi-rollups-cli",
@@ -67,7 +67,7 @@ export const getDeployments = async (
 };
 
 export const getApplicationDeployment = async (
-    options?: ComposeParams,
+    options: ComposeParams,
 ): Promise<RollupsDeployment | undefined> => {
     const machineHash = getMachineHash();
     if (!machineHash) {
@@ -80,7 +80,8 @@ export const getApplicationDeployment = async (
 };
 
 export const getApplicationAddress = async (): Promise<Address | undefined> => {
-    const deployment = await getApplicationDeployment();
+    const projectName = getProjectName({});
+    const deployment = await getApplicationDeployment({ projectName });
     return deployment?.address;
 };
 
@@ -230,7 +231,7 @@ export const startEnvironment = async (options: {
     dryRun: boolean;
     memory?: number;
     port: number;
-    projectName?: string;
+    projectName: string;
     runtimeVersion: string;
     services: string[];
     verbose: boolean;
@@ -242,6 +243,7 @@ export const startEnvironment = async (options: {
         dryRun,
         memory,
         port,
+        projectName,
         runtimeVersion,
         services,
         verbose,
@@ -294,30 +296,28 @@ export const startEnvironment = async (options: {
         path.join(binPath, "compose", f),
     ]);
 
-    const composeArgs = ["compose", ...files, "--project-directory", "."];
-    if (options.projectName) {
-        composeArgs.push("--project-name", options.projectName);
-    }
+    const composeArgs = [
+        "compose",
+        ...files,
+        "--project-directory",
+        ".",
+        "--project-name",
+        projectName,
+    ];
 
     // run in detached mode (background)
     const upArgs = ["--detach"];
 
-    // parse, resolve and render compose file in canonical format
-    const { stdout: config } = await execa(
-        "docker",
-        [...composeArgs, "config", "--format", "json"],
-        { env },
-    );
-
-    // resolve the compose project name by parsing the docker compose config
-    const projectName = JSON.parse(config).name;
-    if (typeof projectName !== "string") {
-        throw new Error("Failed to resolve compose project name");
-    }
-
     // if only dry run, just return the config
     if (dryRun) {
-        return { address, config, projectName };
+        // parse, resolve and render compose file in canonical format
+        const { stdout: config } = await execa(
+            "docker",
+            [...composeArgs, "config", "--format", "yaml"],
+            { env },
+        );
+
+        return { address, config };
     }
 
     // pull images first
@@ -332,7 +332,7 @@ export const startEnvironment = async (options: {
         env,
     });
 
-    return { address, config, projectName };
+    return { address };
 };
 
 /**
