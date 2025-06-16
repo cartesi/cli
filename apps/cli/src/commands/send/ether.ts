@@ -10,6 +10,7 @@ import {
 } from "../send.js";
 
 export const createEtherCommand = () => {
+    // biome-ignore lint/complexity/noBannedTypes: command pattern
     return new Command<[], {}, SendCommandOpts>("ether")
         .description(
             "Sends ether deposits to the application, optionally in interactive mode.",

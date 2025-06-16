@@ -54,6 +54,7 @@ const ercValidator =
     };
 
 export const createErc721Command = () => {
+    // biome-ignore lint/complexity/noBannedTypes: command pattern
     return new Command<[], {}, SendCommandOpts>("erc721")
         .description(
             "Sends ERC-721 deposits to the application, optionally in interactive mode.",
