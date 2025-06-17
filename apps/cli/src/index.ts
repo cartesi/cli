@@ -7,6 +7,7 @@ import { createBuildCommand } from "./commands/build.js";
 import { createCleanCommand } from "./commands/clean.js";
 import { createCreateCommand } from "./commands/create.js";
 import { createDeployCommand } from "./commands/deploy.js";
+import { createDepositCommand } from "./commands/deposit.js";
 import { createDoctorCommand } from "./commands/doctor.js";
 import { createHashCommand } from "./commands/hash.js";
 import { createLogsCommand } from "./commands/logs.js";
@@ -38,6 +39,7 @@ const program = new Command()
     .addCommand(createCleanCommand())
     .addCommand(createCreateCommand())
     .addCommand(createDeployCommand(), { hidden: true })
+    .addCommand(createDepositCommand())
     .addCommand(createDoctorCommand())
     .addCommand(createLogsCommand())
     .addCommand(createHashCommand())

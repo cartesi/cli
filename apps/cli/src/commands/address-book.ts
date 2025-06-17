@@ -1,6 +1,6 @@
 import { Command } from "@commander-js/extra-typings";
 import Table from "cli-table3";
-import { getAddressBook } from "../base.js";
+import { getAddressBook, getProjectName } from "../base.js";
 
 export const createAddressBookCommand = () => {
     return new Command("address-book")
@@ -8,8 +8,14 @@ export const createAddressBookCommand = () => {
             "Prints the addresses of all smart contracts deployed to the runtime environment of the application.",
         )
         .option("--json", "Format output as json.")
-        .action(async ({ json }) => {
-            const addressBook = await getAddressBook();
+        .option(
+            "--project-name <string>",
+            "name of project (used by docker compose and cartesi-rollups-node)",
+        )
+        .action(async (options) => {
+            const { json } = options;
+            const projectName = getProjectName(options);
+            const addressBook = await getAddressBook({ projectName });
             if (!json) {
                 // print as a table
                 const table = new Table({
