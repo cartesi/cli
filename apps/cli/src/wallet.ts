@@ -1,3 +1,4 @@
+import input from "@inquirer/input";
 import {
     createTestClient,
     defineChain,
@@ -7,6 +8,7 @@ import {
 } from "viem";
 import { cannon } from "viem/chains";
 import { getProjectName } from "./base.js";
+import { PREFERRED_PORT } from "./config.js";
 import { getProjectPort } from "./exec/rollups.js";
 
 export const cartesi = defineChain({
@@ -22,10 +24,17 @@ const getRpcUrl = async (options: {
     // if rpcUrl is provided, use it
     if (options.rpcUrl) return options.rpcUrl;
 
-    // otherwise, resolve host:port of the docker project
-    const projectName = getProjectName(options);
-    const host = await getProjectPort({ projectName });
-    return `http://${host}/anvil`;
+    // otherwise, try to resolve host:port of the docker project
+    try {
+        const projectName = getProjectName(options);
+        const host = await getProjectPort({ projectName });
+        return `http://${host}/anvil`;
+    } catch (e) {
+        return await input({
+            message: "RPC URL",
+            default: `http://127.0.0.1:${PREFERRED_PORT}/anvil`,
+        });
+    }
 };
 
 export const connect = async (options: {
