@@ -16,6 +16,7 @@ import {
     parseUnits,
     stringToHex,
 } from "viem";
+import { getApplicationAddress } from "./exec/rollups.js";
 
 type InputConfig = Parameters<typeof input>[0];
 type SelectConfig<ValueType> = Parameters<typeof select<ValueType>>[0];
@@ -74,30 +75,36 @@ export const bigintInput = async (
  * @returns bytes as hex string
  */
 export const bytesInput = async (
-    config: InputConfig & { message: string },
+    config: InputConfig & {
+        encoding?: "string" | "hex" | "abi";
+        message: string;
+    },
 ): Promise<Hex> => {
-    const encoding = await select({
-        ...config,
-        choices: [
-            {
-                value: "string",
-                name: "String encoding",
-                description: "Convert UTF-8 string to bytes",
-            },
-            {
-                value: "hex",
-                name: "Hex string encoding",
-                description:
-                    "Convert a hex string to bytes (must start with 0x)",
-            },
-            {
-                value: "abi",
-                name: "ABI encoding",
-                description:
-                    "Input as ABI encoding parameters https://abitype.dev/api/human.html#parseabiparameters",
-            },
-        ],
-    });
+    const encoding =
+        config.encoding ??
+        (await select({
+            ...config,
+            choices: [
+                {
+                    value: "string",
+                    name: "String encoding",
+                    description: "Convert UTF-8 string to bytes",
+                },
+                {
+                    value: "hex",
+                    name: "Hex string encoding",
+                    description:
+                        "Convert a hex string to bytes (must start with 0x)",
+                },
+                {
+                    value: "abi",
+                    name: "ABI encoding",
+                    description:
+                        "Input as ABI encoding parameters https://abitype.dev/api/human#parseabiparameters",
+                },
+            ] as const,
+        }));
+
     switch (encoding) {
         case "hex": {
             const valueHex = await hexInput({
@@ -118,6 +125,7 @@ export const bytesInput = async (
 
         case "abi":
             return await abiParamsInput(config);
+
         default:
             throw new Error(`Unsupported encoding ${encoding}`);
     }
@@ -132,7 +140,7 @@ export const abiParamsInput = async (
     config: InputConfig & { message: string },
 ): Promise<`0x${string}`> => {
     const encoding = await input({
-        message: `${config.message} (as ABI encoded https://abitype.dev/api/human.html#parseabiparameters )`,
+        message: `${config.message} (as ABI encoded https://abitype.dev/api/human#parseabiparameters )`,
         validate: (value) => {
             try {
                 parseAbiParameters(value);
@@ -260,3 +268,28 @@ export const keySelect = createPrompt(
         return `${options} `;
     },
 );
+
+export const getInputApplicationAddress = async (options: {
+    application?: string;
+    projectName?: string;
+}): Promise<Address> => {
+    const { application, projectName } = options;
+
+    if (application && isAddress(application)) {
+        // honor the flag
+        return application;
+    }
+
+    // get the running container application address
+    const nodeAddress = await getApplicationAddress({ projectName });
+    if (nodeAddress) {
+        return nodeAddress;
+    }
+
+    // query for the address
+    const applicationAddress = await addressInput({
+        message: "Application address",
+    });
+
+    return applicationAddress as Address;
+};

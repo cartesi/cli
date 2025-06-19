@@ -56,8 +56,10 @@ export const getProjectName = (options: { projectName?: string }) => {
 
 export type AddressBook = Record<string, Address>;
 
-export const getAddressBook = async (): Promise<AddressBook> => {
-    const applicationAddress = await getApplicationAddress();
+export const getAddressBook = async (options: {
+    projectName?: string;
+}): Promise<AddressBook> => {
+    const applicationAddress = await getApplicationAddress(options);
 
     // build rollups contracts address book
     const contracts: AddressBook = {

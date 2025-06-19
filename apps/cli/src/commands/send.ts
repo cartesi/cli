@@ -1,110 +1,160 @@
-import { Command } from "@commander-js/extra-typings";
-import input from "@inquirer/input";
-import select from "@inquirer/select";
+import { Command, Option } from "@commander-js/extra-typings";
+import ora from "ora";
 import {
-    type Address,
-    type PublicClient,
-    type WalletClient,
+    encodeAbiParameters,
+    getAddress,
     isAddress,
+    isHex,
+    parseAbiParameters,
+    stringToHex,
 } from "viem";
-import { parseAddress } from "../base.js";
-import { getApplicationAddress } from "../exec/rollups.js";
-import createClients, { supportedChains } from "../wallet.js";
-import { createErc20Command } from "./send/erc20.js";
-import { createErc721Command } from "./send/erc721.js";
-import { createEtherCommand } from "./send/ether.js";
-import { createGenericCommand } from "./send/generic.js";
+import { getProjectName } from "../base.js";
+import { inputBoxAbi, inputBoxAddress } from "../contracts.js";
+import { bytesInput, getInputApplicationAddress } from "../prompts.js";
+import { connect } from "../wallet.js";
 
-export const connect = (options: {
-    chainId?: number;
-    rpcUrl?: string;
-    mnemonic?: string;
-    mnemonicIndex: number;
-}): Promise<{
-    publicClient: PublicClient;
-    walletClient: WalletClient;
-}> => {
-    const { chainId, rpcUrl, mnemonic, mnemonicIndex } = options;
-
-    // create viem clients
-    return createClients({
-        chain: supportedChains({ includeDevnet: true }).find(
-            (c) => c.id === chainId,
-        ),
-        rpcUrl,
-        mnemonicPassphrase: mnemonic,
-        mnemonicIndex,
-    });
-};
-
-export const getInputApplicationAddress = async (
-    dapp?: string,
-): Promise<Address> => {
-    if (dapp && isAddress(dapp)) {
-        // honor the flag
-        return dapp;
+const getInput = async (
+    input: string | undefined,
+    options: {
+        encoding?: "abi" | "hex" | "string";
+        abiParams?: string;
+    },
+): Promise<`0x${string}` | undefined> => {
+    const { encoding } = options;
+    if (input) {
+        if (encoding === "hex") {
+            // validate if is a hex value
+            if (!isHex(input)) {
+                throw new Error("input encoded as hex must start with 0x");
+            }
+            return input;
+        }
+        if (encoding === "string") {
+            // encode UTF-8 string as hex
+            return stringToHex(input);
+        }
+        if (encoding === "abi") {
+            const abiParams = options.abiParams;
+            if (!abiParams) {
+                throw new Error("Undefined input-abi-params");
+            }
+            const abiParameters = parseAbiParameters(abiParams);
+            // TODO: decode values
+            const values = input.split(",").map((v, index) => {
+                if (index >= abiParameters.length) {
+                    throw new Error(
+                        `Too many values, expected ${abiParameters.length} values based on --input-abi-params '${abiParams}', parsing value at index ${index} from input '${input}'`,
+                    );
+                }
+                const param = abiParameters[index];
+                switch (param.type) {
+                    case "string":
+                        return v;
+                    case "bool":
+                        if (v === "true") return true;
+                        if (v === "false") return false;
+                        throw new Error(`Invalid boolean value: ${v}`);
+                    case "uint":
+                    case "uint8":
+                    case "uint16":
+                    case "uint32":
+                    case "uint64":
+                    case "uint128":
+                    case "uint256":
+                        try {
+                            return BigInt(v);
+                        } catch (e) {
+                            throw new Error(`Invalid uint value: ${v}`);
+                        }
+                    case "bytes":
+                        if (isHex(v)) {
+                            return v as `0x${string}`;
+                        }
+                        throw new Error(`Invalid bytes value: ${v}`);
+                    case "address":
+                        if (isAddress(v)) {
+                            return getAddress(v);
+                        }
+                        throw new Error(`Invalid address value: ${v}`);
+                    default:
+                        throw new Error(`Unsupported type ${param.type}`);
+                }
+            });
+            if (values.length !== abiParameters.length) {
+                throw new Error(
+                    `Not enough values, expected ${abiParameters.length} values based on --input-abi-params '${abiParams}', parsed ${values.length} values from input '${input}'`,
+                );
+            }
+            return encodeAbiParameters(abiParameters, values);
+        }
+        if (isHex(input)) {
+            // encoding not specified, if starts with 0x, assume hex
+            return input;
+        }
+        // encode UTF-8 string as hex
+        return stringToHex(input);
     }
-
-    // get the running container dapp address
-    const nodeAddress = await getApplicationAddress();
-
-    // query for the address
-    const applicationAddress = await input({
-        message: "Application address",
-        validate: (value) => isAddress(value) || "Invalid address",
-        default: nodeAddress,
-    });
-
-    return applicationAddress as Address;
+    return undefined;
 };
 
 export const createSendCommand = () => {
     const command = new Command("send")
-        .description(
-            "Sends different kinds of input to the application in interactive mode.",
+        .description("Send input to the application")
+        .argument("[input]", "input payload")
+        .option("--from <address>", "input sender address")
+        .option("--application <address>", "application address")
+        .addOption(
+            new Option("--encoding <encoding>", "input encoding").choices([
+                "hex",
+                "string",
+                "abi",
+            ]),
         )
-        .option("--chain-id <id>", "Chain ID", Number.parseInt, 13370)
-        .option("--rpc-url <url>", "RPC URL")
-        .option("--mnemonic <phrase>", "Mnemonic passphrase")
+        .option("--abi-params <abi-params>", "input abi params")
         .option(
-            "--mnemonic-index <index>",
-            "Mnemonic account index",
-            Number.parseInt,
-            0,
+            "--project-name <string>",
+            "name of project (used by docker compose and cartesi-rollups-node)",
         )
-        .option(
-            "--dapp <address>",
-            "Application address",
-            parseAddress,
-            undefined,
-        )
-        .action(async (options, program) => {
-            // Get the registered subcommands from the program
-            const commands = program.commands;
+        .option("--rpc-url <url>", "RPC URL of the Cartesi Devnet")
+        .action(async (input, options, program) => {
+            const { application, from } = options;
 
-            // Create choices for the select prompt based on registered commands
-            const choices = commands.map((cmd) => ({
-                name: cmd.name(),
-                value: cmd,
-                description: cmd.description(),
-            }));
+            const projectName = getProjectName(options);
 
-            // Present the list of subcommands using @inquirer/select
-            const subcommand = await select({
-                message: "Select the type of input to send",
-                choices,
+            // connect to anvil
+            const testClient = await connect(options);
+
+            // the input sender, impersonated
+            const account =
+                from && isAddress(from)
+                    ? getAddress(from)
+                    : (await testClient.getAddresses())[0];
+
+            // get dapp address from local node, or ask
+            const applicationAddress = await getInputApplicationAddress({
+                application,
+                projectName,
             });
 
-            // Execute the selected subcommand
-            subcommand.parseAsync(program.args);
+            const payload =
+                (await getInput(input, options)) ||
+                (await bytesInput({
+                    encoding: options.encoding,
+                    message: "Input",
+                }));
+
+            const { request } = await testClient.simulateContract({
+                address: inputBoxAddress,
+                abi: inputBoxAbi,
+                account,
+                args: [applicationAddress, payload],
+                functionName: "addInput",
+            });
+
+            const hash = await testClient.writeContract(request);
+            const progress = ora("Sending input...").start();
+            await testClient.waitForTransactionReceipt({ hash });
+            progress.succeed(`Input sent: ${hash}`);
         });
-    command.addCommand(createGenericCommand());
-    command.addCommand(createErc20Command());
-    command.addCommand(createErc721Command());
-    command.addCommand(createEtherCommand());
     return command;
 };
-
-export type SendCommandOpts = ReturnType<
-    ReturnType<typeof createSendCommand>["opts"]
->;

@@ -3,8 +3,13 @@ import { execa } from "execa";
 import { Listr, type ListrTask } from "listr2";
 import path from "node:path";
 import pRetry from "p-retry";
-import type { Address, Hash, Hex } from "viem";
-import { getAddress, hexToNumber } from "viem";
+import {
+    type Address,
+    type Hash,
+    type Hex,
+    getAddress,
+    hexToNumber,
+} from "viem";
 import {
     getContextPath,
     getMachineHash,
@@ -79,8 +84,10 @@ export const getApplicationDeployment = async (
     );
 };
 
-export const getApplicationAddress = async (): Promise<Address | undefined> => {
-    const projectName = getProjectName({});
+export const getApplicationAddress = async (options: {
+    projectName?: string;
+}): Promise<Address | undefined> => {
+    const projectName = getProjectName(options ?? {});
     const deployment = await getApplicationDeployment({ projectName });
     return deployment?.address;
 };
@@ -529,4 +536,22 @@ export const removeApplication = async (options: {
         "remove",
         ...removeArgs,
     ]);
+};
+
+/**
+ * Get the host and port of the docker compose project entrypoint
+ * @param options
+ * @returns port of the proxy service
+ */
+export const getProjectPort = async (options: { projectName: string }) => {
+    const { projectName } = options;
+    const { stdout } = await execa("docker", [
+        "compose",
+        "--project-name",
+        projectName,
+        "port",
+        "proxy",
+        "8088",
+    ]);
+    return stdout;
 };

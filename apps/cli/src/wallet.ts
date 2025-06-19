@@ -1,337 +1,56 @@
 import input from "@inquirer/input";
-import chalk from "chalk";
-import type {
-    Account,
-    Address,
-    Chain,
-    Hex,
-    HttpTransport,
-    PublicClient,
-    Transport,
-    WalletClient,
-} from "viem";
 import {
-    formatUnits,
+    createTestClient,
+    defineChain,
     http,
-    createPublicClient as viemCreatePublicClient,
-    createWalletClient as viemCreateWalletClient,
+    publicActions,
+    walletActions,
 } from "viem";
-import { mnemonicToAccount, privateKeyToAccount } from "viem/accounts";
-import {
-    arbitrum,
-    arbitrumSepolia,
-    base,
-    baseSepolia,
-    cannon,
-    mainnet,
-    optimism,
-    optimismSepolia,
-    sepolia,
-} from "viem/chains";
-import { type Choice, hexInput, selectAuto } from "./prompts.js";
+import { cannon } from "viem/chains";
+import { getProjectName } from "./base.js";
+import { PREFERRED_PORT } from "./config.js";
+import { getProjectPort } from "./exec/rollups.js";
 
-// list of all supported chains
-export type SupportedChainsOptions = {
-    includeDevnet?: boolean;
-    includeMainnets?: boolean;
-    includeTestnets?: boolean;
-};
+export const cartesi = defineChain({
+    ...cannon,
+    name: "Cartesi Devnet",
+    testnet: true,
+});
 
-export const supportedChains = (options?: SupportedChainsOptions): Chain[] => {
-    const includeDevnet = options?.includeDevnet ?? false; // default is not to show devnet
-    const includeMainnets = options?.includeMainnets ?? true; // default is true if not specified
-    const includeTestnets = options?.includeTestnets ?? true; // default is true if not specified
-
-    const chains: Chain[] = [];
-    if (includeDevnet) {
-        chains.push(cannon);
-    }
-    if (includeTestnets) {
-        chains.push(arbitrumSepolia, baseSepolia, optimismSepolia, sepolia);
-    }
-    if (includeMainnets) {
-        chains.push(arbitrum, base, mainnet, optimism);
-    }
-    return chains;
-};
-
-export const DEFAULT_DEVNET_MNEMONIC =
-    "test test test test test test test test test test test junk";
-
-export type WalletType = "mnemonic" | "private-key";
-const walletChoices = (chain: Chain): Choice<WalletType>[] => {
-    const dev = chain.id === cannon.id;
-    return [
-        {
-            name: `Mnemonic${dev ? "" : chalk.red(" (UNSAFE)")}`,
-            value: "mnemonic",
-        },
-        {
-            name: `Private Key${dev ? "" : chalk.red(" (UNSAFE)")}`,
-            value: "private-key",
-        },
-    ];
-};
-
-/**
- * Test if a RPC URL for a chain is working
- * @param chain chain to test
- * @param url url to test
- * @returns true if the RPC URL is valid and chainId matches, false otherwise
- */
-const testChainUrl = async (chain: Chain, url: string): Promise<boolean> => {
-    try {
-        const publicClient = viemCreatePublicClient({
-            transport: http(url),
-            chain,
-        });
-        const chainId = await publicClient.getChainId();
-        return chainId === chain.id;
-    } catch (e) {
-        return false;
-    }
-};
-
-/**
- * Test if the default RPC URL for a chain is working
- * @param chain chain to test
- * @returns true if the default RPC URL is valid, false otherwise
- */
-const testDefaultPublicClient = async (chain: Chain): Promise<boolean> => {
-    return testChainUrl(chain, chain.rpcUrls.default.http[0]);
-};
-
-export interface EthereumPromptOptions {
-    chain?: Chain;
+const getRpcUrl = async (options: {
     rpcUrl?: string;
-    mnemonicPassphrase?: string;
-    mnemonicIndex?: number;
-    privateKey?: Hex;
-}
+    projectName?: string;
+}) => {
+    // if rpcUrl is provided, use it
+    if (options.rpcUrl) return options.rpcUrl;
 
-export type TransactionPrompt = (
-    walletClient: WalletClient,
-    publicClient: PublicClient,
-) => Promise<Address>;
-
-const selectChain = async (options: EthereumPromptOptions): Promise<Chain> => {
-    // if development mode, include anvil as an option
-    const chains = supportedChains({ includeDevnet: true });
-
-    if (options.chain) {
-        const chain = options.chain;
-        if (chains.findIndex((c) => c.id === chain.id) >= 0) {
-            return options.chain;
-        }
-        throw new Error(`Unsupported chainId ${options.chain.id}`);
+    // otherwise, try to resolve host:port of the docker project
+    try {
+        const projectName = getProjectName(options);
+        const host = await getProjectPort({ projectName });
+        return `http://${host}/anvil`;
+    } catch (e) {
+        return await input({
+            message: "RPC URL",
+            default: `http://127.0.0.1:${PREFERRED_PORT}/anvil`,
+        });
     }
-    // allow user to select from list
-    const choices = chains.map((chain) => ({
-        name: chain.name,
-        value: chain,
-    }));
-    return await selectAuto<Chain>({
-        message: "Chain",
-        choices,
-        pageSize: choices.length,
-        discardDisabled: true,
-    });
 };
 
-const selectTransport = async (
-    options: EthereumPromptOptions,
-    chain: Chain,
-): Promise<HttpTransport> => {
-    // use user provided url (in args) or try to use default one from chain, or ask for one
-    if (options.rpcUrl) {
-        return http(options.rpcUrl);
-    }
-    const defaultUrl = chain.rpcUrls.default.http[0];
+export const connect = async (options: {
+    rpcUrl?: string;
+    projectName?: string;
+}) => {
+    // resolve rpc url
+    const rpcUrl = await getRpcUrl(options);
 
-    // if the chain is cannon and URL is valid, use it without asking the user
-    if (chain.id === cannon.id) {
-        const port = 6751; // XXX: how to get environment port?
-        const url = `http://127.0.0.1:${port}/anvil`;
-        if (await testChainUrl(chain, url)) {
-            return http(url);
-        }
-
-        if (await testDefaultPublicClient(chain)) {
-            return http(defaultUrl);
-        }
-    }
-
-    const url = await input({
-        message: "RPC URL",
-        default: defaultUrl,
-    });
-
-    return http(url);
+    // create test client
+    const client = createTestClient({
+        chain: cartesi,
+        mode: "anvil",
+        transport: http(rpcUrl),
+    })
+        .extend(publicActions)
+        .extend(walletActions);
+    return client;
 };
-
-const createPublicClient = async (
-    chain: Chain,
-    transport: HttpTransport,
-): Promise<PublicClient> => {
-    const publicClient = viemCreatePublicClient({ transport, chain });
-
-    // check if chainId matches
-    const chainId = await publicClient.getChainId();
-    if (chainId !== chain.id) {
-        throw new Error(
-            `Chain of provided RPC URL (${chainId}) does not match selected chain (${chain.id}))`,
-        );
-    }
-    return publicClient;
-};
-
-/**
- * Format the balance of an account for display
- * @param account account to format the balance for
- * @param publicClient client to query the balance
- * @returns formatted balance string
- */
-const addressBalanceLabel = async (
-    address: Address,
-    publicClient: PublicClient,
-): Promise<string> => {
-    const chain = publicClient.chain;
-    if (chain) {
-        // query balance using provider
-        const balance = await publicClient.getBalance({ address });
-
-        // format balance
-        const symbol = chain.nativeCurrency.symbol;
-        const balanceStr = formatUnits(balance, chain.nativeCurrency.decimals);
-        let balanceLabel = chalk.bold(`${balanceStr} ${symbol}`);
-
-        // display in red if balance is zero
-        if (balance === 0n) {
-            balanceLabel = chalk.red(balanceLabel);
-        }
-        return `${address} ${balanceLabel}`;
-    }
-    return address;
-};
-
-const createWalletClient = async (
-    options: EthereumPromptOptions,
-    chain: Chain,
-    publicClient: PublicClient,
-    publicTransport: Transport,
-): Promise<WalletClient> => {
-    if (options.privateKey) {
-        // private key specified
-        const account = privateKeyToAccount(options.privateKey);
-        return viemCreateWalletClient({
-            account,
-            transport: publicTransport,
-            chain,
-        });
-    }
-    if (options.mnemonicPassphrase) {
-        // mnemonic specified
-        const account = mnemonicToAccount(options.mnemonicPassphrase, {
-            addressIndex: options.mnemonicIndex,
-        });
-
-        // create wallet client
-        return viemCreateWalletClient({
-            account,
-            transport: publicTransport,
-            chain,
-        });
-    }
-    const wallets = walletChoices(chain);
-    const wallet = await selectAuto<WalletType>({
-        message: "Wallet",
-        choices: wallets,
-        discardDisabled: true,
-    });
-
-    if (wallet === "mnemonic") {
-        // use the publicClient transport
-        const mnemonic = await input({
-            message: "Mnemonic",
-            default:
-                chain.id === cannon.id ? DEFAULT_DEVNET_MNEMONIC : undefined,
-        });
-
-        // select account from mnemonic
-        if (options.mnemonicIndex) {
-            return viemCreateWalletClient({
-                transport: publicTransport,
-                chain,
-                account: mnemonicToAccount(mnemonic, {
-                    addressIndex: options.mnemonicIndex,
-                }),
-            });
-        }
-        const choices = await Promise.all(
-            [...Array(10)].map(async (_, addressIndex) => {
-                const account = mnemonicToAccount(mnemonic, {
-                    addressIndex,
-                });
-                const name = await addressBalanceLabel(
-                    account.address,
-                    publicClient,
-                );
-                return { name, value: account };
-            }),
-        );
-        const account = await selectAuto<Account>({
-            message: "Account",
-            choices,
-            pageSize: choices.length,
-        });
-
-        return viemCreateWalletClient({
-            transport: publicTransport,
-            chain,
-            account,
-        });
-    }
-    if (wallet === "private-key") {
-        const privateKey = await hexInput({ message: "Private Key" });
-        const account = privateKeyToAccount(privateKey);
-        return viemCreateWalletClient({
-            transport: publicTransport,
-            chain,
-            account,
-        });
-    }
-    throw new Error(`Unsupported wallet ${wallet}`);
-};
-
-const createClients = async (
-    options: EthereumPromptOptions,
-): Promise<{
-    chain: Chain;
-    publicClient: PublicClient;
-    walletClient: WalletClient;
-}> => {
-    // select chain
-    const chain = await selectChain(options);
-
-    // select RPC URL
-    const transport = await selectTransport(options, chain);
-
-    // create public client
-    const publicClient = await createPublicClient(chain, transport);
-
-    // create wallet client
-    const walletClient = await createWalletClient(
-        options,
-        chain,
-        publicClient,
-        transport,
-    );
-
-    return {
-        chain,
-        publicClient,
-        walletClient,
-    };
-};
-
-export default createClients;
