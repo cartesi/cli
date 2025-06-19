@@ -9,13 +9,14 @@ const TEMPLATES = [
     "cpp",
     "cpp-low-level",
     "go",
+    "java",
     "javascript",
     "lua",
     "python",
     "ruby",
     "rust",
-    "typescript",
-    "java"
+    "typescript"
+
 ] as const;
 
 export const createCreateCommand = () => {
