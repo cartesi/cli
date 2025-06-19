@@ -5,6 +5,7 @@ import {
 } from "@commander-js/extra-typings";
 import { ExitPromptError } from "@inquirer/core";
 import chalk from "chalk";
+import { ExecaError } from "execa";
 import getPort, { portNumbers } from "get-port";
 import ora from "ora";
 import { type Address, type Hex, numberToHex } from "viem";
@@ -12,9 +13,9 @@ import { getMachineHash, getProjectName } from "../base.js";
 import { DEFAULT_SDK_VERSION, PREFERRED_PORT } from "../config.js";
 import {
     AVAILABLE_SERVICES,
-    type RollupsDeployment,
     deployApplication,
     removeApplication,
+    type RollupsDeployment,
     startEnvironment,
     stopEnvironment,
     waitHealthyEnvironment,
@@ -64,9 +65,22 @@ const shell = async (options: {
             );
             switch (option) {
                 case "l": {
-                    await log?.parseAsync(["--project-name", projectName], {
-                        from: "user",
-                    });
+                    try {
+                        await log?.parseAsync(
+                            ["--project-name", projectName, "--follow"],
+                            {
+                                from: "user",
+                            },
+                        );
+                    } catch (error: unknown) {
+                        if (error instanceof ExecaError) {
+                            // just continue gracefully
+                            if (error.exitCode === 130) {
+                                break;
+                            }
+                            throw error;
+                        }
+                    }
                     break;
                 }
                 case "b": {
@@ -99,7 +113,6 @@ const shell = async (options: {
                 // gracefully exit
                 return;
             }
-            console.error(error);
             throw error;
         }
     }
@@ -285,13 +298,9 @@ export const createRunCommand = () => {
                 process.exit(0);
             };
 
-            process.on("SIGINT", shutdown);
-            process.on("SIGTERM", shutdown);
-            process.on("uncaughtException", async (err) => {
-                console.error(err);
-                await shutdown();
-                process.exit(1);
-            });
+            // inhibit SIGINT and SIGTERM, will be handled gracefully by the shell
+            process.on("SIGINT", () => {});
+            process.on("SIGTERM", () => {});
 
             const log = program.parent?.commands.find(
                 (c) => c.name() === "logs",
