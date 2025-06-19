@@ -15,8 +15,7 @@ const TEMPLATES = [
     "python",
     "ruby",
     "rust",
-    "typescript"
-
+    "typescript",
 ] as const;
 
 export const createCreateCommand = () => {
