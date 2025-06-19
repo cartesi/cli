@@ -9,6 +9,7 @@ const TEMPLATES = [
     "cpp",
     "cpp-low-level",
     "go",
+    "java",
     "javascript",
     "lua",
     "python",
