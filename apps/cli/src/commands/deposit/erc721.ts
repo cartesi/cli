@@ -5,11 +5,11 @@ import {
     type Address,
     BaseError,
     ContractFunctionRevertedError,
-    type PublicClient,
     erc721Abi,
     getAddress,
     isAddress,
     isHex,
+    type PublicClient,
 } from "viem";
 import { getProjectName } from "../../base.js";
 import {
@@ -18,7 +18,11 @@ import {
     testNftAbi,
     testNftAddress,
 } from "../../contracts.js";
-import { addressInput, getInputApplicationAddress } from "../../prompts.js";
+import {
+    addressInput,
+    bigintInput,
+    getInputApplicationAddress,
+} from "../../prompts.js";
 import { connect } from "../../wallet.js";
 import type { DepositCommandOpts } from "../deposit.js";
 
@@ -70,15 +74,16 @@ export const createErc721Command = () => {
     return new Command<[], {}, DepositCommandOpts>("erc721")
         .description("Deposit ERC-721 to the application")
         .configureHelp({ showGlobalOptions: true })
-        .argument("<token-id>", "token ID")
+        .argument("[token-id]", "token ID")
         .option("--token <address>", "token address")
         .option("--base-layer-data <hex>", "base layer data", "0x")
         .option("--exec-layer-data <hex>", "exec layer data", "0x")
         .action(async (tokenIdStr, options, command) => {
             const { from } = command.optsWithGlobals();
 
-            // TODO: maybe do this safer?
-            const tokenId = BigInt(tokenIdStr);
+            const tokenId = tokenIdStr
+                ? BigInt(tokenIdStr)
+                : await bigintInput({ decimals: 0, message: "Token ID" });
 
             const projectName = getProjectName(command.optsWithGlobals());
 

@@ -13,10 +13,9 @@ export const createEtherCommand = () => {
     return new Command<[], {}, DepositCommandOpts>("ether")
         .description("Deposit ether to the application")
         .configureHelp({ showGlobalOptions: true })
-        .option("--token <address>", "token address")
-        .option("--amount <number>", "amount, in ETH units")
+        .argument("[amount]", "amount, in ETH units")
         .option("--exec-layer-data <hex>", "exec layer data", "0x")
-        .action(async (options, command) => {
+        .action(async (amountStr, options, command) => {
             const { from } = command.optsWithGlobals();
 
             const projectName = getProjectName(command.optsWithGlobals());
@@ -37,8 +36,8 @@ export const createEtherCommand = () => {
             });
 
             const { decimals, symbol } = testClient.chain.nativeCurrency;
-            const amount = options.amount
-                ? parseUnits(options.amount, decimals)
+            const amount = amountStr
+                ? parseUnits(amountStr, decimals)
                 : await bigintInput({
                       message: `Amount (${symbol})`,
                       decimals,
@@ -52,7 +51,7 @@ export const createEtherCommand = () => {
             const progress = ora();
 
             // for messages
-            const amountStr = `${chalk.cyan(formatUnits(amount, decimals))} ${symbol}`;
+            const amountLabel = `${chalk.cyan(formatUnits(amount, decimals))} ${symbol}`;
 
             // check balance
             const balance = await testClient.getBalance({
@@ -74,12 +73,12 @@ export const createEtherCommand = () => {
 
             // send deposit
             progress.start(
-                `Depositing ${amountStr} to ${chalk.cyan(application)}...`,
+                `Depositing ${amountLabel} to ${chalk.cyan(application)}...`,
             );
             const hash = await testClient.writeContract(request);
             await testClient.waitForTransactionReceipt({ hash });
             progress.succeed(
-                `Deposited ${amountStr} to ${chalk.cyan(application)}`,
+                `Deposited ${amountLabel} to ${chalk.cyan(application)}`,
             );
         });
 };

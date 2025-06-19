@@ -3,13 +3,13 @@ import chalk from "chalk";
 import ora from "ora";
 import {
     type Address,
-    type PublicClient,
     erc20Abi,
     formatUnits,
     getAddress,
     isAddress,
     isHex,
     parseUnits,
+    type PublicClient,
 } from "viem";
 import { getProjectName } from "../../base.js";
 import {
@@ -79,10 +79,10 @@ export const createErc20Command = () => {
     return new Command<[], {}, DepositCommandOpts>("erc20")
         .description("Deposit ERC-20 to the application")
         .configureHelp({ showGlobalOptions: true })
+        .argument("[amount]", "amount to send")
         .option("--token <address>", "token address")
-        .option("--amount <number>", "amount to send")
         .option("--exec-layer-data <hex>", "exec layer data", "0x")
-        .action(async (options, command) => {
+        .action(async (amountStr, options, command) => {
             const { from } = command.optsWithGlobals();
 
             const projectName = getProjectName(command.optsWithGlobals());
@@ -108,8 +108,8 @@ export const createErc20Command = () => {
             });
 
             const { decimals, symbol } = token;
-            const amount = options.amount
-                ? parseUnits(options.amount, decimals)
+            const amount = amountStr
+                ? parseUnits(amountStr, decimals)
                 : await bigintInput({
                       message: `Amount (${symbol})`,
                       decimals,
@@ -143,7 +143,7 @@ export const createErc20Command = () => {
             });
 
             // for messages
-            const amountStr = `${chalk.cyan(formatUnits(amount, decimals))} ${symbol}`;
+            const amountLabel = `${chalk.cyan(formatUnits(amount, decimals))} ${symbol}`;
 
             // approve if needed
             if (allowance < amount) {
@@ -171,12 +171,12 @@ export const createErc20Command = () => {
 
             // send deposit
             progress.start(
-                `Depositing ${amountStr} to ${chalk.cyan(application)}...`,
+                `Depositing ${amountLabel} to ${chalk.cyan(application)}...`,
             );
             const hash = await testClient.writeContract(request);
             await testClient.waitForTransactionReceipt({ hash });
             progress.succeed(
-                `Deposited ${amountStr} to ${chalk.cyan(application)}`,
+                `Deposited ${amountLabel} to ${chalk.cyan(application)}`,
             );
         });
 };
