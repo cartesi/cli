@@ -1,5 +1,25 @@
 # Changelog
 
+## 2.0.0-alpha.14
+
+### Minor Changes
+
+- 16e1c20: Added support for new Cartesi Java template
+
+### Patch Changes
+
+- 8d1db59: fix address resolution in send command
+- 9a21da4: replaced `cartesi send erc20` by `cartesi deposit erc20`
+- 9a21da4: replaced `cartesi send generic` by `cartesi send`
+- 8d1db59: remove start and stop commands
+- 9a21da4: replaced `cartesi send erc721` by `cartesi deposit erc721`
+- bc77352: reduce default block time to 2s
+- 9a21da4: replaced `cartesi send ether` by `cartesi deposit ether`
+- 6b7a04d: refactored run command, with rebuild option
+- d2330c2: follow log on run logs option
+- e48f347: set minimum cartesi-machine version to 0.19.0
+- bc0bcb3: use first free port starting from 6751
+
 ## 2.0.0-alpha.13
 
 ### Patch Changes
