@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0-alpha.15
+
+### Patch Changes
+
+- d7c7638: bump rollups-explorer to 1.0.0
+
 ## 2.0.0-alpha.14
 
 ### Minor Changes
