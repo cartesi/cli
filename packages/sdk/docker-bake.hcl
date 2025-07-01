@@ -8,7 +8,7 @@ target "default" {
   args = {
     ALTO_VERSION                      = "1.2.5"
     ALTO_PACKAGE_VERSION              = "0.0.18"
-    CARTESI_BASE_IMAGE                = "docker.io/library/debian:bookworm-20250610-slim@sha256:0d8498a0e9e6a60011df39aab78534cfe940785e7c59d19dfae1eb53ea59babe"
+    CARTESI_BASE_IMAGE                = "docker.io/library/debian:bookworm-20250630-slim@sha256:6ac2c08566499cc2415926653cf2ed7c3aedac445675a013cc09469c9e118fdd"
     CARTESI_DEVNET_VERSION            = "2.0.0-alpha.7"
     CARTESI_IMAGE_KERNEL_VERSION      = "0.20.0"
     CARTESI_LINUX_KERNEL_VERSION      = "6.5.13-ctsi-1-v0.20.0"
@@ -22,7 +22,7 @@ target "default" {
     GO_MIGRATE_VERSION                = "4.18.2"
     NODE_VERSION                      = "22.15.1"
     NVM_VERSION                       = "977563e97ddc66facf3a8e31c6cff01d236f09bd" # 0.40.3
-    POSTGRES_BASE_IMAGE               = "docker.io/library/postgres:17@sha256:7f29c02ba9eeff4de9a9f414d803faa0e6fe5e8d15ebe217e3e418c82e652b35"
+    POSTGRES_BASE_IMAGE               = "docker.io/library/postgres:17@sha256:3962158596daaef3682838cc8eb0e719ad1ce520f88e34596ce8d5de1b6330a1"
     SU_EXEC_VERSION                   = "0.2"
     XGENEXT2_VERSION                  = "1.5.6"
   }
