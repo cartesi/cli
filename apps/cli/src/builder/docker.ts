@@ -92,15 +92,19 @@ export const build = async (
 
     // use pre-existing image or build docker image
     let image: string;
+    let imageInfo: ImageInfo | undefined;
     if (drive.image) {
         image = drive.image;
-        await execa("docker", ["image", "pull", image]);
+        try {
+            imageInfo = await getImageInfo(image);
+        } catch (error) {
+            await execa("docker", ["image", "pull", image]);
+            imageInfo = await getImageInfo(image);
+        }
     } else {
         image = await buildImage(drive);
+        imageInfo = await getImageInfo(image);
     }
-
-    // get image info
-    const imageInfo = await getImageInfo(image);
 
     try {
         // create OCI Docker tarball from Docker image
