@@ -116,6 +116,16 @@ shared = true`);
                 new InvalidStringValueError(false),
             );
         });
+        it("should parse entrypoint", () => {
+            const entrypointConfig = `
+                ${config}
+                entrypoint = "echo 'Hello, World!'"
+            `;
+            expect(parse(entrypointConfig)).toEqual({
+                ...defaultConfig(),
+                machine: { ...defaultMachineConfig(), noRollup: true, entrypoint: "echo 'Hello, World!'" },
+            });
+        });
     });
 
     /**
