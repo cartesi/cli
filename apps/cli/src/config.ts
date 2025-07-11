@@ -368,6 +368,7 @@ const parseMachine = (value: TomlPrimitive): MachineConfig => {
             toml["assert-rolling-template"],
         ),
         bootargs: parseStringArray(toml.bootargs),
+        entrypoint: parseOptionalString(toml.entrypoint),
         finalHash: parseBoolean(toml["final-hash"], true),
         interactive: undefined,
         maxMCycle: parseOptionalNumber(toml["max-mcycle"]),

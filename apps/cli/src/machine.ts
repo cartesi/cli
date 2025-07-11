@@ -58,12 +58,18 @@ export const bootMachine = async (
     );
 
     // entrypoint from config or image info (Docker ENTRYPOINT + CMD)
-    const entrypoint =
-        machine.entrypoint ?? // takes priority
-        (info ? [...info.entrypoint, ...info.cmd].join(" ") : undefined); // ENTRYPOINT and CMD as a space separated string
+    let entrypoint: string | undefined;
+
+    if (machine.entrypoint) {
+        entrypoint = machine.entrypoint;
+    } else if (info && (info.entrypoint.length > 0 || info.cmd.length > 0)) {
+        entrypoint = [...info.entrypoint, ...info.cmd].join(" ");
+    }
 
     if (!entrypoint) {
-        throw new Error("Undefined machine entrypoint");
+        throw new Error(
+            "Undefined machine entrypoint. Please define an entrypoint in your cartesi.toml config or in your Dockerfile.",
+        );
     }
 
     const flashDrives = Object.entries(config.drives).map(([label, drive]) =>
