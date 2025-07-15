@@ -17,6 +17,7 @@ describe("when building with the docker builder", () => {
     tmpdirTest("should fail without correct context", async ({ tmpdir }) => {
         const destination = tmpdir;
         const drive: DockerDriveConfig = {
+            buildArgs: [],
             builder: "docker",
             context: ".",
             dockerfile: "Dockerfile",
@@ -34,6 +35,7 @@ describe("when building with the docker builder", () => {
     tmpdirTest("should fail a non-riscv image", async ({ tmpdir }) => {
         const destination = tmpdir;
         const drive: DockerDriveConfig = {
+            buildArgs: [],
             builder: "docker",
             context: path.join(__dirname, "data"),
             dockerfile: "Dockerfile",
@@ -53,6 +55,7 @@ describe("when building with the docker builder", () => {
         async ({ tmpdir }) => {
             const destination = tmpdir;
             const drive: DockerDriveConfig = {
+                buildArgs: [],
                 builder: "docker",
                 context: path.join(__dirname, "fixtures"),
                 dockerfile: path.join(__dirname, "fixtures", "Dockerfile"),
@@ -72,6 +75,7 @@ describe("when building with the docker builder", () => {
     tmpdirTest("should build an ext2 drive", async ({ tmpdir }) => {
         const destination = tmpdir;
         const drive: DockerDriveConfig = {
+            buildArgs: [],
             builder: "docker",
             context: path.join(__dirname, "fixtures"),
             dockerfile: path.join(__dirname, "fixtures", "Dockerfile"),
@@ -90,6 +94,7 @@ describe("when building with the docker builder", () => {
     tmpdirTest.skip("should build a sqfs drive", async ({ tmpdir }) => {
         const destination = tmpdir;
         const drive: DockerDriveConfig = {
+            buildArgs: [],
             builder: "docker",
             context: path.join(__dirname, "fixtures"),
             dockerfile: path.join(__dirname, "fixtures", "Dockerfile"),
