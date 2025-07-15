@@ -74,6 +74,7 @@ shared = true`);
             ...defaultConfig(),
             drives: {
                 root: {
+                    buildArgs: [],
                     builder: "docker",
                     dockerfile: "backend/Dockerfile",
                     context: ".",
@@ -123,7 +124,11 @@ shared = true`);
             `;
             expect(parse(entrypointConfig)).toEqual({
                 ...defaultConfig(),
-                machine: { ...defaultMachineConfig(), noRollup: true, entrypoint: "echo 'Hello, World!'" },
+                machine: {
+                    ...defaultMachineConfig(),
+                    noRollup: true,
+                    entrypoint: "echo 'Hello, World!'",
+                },
             });
         });
     });

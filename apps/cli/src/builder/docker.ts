@@ -7,7 +7,7 @@ import { crane, genext2fs, mksquashfs } from "../exec/index.js";
 
 type ImageBuildOptions = Pick<
     DockerDriveConfig,
-    "context" | "dockerfile" | "tags" | "target"
+    "buildArgs" | "context" | "dockerfile" | "tags" | "target"
 >;
 
 type ImageInfo = {
@@ -21,7 +21,7 @@ type ImageInfo = {
  * Build Docker image (linux/riscv64). Returns image id.
  */
 const buildImage = async (options: ImageBuildOptions): Promise<string> => {
-    const { context, dockerfile, tags, target } = options;
+    const { buildArgs, context, dockerfile, tags, target } = options;
     const buildResult = tmp.tmpNameSync();
     const args = [
         "buildx",
@@ -38,6 +38,9 @@ const buildImage = async (options: ImageBuildOptions): Promise<string> => {
 
     // set tags for the image built
     args.push(...tags.flatMap((tag) => ["--tag", tag]));
+
+    // set build args
+    args.push(...buildArgs.flatMap((arg) => ["--build-arg", arg]));
 
     if (target) {
         args.push("--target", target);
