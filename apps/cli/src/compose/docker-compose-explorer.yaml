@@ -78,7 +78,10 @@ services:
                 condition: service_healthy
 
     explorer:
-        image: cartesi/rollups-explorer:1.0.2
+        image: cartesi/rollups-explorer:1.2.0
+        environment:
+            NODE_RPC_URL: "http://127.0.0.1:${CARTESI_LISTEN_PORT:-6751}/anvil"
+            EXPLORER_API_URL: "http://127.0.0.1:${CARTESI_LISTEN_PORT:-6751}/explorer-api/graphql"
         expose:
             - 3000
         depends_on:
