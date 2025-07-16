@@ -66,7 +66,7 @@ export const getDeployments = async (
             "list",
         ]);
         return JSON.parse(stdout).map(parseDeployment);
-    } catch (e: unknown) {
+    } catch {
         return [];
     }
 };

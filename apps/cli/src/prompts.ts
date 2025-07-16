@@ -145,7 +145,7 @@ export const abiParamsInput = async (
             try {
                 parseAbiParameters(value);
                 return true;
-            } catch (e) {
+            } catch {
                 return "Invalid ABI parameters";
             }
         },
@@ -177,7 +177,7 @@ export const abiParamsInput = async (
                             try {
                                 BigInt(value);
                                 return true;
-                            } catch (e) {
+                            } catch {
                                 return "Invalid number";
                             }
                         },

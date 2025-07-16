@@ -101,7 +101,7 @@ export const build = async (
         image = drive.image;
         try {
             imageInfo = await getImageInfo(image);
-        } catch (error) {
+        } catch {
             await execa("docker", ["image", "pull", image]);
             imageInfo = await getImageInfo(image);
         }

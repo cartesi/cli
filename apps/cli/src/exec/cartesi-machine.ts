@@ -29,7 +29,7 @@ export const version = async (
             return parse(output.version);
         }
         return null;
-    } catch (e: unknown) {
+    } catch {
         return null;
     }
 };
