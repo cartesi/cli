@@ -9,8 +9,7 @@ import { connect } from "../../wallet.js";
 import type { DepositCommandOpts } from "../deposit.js";
 
 export const createEtherCommand = () => {
-    // biome-ignore lint/complexity/noBannedTypes: commander pattern
-    return new Command<[], {}, DepositCommandOpts>("ether")
+    return new Command<[], Record<string, never>, DepositCommandOpts>("ether")
         .description("Deposit ether to the application")
         .configureHelp({ showGlobalOptions: true })
         .argument("[amount]", "amount, in ETH units")

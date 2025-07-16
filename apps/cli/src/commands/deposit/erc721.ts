@@ -5,11 +5,11 @@ import {
     type Address,
     BaseError,
     ContractFunctionRevertedError,
+    type PublicClient,
     erc721Abi,
     getAddress,
     isAddress,
     isHex,
-    type PublicClient,
 } from "viem";
 import { getProjectName } from "../../base.js";
 import {
@@ -70,8 +70,7 @@ const parseToken = async (options: {
 };
 
 export const createErc721Command = () => {
-    // biome-ignore lint/complexity/noBannedTypes: commander pattern
-    return new Command<[], {}, DepositCommandOpts>("erc721")
+    return new Command<[], Record<string, never>, DepositCommandOpts>("erc721")
         .description("Deposit ERC-721 to the application")
         .configureHelp({ showGlobalOptions: true })
         .argument("[token-id]", "token ID")
