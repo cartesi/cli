@@ -25,7 +25,7 @@ export const createLogsCommand = () => {
             "Show logs before a timestamp (e.g. 2013-01-02T13:23:37Z) or relative (e.g. 42m for 42 minutes)",
         )
         .configureHelp({ showGlobalOptions: true })
-        .action(async (options, command) => {
+        .action(async (options) => {
             const { follow, color, since, tail, until } = options;
             const projectName = getProjectName(options);
             const logOptions: string[] = ["--no-log-prefix"];

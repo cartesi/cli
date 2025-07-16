@@ -15,7 +15,7 @@ export const createDepositCommand = () => {
             "name of project (used by docker compose and cartesi-rollups-node)",
         )
         .option("--rpc-url <url>", "RPC URL of the Cartesi Devnet")
-        .action(async (options, command) => {
+        .action(async (_options, command) => {
             // get registered subcommands
             const commands = command.commands;
 

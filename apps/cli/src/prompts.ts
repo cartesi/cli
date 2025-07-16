@@ -226,7 +226,6 @@ export const selectAuto = <ValueType>(
     const list = config.discardDisabled
         ? choices.filter((c) => !(c instanceof Separator) && !c.disabled)
         : choices;
-    const a = choices.filter((c) => c.type !== "separator");
 
     if (list.length === 1) {
         const choice = list[0];
