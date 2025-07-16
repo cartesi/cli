@@ -1,4 +1,4 @@
-import { Command } from "@commander-js/extra-typings";
+import { Command, Option } from "@commander-js/extra-typings";
 import fs from "fs-extra";
 import path from "node:path";
 import tmp from "tmp";
@@ -18,13 +18,14 @@ const buildDrive = async (
     drive: DriveConfig,
     sdkImage: string,
     destination: string,
+    debug: boolean,
 ): Promise<DriveResult> => {
     switch (drive.builder) {
         case "directory": {
-            return buildDirectory(name, drive, sdkImage, destination);
+            return buildDirectory(name, drive, sdkImage, destination, debug);
         }
         case "docker": {
-            return buildDocker(name, drive, sdkImage, destination);
+            return buildDocker(name, drive, sdkImage, destination, debug);
         }
         case "empty": {
             return buildEmpty(name, drive, sdkImage, destination);
@@ -48,8 +49,16 @@ export const createBuildCommand = () => {
             "path to the configuration file",
             "cartesi.toml",
         )
+        .addOption(
+            new Option(
+                "--debug",
+                "enable debug mode (do not remove intermediate files)",
+            )
+                .default(false)
+                .hideHelp(),
+        )
         .option("-d, --drives-only", "only build drives, do not boot machine")
-        .action(async ({ config, drivesOnly }) => {
+        .action(async ({ config, debug, drivesOnly }) => {
             // clean up temp files we create along the process
             tmp.setGracefulCleanup();
 
@@ -66,7 +75,7 @@ export const createBuildCommand = () => {
             const results = Object.entries(c.drives).reduce<
                 Record<string, Promise<DriveResult>>
             >((acc, [name, drive]) => {
-                acc[name] = buildDrive(name, drive, c.sdk, destination);
+                acc[name] = buildDrive(name, drive, c.sdk, destination, debug);
                 return acc;
             }, {});
 

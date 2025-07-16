@@ -86,6 +86,7 @@ export const build = async (
     drive: DockerDriveConfig,
     sdkImage: string,
     destination: string,
+    debug: boolean,
 ): Promise<ImageInfo | undefined> => {
     const { format } = drive;
 
@@ -145,8 +146,10 @@ export const build = async (
         }
     } finally {
         // delete intermediate files
-        await fs.remove(path.join(destination, ocitar));
-        await fs.remove(path.join(destination, tar));
+        if (!debug) {
+            await fs.remove(path.join(destination, ocitar));
+            await fs.remove(path.join(destination, tar));
+        }
     }
 
     return imageInfo;

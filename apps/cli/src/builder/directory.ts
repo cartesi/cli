@@ -8,6 +8,7 @@ export const build = async (
     drive: DirectoryDriveConfig,
     sdkImage: string,
     destination: string,
+    debug: boolean,
 ): Promise<undefined> => {
     const filename = `${name}.${drive.format}`;
 
@@ -40,6 +41,8 @@ export const build = async (
         }
     } finally {
         // delete copied
-        await fs.remove(dest);
+        if (!debug) {
+            await fs.remove(dest);
+        }
     }
 };
