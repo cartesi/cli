@@ -27,9 +27,9 @@ describe("when building with the docker builder", () => {
             image: undefined,
             target: undefined,
         };
-        await expect(build("root", drive, image, destination)).rejects.toThrow(
-            "exit code 1",
-        );
+        await expect(
+            build("root", drive, image, destination, false),
+        ).rejects.toThrow("exit code 1");
     });
 
     tmpdirTest("should fail a non-riscv image", async ({ tmpdir }) => {
@@ -45,9 +45,9 @@ describe("when building with the docker builder", () => {
             image: "debian:bookworm-slim",
             target: undefined,
         };
-        await expect(build("root", drive, image, destination)).rejects.toThrow(
-            "Expected riscv64",
-        );
+        await expect(
+            build("root", drive, image, destination, false),
+        ).rejects.toThrow("Expected riscv64");
     });
 
     tmpdirTest(
@@ -65,7 +65,7 @@ describe("when building with the docker builder", () => {
                 image: undefined,
                 target: "test",
             };
-            await build("root", drive, image, destination);
+            await build("root", drive, image, destination, false);
             const filename = path.join(destination, "root.ext2");
             const stat = fs.statSync(filename);
             expect(stat.size).toEqual(85917696);
@@ -85,7 +85,7 @@ describe("when building with the docker builder", () => {
             image: undefined,
             target: undefined,
         };
-        await build("root", drive, image, destination);
+        await build("root", drive, image, destination, false);
         const filename = path.join(destination, "root.ext2");
         const stat = fs.statSync(filename);
         expect(stat.size).toEqual(85917696);
@@ -104,7 +104,7 @@ describe("when building with the docker builder", () => {
             image: undefined,
             target: undefined,
         };
-        await build("root", drive, image, destination);
+        await build("root", drive, image, destination, false);
         const filename = path.join(destination, "root.sqfs");
         const stat = fs.statSync(filename);
         expect(stat.size).toEqual(29327360);

@@ -20,7 +20,7 @@ describe("when building with the directory builder", () => {
                 format: "ext2",
             };
             await expect(
-                build("root", drive, image, destination),
+                build("root", drive, image, destination, false),
             ).rejects.toThrow("no such file or directory");
         },
     );
@@ -38,7 +38,7 @@ describe("when building with the directory builder", () => {
                 format: "ext2",
             };
             await expect(
-                build("root", drive, image, destination),
+                build("root", drive, image, destination, false),
             ).rejects.toThrow("too few blocks");
         },
     );
@@ -55,7 +55,7 @@ describe("when building with the directory builder", () => {
                 extraSize: 1024 * 1024, // 1Mb
                 format: "ext2",
             };
-            await build("root", drive, image, destination);
+            await build("root", drive, image, destination, false);
             const filename = path.join(destination, "root.ext2");
             const stat = fs.statSync(filename);
             expect(stat.size).toEqual(1069056);
@@ -72,7 +72,7 @@ describe("when building with the directory builder", () => {
                 extraSize: 0,
                 format: "ext2",
             };
-            await build("root", drive, image, destination);
+            await build("root", drive, image, destination, false);
             const filename = path.join(destination, "root.ext2");
             const stat = fs.statSync(filename);
             expect(stat.size).toEqual(32768);
@@ -89,7 +89,7 @@ describe("when building with the directory builder", () => {
                 extraSize: 0,
                 format: "sqfs",
             };
-            await build("root", drive, image, destination);
+            await build("root", drive, image, destination, false);
             const filename = path.join(destination, "root.sqfs");
             const stat = fs.statSync(filename);
             expect(stat.size).toEqual(4096);
