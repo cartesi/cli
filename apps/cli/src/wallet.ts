@@ -29,7 +29,7 @@ const getRpcUrl = async (options: {
         const projectName = getProjectName(options);
         const host = await getProjectPort({ projectName });
         return `http://${host}/anvil`;
-    } catch (e) {
+    } catch {
         return await input({
             message: "RPC URL",
             default: `http://127.0.0.1:${PREFERRED_PORT}/anvil`,

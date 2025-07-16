@@ -63,7 +63,7 @@ const getInput = async (
                     case "uint256":
                         try {
                             return BigInt(v);
-                        } catch (e) {
+                        } catch {
                             throw new Error(`Invalid uint value: ${v}`);
                         }
                     case "bytes":
