@@ -7,7 +7,6 @@ import { bootMachine } from "../machine.js";
 
 export const createShellCommand = () => {
     return new Command("shell")
-        .argument("[image]", "image ID|name")
         .option("--command <command>", "shell command to run", "/bin/sh")
         .option(
             "-c, --config <config>",
@@ -15,7 +14,7 @@ export const createShellCommand = () => {
             "cartesi.toml",
         )
         .option("--run-as-root", "run as root user", false)
-        .action(async (image, { command, config, runAsRoot }) => {
+        .action(async ({ command, config, runAsRoot }) => {
             // get application configuration from 'cartesi.toml'
             const c = getApplicationConfig(config);
 
