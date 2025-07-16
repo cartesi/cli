@@ -83,7 +83,6 @@ export const bootMachine = async (
         ...flashDrives,
         `--ram-image=${ramImage}`,
         `--ram-length=${ramLength}`,
-        `--append-entrypoint=${entrypoint}`,
     ];
     if (assertRollingTemplate) {
         args.push("--assert-rolling-template");
@@ -109,6 +108,8 @@ export const bootMachine = async (
     if (user) {
         args.push(`--user=${user}`);
     }
+    args.push("--");
+    args.push(entrypoint);
 
     return cartesiMachine.boot(args, {
         cwd: destination,
