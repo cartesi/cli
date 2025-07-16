@@ -1,18 +1,16 @@
-import { Range, type SemVer, parse } from "semver";
+import { parse, Range, type SemVer } from "semver";
 import {
+    execaDockerFallback,
     type DockerFallbackOptions,
     type ExecaOptionsDockerFallback,
-    execaDockerFallback,
 } from "./util.js";
 
 export const requiredVersion = new Range("^0.19.0");
 
-export const boot = async (
+export const boot = (
     args: readonly string[],
     options: ExecaOptionsDockerFallback,
-) => {
-    return execaDockerFallback("cartesi-machine", args, options);
-};
+) => execaDockerFallback("cartesi-machine", args, options);
 
 export const version = async (
     options?: DockerFallbackOptions,

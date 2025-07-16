@@ -6,7 +6,7 @@ export const build = async (
     name: string,
     drive: ExistingDriveConfig,
     destination: string,
-): Promise<undefined> => {
+): Promise<void> => {
     // no need to build, drive already exists
     const src = drive.filename;
     const format = getDriveFormat(src);
