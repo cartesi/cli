@@ -1,4 +1,4 @@
-import { Range, type SemVer, parse } from "semver";
+import { parse, Range, type SemVer } from "semver";
 import { type DockerFallbackOptions, execaDockerFallback } from "./util.js";
 
 const BLOCK_SIZE = 4096; // fixed at 4k
@@ -13,7 +13,7 @@ const baseArgs = (options: { extraBlocks: number }) => [
     `+${options.extraBlocks}`,
 ];
 
-export const empty = async (
+export const empty = (
     options: {
         cwd?: string;
         size: number;
@@ -22,7 +22,7 @@ export const empty = async (
 ) => {
     const { size, output } = options;
     const blocks = Math.ceil(size / BLOCK_SIZE); // size in blocks
-    await execaDockerFallback(
+    return execaDockerFallback(
         "xgenext2fs",
         [
             "--block-size",
@@ -36,7 +36,7 @@ export const empty = async (
     );
 };
 
-export const fromDirectory = async (
+export const fromDirectory = (
     options: {
         cwd?: string;
         extraSize: number;
@@ -53,7 +53,7 @@ export const fromDirectory = async (
     );
 };
 
-export const fromTar = async (
+export const fromTar = (
     options: {
         cwd?: string;
         extraSize: number;

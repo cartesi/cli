@@ -47,7 +47,7 @@ describe("when building with the docker builder", () => {
         };
         await expect(
             build("root", drive, image, destination, false),
-        ).rejects.toThrow("Expected riscv64");
+        ).rejects.toThrow(/no match for platform in manifest/);
     });
 
     tmpdirTest(

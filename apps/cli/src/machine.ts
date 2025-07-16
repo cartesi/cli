@@ -1,5 +1,6 @@
 import type { Config, DriveConfig, ImageInfo } from "./config.js";
 import { cartesiMachine } from "./exec/index.js";
+import type { ExecaOptionsDockerFallback } from "./exec/util.js";
 
 const flashDrive = (label: string, drive: DriveConfig): string => {
     const { format, mount, shared, user } = drive;
@@ -18,10 +19,11 @@ const flashDrive = (label: string, drive: DriveConfig): string => {
     return `--flash-drive=${vars.join(",")}`;
 };
 
-export const bootMachine = async (
+export const bootMachine = (
     config: Config,
     info: ImageInfo | undefined,
     destination: string,
+    options?: ExecaOptionsDockerFallback,
 ) => {
     const { machine } = config;
     const {
@@ -114,6 +116,6 @@ export const bootMachine = async (
     return cartesiMachine.boot(args, {
         cwd: destination,
         image: config.sdk,
-        stdio: "inherit",
+        ...options,
     });
 };

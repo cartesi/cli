@@ -9,7 +9,7 @@ export const build = async (
     sdkImage: string,
     destination: string,
     debug: boolean,
-): Promise<undefined> => {
+): Promise<void> => {
     const filename = `${name}.${drive.format}`;
 
     // copy directory to destination

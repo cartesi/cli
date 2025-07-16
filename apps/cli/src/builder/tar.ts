@@ -8,7 +8,7 @@ export const build = async (
     drive: TarDriveConfig,
     sdkImage: string,
     destination: string,
-): Promise<undefined> => {
+): Promise<void> => {
     const tar = `${name}.tar`;
     const filename = `${name}.${drive.format}`;
 

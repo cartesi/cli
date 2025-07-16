@@ -1,14 +1,13 @@
 import { execa } from "execa";
 import fs from "fs-extra";
 import path from "node:path";
-import tmp from "tmp";
 import type { DockerDriveConfig } from "../config.js";
-import { crane, genext2fs, mksquashfs } from "../exec/index.js";
+import { genext2fs, mksquashfs } from "../exec/index.js";
 
 type ImageBuildOptions = Pick<
     DockerDriveConfig,
     "buildArgs" | "context" | "dockerfile" | "tags" | "target"
->;
+> & { destination: string; dockerfileContent?: string };
 
 type ImageInfo = {
     cmd: string[];
@@ -21,19 +20,30 @@ type ImageInfo = {
  * Build Docker image (linux/riscv64). Returns image id.
  */
 const buildImage = async (options: ImageBuildOptions): Promise<string> => {
-    const { buildArgs, context, dockerfile, tags, target } = options;
-    const buildResult = tmp.tmpNameSync();
+    const {
+        buildArgs,
+        context,
+        destination,
+        dockerfile,
+        dockerfileContent,
+        tags,
+        target,
+    } = options;
+
+    // if dockerfileContext is specified, use it as the dockerfile passed through stdin
     const args = [
         "buildx",
         "build",
         "--platform",
         "linux/riscv64",
         "--file",
-        dockerfile,
-        "--load",
-        "--iidfile",
-        buildResult,
-        context,
+        dockerfileContent ? "-" : dockerfile,
+        "--output",
+        "type=docker",
+        "--output",
+        `type=tar,dest=${destination}`,
+        "--progress",
+        "quiet",
     ];
 
     // set tags for the image built
@@ -46,8 +56,12 @@ const buildImage = async (options: ImageBuildOptions): Promise<string> => {
         args.push("--target", target);
     }
 
-    await execa("docker", args, { stdio: "inherit" });
-    return fs.readFileSync(buildResult, "utf8");
+    args.push(context);
+
+    const { stdout: imageId } = await execa("docker", args, {
+        input: dockerfileContent,
+    });
+    return imageId;
 };
 
 /**
@@ -90,39 +104,28 @@ export const build = async (
 ): Promise<ImageInfo | undefined> => {
     const { format } = drive;
 
-    const ocitar = `${name}.oci.tar`;
     const tar = `${name}.tar`;
     const filename = `${name}.${format}`;
 
     // use pre-existing image or build docker image
     let image: string;
-    let imageInfo: ImageInfo | undefined;
+
     if (drive.image) {
-        image = drive.image;
-        try {
-            imageInfo = await getImageInfo(image);
-        } catch {
-            await execa("docker", ["image", "pull", image]);
-            imageInfo = await getImageInfo(image);
-        }
+        // build a docker image with `FROM <image>`
+        image = await buildImage({
+            ...drive,
+            destination: path.join(destination, tar),
+            dockerfileContent: `FROM ${drive.image}`,
+        });
     } else {
-        image = await buildImage(drive);
-        imageInfo = await getImageInfo(image);
+        image = await buildImage({
+            ...drive,
+            destination: path.join(destination, tar),
+        });
     }
+    const imageInfo = await getImageInfo(image);
 
     try {
-        // create OCI Docker tarball from Docker image
-        await execa("docker", ["image", "save", image, "-o", ocitar], {
-            cwd: destination,
-        });
-
-        // create rootfs tar from OCI tar
-        await crane.exportImage({
-            stdin: fs.openSync(path.join(destination, ocitar), "r"),
-            stdout: fs.openSync(path.join(destination, tar), "w"),
-            image: sdkImage,
-        });
-
         switch (format) {
             case "ext2": {
                 await genext2fs.fromTar({
@@ -147,7 +150,6 @@ export const build = async (
     } finally {
         // delete intermediate files
         if (!debug) {
-            await fs.remove(path.join(destination, ocitar));
             await fs.remove(path.join(destination, tar));
         }
     }

@@ -8,7 +8,7 @@ export const build = async (
     drive: EmptyDriveConfig,
     sdkImage: string,
     destination: string,
-): Promise<undefined> => {
+): Promise<void> => {
     const filename = `${name}.${drive.format}`;
     switch (drive.format) {
         case "ext2": {

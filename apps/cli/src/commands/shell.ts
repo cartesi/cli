@@ -1,4 +1,5 @@
 import { Command } from "@commander-js/extra-typings";
+import { ExecaError } from "execa";
 import fs from "fs-extra";
 import path from "node:path";
 import { getApplicationConfig, getContextPath } from "../base.js";
@@ -14,15 +15,17 @@ export const createShellCommand = () => {
             "cartesi.toml",
         )
         .option("--run-as-root", "run as root user", false)
-        .action(async ({ command, config, runAsRoot }) => {
+        .action(async (options) => {
+            const { command, runAsRoot } = options;
+
             // get application configuration from 'cartesi.toml'
-            const c = getApplicationConfig(config);
+            const config = getApplicationConfig(options.config);
 
             // destination directory for image and intermediate files
             const destination = path.resolve(getContextPath());
 
             // check if all drives are built
-            for (const [name, drive] of Object.entries(c.drives)) {
+            for (const [name, drive] of Object.entries(config.drives)) {
                 const filename = `${name}.${drive.format}`;
                 const pathname = getContextPath(filename);
                 if (!fs.existsSync(pathname)) {
@@ -39,18 +42,30 @@ export const createShellCommand = () => {
             };
 
             // start with interactive mode on
-            c.machine.interactive = true;
+            config.machine.interactive = true;
 
             // interactive mode can't have final hash
-            c.machine.finalHash = false;
+            config.machine.finalHash = false;
 
             // do not store machine in interactive mode
-            c.machine.store = undefined;
+            config.machine.store = undefined;
 
             // run as root if flag is set
-            c.machine.user = runAsRoot ? "root" : undefined;
+            config.machine.user = runAsRoot ? "root" : undefined;
 
             // boot machine
-            await bootMachine(c, info, destination);
+            try {
+                await bootMachine(config, info, destination, {
+                    stdio: "inherit",
+                });
+            } catch (error: unknown) {
+                if (error instanceof ExecaError) {
+                    // just continue gracefully
+                    if (error.exitCode === 130) {
+                        return;
+                    }
+                    throw error;
+                }
+            }
         });
 };

@@ -1,8 +1,14 @@
 import { Command, Option } from "@commander-js/extra-typings";
+import chalk from "chalk";
 import fs from "fs-extra";
+import { Listr, type ListrTask } from "listr2";
 import path from "node:path";
 import tmp from "tmp";
-import { getApplicationConfig, getContextPath } from "../base.js";
+import {
+    getApplicationConfig,
+    getContextPath,
+    getMachineHash,
+} from "../base.js";
 import {
     buildDirectory,
     buildDocker,
@@ -10,34 +16,60 @@ import {
     buildNone,
     buildTar,
 } from "../builder/index.js";
-import type { DriveConfig, DriveResult } from "../config.js";
+import type { Config, DriveConfig, ImageInfo } from "../config.js";
 import { bootMachine } from "../machine.js";
 
-const buildDrive = async (
+// context for Listr build tasks
+interface BuildContext {
+    config: Config;
+    debug: boolean;
+    destination: string;
+    imageInfo?: ImageInfo;
+}
+
+const buildDriveTask = (
     name: string,
     drive: DriveConfig,
-    sdkImage: string,
-    destination: string,
-    debug: boolean,
-): Promise<DriveResult> => {
-    switch (drive.builder) {
-        case "directory": {
-            return buildDirectory(name, drive, sdkImage, destination, debug);
+): ListrTask<BuildContext> => ({
+    title: `Building drive ${chalk.cyan(name)}`,
+    task: async (ctx, task) => {
+        const { config, debug, destination } = ctx;
+        const sdk = config.sdk;
+        switch (drive.builder) {
+            case "directory": {
+                await buildDirectory(name, drive, sdk, destination, debug);
+                break;
+            }
+            case "docker": {
+                const imageInfo = await buildDocker(
+                    name,
+                    drive,
+                    sdk,
+                    destination,
+                    debug,
+                );
+                if (imageInfo && name === "root") {
+                    // only set image info for root drive
+                    ctx.imageInfo = imageInfo;
+                }
+                break;
+            }
+            case "empty": {
+                await buildEmpty(name, drive, sdk, destination);
+                break;
+            }
+            case "tar": {
+                await buildTar(name, drive, sdk, destination);
+                break;
+            }
+            case "none": {
+                await buildNone(name, drive, destination);
+                break;
+            }
         }
-        case "docker": {
-            return buildDocker(name, drive, sdkImage, destination, debug);
-        }
-        case "empty": {
-            return buildEmpty(name, drive, sdkImage, destination);
-        }
-        case "tar": {
-            return buildTar(name, drive, sdkImage, destination);
-        }
-        case "none": {
-            return buildNone(name, drive, destination);
-        }
-    }
-};
+        task.title = `Build drive ${chalk.cyan(name)}`;
+    },
+});
 
 export const createBuildCommand = () => {
     return new Command("build")
@@ -58,12 +90,15 @@ export const createBuildCommand = () => {
                 .hideHelp(),
         )
         .option("-d, --drives-only", "only build drives, do not boot machine")
-        .action(async ({ config, debug, drivesOnly }) => {
+        .option("-v, --verbose", "verbose output", false)
+        .action(async (options) => {
+            const { debug, drivesOnly, verbose } = options;
+
             // clean up temp files we create along the process
             tmp.setGracefulCleanup();
 
             // get application configuration from 'cartesi.toml'
-            const c = getApplicationConfig(config);
+            const config = getApplicationConfig(options.config);
 
             // destination directory for image and intermediate files
             const destination = path.resolve(getContextPath());
@@ -71,32 +106,65 @@ export const createBuildCommand = () => {
             // prepare context directory
             await fs.emptyDir(destination); // XXX: make it less error prone
 
-            // start build of all drives simultaneously
-            const results = Object.entries(c.drives).reduce<
-                Record<string, Promise<DriveResult>>
-            >((acc, [name, drive]) => {
-                acc[name] = buildDrive(name, drive, c.sdk, destination, debug);
-                return acc;
-            }, {});
+            // build context
+            const ctx = { config, debug, destination, imageInfo: undefined };
 
-            // await for all drives to be built
-            await Promise.all(Object.values(results));
+            // tasks to build drives
+            const driveTasks = Object.entries(config.drives).map(
+                ([name, drive]) => buildDriveTask(name, drive),
+            );
 
-            if (drivesOnly) {
-                // only build drives, so quit here
-                return;
-            }
+            const builds = new Listr(
+                [
+                    {
+                        title: "Build drives",
+                        task: async (_ctx, task) => {
+                            return task.newListr(driveTasks, {
+                                concurrent: true,
+                                rendererOptions: {
+                                    collapseSubtasks: false,
+                                },
+                                ctx,
+                            });
+                        },
+                    },
+                    {
+                        title: "Build Cartesi machine",
+                        enabled: !drivesOnly, // if only build drives, don't do this task
+                        task: async (ctx, task) => {
+                            const { destination, imageInfo } = ctx;
 
-            // get image info of root drive
-            const root = await results.root;
-            const imageInfo = root || undefined;
+                            // path of machine snapshot
+                            const snapshotPath = path.join(
+                                destination,
+                                "image",
+                            );
 
-            // path of machine snapshot
-            const snapshotPath = getContextPath("image");
+                            // create machine snapshot
+                            await bootMachine(config, imageInfo, destination, {
+                                stdout: new WritableStream({
+                                    write(chunk) {
+                                        task.output = chunk;
+                                    },
+                                }),
+                            });
 
-            // create machine snapshot
-            await bootMachine(c, imageInfo, destination);
+                            // make snapshot readable by all users, because cartesi-machine sets to 600
+                            await fs.chmod(snapshotPath, 0o755);
 
-            await fs.chmod(snapshotPath, 0o755);
+                            // get and display machine hash
+                            const hash = getMachineHash();
+                            if (hash) {
+                                task.title = `Build Cartesi machine ${chalk.cyan(hash)}`;
+                            }
+                        },
+                        rendererOptions: {
+                            outputBar: 5,
+                        },
+                    },
+                ],
+                { ctx, renderer: verbose ? "verbose" : "default" },
+            );
+            await builds.run();
         });
 };
