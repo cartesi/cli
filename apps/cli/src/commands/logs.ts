@@ -33,6 +33,7 @@ export const createLogsCommand = () => {
             if (color === false) logOptions.push("--no-color");
             if (since) logOptions.push("--since", since);
             if (tail) logOptions.push("--tail", tail);
+            if (until) logOptions.push("--until", until);
             await execa(
                 "docker",
                 [
