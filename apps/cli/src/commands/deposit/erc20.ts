@@ -146,7 +146,7 @@ export const createErc20Command = () => {
 
             // approve if needed
             if (allowance < amount) {
-                progress.start(`Approving ${amountStr}...`);
+                progress.start(`Approving ${amountLabel}...`);
                 const { request } = await testClient.simulateContract({
                     abi: erc20Abi,
                     account,
@@ -156,7 +156,7 @@ export const createErc20Command = () => {
                 });
                 const hash = await testClient.writeContract(request);
                 await testClient.waitForTransactionReceipt({ hash });
-                progress.succeed(`Approved ${amountStr}`);
+                progress.succeed(`Approved ${amountLabel}`);
             }
 
             // simulate deposit call
