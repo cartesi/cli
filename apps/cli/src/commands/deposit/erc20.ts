@@ -3,13 +3,13 @@ import chalk from "chalk";
 import ora from "ora";
 import {
     type Address,
+    type PublicClient,
     erc20Abi,
     formatUnits,
     getAddress,
     isAddress,
     isHex,
     parseUnits,
-    type PublicClient,
 } from "viem";
 import { getProjectName } from "../../base.js";
 import {
@@ -75,8 +75,7 @@ const parseToken = async (options: {
 };
 
 export const createErc20Command = () => {
-    // biome-ignore lint/complexity/noBannedTypes: commander pattern
-    return new Command<[], {}, DepositCommandOpts>("erc20")
+    return new Command<[], Record<string, never>, DepositCommandOpts>("erc20")
         .description("Deposit ERC-20 to the application")
         .configureHelp({ showGlobalOptions: true })
         .argument("[amount]", "amount to send")

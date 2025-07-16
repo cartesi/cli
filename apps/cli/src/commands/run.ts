@@ -13,9 +13,9 @@ import { getMachineHash, getProjectName } from "../base.js";
 import { DEFAULT_SDK_VERSION, PREFERRED_PORT } from "../config.js";
 import {
     AVAILABLE_SERVICES,
+    type RollupsDeployment,
     deployApplication,
     removeApplication,
-    type RollupsDeployment,
     startEnvironment,
     stopEnvironment,
     waitHealthyEnvironment,
@@ -33,7 +33,7 @@ const shell = async (options: {
     const { build, epochLength, log, projectName } = options;
 
     // keep track of last deployment
-    let lastDeployment: RollupsDeployment | undefined = undefined;
+    let lastDeployment: RollupsDeployment | undefined;
     let salt = 0;
 
     // deploy for the first time
