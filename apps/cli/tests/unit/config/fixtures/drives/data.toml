@@ -3,5 +3,5 @@
 [drives.data]
 builder = "directory"
 directory = "./data" # required
-extraSize = "100Mb" # optional. size is given by directory content size plus this amount
+extra_size = "100Mb" # optional. size is given by directory content size plus this amount
 mount = "/var/lib/app" # optional, default is /mnt/{name}
