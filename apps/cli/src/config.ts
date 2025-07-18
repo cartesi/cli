@@ -151,6 +151,8 @@ export type MachineConfig = {
     ramLength: string;
     ramImage: string;
     store?: string;
+    useDockerEnv: boolean; // inject docker image ENV into cartesi-machine ENV
+    useDockerWorkdir: boolean; // inject docker image WORKDIR into cartesi-machine WORKDIR
     user?: string; // default given by cartesi-machine
 };
 
@@ -183,6 +185,8 @@ export const defaultMachineConfig = (): MachineConfig => ({
     ramLength: DEFAULT_RAM,
     ramImage: DEFAULT_RAM_IMAGE,
     store: "image",
+    useDockerEnv: true,
+    useDockerWorkdir: true,
     user: undefined,
 });
 
@@ -378,6 +382,8 @@ const parseMachine = (value: TomlPrimitive): MachineConfig => {
         ramLength: parseString(toml.ram_length, DEFAULT_RAM),
         ramImage: parseString(toml.ram_image, DEFAULT_RAM_IMAGE),
         store: "image",
+        useDockerEnv: parseBoolean(toml.use_docker_env, true),
+        useDockerWorkdir: parseBoolean(toml.use_docker_workdir, true),
         user: parseOptionalString(toml.user),
     };
 };
