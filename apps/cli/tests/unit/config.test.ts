@@ -2,6 +2,8 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+    defaultConfig,
+    defaultMachineConfig,
     InvalidBooleanValueError,
     InvalidBuilderError,
     InvalidBytesValueError,
@@ -9,10 +11,8 @@ import {
     InvalidEmptyDriveFormatError,
     InvalidNumberValueError,
     InvalidStringValueError,
-    RequiredFieldError,
-    defaultConfig,
-    defaultMachineConfig,
     parse,
+    RequiredFieldError,
 } from "../../src/config.js";
 
 const loadDriveConfig = (driveName: string) => {
@@ -97,7 +97,7 @@ shared = true`);
     describe("when parsing [machine]", () => {
         const config = `
                 [machine]
-                no-rollup = true
+                no_rollup = true
             `;
         it("machine-config", () => {
             expect(parse(config)).toEqual({
@@ -111,7 +111,7 @@ shared = true`);
         it("should fail for invalid bootargs", () => {
             const invalidConfig = `
                 ${config}
-                bootargs = ["no4lvl", "quiet", false]
+                boot_args = ["no4lvl", "quiet", false]
             `;
             expect(() => parse(invalidConfig)).toThrowError(
                 new InvalidStringValueError(false),
@@ -203,13 +203,13 @@ shared = true`);
      */
     describe("when parsing fields types", () => {
         it("should fail for invalid boolean value", () => {
-            expect(() => parse("[machine]\nno-rollup = 42")).toThrowError(
+            expect(() => parse("[machine]\nno_rollup = 42")).toThrowError(
                 new InvalidBooleanValueError(42),
             );
         });
 
         it("should fail for invalid number value", () => {
-            expect(() => parse("[machine]\nmax-mcycle = 'abc'")).toThrowError(
+            expect(() => parse("[machine]\nmax_mcycle = 'abc'")).toThrowError(
                 new InvalidNumberValueError("abc"),
             );
         });
@@ -230,7 +230,7 @@ shared = true`);
             const invalidTarDrive = `
                 [drives.data]
                 builder = "tar"
-                extraSize = "abc"
+                extra_size = "abc"
                 filename = "data.tar"
                 format = "ext2"
             `;
@@ -246,7 +246,7 @@ shared = true`);
                     `[drives.data]
                     builder = "directory"
                     directory = "/data"
-                    extra-size = 128
+                    extra_size = 128
                     `,
                 ),
             ).not.toThrow();
@@ -256,7 +256,7 @@ shared = true`);
                     `[drives.data]
                     builder = "directory"
                     directory = "/data"
-                    extra-size = "128MB"
+                    extra_size = "128MB"
                     `,
                 ),
             ).not.toThrow();
@@ -267,21 +267,21 @@ shared = true`);
                     `[drives.data]
                     builder = "directory"
                     directory = "/data"
-                    extra-size = ${bigInt}
+                    extra_size = ${bigInt}
                     `,
                 ),
             ).not.toThrow();
         });
 
         it("should fail for invalid boolean value", () => {
-            expect(() => parse("[machine]\nfinal-hash = 42")).toThrowError(
+            expect(() => parse("[machine]\nfinal_hash = 42")).toThrowError(
                 new InvalidBooleanValueError(42),
             );
         });
 
         it("should fail for invalid optional boolean value", () => {
             expect(() =>
-                parse("[machine]\nassert-rolling-template = 42"),
+                parse("[machine]\nassert_rolling_template = 42"),
             ).toThrowError(new InvalidBooleanValueError(42));
         });
 

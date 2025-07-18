@@ -2,4 +2,4 @@
 
 [machine]
 assert_rolling_update = false
-max-mcycle = 0
+max_mcycle = 0

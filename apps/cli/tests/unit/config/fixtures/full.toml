@@ -1,14 +1,14 @@
 # sdk = "cartesi/sdk:0.12.0"
 
 # [machine]
-# assert-rolling-update = true
-# bootargs = ["no4lvl", "quiet", "earlycon=sbi", "console=hvc0", "rootfstype=ext2", "root=/dev/pmem0", "rw", "init=/usr/sbin/cartesi-init"]
+# assert_rolling_update = true
+# boot_args = ["no4lvl", "quiet", "earlycon=sbi", "console=hvc0", "rootfstype=ext2", "root=/dev/pmem0", "rw", "init=/usr/sbin/cartesi-init"]
 # entrypoint = "/usr/local/bin/app"
-# final-hash = true
-# max-mcycle = 0
-# no-rollup = false
-# ram-image = "/usr/share/cartesi-machine/images/linux.bin" # directory inside SDK image
-# ram-length = "128Mi"
+# final_hash = true
+# max_mcycle = 0
+# no_rollup = false
+# ram_image = "/usr/share/cartesi-machine/images/linux.bin" # directory inside SDK image
+# ram_length = "128Mi"
 
 # [drives.root]
 # builder = "docker"
@@ -16,7 +16,7 @@
 # target = "docker-multi-stage-target"
 # format = "ext2"
 # format = "sqfs"
-# extraSize = "100Mb" # optional. size is given by directory content size plus this amount
+# extra_size = "100Mb" # optional. size is given by directory content size plus this amount
 
 # [drives.data]
 # builder = "empty"
@@ -26,7 +26,7 @@
 # [drives.data]
 # builder = "directory"
 # directory = "./data" # required
-# extraSize = "100Mb" # optional. size is given by directory content size plus this amount
+# extra_size = "100Mb" # optional. size is given by directory content size plus this amount
 # format = "ext2"
 # format = "sqfs"
 # mount = "/var/lib/app" # optional, default is /mnt/{name}
@@ -34,7 +34,7 @@
 # [drives.data]
 # builder = "tar"
 # filename = "build/files.tar"
-# extraSize = "100Mb" # optional. size is given by directory content size plus this amount
+# extra_size = "100Mb" # optional. size is given by directory content size plus this amount
 # mount = "/var/lib/app" # optional, default is /mnt/{name}
 
 # [drives.doom]

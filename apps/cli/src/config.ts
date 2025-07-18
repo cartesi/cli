@@ -1,6 +1,6 @@
 import bytes from "bytes";
 import { extname } from "node:path";
-import { type TomlPrimitive, parse as parseToml } from "smol-toml";
+import { parse as parseToml, type TomlPrimitive } from "smol-toml";
 
 /**
  * Typed Errors
@@ -367,16 +367,16 @@ const parseMachine = (value: TomlPrimitive): MachineConfig => {
 
     return {
         assertRollingTemplate: parseOptionalBoolean(
-            toml["assert-rolling-template"],
+            toml.assert_rolling_template,
         ),
-        bootargs: parseStringArray(toml.bootargs),
+        bootargs: parseStringArray(toml.boot_args),
         entrypoint: parseOptionalString(toml.entrypoint),
-        finalHash: parseBoolean(toml["final-hash"], true),
+        finalHash: parseBoolean(toml.final_hash, true),
         interactive: undefined,
-        maxMCycle: parseOptionalNumber(toml["max-mcycle"]),
-        noRollup: parseBoolean(toml["no-rollup"], false),
-        ramLength: parseString(toml["ram-length"], DEFAULT_RAM),
-        ramImage: parseString(toml["ram-image"], DEFAULT_RAM_IMAGE),
+        maxMCycle: parseOptionalNumber(toml.max_mcycle),
+        noRollup: parseBoolean(toml.no_rollup, false),
+        ramLength: parseString(toml.ram_length, DEFAULT_RAM),
+        ramImage: parseString(toml.ram_image, DEFAULT_RAM_IMAGE),
         store: "image",
         user: parseOptionalString(toml.user),
     };
@@ -398,11 +398,11 @@ const parseDrive = (drive: TomlPrimitive): DriveConfig => {
     const builder = parseBuilder((drive as TomlTable).builder);
     switch (builder) {
         case "directory": {
-            const { extraSize, format, mount, directory, shared, user } =
+            const { extra_size, format, mount, directory, shared, user } =
                 drive as TomlTable;
             return {
                 builder: "directory",
-                extraSize: parseBytes(extraSize, 0),
+                extraSize: parseBytes(extra_size, 0),
                 format: parseFormat(format),
                 mount: parseOptionalStringBoolean(mount),
                 directory: parseRequiredString(directory, "directory"),
@@ -412,10 +412,10 @@ const parseDrive = (drive: TomlPrimitive): DriveConfig => {
         }
         case "docker": {
             const {
-                buildArgs,
+                build_args,
                 context,
                 dockerfile,
-                extraSize,
+                extra_size,
                 format,
                 image,
                 mount,
@@ -426,11 +426,11 @@ const parseDrive = (drive: TomlPrimitive): DriveConfig => {
             } = drive as TomlTable;
             return {
                 builder: "docker",
-                buildArgs: parseStringArray(buildArgs),
+                buildArgs: parseStringArray(build_args),
                 image: parseOptionalString(image),
                 context: parseString(context, "."),
                 dockerfile: parseString(dockerfile, "Dockerfile"),
-                extraSize: parseBytes(extraSize, 0),
+                extraSize: parseBytes(extra_size, 0),
                 format: parseFormat(format),
                 mount: parseOptionalStringBoolean(mount),
                 shared: parseOptionalBoolean(shared),
@@ -451,11 +451,11 @@ const parseDrive = (drive: TomlPrimitive): DriveConfig => {
             };
         }
         case "tar": {
-            const { extraSize, filename, format, mount, shared, user } =
+            const { extra_size, filename, format, mount, shared, user } =
                 drive as TomlTable;
             return {
                 builder: "tar",
-                extraSize: parseBytes(extraSize, 0),
+                extraSize: parseBytes(extra_size, 0),
                 filename: parseRequiredString(filename, "filename"),
                 format: parseFormat(format),
                 mount: parseOptionalStringBoolean(mount),
