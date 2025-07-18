@@ -35,11 +35,13 @@ export const bootMachine = (
         ramLength,
         ramImage,
         store,
+        useDockerEnv,
+        useDockerWorkdir,
         user,
     } = machine;
 
     // list of environment variables of docker image
-    const env = info?.env ?? [];
+    const env = useDockerEnv ? (info?.env ?? []) : [];
     const envs = env.map((variable) => `--env=${variable}`);
 
     // check if we need a rootfstype boot arg
@@ -92,7 +94,7 @@ export const bootMachine = (
     if (finalHash) {
         args.push("--final-hash");
     }
-    if (info?.workdir) {
+    if (useDockerWorkdir && info?.workdir) {
         args.push(`--workdir="${info.workdir}"`);
     }
     if (interactive) {
