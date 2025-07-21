@@ -44,10 +44,14 @@ export const getMachineHash = (): Hash | undefined => {
     return undefined;
 };
 
-export const getApplicationConfig = (configPath: string): Config => {
-    return fs.existsSync(configPath)
-        ? parse(fs.readFileSync(configPath).toString())
-        : parse("");
+export const getApplicationConfig = (configPaths: string[]): Config => {
+    const tomls = configPaths.map((configPath) => {
+        if (fs.existsSync(configPath)) {
+            return fs.readFileSync(configPath).toString();
+        }
+        throw new Error(`Config file ${configPath} does not exist`);
+    });
+    return parse(tomls);
 };
 
 export const getProjectName = (options: { projectName?: string }) => {

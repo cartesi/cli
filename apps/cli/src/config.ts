@@ -497,8 +497,11 @@ const parseDrives = (config: TomlPrimitive): Record<string, DriveConfig> => {
     return drives;
 };
 
-export const parse = (str: string): Config => {
-    const toml = parseToml(str);
+export const parse = (str: string[]): Config => {
+    let toml: TomlTable = {};
+    for (const s of str) {
+        toml = mergeTomlTables(toml, parseToml(s));
+    }
 
     const config: Config = {
         drives: parseDrives(toml.drives),
@@ -511,3 +514,61 @@ export const parse = (str: string): Config => {
 
     return config;
 };
+
+/**
+ * Checks if a value is a plain object (TOML table)
+ */
+function isTomlTable(value: TomlPrimitive): value is TomlTable {
+    return (
+        typeof value === "object" &&
+        value !== null &&
+        !Array.isArray(value) &&
+        !("toISOString" in value)
+    ); // Check for TomlDate (has toISOString method)
+}
+
+/**
+ * Recursively merges two TOML table objects
+ * Values from 'other' take precedence over 'base'
+ *
+ * @param base - The base TOML table
+ * @param other - The TOML table to merge into base (takes precedence)
+ * @returns A new merged TOML table
+ */
+export function mergeTomlTables(base: TomlTable, other: TomlTable): TomlTable {
+    const result: TomlTable = { ...base };
+
+    for (const [key, otherValue] of Object.entries(other)) {
+        const baseValue = result[key];
+
+        // If both values are tables, merge them recursively
+        if (isTomlTable(baseValue) && isTomlTable(otherValue)) {
+            result[key] = mergeTomlTables(baseValue, otherValue);
+        } else {
+            // For all other cases, other value takes precedence
+            result[key] = otherValue;
+        }
+    }
+
+    return result;
+}
+
+/**
+ * Merges two TOML values of any type
+ *
+ * @param base - The base TOML value
+ * @param other - The TOML value to merge into base (takes precedence)
+ * @returns The merged TOML value
+ */
+export function mergeTomlValues(
+    base: TomlPrimitive,
+    other: TomlPrimitive,
+): TomlPrimitive {
+    // If both are tables, merge recursively
+    if (isTomlTable(base) && isTomlTable(other)) {
+        return mergeTomlTables(base, other);
+    }
+
+    // For arrays, replaces entirely
+    return other;
+}
