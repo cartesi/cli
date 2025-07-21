@@ -141,7 +141,8 @@ export const createBuildCommand = () => {
                             );
 
                             // create machine snapshot
-                            await bootMachine(config, imageInfo, destination, {
+                            await bootMachine(config, imageInfo, {
+                                cwd: destination,
                                 stdout: new WritableStream({
                                     write(chunk) {
                                         task.output = chunk;

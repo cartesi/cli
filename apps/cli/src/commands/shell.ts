@@ -52,7 +52,8 @@ export const createShellCommand = () => {
 
             // boot machine
             try {
-                await bootMachine(config, info, destination, {
+                await bootMachine(config, info, {
+                    cwd: destination,
                     stdio: "inherit",
                 });
             } catch (error: unknown) {
