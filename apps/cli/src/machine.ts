@@ -28,7 +28,6 @@ export const bootMachine = (
     const { machine } = config;
     const {
         assertRollingTemplate,
-        finalHash,
         interactive,
         maxMCycle,
         noRollup,
@@ -90,9 +89,6 @@ export const bootMachine = (
     ];
     if (assertRollingTemplate) {
         args.push("--assert-rolling-template");
-    }
-    if (finalHash) {
-        args.push("--final-hash");
     }
     if (useDockerWorkdir && info?.workdir) {
         args.push(`--workdir="${info.workdir}"`);

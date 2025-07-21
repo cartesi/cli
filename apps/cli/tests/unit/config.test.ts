@@ -273,12 +273,6 @@ shared = true`);
             ).not.toThrow();
         });
 
-        it("should fail for invalid boolean value", () => {
-            expect(() => parse("[machine]\nfinal_hash = 42")).toThrowError(
-                new InvalidBooleanValueError(42),
-            );
-        });
-
         it("should fail for invalid optional boolean value", () => {
             expect(() =>
                 parse("[machine]\nassert_rolling_template = 42"),

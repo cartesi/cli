@@ -44,9 +44,6 @@ export const createShellCommand = () => {
             // start with interactive mode on
             config.machine.interactive = true;
 
-            // interactive mode can't have final hash
-            config.machine.finalHash = false;
-
             // do not store machine in interactive mode
             config.machine.store = undefined;
 

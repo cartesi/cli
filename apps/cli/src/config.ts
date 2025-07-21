@@ -144,7 +144,6 @@ export type MachineConfig = {
     assertRollingTemplate?: boolean; // default given by cartesi-machine
     bootargs: string[];
     entrypoint?: string;
-    finalHash: boolean;
     interactive?: boolean; // default given by cartesi-machine
     maxMCycle?: bigint; // default given by cartesi-machine
     noRollup?: boolean; // default given by cartesi-machine
@@ -178,7 +177,6 @@ export const defaultMachineConfig = (): MachineConfig => ({
     assertRollingTemplate: undefined,
     bootargs: [],
     entrypoint: undefined,
-    finalHash: true,
     interactive: undefined,
     maxMCycle: undefined,
     noRollup: undefined,
@@ -375,7 +373,6 @@ const parseMachine = (value: TomlPrimitive): MachineConfig => {
         ),
         bootargs: parseStringArray(toml.boot_args),
         entrypoint: parseOptionalString(toml.entrypoint),
-        finalHash: parseBoolean(toml.final_hash, true),
         interactive: undefined,
         maxMCycle: parseOptionalNumber(toml.max_mcycle),
         noRollup: parseBoolean(toml.no_rollup, false),
