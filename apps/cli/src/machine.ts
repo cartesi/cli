@@ -22,7 +22,6 @@ const flashDrive = (label: string, drive: DriveConfig): string => {
 export const bootMachine = (
     config: Config,
     info: ImageInfo | undefined,
-    destination: string,
     options?: ExecaOptionsDockerFallback,
 ) => {
     const { machine } = config;
@@ -112,7 +111,6 @@ export const bootMachine = (
     args.push(entrypoint);
 
     return cartesiMachine.boot(args, {
-        cwd: destination,
         image: config.sdk,
         ...options,
     });
