@@ -19,20 +19,25 @@ const flashDrive = (label: string, drive: DriveConfig): string => {
     return `--flash-drive=${vars.join(",")}`;
 };
 
+export type BootMachineOptions = {
+    finalHash?: boolean;
+    interactive?: boolean;
+    store?: string;
+};
+
 export const bootMachine = (
     config: Config,
     info: ImageInfo | undefined,
+    bootOptions: BootMachineOptions,
     options?: ExecaOptionsDockerFallback,
 ) => {
     const { machine } = config;
     const {
         assertRollingTemplate,
-        interactive,
         maxMCycle,
         noRollup,
         ramLength,
         ramImage,
-        store,
         useDockerEnv,
         useDockerWorkdir,
         user,
@@ -89,10 +94,13 @@ export const bootMachine = (
     if (assertRollingTemplate) {
         args.push("--assert-rolling-template");
     }
+    if (bootOptions.finalHash) {
+        args.push("--final-hash");
+    }
     if (useDockerWorkdir && info?.workdir) {
         args.push(`--workdir="${info.workdir}"`);
     }
-    if (interactive) {
+    if (bootOptions.interactive) {
         args.push("-it");
     }
     if (noRollup) {
@@ -101,8 +109,8 @@ export const bootMachine = (
     if (maxMCycle) {
         args.push(`--max-mcycle=${maxMCycle.toString()}`);
     }
-    if (store) {
-        args.push(`--store=${store}`);
+    if (bootOptions.store) {
+        args.push(`--store=${bootOptions.store}`);
     }
     if (user) {
         args.push(`--user=${user}`);

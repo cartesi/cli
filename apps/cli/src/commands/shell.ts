@@ -41,21 +41,20 @@ export const createShellCommand = () => {
                 workdir: "/",
             };
 
-            // start with interactive mode on
-            config.machine.interactive = true;
-
-            // do not store machine in interactive mode
-            config.machine.store = undefined;
-
             // run as root if flag is set
             config.machine.user = runAsRoot ? "root" : undefined;
 
             // boot machine
             try {
-                await bootMachine(config, info, {
-                    cwd: destination,
-                    stdio: "inherit",
-                });
+                await bootMachine(
+                    config,
+                    info,
+                    { interactive: true }, // start with interactive mode on
+                    {
+                        cwd: destination,
+                        stdio: "inherit",
+                    },
+                );
             } catch (error: unknown) {
                 if (error instanceof ExecaError) {
                     // just continue gracefully

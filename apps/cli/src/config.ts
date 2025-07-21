@@ -144,12 +144,10 @@ export type MachineConfig = {
     assertRollingTemplate?: boolean; // default given by cartesi-machine
     bootargs: string[];
     entrypoint?: string;
-    interactive?: boolean; // default given by cartesi-machine
     maxMCycle?: bigint; // default given by cartesi-machine
     noRollup?: boolean; // default given by cartesi-machine
     ramLength: string;
     ramImage: string;
-    store?: string;
     useDockerEnv: boolean; // inject docker image ENV into cartesi-machine ENV
     useDockerWorkdir: boolean; // inject docker image WORKDIR into cartesi-machine WORKDIR
     user?: string; // default given by cartesi-machine
@@ -177,12 +175,10 @@ export const defaultMachineConfig = (): MachineConfig => ({
     assertRollingTemplate: undefined,
     bootargs: [],
     entrypoint: undefined,
-    interactive: undefined,
     maxMCycle: undefined,
     noRollup: undefined,
     ramLength: DEFAULT_RAM,
     ramImage: DEFAULT_RAM_IMAGE,
-    store: "image",
     useDockerEnv: true,
     useDockerWorkdir: true,
     user: undefined,
@@ -373,12 +369,10 @@ const parseMachine = (value: TomlPrimitive): MachineConfig => {
         ),
         bootargs: parseStringArray(toml.boot_args),
         entrypoint: parseOptionalString(toml.entrypoint),
-        interactive: undefined,
         maxMCycle: parseOptionalNumber(toml.max_mcycle),
         noRollup: parseBoolean(toml.no_rollup, false),
         ramLength: parseString(toml.ram_length, DEFAULT_RAM),
         ramImage: parseString(toml.ram_image, DEFAULT_RAM_IMAGE),
-        store: "image",
         useDockerEnv: parseBoolean(toml.use_docker_env, true),
         useDockerWorkdir: parseBoolean(toml.use_docker_workdir, true),
         user: parseOptionalString(toml.user),
