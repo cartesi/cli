@@ -134,24 +134,29 @@ export const createBuildCommand = () => {
                         task: async (ctx, task) => {
                             const { destination, imageInfo } = ctx;
 
-                            // path of machine snapshot
-                            const snapshotPath = path.join(
-                                destination,
-                                "image",
+                            // create machine snapshot
+                            await bootMachine(
+                                config,
+                                imageInfo,
+                                {
+                                    finalHash: true,
+                                    store: "image",
+                                },
+                                {
+                                    cwd: destination,
+                                    stdout: new WritableStream({
+                                        write(chunk) {
+                                            task.output = chunk;
+                                        },
+                                    }),
+                                },
                             );
 
-                            // create machine snapshot
-                            await bootMachine(config, imageInfo, {
-                                cwd: destination,
-                                stdout: new WritableStream({
-                                    write(chunk) {
-                                        task.output = chunk;
-                                    },
-                                }),
-                            });
-
                             // make snapshot readable by all users, because cartesi-machine sets to 600
-                            await fs.chmod(snapshotPath, 0o755);
+                            await fs.chmod(
+                                path.join(destination, "image"),
+                                0o755,
+                            );
 
                             // get and display machine hash
                             const hash = getMachineHash();
