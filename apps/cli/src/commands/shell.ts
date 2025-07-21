@@ -12,7 +12,8 @@ export const createShellCommand = () => {
         .option(
             "-c, --config <config>",
             "path to the configuration file",
-            "cartesi.toml",
+            (value, prev) => prev.concat([value]),
+            ["cartesi.toml"],
         )
         .option("--run-as-root", "run as root user", false)
         .action(async (options) => {

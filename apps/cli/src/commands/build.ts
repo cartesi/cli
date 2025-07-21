@@ -79,7 +79,8 @@ export const createBuildCommand = () => {
         .option(
             "-c, --config <config>",
             "path to the configuration file",
-            "cartesi.toml",
+            (value, prev) => prev.concat([value]),
+            ["cartesi.toml"],
         )
         .addOption(
             new Option(

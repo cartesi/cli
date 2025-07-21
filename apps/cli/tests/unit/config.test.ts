@@ -23,7 +23,7 @@ const loadDriveConfig = (driveName: string) => {
         "drives",
         `${driveName}.toml`,
     );
-    return fs.readFileSync(filePath, "utf-8");
+    return [fs.readFileSync(filePath, "utf-8")];
 };
 
 describe("when parsing only drive config files", () => {
@@ -60,15 +60,17 @@ describe("when parsing only drive config files", () => {
 
 describe("when parsing a cartesi.toml config", () => {
     it("should load the default config when file is empty", () => {
-        const config = parse("");
+        const config = parse([""]);
         expect(config).toEqual(defaultConfig());
     });
 
     it("non-standard root drive", () => {
-        const config = parse(`[drives.root]
+        const config = parse([
+            `[drives.root]
 builder = "docker"
 dockerfile = "backend/Dockerfile"
-shared = true`);
+shared = true`,
+        ]);
 
         expect(config).toEqual({
             ...defaultConfig(),
@@ -100,7 +102,7 @@ shared = true`);
                 no_rollup = true
             `;
         it("machine-config", () => {
-            expect(parse(config)).toEqual({
+            expect(parse([config])).toEqual({
                 ...defaultConfig(),
                 machine: {
                     ...defaultMachineConfig(),
@@ -113,7 +115,7 @@ shared = true`);
                 ${config}
                 boot_args = ["no4lvl", "quiet", false]
             `;
-            expect(() => parse(invalidConfig)).toThrowError(
+            expect(() => parse([invalidConfig])).toThrowError(
                 new InvalidStringValueError(false),
             );
         });
@@ -122,7 +124,7 @@ shared = true`);
                 ${config}
                 entrypoint = "echo 'Hello, World!'"
             `;
-            expect(parse(entrypointConfig)).toEqual({
+            expect(parse([entrypointConfig])).toEqual({
                 ...defaultConfig(),
                 machine: {
                     ...defaultMachineConfig(),
@@ -138,37 +140,37 @@ shared = true`);
      */
     describe("when parsing [drives]", () => {
         it("should fail for invalid configuration", () => {
-            expect(parse("drives = 42")).toEqual(defaultConfig());
-            expect(parse("drives.root = true")).toEqual(defaultConfig());
-            expect(parse("drives.root = 42")).toEqual(defaultConfig());
+            expect(parse(["drives = 42"])).toEqual(defaultConfig());
+            expect(parse(["drives.root = true"])).toEqual(defaultConfig());
+            expect(parse(["drives.root = 42"])).toEqual(defaultConfig());
         });
 
         it("should fail for invalid builder", () => {
             expect(() =>
-                parse('[drives.root]\nbuilder = "invalid"'),
+                parse(['[drives.root]\nbuilder = "invalid"']),
             ).toThrowError(new InvalidBuilderError("invalid"));
-            expect(() => parse("[drives.root]\nbuilder = true")).toThrowError(
+            expect(() => parse(["[drives.root]\nbuilder = true"])).toThrowError(
                 new InvalidBuilderError(true),
             );
-            expect(() => parse("[drives.root]\nbuilder = 10")).toThrowError(
+            expect(() => parse(["[drives.root]\nbuilder = 10"])).toThrowError(
                 new InvalidBuilderError(10),
             );
-            expect(() => parse("[drives.root]\nbuilder = {}")).toThrowError(
+            expect(() => parse(["[drives.root]\nbuilder = {}"])).toThrowError(
                 new InvalidBuilderError({}),
             );
         });
 
         it("should fail for invalid format", () => {
             expect(() =>
-                parse('[drives.root]\nformat = "invalid"'),
+                parse(['[drives.root]\nformat = "invalid"']),
             ).toThrowError(new InvalidDriveFormatError("invalid"));
-            expect(() => parse("[drives.root]\nformat = true")).toThrowError(
+            expect(() => parse(["[drives.root]\nformat = true"])).toThrowError(
                 new InvalidDriveFormatError(true),
             );
-            expect(() => parse("[drives.root]\nformat = 10")).toThrowError(
+            expect(() => parse(["[drives.root]\nformat = 10"])).toThrowError(
                 new InvalidDriveFormatError(10),
             );
-            expect(() => parse("[drives.root]\nformat = {}")).toThrowError(
+            expect(() => parse(["[drives.root]\nformat = {}"])).toThrowError(
                 new InvalidDriveFormatError({}),
             );
         });
@@ -180,20 +182,20 @@ shared = true`);
                 filename = "./games/doom.xyzfs"
                 mount = "/usr/local/games/doom"
             `;
-            expect(() => parse(builderNone)).toThrowError(
+            expect(() => parse([builderNone])).toThrowError(
                 new InvalidDriveFormatError(".xyzfs"),
             );
         });
 
         it("should fail for invalid mount", () => {
-            expect(() => parse("[drives.data]\nmount = 42")).toThrowError(
+            expect(() => parse(["[drives.data]\nmount = 42"])).toThrowError(
                 new InvalidStringValueError(42),
             );
         });
 
         it("should fail for invalid empty drive format", () => {
             expect(() =>
-                parse("[drives.data]\nbuilder = 'empty'\nformat = 42"),
+                parse(["[drives.data]\nbuilder = 'empty'\nformat = 42"]),
             ).toThrowError(new InvalidEmptyDriveFormatError(42));
         });
     });
@@ -203,13 +205,13 @@ shared = true`);
      */
     describe("when parsing fields types", () => {
         it("should fail for invalid boolean value", () => {
-            expect(() => parse("[machine]\nno_rollup = 42")).toThrowError(
+            expect(() => parse(["[machine]\nno_rollup = 42"])).toThrowError(
                 new InvalidBooleanValueError(42),
             );
         });
 
         it("should fail for invalid number value", () => {
-            expect(() => parse("[machine]\nmax_mcycle = 'abc'")).toThrowError(
+            expect(() => parse(["[machine]\nmax_mcycle = 'abc'"])).toThrowError(
                 new InvalidNumberValueError("abc"),
             );
         });
@@ -221,7 +223,7 @@ shared = true`);
                 filename = 42 # invalid
                 format = "ext2"
             `;
-            expect(() => parse(invalidTarDrive)).toThrowError(
+            expect(() => parse([invalidTarDrive])).toThrowError(
                 new InvalidStringValueError(42),
             );
         });
@@ -234,7 +236,7 @@ shared = true`);
                 filename = "data.tar"
                 format = "ext2"
             `;
-            expect(() => parse(invalidTarDrive)).toThrowError(
+            expect(() => parse([invalidTarDrive])).toThrowError(
                 new InvalidBytesValueError("abc"),
             );
         });
@@ -242,40 +244,40 @@ shared = true`);
         it("should pass for valid bytes value", () => {
             // nukmber
             expect(() =>
-                parse(
+                parse([
                     `[drives.data]
                     builder = "directory"
                     directory = "/data"
                     extra_size = 128
                     `,
-                ),
+                ]),
             ).not.toThrow();
             // string
             expect(() =>
-                parse(
+                parse([
                     `[drives.data]
                     builder = "directory"
                     directory = "/data"
                     extra_size = "128MB"
                     `,
-                ),
+                ]),
             ).not.toThrow();
             // bigint
             const bigInt = BigInt(128);
             expect(() =>
-                parse(
+                parse([
                     `[drives.data]
                     builder = "directory"
                     directory = "/data"
                     extra_size = ${bigInt}
                     `,
-                ),
+                ]),
             ).not.toThrow();
         });
 
         it("should fail for invalid optional boolean value", () => {
             expect(() =>
-                parse("[machine]\nassert_rolling_template = 42"),
+                parse(["[machine]\nassert_rolling_template = 42"]),
             ).toThrowError(new InvalidBooleanValueError(42));
         });
 
@@ -285,7 +287,7 @@ shared = true`);
                 builder = "directory"
                 # directory = '' # required
             `;
-            expect(() => parse(invalidDirectoryDrive)).toThrowError(
+            expect(() => parse([invalidDirectoryDrive])).toThrowError(
                 new RequiredFieldError("directory"), //XXX: how to know which field was required
             );
         });
