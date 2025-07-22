@@ -39,21 +39,6 @@ ADD https://github.com/ncopa/su-exec.git#v${SU_EXEC_VERSION} /usr/local/src
 RUN make
 
 ################################################################################
-# crane installer
-FROM base AS crane
-ARG CRANE_VERSION
-RUN <<EOF
-#FIXME: ugly hack to download the right go-containerregistry binary
-case "$(arch)" in
-aarch64) ARCH="arm64" ;;
-*) ARCH=$(arch) ;;
-esac
-
-curl -fsSL https://github.com/google/go-containerregistry/releases/download/v${CRANE_VERSION}/go-containerregistry_Linux_${ARCH}.tar.gz \
-    | tar -zx -C /usr/local/bin
-EOF
-
-################################################################################
 # foundry installer
 FROM base AS foundry
 ARG FOUNDRY_VERSION
@@ -355,7 +340,6 @@ COPY eth_load /usr/local/bin
 
 COPY entrypoint.sh /usr/local/bin/
 COPY --from=su-exec /usr/local/src/su-exec /usr/local/bin/
-COPY --from=crane /usr/local/bin/crane /usr/local/bin/
 COPY --from=foundry /usr/local/bin/anvil /usr/local/bin/
 COPY --from=foundry /usr/local/bin/cast /usr/local/bin/
 
