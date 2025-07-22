@@ -4,11 +4,7 @@ import fs from "fs-extra";
 import { Listr, type ListrTask } from "listr2";
 import path from "node:path";
 import tmp from "tmp";
-import {
-    getApplicationConfig,
-    getContextPath,
-    getMachineHash,
-} from "../base.js";
+import { getApplicationConfig, getContextPath } from "../base.js";
 import {
     buildDirectory,
     buildDocker,
@@ -129,49 +125,31 @@ export const createBuildCommand = () => {
                             });
                         },
                     },
-                    {
-                        title: "Build Cartesi machine",
-                        enabled: !drivesOnly, // if only build drives, don't do this task
-                        task: async (ctx, task) => {
-                            const { destination, imageInfo } = ctx;
-
-                            // create machine snapshot
-                            await bootMachine(
-                                config,
-                                imageInfo,
-                                {
-                                    finalHash: true,
-                                    store: "image",
-                                },
-                                {
-                                    cwd: destination,
-                                    stdout: new WritableStream({
-                                        write(chunk) {
-                                            task.output = chunk;
-                                        },
-                                    }),
-                                },
-                            );
-
-                            // make snapshot readable by all users, because cartesi-machine sets to 600
-                            await fs.chmod(
-                                path.join(destination, "image"),
-                                0o755,
-                            );
-
-                            // get and display machine hash
-                            const hash = getMachineHash();
-                            if (hash) {
-                                task.title = `Build Cartesi machine ${chalk.cyan(hash)}`;
-                            }
-                        },
-                        rendererOptions: {
-                            outputBar: 5,
-                        },
-                    },
                 ],
                 { ctx, renderer: verbose ? "verbose" : "default" },
             );
-            await builds.run();
+            const result = await builds.run();
+
+            // if only build drives, quit here
+            if (drivesOnly) {
+                return;
+            }
+
+            // create machine snapshot
+            await bootMachine(
+                config,
+                result.imageInfo,
+                {
+                    finalHash: true,
+                    store: "image",
+                },
+                {
+                    cwd: destination,
+                    stdio: "inherit",
+                },
+            );
+
+            // make snapshot readable by all users, because cartesi-machine sets to 600
+            await fs.chmod(path.join(destination, "image"), 0o755);
         });
 };
