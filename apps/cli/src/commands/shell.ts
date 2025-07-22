@@ -3,7 +3,6 @@ import { ExecaError } from "execa";
 import fs from "fs-extra";
 import path from "node:path";
 import { getApplicationConfig, getContextPath } from "../base.js";
-import type { ImageInfo } from "../config.js";
 import { bootMachine } from "../machine.js";
 
 export const createShellCommand = () => {
@@ -35,12 +34,7 @@ export const createShellCommand = () => {
             }
 
             // create shell entrypoint
-            const info: ImageInfo = {
-                cmd: [],
-                entrypoint: [command],
-                env: [],
-                workdir: "/",
-            };
+            config.machine.entrypoint = command;
 
             // run as root if flag is set
             config.machine.user = runAsRoot ? "root" : undefined;
@@ -49,7 +43,7 @@ export const createShellCommand = () => {
             try {
                 await bootMachine(
                     config,
-                    info,
+                    undefined,
                     { interactive: true }, // start with interactive mode on
                     {
                         cwd: destination,
