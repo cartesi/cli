@@ -462,11 +462,7 @@ export const deployApplication = async (options: {
     if (consensus) {
         deployArgs.push("--consensus", consensus);
     } else {
-        deployArgs.push(
-            "--epoch-length",
-            epochLength.toString(),
-            "--self-hosted",
-        );
+        deployArgs.push("--epoch-length", epochLength.toString());
     }
     if (salt) {
         deployArgs.push("--salt", salt);
