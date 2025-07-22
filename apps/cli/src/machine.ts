@@ -88,9 +88,11 @@ export const bootMachine = (
         ...bootargs,
         ...envs,
         ...flashDrives,
-        `--ram-image=${ramImage}`,
         `--ram-length=${ramLength}`,
     ];
+    if (ramImage) {
+        args.push(`--ram-image=${ramImage}`);
+    }
     if (assertRollingTemplate) {
         args.push("--assert-rolling-template");
     }
