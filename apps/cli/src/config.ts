@@ -73,7 +73,6 @@ export class InvalidStringArrayError extends Error {
  */
 const DEFAULT_FORMAT = "ext2";
 const DEFAULT_RAM = "128Mi";
-const DEFAULT_RAM_IMAGE = "/usr/share/cartesi-machine/images/linux.bin";
 export const DEFAULT_SDK_VERSION = "0.12.0-alpha.20";
 export const DEFAULT_SDK_IMAGE = "cartesi/sdk";
 export const PREFERRED_PORT = 6751;
@@ -147,7 +146,7 @@ export type MachineConfig = {
     maxMCycle?: bigint; // default given by cartesi-machine
     noRollup?: boolean; // default given by cartesi-machine
     ramLength: string;
-    ramImage: string;
+    ramImage?: string; // default given by cartesi-machine
     useDockerEnv: boolean; // inject docker image ENV into cartesi-machine ENV
     useDockerWorkdir: boolean; // inject docker image WORKDIR into cartesi-machine WORKDIR
     user?: string; // default given by cartesi-machine
@@ -178,7 +177,6 @@ export const defaultMachineConfig = (): MachineConfig => ({
     maxMCycle: undefined,
     noRollup: undefined,
     ramLength: DEFAULT_RAM,
-    ramImage: DEFAULT_RAM_IMAGE,
     useDockerEnv: true,
     useDockerWorkdir: true,
     user: undefined,
@@ -372,7 +370,7 @@ const parseMachine = (value: TomlPrimitive): MachineConfig => {
         maxMCycle: parseOptionalNumber(toml.max_mcycle),
         noRollup: parseBoolean(toml.no_rollup, false),
         ramLength: parseString(toml.ram_length, DEFAULT_RAM),
-        ramImage: parseString(toml.ram_image, DEFAULT_RAM_IMAGE),
+        ramImage: parseOptionalString(toml.ram_image),
         useDockerEnv: parseBoolean(toml.use_docker_env, true),
         useDockerWorkdir: parseBoolean(toml.use_docker_workdir, true),
         user: parseOptionalString(toml.user),
