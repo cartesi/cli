@@ -49,6 +49,9 @@ export const getApplicationConfig = (configPaths: string[]): Config => {
         if (fs.existsSync(configPath)) {
             return fs.readFileSync(configPath).toString();
         }
+        if (configPath === "cartesi.toml") {
+            return "";
+        }
         throw new Error(`Config file ${configPath} does not exist`);
     });
     return parse(tomls);
