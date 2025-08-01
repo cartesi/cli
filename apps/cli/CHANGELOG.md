@@ -1,5 +1,28 @@
 # Changelog
 
+## 2.0.0-alpha.16
+
+### Patch Changes
+
+- e8dddfa: possibility to use an override config file
+- fa72afb: remove unnecessary interactive config
+- a339107: additional config flags to drive machine build
+- 0658f9b: fix case of no cartesi.toml
+- 957b4f1: support buildArgs in docker builder
+- 5d081d8: remove unused image argument from shell command
+- b56724a: replace crane with buildx build ouput type=tar
+- f72a816: Bump rollups-explorer to 1.2.0
+- fa72afb: remove unnecessary store config
+- ea01e6e: change from —append-entrypoint to command
+- ea2532c: fix: download image only when it doesn't exists locally
+- beef75c: add hidden debug flag to not remove intermediate build files
+- 41786c8: change all toml keys to use snake_case
+- 8975979: remove unnecessary finalHash config
+- 80bea97: fix ram_image default value
+- 2578e22: add missing "until" usage at logs command
+- e3df410: fix: read entrypoint from cartesi.toml
+- eb5ce3a: fix amount display in erc20 deposit
+
 ## 2.0.0-alpha.15
 
 ### Patch Changes

@@ -1,5 +1,15 @@
 # sdk
 
+## 0.12.0-alpha.21
+
+### Minor Changes
+
+- 63fecd1: remove crane
+
+### Patch Changes
+
+- ad7c9dc: bump base image to debian:bookworm-20250721-slim
+
 ## 0.12.0-alpha.20
 
 ### Patch Changes
