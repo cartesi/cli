@@ -109,14 +109,14 @@ EOF
 
 RUN <<EOF
 set -e
-addgroup --system --gid 102 cartesi
-adduser --system --uid 102 \
-    --disabled-login \
-    --gecos "cartesi user" \
-    --home /nonexistent \
-    --ingroup cartesi \
+useradd \
+    --comment "cartesi user" \
     --no-create-home \
-    --shell /bin/false \
+    --home-dir /nonexistent \
+    --shell /usr/sbin/nologin \
+    --system \
+    --uid 102 \
+    --user-group \
     cartesi
 EOF
 
