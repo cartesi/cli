@@ -45,7 +45,13 @@ export const bootMachine = (
 
     // list of environment variables of docker image
     const env = useDockerEnv ? (info?.env ?? []) : [];
-    const envs = env.map((variable) => `--env=${variable}`);
+    const envs = env.map((variable) => {
+        const eqIdx = variable.indexOf("=");
+        const key = variable.slice(0, eqIdx);
+        const value = variable.slice(eqIdx + 1);
+
+        return `--env=${key}="${value}"`;
+    });
 
     // check if we need a rootfstype boot arg
     const root = config.drives.root;
