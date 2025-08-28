@@ -17,7 +17,6 @@ target "default" {
     CARTESI_PAYMASTER_VERSION         = "0.2.0"
     CARTESI_ROLLUPS_GRAPHQL_VERSION   = "2.3.14"
     CARTESI_ROLLUPS_NODE_VERSION      = "2.0.0-alpha.7"
-    CRANE_VERSION                     = "0.19.1"
     FOUNDRY_VERSION                   = "1.2.1"
     GO_MIGRATE_VERSION                = "4.18.2"
     NODE_VERSION                      = "22.15.1"
