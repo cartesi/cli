@@ -158,7 +158,7 @@ FROM ${POSTGRES_BASE_IMAGE} AS postgresql-initdb
 
 ARG DEBIAN_FRONTEND=noninteractive
 RUN <<EOF
-set -eo
+set -e
 apt-get update
 apt-get install -y --no-install-recommends \
     libslirp0
@@ -217,6 +217,7 @@ WORKDIR /app
 COPY alto.patch /app/alto.patch
 
 RUN <<EOF
+set -eu
 npm install -g pnpm
 git clone --branch v${ALTO_VERSION} --depth 1 --recurse-submodules https://github.com/pimlicolabs/alto.git
 cd alto
@@ -241,7 +242,6 @@ ARG CARTESI_PASSKEY_SERVER_VERSION
 ARG CARTESI_ROLLUPS_NODE_VERSION
 ARG NODE_VERSION
 ARG NVM_VERSION
-ARG TARGETARCH
 ARG TARGETARCH
 ARG XGENEXT2_VERSION
 
