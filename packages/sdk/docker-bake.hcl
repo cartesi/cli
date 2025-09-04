@@ -19,6 +19,7 @@ target "default" {
     CARTESI_ROLLUPS_NODE_VERSION      = "2.0.0-alpha.7"
     FOUNDRY_VERSION                   = "1.2.1"
     GO_MIGRATE_VERSION                = "4.18.2"
+    NITRO_VERSION                     = "0.3"
     NODE_VERSION                      = "22.15.1"
     NVM_VERSION                       = "977563e97ddc66facf3a8e31c6cff01d236f09bd" # 0.40.3
     POSTGRES_BASE_IMAGE               = "docker.io/library/postgres:17-trixie@sha256:8a56bef4c60bef3d26193cb9d810fce93def8fd0c459f4a9b14240fbd7559a1d"
