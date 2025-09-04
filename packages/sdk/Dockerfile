@@ -48,6 +48,16 @@ RUN curl -fsSL https://github.com/foundry-rs/foundry/releases/download/v${FOUNDR
     | tar -zx -C /usr/local/bin
 
 ################################################################################
+# nitro installer
+FROM builder AS nitro
+ARG NITRO_VERSION
+WORKDIR /usr/local/src
+ADD https://github.com/leahneukirchen/nitro.git#v${NITRO_VERSION} /usr/local/src
+RUN <<EOF
+make
+EOF
+
+################################################################################
 # go migrate db cli installer
 FROM base AS go-migrate
 ARG GO_MIGRATE_VERSION
@@ -150,6 +160,10 @@ COPY --from=graphql /usr/local/bin/cartesi-rollups-graphql /usr/local/bin/
 COPY --from=go-migrate /usr/local/bin/migrate /usr/local/bin/
 COPY --from=graphql-migration /usr/share/cartesi/rollups-graphql/migrations /usr/share/cartesi/rollups-graphql/migrations
 COPY --from=su-exec /usr/local/src/su-exec /usr/local/bin/
+COPY --from=nitro /usr/local/src/nitro /usr/local/bin/
+COPY --from=nitro /usr/local/src/nitroctl /usr/local/bin/
+COPY skel/ /
+RUN mkdir -p /run/nitro && chown -R cartesi:cartesi /run/nitro
 
 USER cartesi
 
