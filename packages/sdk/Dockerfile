@@ -149,6 +149,7 @@ EOF
 COPY --from=graphql /usr/local/bin/cartesi-rollups-graphql /usr/local/bin/
 COPY --from=go-migrate /usr/local/bin/migrate /usr/local/bin/
 COPY --from=graphql-migration /usr/share/cartesi/rollups-graphql/migrations /usr/share/cartesi/rollups-graphql/migrations
+COPY --from=su-exec /usr/local/src/su-exec /usr/local/bin/
 
 USER cartesi
 
@@ -339,7 +340,6 @@ COPY eth_dump /usr/local/bin
 COPY eth_load /usr/local/bin
 
 COPY entrypoint.sh /usr/local/bin/
-COPY --from=su-exec /usr/local/src/su-exec /usr/local/bin/
 COPY --from=foundry /usr/local/bin/anvil /usr/local/bin/
 COPY --from=foundry /usr/local/bin/cast /usr/local/bin/
 
