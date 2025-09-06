@@ -1,5 +1,9 @@
 import { Command } from "@commander-js/extra-typings";
 import select from "@inquirer/select";
+import {
+    createErc1155BatchCommand,
+    createErc1155SingleCommand,
+} from "./deposit/erc1155.js";
 import { createErc20Command } from "./deposit/erc20.js";
 import { createErc721Command } from "./deposit/erc721.js";
 import { createEtherCommand } from "./deposit/ether.js";
@@ -38,8 +42,8 @@ export const createDepositCommand = () => {
     command.addCommand(createEtherCommand());
     command.addCommand(createErc20Command());
     command.addCommand(createErc721Command());
-    // command.addCommand(createErc1155BatchCommand());
-    // command.addCommand(createErc1155SingleCommand());
+    command.addCommand(createErc1155SingleCommand());
+    command.addCommand(createErc1155BatchCommand());
 
     return command;
 };
