@@ -1,5 +1,12 @@
 # sdk
 
+## 0.12.0-alpha.22
+
+### Patch Changes
+
+- 30d6d1e: bump Debian baseimage to 13 (trixie)
+- 45b9b1f: bump rollups-node to 2.0.0-alpha.7
+
 ## 0.12.0-alpha.21
 
 ### Minor Changes
