@@ -4,8 +4,8 @@ import fs from "node:fs";
 import path from "node:path";
 import {
     type Address,
-    type Hash,
     getAddress,
+    type Hash,
     isAddress,
     isHash,
     zeroHash,
@@ -101,7 +101,7 @@ export const getAddressBook = async (options: {
     return contracts;
 };
 
-const getServiceInfo = async (options: {
+export const getServiceInfo = async (options: {
     projectName: string;
     service: string;
 }): Promise<PsResponse | undefined> => {

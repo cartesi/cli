@@ -1,6 +1,6 @@
 import { Command } from "@commander-js/extra-typings";
 import { execa } from "execa";
-import { getProjectName } from "../base.js";
+import { getProjectName, getServiceInfo } from "../base.js";
 
 export const createLogsCommand = () => {
     return new Command("logs")
@@ -10,7 +10,6 @@ export const createLogsCommand = () => {
             "name of project (used by docker compose and cartesi-rollups-node)",
         )
         .option("-f, --follow", "Follow log output")
-        .option("--no-color", "Produce monochrome output")
         .option(
             "--since <string>",
             "Show logs since timestamp (e.g. 2013-01-02T13:23:37Z) or relative (e.g. 42m for 42 minutes)",
@@ -26,24 +25,25 @@ export const createLogsCommand = () => {
         )
         .configureHelp({ showGlobalOptions: true })
         .action(async (options) => {
-            const { follow, color, since, tail, until } = options;
+            const { follow, since, tail, until } = options;
             const projectName = getProjectName(options);
-            const logOptions: string[] = ["--no-log-prefix"];
+            const logOptions: string[] = [];
             if (follow) logOptions.push("--follow");
-            if (color === false) logOptions.push("--no-color");
             if (since) logOptions.push("--since", since);
             if (tail) logOptions.push("--tail", tail);
             if (until) logOptions.push("--until", until);
+
+            const serviceInfo = await getServiceInfo({
+                projectName,
+                service: "rollups-node",
+            });
+            if (!serviceInfo) {
+                throw new Error(`service rollups-node not found`);
+            }
+
             await execa(
                 "docker",
-                [
-                    "compose",
-                    "--project-name",
-                    projectName,
-                    "logs",
-                    ...logOptions,
-                    "rollups-node",
-                ],
+                ["container", "logs", ...logOptions, serviceInfo.ID],
                 { stdio: "inherit" },
             );
         });
