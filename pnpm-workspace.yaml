@@ -3,7 +3,7 @@ packages:
     - packages/*
 
 catalog:
-    "@biomejs/biome": ^2.1.2
+    "@biomejs/biome": ^2.2.4
 
 onlyBuiltDependencies:
     - "@biomejs/biome"
