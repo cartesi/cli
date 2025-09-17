@@ -7,3 +7,4 @@ catalog:
 
 onlyBuiltDependencies:
     - "@biomejs/biome"
+    - esbuild
