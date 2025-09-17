@@ -1,0 +1,29 @@
+configs:
+    launchpad_proxy:
+        content: |
+            http:
+                routers:
+                    launchpad:
+                        rule: "Path(`/`) || PathPrefix(`/assets`)"
+                        service: launchpad
+                services:
+                    launchpad:
+                        loadBalancer:
+                            servers:
+                                - url: "http://launchpad:80"
+
+services:
+    launchpad:
+        image: cartesi/rollups-launchpad:devel
+        healthcheck:
+            test: ["CMD", "curl", "-fsS", "http://127.0.0.1:80/"]
+            start_period: 10s
+            start_interval: 200ms
+            interval: 10s
+            timeout: 1s
+            retries: 5
+
+    proxy:
+        configs:
+            - source: launchpad_proxy
+              target: /etc/traefik/conf.d/launchpad.yaml

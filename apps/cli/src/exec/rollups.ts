@@ -162,6 +162,15 @@ const availableServices: Service[] = [
         errorTitle: `${chalk.red("explorer")} service failed`,
     },
     {
+        name: "launchpad",
+        file: "docker-compose-launchpad.yaml",
+        healthySemaphore: "launchpad",
+        healthyTitle: (port) =>
+            `${chalk.cyan("launchpad")} service ready at ${chalk.cyan(`${host}:${port}/`)}`,
+        waitTitle: `${chalk.cyan("launchpad")} service starting...`,
+        errorTitle: `${chalk.red("launchpad")} service failed`,
+    },
+    {
         name: "graphql",
         file: "docker-compose-graphql.yaml",
         healthySemaphore: "graphql",
