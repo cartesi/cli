@@ -8,8 +8,8 @@ on:
                 required: true
     pull_request:
         paths:
-            - .github/workflows/sdk.yaml
-            - packages/sdk/**
+            - ".github/workflows/sdk.yaml"
+            - "packages/sdk/**"
 concurrency:
     group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
     cancel-in-progress: true
