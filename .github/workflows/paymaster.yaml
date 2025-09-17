@@ -2,9 +2,9 @@ name: paymaster
 on:
     pull_request:
         paths:
-            - .github/workflows/paymaster.yaml
-            - packages/mock-verifying-paymaster/**
-            - packages/tsconfig/**
+            - ".github/workflows/paymaster.yaml"
+            - "packages/mock-verifying-paymaster/**"
+            - "packages/tsconfig/**"
 concurrency:
     group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
     cancel-in-progress: true

@@ -2,8 +2,8 @@ name: devnet
 on:
     pull_request:
         paths:
-            - .github/workflows/devnet.yaml
-            - packages/devnet/**
+            - ".github/workflows/devnet.yaml"
+            - "packages/devnet/**"
 concurrency:
     group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
     cancel-in-progress: true

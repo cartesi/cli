@@ -2,10 +2,9 @@ name: cli
 on:
     pull_request:
         paths:
-            - .github/workflows/cli.yaml
-            - apps/cli/**
-            - packages/contracts/**
-            - packages/tsconfig/**
+            - ".github/workflows/cli.yaml"
+            - "apps/cli/**"
+            - "packages/tsconfig/**"
 concurrency:
     group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
     cancel-in-progress: true
