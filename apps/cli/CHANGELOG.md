@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.0.0-alpha.18
+
+### Minor Changes
+
+- a540baf: Added support for single and batch erc1155 deposit to applications via the cli
+
+### Patch Changes
+
+- 070bc63: quote ENV vars during build when it contains spaces
+- 0cd7431: adapt to rollups-node:2.0.0-alpha.7
+- cc15f37: fix run logs interruption
+
 ## 2.0.0-alpha.17
 
 ### Patch Changes
