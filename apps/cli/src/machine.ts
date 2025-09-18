@@ -46,10 +46,7 @@ export const bootMachine = (
     // list of environment variables of docker image
     const env = useDockerEnv ? (info?.env ?? []) : [];
     const envs = env.map((variable) => {
-        const eqIdx = variable.indexOf("=");
-        const key = variable.slice(0, eqIdx);
-        const value = variable.slice(eqIdx + 1);
-
+        const [key, value] = variable.split("=");
         return `--env=${key}="${value}"`;
     });
 
