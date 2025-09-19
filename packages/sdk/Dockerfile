@@ -287,19 +287,6 @@ nvm alias default $NODE_VERSION
 EOF
 ENV PATH="${NVM_DIR}/versions/node/v${NODE_VERSION}/bin:$PATH"
 
-# Install e2fsprogs from backports
-RUN <<EOF
-echo 'deb http://deb.debian.org/debian bookworm-backports main' > /etc/apt/sources.list.d/backports.list
-apt-get update
-apt-get install -y --no-install-recommends -t bookworm-backports \
-    e2fsprogs
-rm -rf /var/lib/apt/lists/*
-
-sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen
-locale-gen
-update-locale LANG=en_US.UTF-8
-EOF
-
 # Install dpkg release of xgenext2fs
 RUN <<EOF
 curl -fsSL https://github.com/cartesi/genext2fs/releases/download/v${XGENEXT2_VERSION}/xgenext2fs_${TARGETARCH}.deb \
@@ -307,6 +294,9 @@ curl -fsSL https://github.com/cartesi/genext2fs/releases/download/v${XGENEXT2_VE
 dpkg -i /tmp/xgenext2fs.deb
 rm /tmp/xgenext2fs.deb
 xgenext2fs --version
+sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen
+locale-gen
+update-locale LANG=en_US.UTF-8
 EOF
 
 # Install nodejs packages
