@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0-alpha.19
+
+### Patch Changes
+
+- 05f5228: bump to cartesi/sdk:0.12.0-alpha.23
+
 ## 2.0.0-alpha.18
 
 ### Minor Changes

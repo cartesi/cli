@@ -1,5 +1,11 @@
 # sdk
 
+## 0.12.0-alpha.24
+
+### Patch Changes
+
+- 390e853: bump squashfs-tools to 4.7.2
+
 ## 0.12.0-alpha.23
 
 ### Patch Changes
