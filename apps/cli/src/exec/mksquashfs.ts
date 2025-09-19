@@ -10,8 +10,6 @@ const baseArgs = () => [
     "0",
     "-mkfs-time",
     "0",
-    "-root-time",
-    "0",
     "-all-root", // XXX: should we use this?
     "-noappend",
     "-comp",
