@@ -2,4 +2,4 @@
 "@cartesi/cli": patch
 ---
 
-make sqhashfs drive deterministc
+make sqhashfs drive deterministic
