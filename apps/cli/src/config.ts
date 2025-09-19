@@ -73,7 +73,7 @@ export class InvalidStringArrayError extends Error {
  */
 const DEFAULT_FORMAT = "ext2";
 const DEFAULT_RAM = "128Mi";
-export const DEFAULT_SDK_VERSION = "0.12.0-alpha.23";
+export const DEFAULT_SDK_VERSION = "0.12.0-alpha.24";
 export const DEFAULT_SDK_IMAGE = "cartesi/sdk";
 export const PREFERRED_PORT = 6751;
 
