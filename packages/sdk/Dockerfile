@@ -26,7 +26,12 @@ apt-get install -y --no-install-recommends \
     automake \
     build-essential \
     libarchive-dev \
-    libtool
+    libtool \
+    liblz4-dev \
+    liblzma-dev \
+    liblzo2-dev \
+    libzstd-dev \
+    zlib1g-dev
 rm -rf /var/lib/apt/lists/*
 EOF
 
@@ -55,6 +60,17 @@ WORKDIR /usr/local/src
 ADD https://github.com/leahneukirchen/nitro.git#v${NITRO_VERSION} /usr/local/src
 RUN <<EOF
 make
+EOF
+
+################################################################################
+# build msquashfs-tools
+FROM builder AS squashfs-tools
+ARG SQUASHFS_TOOLS_VERSION
+WORKDIR /usr/local/src/squashfs-tools
+ADD https://github.com/plougher/squashfs-tools.git#${SQUASHFS_TOOLS_VERSION}:squashfs-tools .
+RUN <<EOF
+make
+./mksquashfs -version
 EOF
 
 ################################################################################
@@ -270,7 +286,6 @@ apt-get install -y --no-install-recommends \
     libslirp0 \
     locales \
     lua5.4 \
-    squashfs-tools \
     xxd \
     xz-utils
 rm -rf /var/lib/apt/lists/*
@@ -356,6 +371,7 @@ COPY eth_load /usr/local/bin
 COPY entrypoint.sh /usr/local/bin/
 COPY --from=foundry /usr/local/bin/anvil /usr/local/bin/
 COPY --from=foundry /usr/local/bin/cast /usr/local/bin/
+COPY --from=squashfs-tools /usr/local/src/squashfs-tools/mksquashfs /usr/local/bin/
 
 WORKDIR /mnt
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
