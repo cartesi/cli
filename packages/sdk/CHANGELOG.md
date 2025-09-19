@@ -1,5 +1,11 @@
 # sdk
 
+## 0.12.0-alpha.23
+
+### Patch Changes
+
+- 92a76c2: bump rollups-node to 2.0.0-alpha.8
+
 ## 0.12.0-alpha.22
 
 ### Patch Changes
