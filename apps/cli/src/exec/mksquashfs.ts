@@ -8,6 +8,8 @@ export const requiredVersion: Range = new Range("^4.5.1");
 const baseArgs = () => [
     "-all-time",
     "0",
+    "-mkfs-time",
+    "0",
     "-all-root", // XXX: should we use this?
     "-noappend",
     "-comp",
