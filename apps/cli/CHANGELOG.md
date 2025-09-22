@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.0-alpha.20
+
+### Patch Changes
+
+- cb12f9d: +bump to cartesi/sdk:0.12.0-alpha.24
+- 7285c04: make sqhashfs drive deterministic
+
 ## 2.0.0-alpha.19
 
 ### Patch Changes
