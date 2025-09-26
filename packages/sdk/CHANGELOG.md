@@ -1,5 +1,11 @@
 # sdk
 
+## 0.12.0-alpha.25
+
+### Patch Changes
+
+- a9d9220: add squashfs-tools missing liblzo2 runtime dependency
+
 ## 0.12.0-alpha.24
 
 ### Patch Changes
