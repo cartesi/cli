@@ -283,6 +283,7 @@ apt-get update
 apt-get install -y --no-install-recommends \
     jq \
     libarchive-tools \
+    liblzo2-2 \
     libslirp0 \
     locales \
     lua5.4 \
