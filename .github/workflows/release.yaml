@@ -35,8 +35,8 @@ jobs:
             # Minimum required version for npm publish with OIDC Support
             # https://docs.npmjs.com/trusted-publishers
             - run: |
-                npm install npm@latest
-                npm version
+                npm install -g npm@latest
+                npm --version
 
             - name: Install Foundry
               uses: foundry-rs/foundry-toolchain@de808b1eea699e761c404bda44ba8f21aba30b2c # 1.3.1
