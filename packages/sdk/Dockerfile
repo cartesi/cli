@@ -179,7 +179,11 @@ COPY --from=su-exec /usr/local/src/su-exec /usr/local/bin/
 COPY --from=nitro /usr/local/src/nitro /usr/local/bin/
 COPY --from=nitro /usr/local/src/nitroctl /usr/local/bin/
 COPY skel/ /
-RUN mkdir -p /run/nitro && chown -R cartesi:cartesi /run/nitro
+RUN <<EOF
+mkdir -p /run/nitro
+chown -R cartesi:cartesi /run/nitro
+chmod +x /etc/nitro/*/run
+EOF
 
 USER cartesi
 
