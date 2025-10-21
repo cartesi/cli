@@ -53,14 +53,12 @@ RUN curl -fsSL https://github.com/foundry-rs/foundry/releases/download/v${FOUNDR
     | tar -zx -C /usr/local/bin
 
 ################################################################################
-# nitro installer
+# nitro builder
 FROM builder AS nitro
 ARG NITRO_VERSION
 WORKDIR /usr/local/src
-ADD https://github.com/leahneukirchen/nitro.git#v${NITRO_VERSION} /usr/local/src
-RUN <<EOF
-make
-EOF
+ADD https://github.com/leahneukirchen/nitro.git#${NITRO_VERSION} /usr/local/src
+RUN make
 
 ################################################################################
 # build msquashfs-tools
