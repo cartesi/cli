@@ -1,6 +1,6 @@
 services:
     proxy:
-        image: traefik:v3.3.4
+        image: docker.io/traefik:v3.5.4@sha256:fa528d4565c8c279328c12d466325ee0f65804a75bcdbef737290664ad971d68
         healthcheck:
             test: ["CMD", "traefik", "healthcheck", "--ping"]
             start_period: 10s
