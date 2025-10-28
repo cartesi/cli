@@ -10,7 +10,7 @@ import getPort, { portNumbers } from "get-port";
 import ora from "ora";
 import { type Address, type Hex, numberToHex } from "viem";
 import { getMachineHash, getProjectName } from "../base.js";
-import { DEFAULT_SDK_VERSION, PREFERRED_PORT } from "../config.js";
+import { PREFERRED_PORT } from "../config.js";
 import {
     AVAILABLE_SERVICES,
     type RollupsDeployment,
@@ -206,7 +206,7 @@ export const createRunCommand = () => {
                 "--runtime-version <version>",
                 "version for Cartesi Rollups Runtime to use",
             )
-                .default(DEFAULT_SDK_VERSION)
+                .default(undefined)
                 .hideHelp(),
         )
         .option(

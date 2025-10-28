@@ -16,7 +16,17 @@ import {
     getProjectName,
     getServiceHealth,
 } from "../base.js";
-import { DEFAULT_SDK_IMAGE } from "../config.js";
+import {
+    DEFAULT_SDK_DATABASE_IMAGE_NAME,
+    DEFAULT_SDK_DATABASE_IMAGE_SHA256_DIGEST,
+    DEFAULT_SDK_DATABASE_IMAGE_TAG,
+    DEFAULT_SDK_IMAGE_NAME,
+    DEFAULT_SDK_IMAGE_SHA256_DIGEST,
+    DEFAULT_SDK_IMAGE_TAG,
+    DEFAULT_SDK_RUNTIME_IMAGE_NAME,
+    DEFAULT_SDK_RUNTIME_IMAGE_SHA256_DIGEST,
+    DEFAULT_SDK_RUNTIME_IMAGE_TAG,
+} from "../config.js";
 
 export type RollupsDeployment = {
     name: string;
@@ -230,7 +240,7 @@ export const startEnvironment = async (options: {
     memory?: number;
     port: number;
     projectName: string;
-    runtimeVersion: string;
+    runtimeVersion: string | undefined;
     services: string[];
     verbose: boolean;
 }) => {
@@ -255,6 +265,20 @@ export const startEnvironment = async (options: {
         "..",
     );
 
+    // determine sdk images
+    // prefer pinned digests when runtime version is not specified
+    const sdkImage = runtimeVersion
+        ? `${DEFAULT_SDK_IMAGE_NAME}:${runtimeVersion}`
+        : `${DEFAULT_SDK_IMAGE_NAME}:${DEFAULT_SDK_IMAGE_TAG}@sha256:${DEFAULT_SDK_IMAGE_SHA256_DIGEST}`;
+
+    const sdkDatabaseImage = runtimeVersion
+        ? `${DEFAULT_SDK_DATABASE_IMAGE_NAME}:${runtimeVersion}`
+        : `${DEFAULT_SDK_DATABASE_IMAGE_NAME}:${DEFAULT_SDK_DATABASE_IMAGE_TAG}@sha256:${DEFAULT_SDK_DATABASE_IMAGE_SHA256_DIGEST}`;
+
+    const sdkRuntimeImage = runtimeVersion
+        ? `${DEFAULT_SDK_RUNTIME_IMAGE_NAME}:${runtimeVersion}`
+        : `${DEFAULT_SDK_RUNTIME_IMAGE_NAME}:${DEFAULT_SDK_RUNTIME_IMAGE_TAG}@sha256:${DEFAULT_SDK_RUNTIME_IMAGE_SHA256_DIGEST}`;
+
     // setup the environment variable used in docker compose
     const env: NodeJS.ProcessEnv = {
         CARTESI_BIN_PATH: binPath,
@@ -264,8 +288,9 @@ export const startEnvironment = async (options: {
         CARTESI_LOG_LEVEL: verbose ? "debug" : "info",
         CARTESI_ROLLUPS_NODE_CPUS: cpus?.toString(),
         CARTESI_ROLLUPS_NODE_MEMORY: memory?.toString(),
-        CARTESI_SDK_IMAGE: `${DEFAULT_SDK_IMAGE}:${runtimeVersion}`,
-        CARTESI_SDK_VERSION: runtimeVersion,
+        CARTESI_SDK_IMAGE: sdkImage,
+        CARTESI_SDK_DATABASE_IMAGE: sdkDatabaseImage,
+        CARTESI_SDK_RUNTIME_IMAGE: sdkRuntimeImage,
     };
 
     // build a list of unique compose files
