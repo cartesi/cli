@@ -72,49 +72,6 @@ make
 EOF
 
 ################################################################################
-# go migrate db cli installer
-FROM base AS go-migrate
-ARG GO_MIGRATE_VERSION
-ARG TARGETARCH
-ARG TARGETOS
-RUN <<EOF
-curl -fsSL https://github.com/golang-migrate/migrate/releases/download/v${GO_MIGRATE_VERSION}/migrate.${TARGETOS}-${TARGETARCH}.tar.gz \
-    | tar -zx -C /usr/local/bin
-migrate --version
-EOF
-
-################################################################################
-# cartesi-rollups-graphql installer
-FROM base AS graphql
-ARG CARTESI_ROLLUPS_GRAPHQL_VERSION
-ARG TARGETOS
-ARG TARGETARCH
-RUN <<EOF
-curl -fsSL https://github.com/cartesi/rollups-graphql/releases/download/v${CARTESI_ROLLUPS_GRAPHQL_VERSION}/cartesi-rollups-graphql-v${CARTESI_ROLLUPS_GRAPHQL_VERSION}-${TARGETOS}-${TARGETARCH}.tar.gz \
-    -o /tmp/cartesi-rollups-graphql.tar.gz
-
-case "${TARGETARCH}" in
-    amd64) echo "b1b27069956c379e29d5668504bb02db  /tmp/cartesi-rollups-graphql.tar.gz" | md5sum --check ;;
-    arm64) echo "ca41f76ab2e6c1a8b15ac0c1ab96e951  /tmp/cartesi-rollups-graphql.tar.gz" | md5sum --check ;;
-    *) echo "unsupported architecture: ${TARGEARCH}"; exit 1 ;;
-esac
-
-tar -xzf /tmp/cartesi-rollups-graphql.tar.gz -C /usr/local/bin
-EOF
-
-################################################################################
-# cartesi-rollups-graphql migration code installer
-FROM base AS graphql-migration
-ARG CARTESI_ROLLUPS_GRAPHQL_VERSION
-RUN <<EOF
-GRAPHQL_DEST_FOLDER="/usr/share/cartesi/rollups-graphql/migrations"
-
-mkdir -p "$GRAPHQL_DEST_FOLDER"
-curl -fsSL "https://github.com/cartesi/rollups-graphql/archive/refs/tags/v${CARTESI_ROLLUPS_GRAPHQL_VERSION}.tar.gz" \
-    | tar --wildcards -xz -C ${GRAPHQL_DEST_FOLDER} --strip-components=3 '*/migrations/*.sql'
-EOF
-
-################################################################################
 # cartesi rollups-runtime target
 FROM base AS rollups-runtime
 ARG CARTESI_MACHINE_EMULATOR_VERSION
@@ -170,9 +127,6 @@ chown cartesi:cartesi /var/lib/cartesi-rollups-node/snapshots
 cartesi-rollups-node --version
 EOF
 
-COPY --from=graphql /usr/local/bin/cartesi-rollups-graphql /usr/local/bin/
-COPY --from=go-migrate /usr/local/bin/migrate /usr/local/bin/
-COPY --from=graphql-migration /usr/share/cartesi/rollups-graphql/migrations /usr/share/cartesi/rollups-graphql/migrations
 COPY --from=su-exec /usr/local/src/su-exec /usr/local/bin/
 COPY --from=nitro /usr/local/src/nitro /usr/local/bin/
 COPY --from=nitro /usr/local/src/nitroctl /usr/local/bin/
@@ -199,15 +153,12 @@ EOF
 
 COPY --from=rollups-runtime /usr/bin/cartesi-rollups-cli /usr/bin/
 COPY --from=rollups-runtime /usr/lib/libcartesi* /usr/lib/
-COPY --from=go-migrate /usr/local/bin/migrate /usr/local/bin/
-COPY --from=graphql-migration /usr/share/cartesi/rollups-graphql/migrations /usr/share/cartesi/rollups-graphql/migrations
 
 ARG POSTGRES_PASSWORD=password
 
-# create rollupsdb and graphql databases
+# create rollupsdb databases
 COPY <<EOF /docker-entrypoint-initdb.d/00-createdb.sql
 CREATE DATABASE rollupsdb;
-CREATE DATABASE graphql;
 CREATE DATABASE explorer;
 EOF
 
@@ -217,13 +168,6 @@ COPY <<EOF /docker-entrypoint-initdb.d/01-rollups-node-migrations.sh
 set -e
 export CARTESI_DATABASE_CONNECTION="postgres://postgres@/rollupsdb?host=/var/run/postgresql"
 cartesi-rollups-cli db init --upgrade --verbose
-EOF
-
-# rollups-graphql migrations
-COPY <<EOF /docker-entrypoint-initdb.d/02-graphql-migrations.sh
-#!/usr/bin/env bash
-set -e
-migrate -verbose -path /usr/share/cartesi/rollups-graphql/migrations -database 'postgres://postgres@/graphql?host=/var/run/postgresql' up
 EOF
 
 RUN /usr/local/bin/docker-ensure-initdb.sh postgres
