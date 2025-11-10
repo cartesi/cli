@@ -162,15 +162,6 @@ const availableServices: Service[] = [
         errorTitle: `${chalk.red("explorer")} service failed`,
     },
     {
-        name: "graphql",
-        file: "docker-compose-graphql.yaml",
-        healthySemaphore: "graphql",
-        healthyTitle: (port) =>
-            `${chalk.cyan("graphql")} service ready at ${chalk.cyan(`${host}:${port}/graphql`)}`,
-        waitTitle: `${chalk.cyan("graphql")} service starting...`,
-        errorTitle: `${chalk.red("graphql")} service failed`,
-    },
-    {
         name: "paymaster",
         file: "docker-compose-paymaster.yaml",
         healthySemaphore: "paymaster",
