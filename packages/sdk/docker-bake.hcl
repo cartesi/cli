@@ -15,10 +15,8 @@ target "default" {
     CARTESI_MACHINE_EMULATOR_VERSION  = "0.19.0"
     CARTESI_PASSKEY_SERVER_VERSION    = "1.0.1"
     CARTESI_PAYMASTER_VERSION         = "0.2.0"
-    CARTESI_ROLLUPS_GRAPHQL_VERSION   = "2.3.14"
     CARTESI_ROLLUPS_NODE_VERSION      = "2.0.0-alpha.8"
     FOUNDRY_VERSION                   = "1.2.1"
-    GO_MIGRATE_VERSION                = "4.18.2"
     NITRO_VERSION                     = "8c376d4a5baa7f32999620f9fe3eb51ca8e0dcbc" # v0.5
     NODE_VERSION                      = "22.15.1"
     NVM_VERSION                       = "977563e97ddc66facf3a8e31c6cff01d236f09bd" # 0.40.3
