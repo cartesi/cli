@@ -123,7 +123,7 @@ curl -fsSL https://github.com/cartesi/machine-emulator/releases/download/v${CART
 case "${TARGETARCH}" in
     amd64) echo "adae6b030a8990e316997aad53d175192bfeaa84ad12ee19491366377073572b  /tmp/machine-emulator.deb" | sha256sum --check ;;
     arm64) echo "15ebb64d8cd3296564d2297dd809d1d72c13a938976bb4ecc5e5c82e71bb8069  /tmp/machine-emulator.deb" | sha256sum --check ;;
-    *) echo "unsupported architecture: $ARCH"; exit 1 ;;
+    *) echo "unsupported architecture: ${TARGETARCH}"; exit 1 ;;
 esac
 apt-get install -y --no-install-recommends /tmp/machine-emulator.deb
 rm /tmp/machine-emulator.deb
@@ -137,7 +137,7 @@ curl -fsSL https://github.com/cartesi/rollups-node/releases/download/v${CARTESI_
 case "${TARGETARCH}" in
     amd64) echo "75266f76d330300dbe63206c8c2855ea5a49853005cbe69fa15fcdfc1e7d9682 /tmp/cartesi-rollups-node.deb" | sha256sum --check ;;
     arm64) echo "262880d198d68a8beac3c7605c0e478442181eda42c0f2ba9ec228ebfc7ab34a /tmp/cartesi-rollups-node.deb" | sha256sum --check ;;
-    *) echo "unsupported architecture: $ARCH"; exit 1 ;;
+    *) echo "unsupported architecture: ${TARGETARCH}"; exit 1 ;;
 esac
 apt-get install -y --no-install-recommends /tmp/cartesi-rollups-node.deb
 rm /tmp/cartesi-rollups-node.deb
