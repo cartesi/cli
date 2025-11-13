@@ -22,7 +22,7 @@ target "default" {
     NVM_VERSION                       = "977563e97ddc66facf3a8e31c6cff01d236f09bd" # 0.40.3
     POSTGRES_BASE_IMAGE               = "docker.io/library/postgres:17-trixie@sha256:ecebd237d9aaf83112427807848bc41ba6bd4df8a2f6936e09f7db1813609625"
     SQUASHFS_TOOLS_VERSION            = "99d23a31b471433c51e9c145aeba2ab1536e34df" # 4.7.2
-    SU_EXEC_VERSION                   = "0.2"
+    SU_EXEC_VERSION                   = "0.3"
     XGENEXT2_VERSION                  = "1.5.6"
   }
 }

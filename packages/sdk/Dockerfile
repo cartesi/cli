@@ -37,11 +37,26 @@ EOF
 
 ################################################################################
 # su-exec builder
-FROM builder AS su-exec
+FROM base AS su-exec
 ARG SU_EXEC_VERSION
-WORKDIR /usr/local/src
-ADD https://github.com/ncopa/su-exec.git#v${SU_EXEC_VERSION} /usr/local/src
-RUN make
+ARG TARGETARCH
+WORKDIR /usr/local/bin
+RUN <<EOF
+ARCH=${TARGETARCH}
+
+if [ "$ARCH" = "amd64" ]; then
+    ARCH="x86_64"
+fi
+
+curl -fsSL https://github.com/ncopa/su-exec/releases/download/v${SU_EXEC_VERSION}/su-exec-static-v${SU_EXEC_VERSION}-${ARCH} \
+  -o su-exec
+case "${TARGETARCH}" in
+    amd64) echo "675e7b454ad96e7631029f0b71c9ad5a6c23b553a8952ed528de1e591ca7cef0 su-exec" | sha256sum --check ;;
+    arm64) echo "a08773d4af76a30371f8d1c93e86e8ac2b0379c9e75dce9d694c5059b0544909 su-exec" | sha256sum --check ;;
+    *) echo "unsupported architecture: ${TARGETARCH}"; exit 1 ;;
+esac
+chmod +x su-exec
+EOF
 
 ################################################################################
 # foundry installer
@@ -132,7 +147,7 @@ chown cartesi:cartesi /var/lib/cartesi-rollups-node/snapshots
 cartesi-rollups-node --version
 EOF
 
-COPY --from=su-exec /usr/local/src/su-exec /usr/local/bin/
+COPY --from=su-exec /usr/local/bin/su-exec /usr/local/bin/
 COPY --from=nitro /usr/local/src/nitro /usr/local/bin/
 COPY --from=nitro /usr/local/src/nitroctl /usr/local/bin/
 COPY skel/ /
