@@ -35,10 +35,10 @@ export const createLogsCommand = () => {
 
             const serviceInfo = await getServiceInfo({
                 projectName,
-                service: "rollups-node",
+                service: "rollups_node",
             });
             if (!serviceInfo) {
-                throw new Error(`service rollups-node not found`);
+                throw new Error(`service rollups_node not found`);
             }
 
             await execa(
