@@ -169,8 +169,8 @@ importers:
   packages/devnet:
     devDependencies:
       '@usecannon/cli':
-        specifier: ^2.23.0
-        version: 2.23.0(typescript@5.9.2)
+        specifier: ^2.25.1
+        version: 2.25.1(typescript@5.9.2)
       npm-run-all:
         specifier: ^4.1.5
         version: 4.1.5
@@ -1273,9 +1273,6 @@ packages:
   '@types/node@12.20.55':
     resolution: {integrity: sha512-J8xLz7q2OFulZ2cyGTLE1TbbZcjpno7FaN6zdJNrgAdrJ+DZzh/uFR6YrTb4C+nXakvud8Q4+rbhoIWlYQbUFQ==}
 
-  '@types/node@22.13.9':
-    resolution: {integrity: sha512-acBjXdRJ3A6Pb3tqnw9HZmyR3Fiol3aGxRCK1x3d+6CDAMjl7I649wpSd+yNURCjbOUGu9tqtLKnTGxmK6CyGw==}
-
   '@types/node@22.7.8':
     resolution: {integrity: sha512-a922jJy31vqR5sk+kAdIENJjHblqcZ4RmERviFsER4WJcEONqxKcjNOlk0q7OUfrF5sddT+vng070cdfMlrPLg==}
 
@@ -1300,12 +1297,12 @@ packages:
   '@types/tmp@0.2.6':
     resolution: {integrity: sha512-chhaNf2oKHlRkDGt+tiKE2Z5aJ6qalm7Z9rlLdBwmOiAAf09YQvvoLXjWK4HWPF1xU/fqvMgfNfpVoBscA/tKA==}
 
-  '@usecannon/builder@2.23.0':
-    resolution: {integrity: sha512-a0WwHNM+RYvs4DTnKTagWsPLB/XVySeTFs/DofoJAVhKN2cKSyhhr9i41KcsPHN1pVt3+49VvRhZJm1eyAIq4g==}
+  '@usecannon/builder@2.25.1':
+    resolution: {integrity: sha512-fDhFNQeeO7D0FiTWaU/86U7OfMhvcHIAhHXPUZ4tNx/F7t0fg0HhCTu/dniGKLWb9PqIiSEMWaX1eX5Pga2vTw==}
     engines: {node: '>=16.0.0'}
 
-  '@usecannon/cli@2.23.0':
-    resolution: {integrity: sha512-XP+GP4zi8kxJOifqFg1JijbEjvTMH9KbtBRWrOcFkEuqJ3M4TO++vkkkEMue36loMnAaThV2RAxm4j21TjSggg==}
+  '@usecannon/cli@2.25.1':
+    resolution: {integrity: sha512-O8kRQtUA/7bI0iUcsKZhkl945kHr/3a2VVN0wDzbjvzBMfwOkobDHescqPS48rCkY5EVgErZfw+UVTSVsEB2qw==}
     hasBin: true
 
   '@usecannon/router@4.1.3':
@@ -1359,17 +1356,6 @@ packages:
 
   abitype@1.0.5:
     resolution: {integrity: sha512-YzDhti7cjlfaBhHutMaboYB21Ha3rXR9QTkNJFzYC4kC8YclaiwPBBBJY8ejFdu2wnJeZCVZSMlQJ7fi8S6hsw==}
-    peerDependencies:
-      typescript: '>=5.0.4'
-      zod: ^3 >=3.22.0
-    peerDependenciesMeta:
-      typescript:
-        optional: true
-      zod:
-        optional: true
-
-  abitype@1.0.8:
-    resolution: {integrity: sha512-ZeiI6h3GnW06uYDLx0etQtX/p8E24UaHHBj57RSjK7YBFe7iuVn07EDpOeP451D06sF27VOz9JJPlIKJmXgkEg==}
     peerDependencies:
       typescript: '>=5.0.4'
       zod: ^3 >=3.22.0
@@ -2055,10 +2041,6 @@ packages:
   foreground-child@3.3.0:
     resolution: {integrity: sha512-Ld2g8rrAyMYFXBhEqMz8ZAHBi4J4uS1i/CxGMDnjyFWddMXLVcDp051DZfu+t7+ab7Wv6SMqpWmyFIj5UbfFvg==}
     engines: {node: '>=14'}
-
-  form-data@4.0.2:
-    resolution: {integrity: sha512-hGfm/slu0ZabnNt4oaRZ6uREyfCj6P4fT/n6A1rGV+Z0VdGXjfOhVUpkn6qVQONHGIFwmveGXyDs75+nr6FM8w==}
-    engines: {node: '>= 6'}
 
   form-data@4.0.4:
     resolution: {integrity: sha512-KrGhL9Q4zjj0kiUt5OO4Mr/A/jlI2jDYs5eHBpYHPcBEVSiipAvn2Ko2HnPe20rmcuuvMHNdZFp+4IlGTMF0Ow==}
@@ -3670,9 +3652,6 @@ packages:
   undici-types@6.19.8:
     resolution: {integrity: sha512-ve2KP6f/JnbPBFyobGHuerC9g1FYGn/F8n1LWTwNxCEzd6IfqTwUQcNXgEtmmQ6DlRrC1hrSrBnCZPokRrDHjw==}
 
-  undici-types@6.20.0:
-    resolution: {integrity: sha512-Ny6QZ2Nju20vw1SRHe3d9jVu6gJ+4e3+MMpqu7pqE5HT6WsTSlce++GQmK5UXS8mzV8DSYHrQH+Xrf2jVcuKNg==}
-
   undici-types@7.12.0:
     resolution: {integrity: sha512-goOacqME2GYyOZZfb5Lgtu+1IDmAlAEu5xnD3+xTzS10hT0vzpf0SPjkXwAw9Jm+4n/mQGDP3LO8CPbYROeBfQ==}
 
@@ -3801,9 +3780,6 @@ packages:
     resolution: {integrity: sha512-3e04qkoN3LxTMLakdqeWth8nih8usyg+sf1Bgdf9wwUkp05iuK1eSY/QpLvscT/+F/gA89+LpUmmgBtesbqI2Q==}
     engines: {node: '>=10'}
     hasBin: true
-
-  web-solc@0.5.1:
-    resolution: {integrity: sha512-Z/hBplZq1+4i4bYeIeD9N3vP1BLUBXpSDa4h0Ipm2Z2cHv7x7DtZ2zFb0E1L1VZo4BF+OJGVtGlT+nTUXGgncQ==}
 
   webauthn-p256@0.0.5:
     resolution: {integrity: sha512-drMGNWKdaixZNobeORVIqq7k5DsRC9FnG201K2QjeOoQLmtSDaSsVZdkg6n5jUALJKcAG++zBPJXmv6hy0nWFg==}
@@ -4922,10 +4898,6 @@ snapshots:
 
   '@types/node@12.20.55': {}
 
-  '@types/node@22.13.9':
-    dependencies:
-      undici-types: 6.20.0
-
   '@types/node@22.7.8':
     dependencies:
       undici-types: 6.19.8
@@ -4953,7 +4925,7 @@ snapshots:
 
   '@types/tmp@0.2.6': {}
 
-  '@usecannon/builder@2.23.0(typescript@5.9.2)':
+  '@usecannon/builder@2.25.1(typescript@5.9.2)':
     dependencies:
       '@usecannon/router': 4.1.3
       '@usecannon/web-solc': 0.5.1
@@ -4964,7 +4936,7 @@ snapshots:
       chalk: 4.1.2
       debug: 4.4.1
       deep-freeze: 0.0.1
-      form-data: 4.0.2
+      form-data: 4.0.4
       fuse.js: 7.1.0
       lodash: 4.17.21
       pako: 2.1.0
@@ -4981,11 +4953,11 @@ snapshots:
       - typescript
       - utf-8-validate
 
-  '@usecannon/cli@2.23.0(typescript@5.9.2)':
+  '@usecannon/cli@2.25.1(typescript@5.9.2)':
     dependencies:
       '@iarna/toml': 3.0.0
-      '@usecannon/builder': 2.23.0(typescript@5.9.2)
-      abitype: 1.0.8(typescript@5.9.2)(zod@3.25.42)
+      '@usecannon/builder': 2.25.1(typescript@5.9.2)
+      abitype: 1.1.0(typescript@5.9.2)(zod@3.25.42)
       chalk: 4.1.2
       commander: 12.1.0
       debug: 4.4.1
@@ -4993,6 +4965,7 @@ snapshots:
       fs-extra: 11.3.2
       glob: 11.0.2
       lodash: 4.17.21
+      nanospinner: 1.2.2
       prompts: 2.4.2
       semver: 7.7.2
       table: 6.9.0
@@ -5017,9 +4990,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@usecannon/web-solc@0.5.1':
-    dependencies:
-      web-solc: 0.5.1
+  '@usecannon/web-solc@0.5.1': {}
 
   '@vitest/coverage-istanbul@3.2.4(vitest@3.2.4(@types/node@24.5.1))':
     dependencies:
@@ -5109,11 +5080,6 @@ snapshots:
     optionalDependencies:
       typescript: 5.5.4
       zod: 3.23.8
-
-  abitype@1.0.8(typescript@5.9.2)(zod@3.25.42):
-    optionalDependencies:
-      typescript: 5.9.2
-      zod: 3.25.42
 
   abitype@1.1.0(typescript@5.9.2)(zod@3.25.42):
     optionalDependencies:
@@ -5223,7 +5189,7 @@ snapshots:
   axios@1.9.0(debug@4.4.1):
     dependencies:
       follow-redirects: 1.15.9(debug@4.4.1)
-      form-data: 4.0.2
+      form-data: 4.0.4
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
       - debug
@@ -5907,13 +5873,6 @@ snapshots:
     dependencies:
       cross-spawn: 7.0.3
       signal-exit: 4.1.0
-
-  form-data@4.0.2:
-    dependencies:
-      asynckit: 0.4.0
-      combined-stream: 1.0.8
-      es-set-tostringtag: 2.1.0
-      mime-types: 2.1.35
 
   form-data@4.0.4:
     dependencies:
@@ -6934,7 +6893,7 @@ snapshots:
       '@protobufjs/pool': 1.1.0
       '@protobufjs/utf8': 1.1.0
       '@types/long': 4.0.2
-      '@types/node': 22.13.9
+      '@types/node': 24.5.1
       long: 4.0.0
 
   proxy-addr@2.0.7:
@@ -7577,8 +7536,6 @@ snapshots:
 
   undici-types@6.19.8: {}
 
-  undici-types@6.20.0: {}
-
   undici-types@7.12.0: {}
 
   unicorn-magic@0.3.0: {}
@@ -7717,10 +7674,6 @@ snapshots:
       debug: 4.3.7
     transitivePeerDependencies:
       - supports-color
-
-  web-solc@0.5.1:
-    dependencies:
-      semver: 7.7.2
 
   webauthn-p256@0.0.5:
     dependencies:
