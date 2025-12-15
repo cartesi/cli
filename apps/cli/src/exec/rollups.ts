@@ -1,7 +1,6 @@
 import chalk from "chalk";
 import { execa } from "execa";
 import { Listr, type ListrTask } from "listr2";
-import path from "node:path";
 import pRetry from "p-retry";
 import {
     type Address,
@@ -10,13 +9,22 @@ import {
     getAddress,
     hexToNumber,
 } from "viem";
+import { stringify } from "yaml";
 import {
     getContextPath,
     getMachineHash,
     getProjectName,
     getServiceHealth,
 } from "../base.js";
-import { DEFAULT_SDK_IMAGE } from "../config.js";
+import anvil from "../compose/anvil.js";
+import { concat } from "../compose/builder.js";
+import bundler from "../compose/bundler.js";
+import database from "../compose/database.js";
+import explorer from "../compose/explorer.js";
+import node from "../compose/node.js";
+import passkey from "../compose/passkey.js";
+import paymaster from "../compose/paymaster.js";
+import proxy from "../compose/proxy.js";
 
 export type RollupsDeployment = {
     name: string;
@@ -60,7 +68,7 @@ export const getDeployments = async (
             "--project-name",
             options.projectName,
             "exec",
-            "rollups-node",
+            "rollups_node",
             "cartesi-rollups-cli",
             "app",
             "list",
@@ -94,7 +102,6 @@ export const getApplicationAddress = async (options: {
 
 type Service = {
     name: string; // name of the service
-    file: string; // docker compose file name
     healthySemaphore?: string; // service to check if the service is healthy
     healthyTitle?: string | ((port: number, name?: string) => string); // title of the service when it is healthy
     waitTitle?: string; // title of the service when it is starting
@@ -107,7 +114,6 @@ const host = "http://127.0.0.1";
 const baseServices: Service[] = [
     {
         name: "anvil",
-        file: "docker-compose-anvil.yaml",
         healthySemaphore: "anvil",
         healthyTitle: (port) =>
             `${chalk.cyan("anvil")} service ready at ${chalk.cyan(`${host}:${port}/anvil`)}`,
@@ -116,16 +122,13 @@ const baseServices: Service[] = [
     },
     {
         name: "proxy",
-        file: "docker-compose-proxy.yaml",
     },
     {
         name: "database",
-        file: "docker-compose-database.yaml",
     },
     {
         name: "rpc",
-        file: "docker-compose-node.yaml",
-        healthySemaphore: "rollups-node",
+        healthySemaphore: "rollups_node",
         healthyTitle: (port) =>
             `${chalk.cyan("rpc")} service ready at ${chalk.cyan(`${host}:${port}/rpc`)}`,
         waitTitle: `${chalk.cyan("rpc")} service starting...`,
@@ -133,8 +136,7 @@ const baseServices: Service[] = [
     },
     {
         name: "inspect",
-        file: "docker-compose-node.yaml",
-        healthySemaphore: "rollups-node",
+        healthySemaphore: "rollups_node",
         healthyTitle: (port, name) =>
             `${chalk.cyan("inspect")} service ready at ${chalk.cyan(`${host}:${port}/inspect/${name ?? "<application_address>"}`)}`,
         waitTitle: `${chalk.cyan("inspect")} service starting...`,
@@ -145,7 +147,6 @@ const baseServices: Service[] = [
 const availableServices: Service[] = [
     {
         name: "bundler",
-        file: "docker-compose-bundler.yaml",
         healthySemaphore: "bundler",
         healthyTitle: (port) =>
             `${chalk.cyan("bundler")} service ready at ${chalk.cyan(`${host}:${port}/bundler/rpc`)}`,
@@ -154,7 +155,6 @@ const availableServices: Service[] = [
     },
     {
         name: "explorer",
-        file: "docker-compose-explorer.yaml",
         healthySemaphore: "explorer_api",
         healthyTitle: (port) =>
             `${chalk.cyan("explorer")} service ready at ${chalk.cyan(`${host}:${port}/explorer`)}`,
@@ -163,7 +163,6 @@ const availableServices: Service[] = [
     },
     {
         name: "paymaster",
-        file: "docker-compose-paymaster.yaml",
         healthySemaphore: "paymaster",
         healthyTitle: (port) =>
             `${chalk.cyan("paymaster")} service ready at ${chalk.cyan(`${host}:${port}/paymaster`)}`,
@@ -172,8 +171,7 @@ const availableServices: Service[] = [
     },
     {
         name: "passkey",
-        file: "docker-compose-passkey-server.yaml",
-        healthySemaphore: "passkey-server",
+        healthySemaphore: "passkey_server",
         healthyTitle: (port) =>
             `${chalk.cyan("passkey")} service ready at ${chalk.cyan(`${host}:${port}/passkey`)}`,
         waitTitle: `${chalk.cyan("passkey")} service starting...`,
@@ -216,7 +214,7 @@ const serviceMonitorTask = (options: {
 export const startEnvironment = async (options: {
     blockTime: number;
     cpus?: number;
-    defaultBlock: string;
+    defaultBlock: "latest" | "safe" | "pending" | "finalized";
     dryRun: boolean;
     memory?: number;
     port: number;
@@ -240,62 +238,54 @@ export const startEnvironment = async (options: {
 
     const address = `${host}:${port}`;
 
-    // path of the tool instalation
-    const binPath = path.join(
-        path.dirname(new URL(import.meta.url).pathname),
-        "..",
-    );
-
     // setup the environment variable used in docker compose
     const env: NodeJS.ProcessEnv = {
-        CARTESI_BIN_PATH: binPath,
-        CARTESI_BLOCK_TIME: blockTime.toString(),
         CARTESI_BLOCKCHAIN_DEFAULT_BLOCK: defaultBlock,
         CARTESI_LISTEN_PORT: port.toString(),
         CARTESI_LOG_LEVEL: verbose ? "debug" : "info",
-        CARTESI_ROLLUPS_NODE_CPUS: cpus?.toString(),
-        CARTESI_ROLLUPS_NODE_MEMORY: memory?.toString(),
-        CARTESI_SDK_IMAGE: `${DEFAULT_SDK_IMAGE}:${runtimeVersion}`,
-        CARTESI_SDK_VERSION: runtimeVersion,
     };
 
-    // build a list of unique compose files
-    const composeFiles = [...new Set(baseServices.map(({ file }) => file))];
-
-    // cpu and memory limits, mostly for testing and debuggingpurposes
-    if (cpus) {
-        composeFiles.push("docker-compose-node-cpus.yaml");
-    }
-    if (memory) {
-        composeFiles.push("docker-compose-node-memory.yaml");
-    }
-
-    // select subset of optional services
-    const optionalServices =
-        services.length === 1 && services[0] === "all"
-            ? availableServices
-            : availableServices.filter(({ name }) => services.includes(name));
-
-    // add to compose files list
-    composeFiles.push(...optionalServices.map(({ file }) => file));
-
-    // create the "--file <file>" list
-    const files = composeFiles.flatMap((f) => [
-        "--file",
-        path.join(binPath, "compose", f),
-    ]);
-
-    const composeArgs = [
-        "compose",
-        ...files,
-        "--project-directory",
-        ".",
-        "--project-name",
-        projectName,
+    const files = [
+        anvil({ blockTime, imageTag: runtimeVersion }),
+        database({ imageTag: runtimeVersion, password: "password" }),
+        node({
+            cpus,
+            databasePassword: "password",
+            defaultBlock,
+            imageTag: runtimeVersion,
+            logLevel: verbose ? "debug" : "info",
+            memory,
+        }),
+        proxy({ imageTag: "v3.3.4", port }),
     ];
+
+    if (services.includes("explorer")) {
+        files.push(
+            explorer({
+                imageTag: "1.4.0",
+                apiTag: "1.1.0",
+                databasePassword: "password",
+                port,
+            }),
+        );
+    }
+    if (services.includes("bundler")) {
+        files.push(bundler({ imageTag: runtimeVersion }));
+    }
+    if (services.includes("paymaster")) {
+        files.push(paymaster({ imageTag: runtimeVersion }));
+    }
+    if (services.includes("passkey")) {
+        files.push(passkey({ imageTag: runtimeVersion }));
+    }
+
+    const composeArgs = ["compose", "-f", "-", "--project-directory", "."];
 
     // run in detached mode (background)
     const upArgs = ["--detach"];
+
+    // merge files, following Docker Compose merge rules
+    const composeFile = concat([{ name: projectName }, ...files]);
 
     // if only dry run, just return the config
     if (dryRun) {
@@ -303,22 +293,25 @@ export const startEnvironment = async (options: {
         const { stdout: config } = await execa(
             "docker",
             [...composeArgs, "config", "--format", "yaml"],
-            { env },
+            { env, input: stringify(composeFile, { lineWidth: 0, indent: 2 }) },
         );
 
         return { address, config };
     }
 
     // pull images first
-    const pullArgs = ["--policy", "missing"];
-    await execa("docker", [...composeArgs, "pull", ...pullArgs], {
-        env,
-        stdio: "inherit",
-    });
+    // const pullArgs = ["--policy", "missing"];
+    // await execa("docker", [...composeArgs, "pull", ...pullArgs], {
+    //     env,
+    ////FIXME: stdio and input won't work together
+    //     stdio: "inherit",
+    //     input: composeFile.build()
+    // });
 
     // run compose
     await execa("docker", [...composeArgs, "up", ...upArgs], {
         env,
+        input: stringify(composeFile, { lineWidth: 0, indent: 2 }),
     });
 
     return { address };
@@ -381,7 +374,7 @@ export const publishMachine = async (options: {
         projectName,
         "cp",
         snapshotPath,
-        `rollups-node:${containerSnapshotPath}`,
+        `rollups_node:${containerSnapshotPath}`,
     ]);
     return containerSnapshotPath;
 };
@@ -419,7 +412,7 @@ export const deployAuthority = async (options: {
         "--project-name",
         projectName,
         "exec",
-        "rollups-node",
+        "rollups_node",
         "cartesi-rollups-cli",
         "deploy",
         "authority",
@@ -477,7 +470,7 @@ export const deployApplication = async (options: {
         "--project-name",
         projectName,
         "exec",
-        "rollups-node",
+        "rollups_node",
         "cartesi-rollups-cli",
         "deploy",
         "application",
@@ -509,7 +502,7 @@ export const removeApplication = async (options: {
         "--project-name",
         projectName,
         "exec",
-        "rollups-node",
+        "rollups_node",
         "cartesi-rollups-cli",
         "app",
         "status",
@@ -528,7 +521,7 @@ export const removeApplication = async (options: {
         "--project-name",
         projectName,
         "exec",
-        "rollups-node",
+        "rollups_node",
         "cartesi-rollups-cli",
         "app",
         "remove",
