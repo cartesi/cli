@@ -1,6 +1,0 @@
-services:
-    rollups-node:
-        deploy:
-            resources:
-                limits:
-                    cpus: "${CARTESI_ROLLUPS_NODE_CPUS}"

@@ -1,7 +1,6 @@
 import chalk from "chalk";
 import { execa } from "execa";
 import { Listr, type ListrTask } from "listr2";
-import path from "node:path";
 import pRetry from "p-retry";
 import {
     type Address,
@@ -16,7 +15,7 @@ import {
     getProjectName,
     getServiceHealth,
 } from "../base.js";
-import { DEFAULT_SDK_IMAGE } from "../config.js";
+import { ComposeBuilder } from "../compose/builder.js";
 
 export type RollupsDeployment = {
     name: string;
@@ -94,7 +93,6 @@ export const getApplicationAddress = async (options: {
 
 type Service = {
     name: string; // name of the service
-    file: string; // docker compose file name
     healthySemaphore?: string; // service to check if the service is healthy
     healthyTitle?: string | ((port: number, name?: string) => string); // title of the service when it is healthy
     waitTitle?: string; // title of the service when it is starting
@@ -107,7 +105,6 @@ const host = "http://127.0.0.1";
 const baseServices: Service[] = [
     {
         name: "anvil",
-        file: "docker-compose-anvil.yaml",
         healthySemaphore: "anvil",
         healthyTitle: (port) =>
             `${chalk.cyan("anvil")} service ready at ${chalk.cyan(`${host}:${port}/anvil`)}`,
@@ -116,15 +113,12 @@ const baseServices: Service[] = [
     },
     {
         name: "proxy",
-        file: "docker-compose-proxy.yaml",
     },
     {
         name: "database",
-        file: "docker-compose-database.yaml",
     },
     {
         name: "rpc",
-        file: "docker-compose-node.yaml",
         healthySemaphore: "rollups-node",
         healthyTitle: (port) =>
             `${chalk.cyan("rpc")} service ready at ${chalk.cyan(`${host}:${port}/rpc`)}`,
@@ -133,7 +127,6 @@ const baseServices: Service[] = [
     },
     {
         name: "inspect",
-        file: "docker-compose-node.yaml",
         healthySemaphore: "rollups-node",
         healthyTitle: (port, name) =>
             `${chalk.cyan("inspect")} service ready at ${chalk.cyan(`${host}:${port}/inspect/${name ?? "<application_address>"}`)}`,
@@ -145,7 +138,6 @@ const baseServices: Service[] = [
 const availableServices: Service[] = [
     {
         name: "bundler",
-        file: "docker-compose-bundler.yaml",
         healthySemaphore: "bundler",
         healthyTitle: (port) =>
             `${chalk.cyan("bundler")} service ready at ${chalk.cyan(`${host}:${port}/bundler/rpc`)}`,
@@ -154,8 +146,7 @@ const availableServices: Service[] = [
     },
     {
         name: "explorer",
-        file: "docker-compose-explorer.yaml",
-        healthySemaphore: "explorer_api",
+        healthySemaphore: "explorer-api",
         healthyTitle: (port) =>
             `${chalk.cyan("explorer")} service ready at ${chalk.cyan(`${host}:${port}/explorer`)}`,
         waitTitle: `${chalk.cyan("explorer")} service starting...`,
@@ -163,7 +154,6 @@ const availableServices: Service[] = [
     },
     {
         name: "paymaster",
-        file: "docker-compose-paymaster.yaml",
         healthySemaphore: "paymaster",
         healthyTitle: (port) =>
             `${chalk.cyan("paymaster")} service ready at ${chalk.cyan(`${host}:${port}/paymaster`)}`,
@@ -172,7 +162,6 @@ const availableServices: Service[] = [
     },
     {
         name: "passkey",
-        file: "docker-compose-passkey-server.yaml",
         healthySemaphore: "passkey-server",
         healthyTitle: (port) =>
             `${chalk.cyan("passkey")} service ready at ${chalk.cyan(`${host}:${port}/passkey`)}`,
@@ -240,59 +229,59 @@ export const startEnvironment = async (options: {
 
     const address = `${host}:${port}`;
 
-    // path of the tool instalation
-    const binPath = path.join(
-        path.dirname(new URL(import.meta.url).pathname),
-        "..",
-    );
-
     // setup the environment variable used in docker compose
     const env: NodeJS.ProcessEnv = {
-        CARTESI_BIN_PATH: binPath,
-        CARTESI_BLOCK_TIME: blockTime.toString(),
         CARTESI_BLOCKCHAIN_DEFAULT_BLOCK: defaultBlock,
         CARTESI_LISTEN_PORT: port.toString(),
         CARTESI_LOG_LEVEL: verbose ? "debug" : "info",
-        CARTESI_ROLLUPS_NODE_CPUS: cpus?.toString(),
-        CARTESI_ROLLUPS_NODE_MEMORY: memory?.toString(),
-        CARTESI_SDK_IMAGE: `${DEFAULT_SDK_IMAGE}:${runtimeVersion}`,
-        CARTESI_SDK_VERSION: runtimeVersion,
     };
 
-    // build a list of unique compose files
-    const composeFiles = [...new Set(baseServices.map(({ file }) => file))];
+    const composeFile: ComposeBuilder = new ComposeBuilder()
+        .withName(projectName)
+        .withAnvil({
+            blockTime,
+            imageTag: runtimeVersion,
+        })
+        .withDatabase({
+            imageTag: runtimeVersion,
+        })
+        .withRollupsNode({
+            imageTag: runtimeVersion,
+        })
+        .withProxy({
+            imageTag: "v3.3.4",
+            listenPort: port,
+        });
 
-    // cpu and memory limits, mostly for testing and debuggingpurposes
+    // cpu and memory limits, mostly for testing and debugging purposes
     if (cpus) {
-        composeFiles.push("docker-compose-node-cpus.yaml");
+        composeFile.withRollupsNode({ cpus });
     }
     if (memory) {
-        composeFiles.push("docker-compose-node-memory.yaml");
+        composeFile.withRollupsNode({ memory });
     }
 
-    // select subset of optional services
-    const optionalServices =
-        services.length === 1 && services[0] === "all"
-            ? availableServices
-            : availableServices.filter(({ name }) => services.includes(name));
+    if (services.includes("explorer")) {
+        composeFile
+            .withExplorer({
+                imageTag: "1.3.3",
+                listenPort: port,
+            })
+            .withExplorerApi({
+                imageTag: "1.0.0",
+            });
+    }
+    if (services.includes("bundler")) {
+        composeFile.withBundler({ imageTag: runtimeVersion });
+    }
+    if (services.includes("paymaster")) {
+        composeFile.withPaymaster({ imageTag: runtimeVersion });
+    }
+    if (services.includes("passkey")) {
+        composeFile.withPasskeyServer({ imageTag: runtimeVersion });
+    }
 
-    // add to compose files list
-    composeFiles.push(...optionalServices.map(({ file }) => file));
-
-    // create the "--file <file>" list
-    const files = composeFiles.flatMap((f) => [
-        "--file",
-        path.join(binPath, "compose", f),
-    ]);
-
-    const composeArgs = [
-        "compose",
-        ...files,
-        "--project-directory",
-        ".",
-        "--project-name",
-        projectName,
-    ];
+    const composeArgs = ["compose", "-f", "-", "--project-directory", "."];
 
     // run in detached mode (background)
     const upArgs = ["--detach"];
@@ -303,22 +292,25 @@ export const startEnvironment = async (options: {
         const { stdout: config } = await execa(
             "docker",
             [...composeArgs, "config", "--format", "yaml"],
-            { env },
+            { env, input: composeFile.build() },
         );
 
         return { address, config };
     }
 
     // pull images first
-    const pullArgs = ["--policy", "missing"];
-    await execa("docker", [...composeArgs, "pull", ...pullArgs], {
-        env,
-        stdio: "inherit",
-    });
+    // const pullArgs = ["--policy", "missing"];
+    // await execa("docker", [...composeArgs, "pull", ...pullArgs], {
+    //     env,
+    ////FIXME: stdio and input won't work together
+    //     stdio: "inherit",
+    //     input: composeFile.build()
+    // });
 
     // run compose
     await execa("docker", [...composeArgs, "up", ...upArgs], {
         env,
+        input: composeFile.build(),
     });
 
     return { address };
