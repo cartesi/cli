@@ -1,7 +1,7 @@
 [profile.default]
 libs = ["dependencies"]
-solc_version = "0.8.23"
+solc_version = "0.8.30"
 optimizer = true
 
 [dependencies]
-"@openzeppelin-contracts" = "5.2.0"
+"@openzeppelin-contracts" = "5.5.0"
