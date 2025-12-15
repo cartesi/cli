@@ -2,8 +2,8 @@ name = 'cartesi-rollups-devnet'
 version = '<%= package.version %>'
 description = 'Cartesi Rollups Devnet'
 
-[pull.cartesiRollups]
-source = "cartesi-rollups:2.0.0@main"
+[pull.cartesiDaveAppFactory]
+source = "cartesi-dave-app-factory:2.0.0@main"
 
 [pull.entrypointSimulations]
 source = "pimlico-entrypoint-simulations:0.7.0@main"
