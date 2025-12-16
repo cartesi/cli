@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.0.0-alpha.21
+
+### Minor Changes
+
+- 929b8ea: remove graphql support
+
+### Patch Changes
+
+- 5589d4f: bump to cartesi/sdk:0.12.0-alpha.25
+
 ## 2.0.0-alpha.20
 
 ### Patch Changes
