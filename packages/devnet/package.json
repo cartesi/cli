@@ -2,6 +2,7 @@
     "name": "@cartesi/devnet",
     "version": "2.0.0-alpha.8",
     "license": "Apache-2.0",
+    "repository": "cartesi/cli",
     "scripts": {
         "build": "run-s build:soldeer build:forge build:cannon",
         "build:cannon": "cannon build --write-deployments deployments --anvil.dump-state anvil_state.json",
