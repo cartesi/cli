@@ -1,5 +1,15 @@
 # devnet
 
+## 2.0.0-alpha.8
+
+### Patch Changes
+
+- a3d650f: bump foundry
+- 47bebd5: temporarily remove ERC-4337 contracts
+- 6535401: bump cannon
+- 4564da1: bump rollups-contracts
+- c9c359b: bump openzeppelin
+
 ## 2.0.0-alpha.7
 
 ### Patch Changes

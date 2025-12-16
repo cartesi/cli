@@ -1,5 +1,16 @@
 # sdk
 
+## 0.12.0-alpha.26
+
+### Minor Changes
+
+- b16d88c: bump su-exec to v0.3
+- fb96a82: remove graphql support
+
+### Patch Changes
+
+- b21f850: bump nitro to v0.5
+
 ## 0.12.0-alpha.25
 
 ### Patch Changes
