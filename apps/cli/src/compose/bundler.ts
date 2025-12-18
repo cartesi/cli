@@ -33,7 +33,7 @@ export const BUNDLER_SVC: Service = {
     },
 };
 
-export const BUNDLER_PROXY_CONFIG: Config = {
+export const BUNDLER_PROXY_CFG: Config = {
     name: "bundler-proxy",
     content: `http:
     routers:

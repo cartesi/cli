@@ -1,7 +1,7 @@
 import { stringify } from "yaml";
 import { ComposeFile, Config, Service } from "../../src/types/compose.js";
-import { ANVIL_PROXY_CONFIG, ANVIL_SVC } from "./anvil.js";
-import { BUNDLER_PROXY_CONFIG, BUNDLER_SVC } from "./bundler.js";
+import { ANVIL_PROXY_CFG, ANVIL_SVC } from "./anvil.js";
+import { BUNDLER_PROXY_CFG, BUNDLER_SVC } from "./bundler.js";
 import { DATABASE_SVC } from "./database.js";
 import {
     EXPLORER_API_PROXY_CFG,
@@ -70,7 +70,7 @@ export class ComposeBuilder {
             this.resolveDependencies("anvil");
 
             this.addServiceConfig(
-                ANVIL_PROXY_CONFIG,
+                ANVIL_PROXY_CFG,
                 "proxy",
                 "/etc/traefik/conf.d/anvil.yaml",
             );
@@ -186,7 +186,7 @@ export class ComposeBuilder {
             this.resolveDependencies("bundler");
 
             this.addServiceConfig(
-                BUNDLER_PROXY_CONFIG,
+                BUNDLER_PROXY_CFG,
                 "proxy",
                 "/etc/traefik/conf.d/bundler.yaml",
             );

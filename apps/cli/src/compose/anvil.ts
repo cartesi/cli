@@ -14,7 +14,7 @@ export const ANVIL_SVC: Service = {
     },
 };
 
-export const ANVIL_PROXY_CONFIG: Config = {
+export const ANVIL_PROXY_CFG: Config = {
     name: "anvil-proxy",
     content: `http:
     routers:
