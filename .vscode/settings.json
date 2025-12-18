@@ -6,6 +6,6 @@
         "source.organizeImports": "explicit"
     },
     "[typescript]": {
-        "editor.defaultFormatter": "esbenp.prettier-vscode"
+        "editor.defaultFormatter": "prettier.prettier-vscode"
     }
 }
