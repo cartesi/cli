@@ -29,8 +29,9 @@ const shell = async (options: {
     epochLength: number;
     log?: CommandUnknownOpts;
     projectName: string;
+    prt?: boolean;
 }) => {
-    const { build, epochLength, log, projectName } = options;
+    const { build, epochLength, log, projectName, prt } = options;
 
     // keep track of last deployment
     let lastDeployment: RollupsDeployment | undefined;
@@ -43,6 +44,7 @@ const shell = async (options: {
             epochLength,
             hash,
             projectName,
+            prt,
             salt: numberToHex(salt++, { size: 32 }),
         });
     } else {
@@ -98,6 +100,7 @@ const shell = async (options: {
                             epochLength,
                             hash,
                             projectName,
+                            prt,
                             salt: numberToHex(salt++, { size: 32 }),
                         });
                     }
@@ -134,9 +137,10 @@ const deploy = async (options: {
     epochLength: number;
     hash: Hex;
     projectName: string;
+    prt?: boolean;
     salt: Hex;
 }) => {
-    const { consensus, epochLength, hash, projectName, salt } = options;
+    const { consensus, epochLength, hash, projectName, prt, salt } = options;
 
     // deploy application to node (onchain and offchain)
     const progress = ora(
@@ -148,6 +152,7 @@ const deploy = async (options: {
         epochLength,
         name: projectName,
         projectName,
+        prt,
         salt,
         snapshotPath: "/var/lib/cartesi-rollups-node/snapshots/image",
     });
@@ -313,6 +318,7 @@ export const createRunCommand = () => {
                 epochLength,
                 log,
                 projectName,
+                prt: true,
             });
             await shutdown();
         });
