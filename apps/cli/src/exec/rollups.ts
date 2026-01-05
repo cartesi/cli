@@ -441,11 +441,19 @@ export const deployApplication = async (options: {
     epochLength: number;
     name: string;
     projectName: string;
+    prt?: boolean;
     salt?: Hex;
     snapshotPath: string;
 }): Promise<RollupsDeployment> => {
-    const { consensus, epochLength, name, projectName, salt, snapshotPath } =
-        options;
+    const {
+        consensus,
+        epochLength,
+        name,
+        projectName,
+        prt,
+        salt,
+        snapshotPath,
+    } = options;
 
     // app deploy args
     const deployArgs = [name, snapshotPath];
@@ -457,6 +465,9 @@ export const deployApplication = async (options: {
     }
     if (salt) {
         deployArgs.push("--salt", salt);
+    }
+    if (prt) {
+        deployArgs.push("--prt");
     }
     deployArgs.push("--json");
 

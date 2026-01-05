@@ -14,6 +14,7 @@ import { type Config, parse } from "./config.js";
 import {
     applicationFactoryAddress,
     authorityFactoryAddress,
+    daveAppFactoryAddress,
     erc1155BatchPortalAddress,
     erc1155SinglePortalAddress,
     erc20PortalAddress,
@@ -72,6 +73,7 @@ export const getAddressBook = async (options: {
     const contracts: AddressBook = {
         ApplicationFactory: applicationFactoryAddress,
         AuthorityFactory: authorityFactoryAddress,
+        DaveAppFactory: daveAppFactoryAddress,
         EntryPointV06: "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
         EntryPointV07: "0x0000000071727De22E5E9d8BAf0edAc6f37da032",
         ERC1155BatchPortal: erc1155BatchPortalAddress,
