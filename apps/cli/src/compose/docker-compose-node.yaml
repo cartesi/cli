@@ -21,7 +21,7 @@ configs:
 
 services:
     rollups-node:
-        image: cartesi/rollups-runtime:${CARTESI_SDK_VERSION}
+        image: ${CARTESI_SDK_RUNTIME_IMAGE}
         depends_on:
             database:
                 condition: service_healthy

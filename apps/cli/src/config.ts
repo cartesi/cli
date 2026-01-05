@@ -73,8 +73,21 @@ export class InvalidStringArrayError extends Error {
  */
 const DEFAULT_FORMAT = "ext2";
 const DEFAULT_RAM = "128Mi";
+
+/**
+ * Default SDK container image information
+ */
 export const DEFAULT_SDK_VERSION = "0.12.0-alpha.25";
-export const DEFAULT_SDK_IMAGE = "cartesi/sdk";
+export const DEFAULT_SDK_IMAGE_NAME = "docker.io/cartesi/sdk";
+export const DEFAULT_SDK_IMAGE_TAG = DEFAULT_SDK_VERSION;
+export const DEFAULT_SDK_IMAGE_SHA256_DIGEST = "406e35fdabf189be2ffc3b47c23ad31b4864cf24f012db01e04d6b254e1e57f4";
+export const DEFAULT_SDK_DATABASE_IMAGE_NAME = "docker.io/cartesi/rollups-database";
+export const DEFAULT_SDK_DATABASE_IMAGE_TAG = DEFAULT_SDK_VERSION;
+export const DEFAULT_SDK_DATABASE_IMAGE_SHA256_DIGEST = "b179de07c32894407e3e1eff060899a462d31d4fe6892e0f075daff74f83ebd9";
+export const DEFAULT_SDK_RUNTIME_IMAGE_NAME = "docker.io/cartesi/rollups-runtime";
+export const DEFAULT_SDK_RUNTIME_IMAGE_TAG = DEFAULT_SDK_VERSION;
+export const DEFAULT_SDK_RUNTIME_IMAGE_SHA256_DIGEST = "6b198f746762f93d61e2c127628e0c92b4424d2ff7c2f9161c8a47c04ab407f4";
+
 export const PREFERRED_PORT = 6751;
 
 type Builder = "directory" | "docker" | "empty" | "none" | "tar";
@@ -185,7 +198,7 @@ export const defaultMachineConfig = (): MachineConfig => ({
 export const defaultConfig = (): Config => ({
     drives: { root: defaultRootDriveConfig() },
     machine: defaultMachineConfig(),
-    sdk: `${DEFAULT_SDK_IMAGE}:${DEFAULT_SDK_VERSION}`,
+    sdk: `${DEFAULT_SDK_IMAGE_NAME}:${DEFAULT_SDK_IMAGE_TAG}`,
 });
 
 const parseBoolean = (value: TomlPrimitive, defaultValue: boolean): boolean => {
@@ -506,7 +519,7 @@ export const parse = (str: string[]): Config => {
         machine: parseMachine(toml.machine),
         sdk: parseString(
             toml.sdk,
-            `${DEFAULT_SDK_IMAGE}:${DEFAULT_SDK_VERSION}`,
+            `${DEFAULT_SDK_IMAGE_NAME}:${DEFAULT_SDK_IMAGE_TAG}`,
         ),
     };
 

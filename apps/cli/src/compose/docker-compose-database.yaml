@@ -1,6 +1,6 @@
 services:
     database:
-        image: cartesi/rollups-database:${CARTESI_SDK_VERSION}
+        image: ${CARTESI_SDK_DATABASE_IMAGE}
         healthcheck:
             test: ["CMD-SHELL", "pg_isready -U postgres || exit 1"]
             start_period: 10s
