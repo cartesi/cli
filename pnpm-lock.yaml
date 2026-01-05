@@ -103,11 +103,11 @@ importers:
         specifier: 'catalog:'
         version: 2.2.4
       '@cartesi/devnet':
-        specifier: 2.0.0-alpha.7
-        version: 2.0.0-alpha.7
+        specifier: 2.0.0-alpha.8
+        version: 2.0.0-alpha.8
       '@cartesi/rollups':
-        specifier: 2.0.1
-        version: 2.0.1
+        specifier: 2.1.1
+        version: 2.1.1
       '@types/bytes':
         specifier: ^3.1.5
         version: 3.1.5
@@ -365,11 +365,11 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@cartesi/devnet@2.0.0-alpha.7':
-    resolution: {integrity: sha512-uZMt9qRCNVw48FMI+ymjCL/B6S0PekSe0DTlF2ycDeO1T/6GS7zXgI2Qjvraga1fNyGXxU02jNjJGGhWIKD9IQ==}
+  '@cartesi/devnet@2.0.0-alpha.8':
+    resolution: {integrity: sha512-A7C3Rt3aQvbByaY7tXbuLTeQbilWgJEpTJyZGD2Wt6b3wxmho/iGjWQ4mRphADDKhSOIZwZ2cmMrUpwThLOZgg==}
 
-  '@cartesi/rollups@2.0.1':
-    resolution: {integrity: sha512-SBmjAFAQNkiydnuDrDNjRt+uxv05bRkUGilbX4dFPhiN7L/CrTOQhVe9QJxwVlz8yIOmgz/obv5ZO0lzjy3clw==}
+  '@cartesi/rollups@2.1.1':
+    resolution: {integrity: sha512-1k+8gEp6VL6pGr0hlUTqK1hEIvBmRKUBodU3259e7rpR7ECaTLUV08C+P4efnXrz5Zj2SYWF8QZuFUVMxsMBVA==}
 
   '@changesets/apply-release-plan@7.0.14':
     resolution: {integrity: sha512-ddBvf9PHdy2YY0OUiEl3TV78mH9sckndJR14QAt87KLEbIov81XO0q0QAmvooBxXlqRRP8I9B7XOzZwQG7JkWA==}
@@ -4099,9 +4099,9 @@ snapshots:
   '@biomejs/cli-win32-x64@2.2.4':
     optional: true
 
-  '@cartesi/devnet@2.0.0-alpha.7': {}
+  '@cartesi/devnet@2.0.0-alpha.8': {}
 
-  '@cartesi/rollups@2.0.1': {}
+  '@cartesi/rollups@2.1.1': {}
 
   '@changesets/apply-release-plan@7.0.14':
     dependencies:
