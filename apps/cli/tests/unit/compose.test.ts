@@ -34,7 +34,9 @@ describe("ComposeBuilder", () => {
                 name: "my-config",
                 content: "my content\n new line",
             };
-            const compose = new ComposeBuilder().withConfig(config).buildComposeFile();
+            const compose = new ComposeBuilder()
+                .withConfig(config)
+                .buildComposeFile();
 
             expect(compose.configs!["my-config"].content).toContain("content");
         });
@@ -43,18 +45,38 @@ describe("ComposeBuilder", () => {
     describe("when using withAnvil()", () => {
         it("should have the default image with empty options", () => {
             const compose = new ComposeBuilder().withAnvil().buildComposeFile();
-            expect(compose.services!["anvil"].image).toEqual("cartesi/sdk:latest");
+            expect(compose.services!["anvil"].image).toEqual(
+                "cartesi/sdk:latest",
+            );
         });
 
         it("should set the block time correctly", () => {
-            const compose = new ComposeBuilder().withAnvil({blockTime: 7}).buildComposeFile();
+            const compose = new ComposeBuilder()
+                .withAnvil({ blockTime: 7 })
+                .buildComposeFile();
             expect(compose.services!["anvil"].command).toContain(
                 "--block-time=7",
             );
         });
 
+        it("should replace the block time if called multiple times", () => {
+            const compose = new ComposeBuilder()
+                .withAnvil()
+                .withAnvil({ blockTime: 5 })
+                .withAnvil({ blockTime: 10 })
+                .buildComposeFile();
+            expect(compose.services!["anvil"].command).toContain(
+                "--block-time=10",
+            );
+            expect(compose.services!["anvil"].command).not.toContain(
+                "--block-time=5",
+            );
+        });
+
         it("should have the defined image tag", () => {
-            const composeWithTag = new ComposeBuilder().withAnvil({imageTag: "v1.0.0"}).buildComposeFile();
+            const composeWithTag = new ComposeBuilder()
+                .withAnvil({ imageTag: "v1.0.0" })
+                .buildComposeFile();
 
             expect(composeWithTag.services!["anvil"].image).toEqual(
                 "cartesi/sdk:v1.0.0",
@@ -74,7 +96,9 @@ describe("ComposeBuilder", () => {
         });
 
         it("should have the defined image tag", () => {
-            const composeWithTag = new ComposeBuilder().withProxy({imageTag: "v2.5.0"}).buildComposeFile();
+            const composeWithTag = new ComposeBuilder()
+                .withProxy({ imageTag: "v2.5.0" })
+                .buildComposeFile();
 
             expect(composeWithTag.services!["proxy"].image).toEqual(
                 "traefik:v2.5.0",
@@ -92,24 +116,36 @@ describe("ComposeBuilder", () => {
         });
 
         it("should expose the defined listen port", () => {
-            const compose = new ComposeBuilder().withProxy({listenPort: 9090}).buildComposeFile();
+            const compose = new ComposeBuilder()
+                .withProxy({ listenPort: 9090 })
+                .buildComposeFile();
             expect(compose.services!["proxy"].ports).toContain("9090:8088");
         });
     });
 
     describe("when using withRollupsNode()", () => {
         it("should have the defined image tag", () => {
-            const compose = new ComposeBuilder().withRollupsNode({imageTag: "v0.5.0"}).buildComposeFile();
-            expect(compose.services!["rollups-node"].image).toEqual("cartesi/rollups-runtime:v0.5.0");
+            const compose = new ComposeBuilder()
+                .withRollupsNode({ imageTag: "v0.5.0" })
+                .buildComposeFile();
+            expect(compose.services!["rollups-node"].image).toEqual(
+                "cartesi/rollups-runtime:v0.5.0",
+            );
         });
 
         it("should define a config for proxy", () => {
-            const compose = new ComposeBuilder().withRollupsNode().buildComposeFile();
-            expect(compose.configs!["rollups-node-proxy"].content).toBeDefined();
+            const compose = new ComposeBuilder()
+                .withRollupsNode()
+                .buildComposeFile();
+            expect(
+                compose.configs!["rollups-node-proxy"].content,
+            ).toBeDefined();
         });
 
         it("should have its dependencies set", () => {
-            const compose = new ComposeBuilder().withRollupsNode().buildComposeFile();
+            const compose = new ComposeBuilder()
+                .withRollupsNode()
+                .buildComposeFile();
             expect(compose.services!["anvil"]).toBeDefined();
             expect(compose.services!["database"]).toBeDefined();
         });
@@ -121,7 +157,9 @@ describe("ComposeBuilder", () => {
                     memory: 512,
                 })
                 .buildComposeFile();
-            expect(compose.services!["rollups-node"].deploy!.resources!.limits).toEqual({
+            expect(
+                compose.services!["rollups-node"].deploy!.resources!.limits,
+            ).toEqual({
                 cpus: "1.5",
                 memory: "512M",
             });
@@ -130,141 +168,240 @@ describe("ComposeBuilder", () => {
 
     describe("when using withDatabase()", () => {
         it("should have default image with empty options", () => {
-            const compose = new ComposeBuilder().withDatabase().buildComposeFile();
-            expect(compose.services!["database"].image).toEqual("cartesi/rollups-database:latest");
+            const compose = new ComposeBuilder()
+                .withDatabase()
+                .buildComposeFile();
+            expect(compose.services!["database"].image).toEqual(
+                "cartesi/rollups-database:latest",
+            );
         });
 
         it("should have the defined image tag", () => {
-            const compose = new ComposeBuilder().withDatabase({imageTag: "v2.0.0"}).buildComposeFile();
-            expect(compose.services!["database"].image).toEqual("cartesi/rollups-database:v2.0.0");
+            const compose = new ComposeBuilder()
+                .withDatabase({ imageTag: "v2.0.0" })
+                .buildComposeFile();
+            expect(compose.services!["database"].image).toEqual(
+                "cartesi/rollups-database:v2.0.0",
+            );
         });
     });
 
     describe("when using withExplorer()", () => {
         it("should have the default image with empty options", () => {
-            const compose = new ComposeBuilder().withExplorer().buildComposeFile();
-            expect(compose.services!["explorer"].image).toEqual("cartesi/rollups-explorer:latest");
+            const compose = new ComposeBuilder()
+                .withExplorer()
+                .buildComposeFile();
+            expect(compose.services!["explorer"].image).toEqual(
+                "cartesi/rollups-explorer:latest",
+            );
         });
 
         it("should have the defined image tag", () => {
-            const compose = new ComposeBuilder().withExplorer({imageTag: "v1.2.3"}).buildComposeFile();
-            expect(compose.services!["explorer"].image).toEqual("cartesi/rollups-explorer:v1.2.3");
+            const compose = new ComposeBuilder()
+                .withExplorer({ imageTag: "v1.2.3" })
+                .buildComposeFile();
+            expect(compose.services!["explorer"].image).toEqual(
+                "cartesi/rollups-explorer:v1.2.3",
+            );
         });
 
         it("should have its dependencies set", () => {
-            const compose = new ComposeBuilder().withExplorer().buildComposeFile();
+            const compose = new ComposeBuilder()
+                .withExplorer()
+                .buildComposeFile();
             expect(compose.services!["database"]).toBeDefined();
         });
 
         it("should be configured to connect to exposed proxy port", () => {
-            const compose = new ComposeBuilder().withExplorer({listenPort: 8081}).withProxy({listenPort: 8081}).buildComposeFile();
-            expect((compose.services!["explorer"].environment as Record<string, string>)!["NODE_RPC_URL"]).toContain("8081");
-            expect((compose.services!["explorer"].environment as Record<string, string>)!["EXPLORER_API_URL"]).toContain("8081");
+            const compose = new ComposeBuilder()
+                .withExplorer({ listenPort: 8081 })
+                .withProxy({ listenPort: 8081 })
+                .buildComposeFile();
+            expect(
+                (compose.services!["explorer"].environment as Record<
+                    string,
+                    string
+                >)!["NODE_RPC_URL"],
+            ).toContain("8081");
+            expect(
+                (compose.services!["explorer"].environment as Record<
+                    string,
+                    string
+                >)!["EXPLORER_API_URL"],
+            ).toContain("8081");
         });
 
         it("should persist custom changes after the second empty call", () => {
             const compose = new ComposeBuilder()
-                .withExplorer({imageTag: "v3.3.3", listenPort: 8082})
+                .withExplorer({ imageTag: "v3.3.3", listenPort: 8082 })
                 .withExplorer()
                 .buildComposeFile();
-            expect(compose.services!["explorer"].image).toEqual("cartesi/rollups-explorer:v3.3.3");
-            expect((compose.services!["explorer"].environment as Record<string, string>)!["NODE_RPC_URL"]).toContain("8082");
-            expect((compose.services!["explorer"].environment as Record<string, string>)!["EXPLORER_API_URL"]).toContain("8082");
+            expect(compose.services!["explorer"].image).toEqual(
+                "cartesi/rollups-explorer:v3.3.3",
+            );
+            expect(
+                (compose.services!["explorer"].environment as Record<
+                    string,
+                    string
+                >)!["NODE_RPC_URL"],
+            ).toContain("8082");
+            expect(
+                (compose.services!["explorer"].environment as Record<
+                    string,
+                    string
+                >)!["EXPLORER_API_URL"],
+            ).toContain("8082");
         });
 
         it("should define a config named explorer-proxy", () => {
-            const compose = new ComposeBuilder().withExplorer().buildComposeFile();
+            const compose = new ComposeBuilder()
+                .withExplorer()
+                .buildComposeFile();
             expect(compose.configs!["explorer-proxy"].content).toBeDefined();
         });
     });
 
     describe("when using withExplorerApi()", () => {
         it("should have the default image with empty options", () => {
-            const compose = new ComposeBuilder().withExplorerApi().buildComposeFile();
-            expect(compose.services!["explorer-api"].image).toEqual("cartesi/rollups-explorer-api:latest");
+            const compose = new ComposeBuilder()
+                .withExplorerApi()
+                .buildComposeFile();
+            expect(compose.services!["explorer-api"].image).toEqual(
+                "cartesi/rollups-explorer-api:latest",
+            );
         });
 
         it("should have the defined image tag", () => {
-            const compose = new ComposeBuilder().withExplorerApi({imageTag: "v0.9.0"}).buildComposeFile();
-            expect(compose.services!["explorer-api"].image).toEqual("cartesi/rollups-explorer-api:v0.9.0");
+            const compose = new ComposeBuilder()
+                .withExplorerApi({ imageTag: "v0.9.0" })
+                .buildComposeFile();
+            expect(compose.services!["explorer-api"].image).toEqual(
+                "cartesi/rollups-explorer-api:v0.9.0",
+            );
         });
 
         it("should have its dependencies set", () => {
-            const compose = new ComposeBuilder().withExplorerApi().buildComposeFile();
+            const compose = new ComposeBuilder()
+                .withExplorerApi()
+                .buildComposeFile();
             expect(compose.services!["database"]).toBeDefined();
             expect(compose.services!["squid-processor"]).toBeDefined();
         });
 
         it("should define a config named explorer-api-proxy", () => {
-            const compose = new ComposeBuilder().withExplorerApi().buildComposeFile();
-            expect(compose.configs!["explorer-api-proxy"].content).toBeDefined();
+            const compose = new ComposeBuilder()
+                .withExplorerApi()
+                .buildComposeFile();
+            expect(
+                compose.configs!["explorer-api-proxy"].content,
+            ).toBeDefined();
         });
     });
 
     describe("when using withSquidProcessor()", () => {
         it("should have the default image with empty options", () => {
-            const compose = new ComposeBuilder().withSquidProcessor().buildComposeFile();
-            expect(compose.services!["squid-processor"].image).toEqual("cartesi/rollups-explorer-api:latest");
+            const compose = new ComposeBuilder()
+                .withSquidProcessor()
+                .buildComposeFile();
+            expect(compose.services!["squid-processor"].image).toEqual(
+                "cartesi/rollups-explorer-api:latest",
+            );
         });
 
         it("should have the defined image tag", () => {
-            const compose = new ComposeBuilder().withSquidProcessor({imageTag: "v1.1.1"}).buildComposeFile();
-            expect(compose.services!["squid-processor"].image).toEqual("cartesi/rollups-explorer-api:v1.1.1");
+            const compose = new ComposeBuilder()
+                .withSquidProcessor({ imageTag: "v1.1.1" })
+                .buildComposeFile();
+            expect(compose.services!["squid-processor"].image).toEqual(
+                "cartesi/rollups-explorer-api:v1.1.1",
+            );
         });
 
         it("should have its dependencies set", () => {
-            const compose = new ComposeBuilder().withSquidProcessor().buildComposeFile();
+            const compose = new ComposeBuilder()
+                .withSquidProcessor()
+                .buildComposeFile();
             expect(compose.services!["database"]).toBeDefined();
         });
     });
 
     describe("when using withBundler()", () => {
         it("should have the default image with empty options", () => {
-            const compose = new ComposeBuilder().withBundler().buildComposeFile();
-            expect(compose.services!["bundler"].image).toEqual("cartesi/sdk:latest");
+            const compose = new ComposeBuilder()
+                .withBundler()
+                .buildComposeFile();
+            expect(compose.services!["bundler"].image).toEqual(
+                "cartesi/sdk:latest",
+            );
         });
 
         it("should have the defined image tag", () => {
-            const compose = new ComposeBuilder().withBundler({imageTag: "v2.1.0"}).buildComposeFile();
-            expect(compose.services!["bundler"].image).toEqual("cartesi/sdk:v2.1.0");
+            const compose = new ComposeBuilder()
+                .withBundler({ imageTag: "v2.1.0" })
+                .buildComposeFile();
+            expect(compose.services!["bundler"].image).toEqual(
+                "cartesi/sdk:v2.1.0",
+            );
         });
 
         it("should define a config named bundler-proxy", () => {
-            const compose = new ComposeBuilder().withBundler().buildComposeFile();
+            const compose = new ComposeBuilder()
+                .withBundler()
+                .buildComposeFile();
             expect(compose.configs!["bundler-proxy"].content).toBeDefined();
         });
     });
 
     describe("when using withPaymaster()", () => {
         it("should have the default image with empty options", () => {
-            const compose = new ComposeBuilder().withPaymaster().buildComposeFile();
-            expect(compose.services!["paymaster"].image).toEqual("cartesi/sdk:latest");
+            const compose = new ComposeBuilder()
+                .withPaymaster()
+                .buildComposeFile();
+            expect(compose.services!["paymaster"].image).toEqual(
+                "cartesi/sdk:latest",
+            );
         });
 
         it("should have the defined image tag", () => {
-            const compose = new ComposeBuilder().withPaymaster({imageTag: "v3.0.0"}).buildComposeFile();
-            expect(compose.services!["paymaster"].image).toEqual("cartesi/sdk:v3.0.0");
+            const compose = new ComposeBuilder()
+                .withPaymaster({ imageTag: "v3.0.0" })
+                .buildComposeFile();
+            expect(compose.services!["paymaster"].image).toEqual(
+                "cartesi/sdk:v3.0.0",
+            );
         });
 
         it("should define a config named paymaster-proxy", () => {
-            const compose = new ComposeBuilder().withPaymaster().buildComposeFile();
+            const compose = new ComposeBuilder()
+                .withPaymaster()
+                .buildComposeFile();
             expect(compose.configs!["paymaster-proxy"].content).toBeDefined();
         });
     });
 
     describe("when using withPasskeyServer()", () => {
         it("should have the default image with empty options", () => {
-            const compose = new ComposeBuilder().withPasskeyServer().buildComposeFile();
-            expect(compose.services!["passkey-server"].image).toEqual("cartesi/sdk:latest");
+            const compose = new ComposeBuilder()
+                .withPasskeyServer()
+                .buildComposeFile();
+            expect(compose.services!["passkey-server"].image).toEqual(
+                "cartesi/sdk:latest",
+            );
         });
 
         it("should have the defined image tag", () => {
-            const compose = new ComposeBuilder().withPasskeyServer({imageTag: "v4.0.0"}).buildComposeFile();
-            expect(compose.services!["passkey-server"].image).toEqual("cartesi/sdk:v4.0.0");
+            const compose = new ComposeBuilder()
+                .withPasskeyServer({ imageTag: "v4.0.0" })
+                .buildComposeFile();
+            expect(compose.services!["passkey-server"].image).toEqual(
+                "cartesi/sdk:v4.0.0",
+            );
         });
 
         it("should define a config named passkey-proxy", () => {
-            const compose = new ComposeBuilder().withPasskeyServer().buildComposeFile();
+            const compose = new ComposeBuilder()
+                .withPasskeyServer()
+                .buildComposeFile();
             expect(compose.configs!["passkey-proxy"].content).toBeDefined();
         });
     });

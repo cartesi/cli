@@ -82,6 +82,12 @@ export class ComposeBuilder {
         };
 
         if (options?.blockTime !== undefined) {
+            // Remove any existing --block-time parameter
+            this.composeFile.services!.anvil.command = (
+                this.composeFile.services!.anvil.command as Array<string>
+            ).filter((cmd) => !cmd.includes("--block-time"));
+
+            // Add the new --block-time parameter
             (this.composeFile.services!.anvil.command as Array<string>).push(
                 `--block-time=${options.blockTime.toString()}`,
             );
