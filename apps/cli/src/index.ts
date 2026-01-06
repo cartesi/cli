@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 import { Command } from "@commander-js/extra-typings";
 import { createRequire } from "node:module";
 import { createAddressBookCommand } from "./commands/address-book.js";
