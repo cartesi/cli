@@ -503,10 +503,13 @@ export class ComposeBuilder {
     }
 
     /**
-     * Build an image string from ServiceOptions
-     * @param options - ServiceOptions containing imageName and/or imageTag
-     * @param currentImage - Current image string to use as fallback
-     * @returns Complete image string in format "imageName:imageTag"
+     * Set or update the image tag for a service in the compose file.
+     * Uses the existing image name and tag as defaults, and applies any
+     * tag override specified in {@link ServiceOptions}.
+     *
+     * @param service - Name of the service whose image tag will be updated.
+     * @param options - ServiceOptions containing an optional imageTag override.
+     * @returns The current builder instance for method chaining.
      */
     private setImageTag(service: string, options: ServiceOptions): this {
         if (!this.composeFile.services![service]) {
