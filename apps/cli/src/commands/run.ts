@@ -170,6 +170,12 @@ export const createRunCommand = () => {
         .description("Run a local cartesi node for the application.")
         .addOption(
             new Option(
+                "--authority",
+                "deploy application with authority consensus",
+            ).default(false),
+        )
+        .addOption(
+            new Option(
                 "--block-time <number>",
                 "interval between blocks (in seconds)",
             )
@@ -227,6 +233,7 @@ export const createRunCommand = () => {
         .option("-v, --verbose", "verbose output", false)
         .action(async (options, program) => {
             const {
+                authority,
                 blockTime,
                 cpus,
                 defaultBlock,
@@ -318,7 +325,7 @@ export const createRunCommand = () => {
                 epochLength,
                 log,
                 projectName,
-                prt: true,
+                prt: !authority,
             });
             await shutdown();
         });
