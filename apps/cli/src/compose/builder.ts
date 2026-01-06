@@ -1,618 +1,654 @@
-import { stringify } from "yaml";
-import { ComposeFile, Config, Service } from "../../src/types/compose.js";
-import { ANVIL_PROXY_CFG, ANVIL_SVC } from "./anvil.js";
-import { BUNDLER_PROXY_CFG, BUNDLER_SVC } from "./bundler.js";
-import { DATABASE_SVC } from "./database.js";
-import {
-    EXPLORER_API_PROXY_CFG,
-    EXPLORER_API_SVC,
-    EXPLORER_PROXY_CFG,
-    EXPLORER_SVC,
-    SQUID_PROCESSOR_SVC,
-} from "./explorer.js";
-import { PASSKEY_PROXY_CFG, PASSKEY_SVC } from "./passkey.js";
-import { PAYMASTER_PROXY_CFG, PAYMASTER_SVC } from "./paymaster.js";
-import { PROXY_SVC } from "./proxy.js";
-import { ROLLUPS_NODE_PROXY_CFG, ROLLUPS_NODE_SVC } from "./rollupsNode.js";
+import type {
+    ComposeFile,
+    Config,
+    ConfigReference,
+    Network,
+    PortMapping,
+    Secret,
+    SecretReference,
+    Service,
+    Volume,
+    VolumeMount,
+} from "../../src/types/compose.js";
 
-export interface ServiceOptions {
-    imageTag?: string;
-}
+/**
+ * Merges multiple Compose files according to Docker Compose merge rules.
+ * See: https://docs.docker.com/reference/compose-file/merge/
+ *
+ * Rules:
+ * - Mappings: merged by adding missing entries and merging conflicting ones
+ * - Sequences: merged by appending values from overriding file
+ * - Exceptions:
+ *   - Shell commands (command, entrypoint, healthcheck.test): overridden, not appended
+ *   - Unique resources (ports, volumes, secrets, configs): merged by unique key
+ */
+export const concat = (files: ComposeFile[]): ComposeFile => {
+    if (files.length === 0) {
+        return {};
+    }
 
-export interface ProxyServiceOptions extends ServiceOptions {
-    listenPort?: number;
-}
+    return files.reduce((composed, file) => {
+        return mergeComposeFiles(composed, file);
+    }, {});
+};
 
-export interface RollupsNodeServiceOptions extends ServiceOptions {
-    cpus?: number;
-    memory?: number; // in MB
-}
+/**
+ * Merges two Compose files according to Docker Compose merge rules
+ */
+function mergeComposeFiles(
+    base: ComposeFile,
+    override: ComposeFile,
+): ComposeFile {
+    const result: ComposeFile = { ...base };
 
-export interface AnvilServiceOptions extends ServiceOptions {
-    blockTime?: number;
+    // Merge name (override takes precedence)
+    if (override.name !== undefined) {
+        result.name = override.name;
+    }
+
+    // Merge include (append sequences)
+    if (override.include) {
+        result.include = mergeSequences(base.include, override.include);
+    }
+
+    // Merge services (mapping merge)
+    if (override.services) {
+        result.services = mergeMappings(
+            base.services || {},
+            override.services,
+            (baseService, overrideService) =>
+                mergeService(baseService, overrideService),
+        );
+    }
+
+    // Merge networks (mapping merge)
+    if (override.networks) {
+        result.networks = mergeMappings(
+            base.networks || {},
+            override.networks,
+            (baseNetwork, overrideNetwork) =>
+                mergeNetwork(baseNetwork, overrideNetwork),
+        );
+    }
+
+    // Merge volumes (mapping merge)
+    if (override.volumes) {
+        result.volumes = mergeMappings(
+            base.volumes || {},
+            override.volumes,
+            (baseVolume, overrideVolume) =>
+                mergeVolume(baseVolume, overrideVolume),
+        );
+    }
+
+    // Merge secrets (mapping merge)
+    if (override.secrets) {
+        result.secrets = mergeMappings(
+            base.secrets || {},
+            override.secrets,
+            (baseSecret, overrideSecret) =>
+                mergeSecret(baseSecret, overrideSecret),
+        );
+    }
+
+    // Merge configs (mapping merge)
+    if (override.configs) {
+        result.configs = mergeMappings(
+            base.configs || {},
+            override.configs,
+            (baseConfig, overrideConfig) =>
+                mergeConfig(baseConfig, overrideConfig),
+        );
+    }
+
+    // Merge models (mapping merge)
+    if (override.models) {
+        result.models = mergeMappings(
+            base.models || {},
+            override.models,
+            (baseModel, overrideModel) => ({ ...baseModel, ...overrideModel }),
+        );
+    }
+
+    return result;
 }
 
 /**
- * Builder class for creating Docker Compose files with Cartesi services.
- *
- * Example usage:
- * ```typescript
- * const yaml = await new ComposeBuilder()
- *     .withName("my-cartesi-app")
- *     .withBaseServices()
- *     .withBundler()
- *     .build();
- * ```
+ * Merges two mappings (objects), recursively merging values for matching keys
  */
-export class ComposeBuilder {
-    private composeFile: ComposeFile = {
-        services: {},
-        networks: {},
-        volumes: {},
-        configs: {},
-        secrets: {},
-    };
-
-    /**
-     * Set the project name for the Compose file
-     */
-    withName(name: string): this {
-        this.composeFile.name = name;
-        return this;
-    }
-
-    /**
-     * Add the Anvil service (Ethereum local node)
-     */
-    withAnvil(options?: AnvilServiceOptions): this {
-        if (!this.composeFile.services!.anvil) {
-            this.composeFile.services!.anvil = ANVIL_SVC;
-            this.resolveDependencies("anvil");
-
-            this.addServiceConfig(
-                ANVIL_PROXY_CFG,
-                "proxy",
-                "/etc/traefik/conf.d/anvil.yaml",
-            );
-        }
-
-        this.composeFile.services!.anvil = {
-            ...ANVIL_SVC,
-            ...this.composeFile.services!.anvil,
-        };
-
-        if (options?.blockTime !== undefined) {
-            // Remove any existing --block-time parameter
-            this.composeFile.services!.anvil.command = (
-                this.composeFile.services!.anvil.command as Array<string>
-            ).filter((cmd) => !cmd.includes("--block-time"));
-
-            // Add the new --block-time parameter
-            (this.composeFile.services!.anvil.command as Array<string>).push(
-                `--block-time=${options.blockTime.toString()}`,
-            );
-        }
-
-        if (options?.imageTag) {
-            this.setImageTag("anvil", options);
-        }
-
-        return this;
-    }
-
-    /**
-     * Add the Database service (PostgreSQL)
-     */
-    withDatabase(options?: ServiceOptions): this {
-        if (!this.composeFile.services!.database) {
-            this.composeFile.services!.database = DATABASE_SVC;
-            this.resolveDependencies("database");
-        }
-
-        this.composeFile.services!.database = {
-            ...DATABASE_SVC,
-            ...this.composeFile.services!.database,
-        };
-
-        if (options?.imageTag) {
-            this.setImageTag("database", options);
-        }
-
-        return this;
-    }
-
-    /**
-     * Add the Proxy service (Traefik)
-     */
-    withProxy(options?: ProxyServiceOptions): this {
-        if (!this.composeFile.services!.proxy) {
-            this.composeFile.services!.proxy = PROXY_SVC;
-            this.resolveDependencies("proxy");
-        }
-
-        this.composeFile.services!.proxy = {
-            ...PROXY_SVC,
-            ...this.composeFile.services!.proxy,
-        };
-
-        if (options?.imageTag) {
-            this.setImageTag("proxy", options);
-        }
-
-        if (options?.listenPort) {
-            this.composeFile.services!.proxy.ports = [
-                `${options.listenPort}:8088`,
-            ];
-        }
-
-        return this;
-    }
-
-    /**
-     * Add the Rollups Node service
-     */
-    withRollupsNode(options?: RollupsNodeServiceOptions): this {
-        if (!this.composeFile.services!["rollups-node"]) {
-            this.composeFile.services!["rollups-node"] = ROLLUPS_NODE_SVC;
-            this.resolveDependencies("rollups-node");
-
-            this.addServiceConfig(
-                ROLLUPS_NODE_PROXY_CFG,
-                "proxy",
-                "/etc/traefik/conf.d/rollups-node.yaml",
-            );
-        }
-
-        this.composeFile.services!["rollups-node"] = {
-            ...ROLLUPS_NODE_SVC,
-            ...this.composeFile.services!["rollups-node"],
-        };
-
-        if (options?.imageTag) {
-            this.setImageTag("rollups-node", options);
-        }
-
-        if (options?.cpus) {
-            this.setCpuLimit("rollups-node", options.cpus);
-        }
-
-        if (options?.memory) {
-            this.setMemoryLimit("rollups-node", options.memory);
-        }
-
-        return this;
-    }
-
-    /**
-     * Add the Bundler service (ERC-4337)
-     */
-    withBundler(options?: ServiceOptions): this {
-        if (!this.composeFile.services!.bundler) {
-            this.composeFile.services!.bundler = BUNDLER_SVC;
-            this.resolveDependencies("bundler");
-
-            this.addServiceConfig(
-                BUNDLER_PROXY_CFG,
-                "proxy",
-                "/etc/traefik/conf.d/bundler.yaml",
-            );
-        }
-
-        this.composeFile.services!.bundler = {
-            ...BUNDLER_SVC,
-            ...this.composeFile.services!.bundler,
-        };
-
-        if (options?.imageTag) {
-            this.setImageTag("bundler", options);
-        }
-
-        return this;
-    }
-
-    /**
-     * Add the Explorer API service
-     */
-    withExplorerApi(options?: ServiceOptions): this {
-        if (!this.composeFile.services!["explorer-api"]) {
-            this.composeFile.services!["explorer-api"] = EXPLORER_API_SVC;
-            this.withSquidProcessor(options);
-            this.resolveDependencies("explorer-api");
-
-            this.addServiceConfig(
-                EXPLORER_API_PROXY_CFG,
-                "proxy",
-                "/etc/traefik/conf.d/explorer-api.yaml",
-            );
-        }
-
-        this.composeFile.services!["explorer-api"] = {
-            ...EXPLORER_API_SVC,
-            ...this.composeFile.services!["explorer-api"],
-        };
-
-        if (options?.imageTag) {
-            this.setImageTag("explorer-api", options);
-        }
-
-        return this;
-    }
-
-    /**
-     * Add the Squid Processor service
-     */
-    withSquidProcessor(options?: ServiceOptions): this {
-        // Initialize
-        if (!this.composeFile.services!["squid-processor"]) {
-            this.composeFile.services!["squid-processor"] = SQUID_PROCESSOR_SVC;
-            this.resolveDependencies("squid-processor");
-        }
-
-        // Merge existing
-        this.composeFile.services!["squid-processor"] = {
-            ...SQUID_PROCESSOR_SVC,
-            ...this.composeFile.services!["squid-processor"],
-        };
-
-        if (options?.imageTag) {
-            this.setImageTag("squid-processor", options);
-        }
-
-        return this;
-    }
-
-    /**
-     * Add the Explorer service
-     */
-    withExplorer(options?: ProxyServiceOptions): this {
-        if (!this.composeFile.services!.explorer) {
-            this.composeFile.services!.explorer = EXPLORER_SVC;
-            this.resolveDependencies("explorer");
-
-            this.addServiceConfig(
-                EXPLORER_PROXY_CFG,
-                "proxy",
-                "/etc/traefik/conf.d/explorer.yaml",
-            );
-        }
-
-        this.composeFile.services!.explorer = {
-            ...EXPLORER_SVC,
-            ...this.composeFile.services!.explorer,
-        };
-
-        if (options?.imageTag) {
-            this.setImageTag("explorer", options);
-        }
-
-        if (options?.listenPort) {
-            this.setEnvironmentVariable(
-                "explorer",
-                "NODE_RPC_URL",
-                `http://127.0.0.1:${options.listenPort}/anvil`,
-            );
-            this.setEnvironmentVariable(
-                "explorer",
-                "EXPLORER_API_URL",
-                `http://127.0.0.1:${options.listenPort}/explorer-api/graphql`,
-            );
-        }
-
-        return this;
-    }
-
-    /**
-     * Add the Paymaster service
-     */
-    withPaymaster(options?: ServiceOptions): this {
-        if (!this.composeFile.services!.paymaster) {
-            this.composeFile.services!.paymaster = PAYMASTER_SVC;
-            this.resolveDependencies("paymaster");
-
-            this.addServiceConfig(
-                PAYMASTER_PROXY_CFG,
-                "proxy",
-                "/etc/traefik/conf.d/paymaster.yaml",
-            );
-        }
-
-        this.composeFile.services!.paymaster = {
-            ...PAYMASTER_SVC,
-            ...this.composeFile.services!.paymaster,
-        };
-
-        if (options?.imageTag) {
-            this.setImageTag("paymaster", options);
-        }
-
-        return this;
-    }
-
-    /**
-     * Add the Passkey Server service
-     */
-    withPasskeyServer(options?: ServiceOptions): this {
-        if (!this.composeFile.services!["passkey-server"]) {
-            this.composeFile.services!["passkey-server"] = PASSKEY_SVC;
-            this.resolveDependencies("passkey-server");
-
-            this.addServiceConfig(
-                PASSKEY_PROXY_CFG,
-                "proxy",
-                "/etc/traefik/conf.d/passkey-server.yaml",
-            );
-        }
-
-        this.composeFile.services!["passkey-server"] = {
-            ...PASSKEY_SVC,
-            ...this.composeFile.services!["passkey-server"],
-        };
-
-        if (options?.imageTag) {
-            this.setImageTag("passkey-server", options);
-        }
-
-        return this;
-    }
-
-    /**
-     * Add a config definition
-     * @param config - Config configuration
-     */
-    withConfig(config: Config): this {
-        const name: string = config.name;
-        this.composeFile.configs![name] = config;
-        return this;
-    }
-
-    /**
-     * Build and return the ComposeFile object
-     */
-    buildComposeFile(): ComposeFile {
-        // Clean up empty collections
-        if (Object.keys(this.composeFile.services!).length === 0)
-            delete this.composeFile.services;
-        if (Object.keys(this.composeFile.networks!).length === 0)
-            delete this.composeFile.networks;
-        if (Object.keys(this.composeFile.volumes!).length === 0)
-            delete this.composeFile.volumes;
-        if (Object.keys(this.composeFile.configs!).length === 0)
-            delete this.composeFile.configs;
-        if (Object.keys(this.composeFile.secrets!).length === 0)
-            delete this.composeFile.secrets;
-
-        return this.composeFile;
-    }
-
-    /**
-     * Build and return the YAML string for the Docker Compose file
-     */
-    build(): string {
-        const composeFile = this.buildComposeFile();
-        return stringify(composeFile, {
-            lineWidth: 0, // Disable line wrapping
-            indent: 2,
-        });
-    }
-
-    /**
-     * Reset the builder to start fresh
-     */
-    reset(): this {
-        this.composeFile = {
-            services: {},
-            networks: {},
-            volumes: {},
-            configs: {},
-            secrets: {},
-        };
-        return this;
-    }
-
-    // Private helper methods
-
-    /**
-     * Set an environment variable for a service
-     * @param service
-     * @param key
-     * @param value
-     */
-    private setEnvironmentVariable(
-        service: string,
-        key: string,
-        value: string,
-    ): this {
-        if (!this.composeFile.services![service]) {
-            throw new Error(
-                `Service '${service}' does not exist. Please add it before setting environment variables.`,
-            );
-        }
-
-        if (
-            !this.composeFile.services![service].environment ||
-            Array.isArray(this.composeFile.services![service].environment)
-        ) {
-            this.composeFile.services![service].environment = {};
-        }
-
-        (
-            this.composeFile.services![service].environment as Record<
-                string,
-                string
-            >
-        )[key] = value;
-
-        return this;
-    }
-
-    /**
-     * Define CPU limit for a service
-     * @param service
-     * @param cpus
-     */
-    private setCpuLimit(service: string, cpus: number): this {
-        if (!this.composeFile.services![service]) {
-            throw new Error(
-                `Service '${service}' does not exist. Please add it before setting CPU limits.`,
-            );
-        }
-
-        if (!this.composeFile.services![service].deploy) {
-            this.composeFile.services![service].deploy = {};
-        }
-
-        if (!this.composeFile.services![service].deploy!.resources) {
-            this.composeFile.services![service].deploy!.resources = {};
-        }
-
-        this.composeFile.services![service].deploy!.resources!.limits = {
-            ...(this.composeFile.services![service].deploy!.resources!.limits ||
-                {}),
-            cpus: cpus.toString(),
-        };
-
-        return this;
-    }
-
-    /**
-     * Define Memory limit for a service
-     * @param service
-     * @param memoryMB
-     */
-    private setMemoryLimit(service: string, memoryMB: number): this {
-        if (!this.composeFile.services![service]) {
-            throw new Error(
-                `Service '${service}' does not exist. Please add it before setting memory limits.`,
-            );
-        }
-
-        if (!this.composeFile.services![service].deploy) {
-            this.composeFile.services![service].deploy = {};
-        }
-
-        if (!this.composeFile.services![service].deploy!.resources) {
-            this.composeFile.services![service].deploy!.resources = {};
-        }
-
-        this.composeFile.services![service].deploy!.resources!.limits = {
-            ...(this.composeFile.services![service].deploy!.resources!.limits ||
-                {}),
-            memory: `${memoryMB}M`,
-        };
-        return this;
-    }
-
-    /**
-     * Set or update the image tag for a service in the compose file.
-     * Uses the existing image name and tag as defaults, and applies any
-     * tag override specified in {@link ServiceOptions}.
-     *
-     * @param service - Name of the service whose image tag will be updated.
-     * @param options - ServiceOptions containing an optional imageTag override.
-     * @returns The current builder instance for method chaining.
-     */
-    private setImageTag(service: string, options: ServiceOptions): this {
-        if (!this.composeFile.services![service]) {
-            throw new Error(
-                `Service '${service}' does not exist. Please add it before setting image tag.`,
-            );
-        }
-
-        const currentImage = this.composeFile.services![service].image;
-        const [currentName, currentTag] = currentImage?.includes(":")
-            ? currentImage.split(":", 2)
-            : [currentImage || "", "latest"];
-
-        const imageTag = options.imageTag || currentTag;
-
-        this.composeFile.services![service].image =
-            `${currentName}:${imageTag}`;
-
-        return this;
-    }
-
-    /**
-     * Generic helper to add a config to a service and register it in the compose file
-     * @param configContent - Config object with content
-     * @param serviceName - Name of the service to attach the config to
-     * @param targetPath - Path where the config will be mounted in the container
-     */
-    private addServiceConfig(
-        configContent: Config,
-        serviceName: string,
-        targetPath: string,
-    ): void {
-        const configName = configContent.name;
-        // Register the config in the compose file
-        this.withConfig(configContent);
-
-        // Ensure the target service exists by adding it if needed
-        this.ensureServiceExists(serviceName);
-
-        // Initialize configs array if it doesn't exist
-        if (!(this.composeFile.services![serviceName] as Service).configs) {
-            (this.composeFile.services![serviceName] as Service).configs = [];
-        }
-
-        // Add config reference to the service
-        (this.composeFile.services![serviceName] as Service).configs!.push({
-            source: configName,
-            target: targetPath,
-        });
-    }
-
-    /**
-     * Ensure a service exists in the compose file by calling its builder method if needed
-     * @param serviceName - Name of the service to ensure exists
-     */
-    private ensureServiceExists(serviceName: string): void {
-        // If service already exists, nothing to do
-        if (this.composeFile.services![serviceName]) {
-            return;
-        }
-
-        // Map of service names to their builder methods
-        const serviceMap: Record<string, () => this> = {
-            anvil: () => this.withAnvil(),
-            database: () => this.withDatabase(),
-            proxy: () => this.withProxy(),
-            bundler: () => this.withBundler(),
-            "explorer-api": () => this.withExplorerApi(),
-            "squid-processor": () => this.withSquidProcessor(),
-            explorer: () => this.withExplorer(),
-            paymaster: () => this.withPaymaster(),
-            "passkey-server": () => this.withPasskeyServer(),
-            "rollups-node": () => this.withRollupsNode(),
-        };
-
-        const addMethod = serviceMap[serviceName];
-        if (addMethod) {
-            addMethod.call(this);
+function mergeMappings<T>(
+    base: Record<string, T>,
+    override: Record<string, T>,
+    mergeValue: (baseValue: T, overrideValue: T) => T,
+): Record<string, T> {
+    const result: Record<string, T> = { ...base };
+
+    for (const [key, overrideValue] of Object.entries(override)) {
+        const baseValue = result[key];
+        if (baseValue !== undefined) {
+            result[key] = mergeValue(baseValue, overrideValue);
         } else {
-            throw new Error(
-                `Service '${serviceName}' does not exist and has no known builder method.`,
+            result[key] = overrideValue;
+        }
+    }
+
+    return result;
+}
+
+/**
+ * Merges two services according to Docker Compose merge rules
+ */
+function mergeService(base: Service, override: Service): Service {
+    const result: Service = { ...base };
+
+    // Shell commands: override (not merge)
+    if (override.command !== undefined) {
+        result.command = override.command;
+    }
+    if (override.entrypoint !== undefined) {
+        result.entrypoint = override.entrypoint;
+    }
+    if (override.healthcheck?.test !== undefined) {
+        result.healthcheck = {
+            ...base.healthcheck,
+            test: override.healthcheck.test,
+        };
+    }
+
+    // Merge other healthcheck fields normally
+    if (override.healthcheck) {
+        result.healthcheck = {
+            ...base.healthcheck,
+            ...override.healthcheck,
+            // test was already handled above
+            test: override.healthcheck.test ?? base.healthcheck?.test,
+        };
+    }
+
+    // Unique resources: merge by unique key
+    if (override.ports) {
+        result.ports = mergeUniquePorts(base.ports || [], override.ports);
+    }
+    if (override.volumes) {
+        result.volumes = mergeUniqueVolumes(
+            base.volumes || [],
+            override.volumes,
+        );
+    }
+    if (override.secrets) {
+        result.secrets = mergeUniqueSecrets(
+            base.secrets || [],
+            override.secrets,
+        );
+    }
+    if (override.configs) {
+        result.configs = mergeUniqueConfigs(
+            base.configs || [],
+            override.configs,
+        );
+    }
+
+    // Sequences: append
+    if (override.expose) {
+        result.expose = mergeSequences(base.expose, override.expose);
+    }
+    if (override.depends_on) {
+        // depends_on can be array or object, handle both
+        if (Array.isArray(override.depends_on)) {
+            result.depends_on = mergeSequences(
+                Array.isArray(base.depends_on) ? base.depends_on : [],
+                override.depends_on,
             );
+        } else {
+            // For object format, merge the objects
+            result.depends_on = {
+                ...(typeof base.depends_on === "object" &&
+                !Array.isArray(base.depends_on)
+                    ? base.depends_on
+                    : {}),
+                ...override.depends_on,
+            };
+        }
+    }
+    if (override.dns) {
+        result.dns = mergeSequences(
+            Array.isArray(base.dns) ? base.dns : base.dns ? [base.dns] : [],
+            Array.isArray(override.dns) ? override.dns : [override.dns],
+        );
+    }
+    if (override.dns_search) {
+        result.dns_search = mergeSequences(
+            Array.isArray(base.dns_search)
+                ? base.dns_search
+                : base.dns_search
+                  ? [base.dns_search]
+                  : [],
+            Array.isArray(override.dns_search)
+                ? override.dns_search
+                : [override.dns_search],
+        );
+    }
+    if (override.dns_opt) {
+        result.dns_opt = mergeSequences(base.dns_opt || [], override.dns_opt);
+    }
+    if (override.env_file) {
+        // env_file can be string, string[], or EnvFile[]
+        const baseArray = Array.isArray(base.env_file)
+            ? base.env_file
+            : base.env_file
+              ? [base.env_file]
+              : [];
+        const overrideArray = Array.isArray(override.env_file)
+            ? override.env_file
+            : [override.env_file];
+        // Type assertion needed because env_file can be string[] or EnvFile[]
+        result.env_file = [
+            ...baseArray,
+            ...overrideArray,
+        ] as typeof override.env_file;
+    }
+    if (override.labels) {
+        // labels can be array or object
+        if (Array.isArray(override.labels)) {
+            result.labels = mergeSequences(
+                Array.isArray(base.labels) ? base.labels : [],
+                override.labels,
+            );
+        } else {
+            result.labels = {
+                ...(typeof base.labels === "object" &&
+                !Array.isArray(base.labels)
+                    ? base.labels
+                    : {}),
+                ...override.labels,
+            };
+        }
+    }
+    if (override.extra_hosts) {
+        // extra_hosts can be array or object
+        if (Array.isArray(override.extra_hosts)) {
+            result.extra_hosts = mergeSequences(
+                Array.isArray(base.extra_hosts) ? base.extra_hosts : [],
+                override.extra_hosts,
+            );
+        } else {
+            result.extra_hosts = {
+                ...(typeof base.extra_hosts === "object" &&
+                !Array.isArray(base.extra_hosts)
+                    ? base.extra_hosts
+                    : {}),
+                ...override.extra_hosts,
+            };
+        }
+    }
+    if (override.sysctls) {
+        // sysctls can be array or object
+        if (Array.isArray(override.sysctls)) {
+            result.sysctls = mergeSequences(
+                Array.isArray(base.sysctls) ? base.sysctls : [],
+                override.sysctls,
+            );
+        } else {
+            result.sysctls = {
+                ...(typeof base.sysctls === "object" &&
+                !Array.isArray(base.sysctls)
+                    ? base.sysctls
+                    : {}),
+                ...override.sysctls,
+            };
         }
     }
 
-    /**
-     * Automatically resolve and add dependencies for a service based on its depends_on field
-     * @param serviceName - Name of the service whose dependencies should be resolved
-     */
-    private resolveDependencies(serviceName: string): void {
-        const service = this.composeFile.services![serviceName];
-        if (!service || !service.depends_on) {
-            return;
-        }
-
-        // Handle both array and object format for depends_on
-        const dependencies = Array.isArray(service.depends_on)
-            ? service.depends_on
-            : Object.keys(service.depends_on);
-
-        // Add each dependency if it doesn't already exist
-        for (const dep of dependencies) {
-            this.ensureServiceExists(dep);
+    // Mappings: merge recursively
+    if (override.environment) {
+        if (Array.isArray(override.environment)) {
+            // Array format: append
+            result.environment = mergeSequences(
+                Array.isArray(base.environment) ? base.environment : [],
+                override.environment,
+            );
+        } else {
+            // Object format: merge mappings
+            result.environment = {
+                ...(typeof base.environment === "object" &&
+                !Array.isArray(base.environment)
+                    ? base.environment
+                    : {}),
+                ...override.environment,
+            };
         }
     }
+    if (override.networks) {
+        if (Array.isArray(override.networks)) {
+            result.networks = mergeSequences(
+                Array.isArray(base.networks) ? base.networks : [],
+                override.networks,
+            );
+        } else {
+            result.networks = {
+                ...(typeof base.networks === "object" &&
+                !Array.isArray(base.networks)
+                    ? base.networks
+                    : {}),
+                ...override.networks,
+            };
+        }
+    }
+
+    // Other fields: override takes precedence
+    const overrideFields: Array<keyof Service> = [
+        "image",
+        "build",
+        "restart",
+        "container_name",
+        "hostname",
+        "network_mode",
+        "pid",
+        "ipc",
+        "deploy",
+        "develop",
+        "working_dir",
+        "user",
+        "cap_add",
+        "cap_drop",
+        "devices",
+        "external_links",
+        "gpus",
+        "group_add",
+        "mem_limit",
+        "mem_reservation",
+        "memswap_limit",
+        "oom_kill_disable",
+        "oom_score_adj",
+        "privileged",
+        "read_only",
+        "shm_size",
+        "stdin_open",
+        "tty",
+        "ulimits",
+        "volumes_from",
+        "cpus",
+        "cpuset",
+        "cpu_shares",
+        "cpu_quota",
+        "cpu_period",
+        "cpu_count",
+        "cpu_percent",
+        "annotations",
+        "cgroup",
+        "cgroup_parent",
+        "domainname",
+        "init",
+        "isolation",
+        "links",
+        "mac_address",
+        "platform",
+        "security_opt",
+        "stop_grace_period",
+        "stop_signal",
+        "tmpfs",
+        "attach",
+        "extends",
+        "provider",
+        "blkio_config",
+        "credential_spec",
+        "device_cgroup_rules",
+        "logging",
+    ];
+
+    for (const field of overrideFields) {
+        if (override[field] !== undefined) {
+            result[field] = override[field] as never;
+        }
+    }
+
+    return result;
+}
+
+/**
+ * Merges two sequences by appending override to base
+ */
+function mergeSequences<T>(base: T[] | undefined, override: T[]): T[] {
+    return [...(base || []), ...override];
+}
+
+/**
+ * Merges ports arrays, ensuring uniqueness by {ip, target, published, protocol}
+ */
+function mergeUniquePorts(
+    base: Array<string | PortMapping>,
+    override: Array<string | PortMapping>,
+): Array<string | PortMapping> {
+    const result: Array<string | PortMapping> = [...base];
+    const seen = new Set<string>();
+
+    // Add existing ports to seen set
+    for (const port of base) {
+        seen.add(getPortKey(port));
+    }
+
+    // Add override ports that don't violate uniqueness
+    for (const port of override) {
+        const key = getPortKey(port);
+        if (!seen.has(key)) {
+            result.push(port);
+            seen.add(key);
+        } else {
+            // Replace existing port with same key
+            const index = result.findIndex((p) => getPortKey(p) === key);
+            if (index !== -1) {
+                result[index] = port;
+            }
+        }
+    }
+
+    return result;
+}
+
+/**
+ * Gets a unique key for a port mapping
+ */
+function getPortKey(port: string | PortMapping): string {
+    if (typeof port === "string") {
+        // Parse string format: "host:container", "host:container/protocol", etc.
+        const parts = port.split(":");
+        const containerPart = parts[1] || "";
+        const [target, protocol] = containerPart.split("/");
+        return `${parts[0] || ""}:${target || ""}:${protocol || "tcp"}`;
+    }
+    // Object format
+    const ip = port.host_ip || "";
+    const target = port.target.toString();
+    const published = port.published?.toString() || "";
+    const protocol = port.protocol || "tcp";
+    return `${ip}:${target}:${published}:${protocol}`;
+}
+
+/**
+ * Merges volumes arrays, ensuring uniqueness by target
+ */
+function mergeUniqueVolumes(
+    base: Array<string | VolumeMount>,
+    override: Array<string | VolumeMount>,
+): Array<string | VolumeMount> {
+    const result: Array<string | VolumeMount> = [...base];
+    const seen = new Set<string>();
+
+    // Add existing volumes to seen set
+    for (const volume of base) {
+        seen.add(getVolumeKey(volume));
+    }
+
+    // Add override volumes that don't violate uniqueness
+    for (const volume of override) {
+        const key = getVolumeKey(volume);
+        if (!seen.has(key)) {
+            result.push(volume);
+            seen.add(key);
+        } else {
+            // Replace existing volume with same key
+            const index = result.findIndex((v) => getVolumeKey(v) === key);
+            if (index !== -1) {
+                result[index] = volume;
+            }
+        }
+    }
+
+    return result;
+}
+
+/**
+ * Gets a unique key for a volume mount
+ */
+function getVolumeKey(volume: string | VolumeMount): string {
+    if (typeof volume === "string") {
+        // Parse string format: "source:target", "target", etc.
+        const parts = volume.split(":");
+        return parts[parts.length - 1] || volume;
+    }
+    return volume.target;
+}
+
+/**
+ * Merges secrets arrays, ensuring uniqueness by target
+ */
+function mergeUniqueSecrets(
+    base: Array<string | SecretReference>,
+    override: Array<string | SecretReference>,
+): Array<string | SecretReference> {
+    const result: Array<string | SecretReference> = [...base];
+    const seen = new Set<string>();
+
+    // Add existing secrets to seen set
+    for (const secret of base) {
+        seen.add(getSecretKey(secret));
+    }
+
+    // Add override secrets that don't violate uniqueness
+    for (const secret of override) {
+        const key = getSecretKey(secret);
+        if (!seen.has(key)) {
+            result.push(secret);
+            seen.add(key);
+        } else {
+            // Replace existing secret with same key
+            const index = result.findIndex((s) => getSecretKey(s) === key);
+            if (index !== -1) {
+                result[index] = secret;
+            }
+        }
+    }
+
+    return result;
+}
+
+/**
+ * Gets a unique key for a secret reference
+ */
+function getSecretKey(secret: string | SecretReference): string {
+    if (typeof secret === "string") {
+        return secret;
+    }
+    return secret.target || secret.source;
+}
+
+/**
+ * Merges configs arrays, ensuring uniqueness by target
+ */
+function mergeUniqueConfigs(
+    base: Array<string | ConfigReference>,
+    override: Array<string | ConfigReference>,
+): Array<string | ConfigReference> {
+    const result: Array<string | ConfigReference> = [...base];
+    const seen = new Set<string>();
+
+    // Add existing configs to seen set
+    for (const config of base) {
+        seen.add(getConfigKey(config));
+    }
+
+    // Add override configs that don't violate uniqueness
+    for (const config of override) {
+        const key = getConfigKey(config);
+        if (!seen.has(key)) {
+            result.push(config);
+            seen.add(key);
+        } else {
+            // Replace existing config with same key
+            const index = result.findIndex((c) => getConfigKey(c) === key);
+            if (index !== -1) {
+                result[index] = config;
+            }
+        }
+    }
+
+    return result;
+}
+
+/**
+ * Gets a unique key for a config reference
+ */
+function getConfigKey(config: string | ConfigReference): string {
+    if (typeof config === "string") {
+        return config;
+    }
+    return config.target || config.source;
+}
+
+/**
+ * Merges two networks
+ */
+function mergeNetwork(base: Network, override: Network): Network {
+    return {
+        ...base,
+        ...override,
+        // Merge nested objects
+        ipam: override.ipam
+            ? {
+                  ...base.ipam,
+                  ...override.ipam,
+                  config: override.ipam.config
+                      ? mergeSequences(base.ipam?.config, override.ipam.config)
+                      : base.ipam?.config,
+              }
+            : base.ipam,
+        external:
+            override.external !== undefined ? override.external : base.external,
+    };
+}
+
+/**
+ * Merges two volumes
+ */
+function mergeVolume(base: Volume, override: Volume): Volume {
+    return {
+        ...base,
+        ...override,
+        external:
+            override.external !== undefined ? override.external : base.external,
+    };
+}
+
+/**
+ * Merges two secrets
+ */
+function mergeSecret(base: Secret, override: Secret): Secret {
+    return {
+        ...base,
+        ...override,
+        external:
+            override.external !== undefined ? override.external : base.external,
+    };
+}
+
+/**
+ * Merges two configs
+ */
+function mergeConfig(base: Config, override: Config): Config {
+    return {
+        ...base,
+        ...override,
+        external:
+            override.external !== undefined ? override.external : base.external,
+    };
 }

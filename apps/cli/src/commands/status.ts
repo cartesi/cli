@@ -20,7 +20,7 @@ export const createStatusCommand = () => {
 
             const status = await getServiceState({
                 projectName,
-                service: "rollups-node",
+                service: "rollups_node",
             });
             const deployments = await getDeployments({
                 projectName,

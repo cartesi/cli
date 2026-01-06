@@ -9,13 +9,22 @@ import {
     getAddress,
     hexToNumber,
 } from "viem";
+import { stringify } from "yaml";
 import {
     getContextPath,
     getMachineHash,
     getProjectName,
     getServiceHealth,
 } from "../base.js";
-import { ComposeBuilder } from "../compose/builder.js";
+import anvil from "../compose/anvil.js";
+import { concat } from "../compose/builder.js";
+import bundler from "../compose/bundler.js";
+import database from "../compose/database.js";
+import explorer from "../compose/explorer.js";
+import node from "../compose/node.js";
+import passkey from "../compose/passkey.js";
+import paymaster from "../compose/paymaster.js";
+import proxy from "../compose/proxy.js";
 
 export type RollupsDeployment = {
     name: string;
@@ -59,7 +68,7 @@ export const getDeployments = async (
             "--project-name",
             options.projectName,
             "exec",
-            "rollups-node",
+            "rollups_node",
             "cartesi-rollups-cli",
             "app",
             "list",
@@ -119,7 +128,7 @@ const baseServices: Service[] = [
     },
     {
         name: "rpc",
-        healthySemaphore: "rollups-node",
+        healthySemaphore: "rollups_node",
         healthyTitle: (port) =>
             `${chalk.cyan("rpc")} service ready at ${chalk.cyan(`${host}:${port}/rpc`)}`,
         waitTitle: `${chalk.cyan("rpc")} service starting...`,
@@ -127,7 +136,7 @@ const baseServices: Service[] = [
     },
     {
         name: "inspect",
-        healthySemaphore: "rollups-node",
+        healthySemaphore: "rollups_node",
         healthyTitle: (port, name) =>
             `${chalk.cyan("inspect")} service ready at ${chalk.cyan(`${host}:${port}/inspect/${name ?? "<application_address>"}`)}`,
         waitTitle: `${chalk.cyan("inspect")} service starting...`,
@@ -146,7 +155,7 @@ const availableServices: Service[] = [
     },
     {
         name: "explorer",
-        healthySemaphore: "explorer-api",
+        healthySemaphore: "explorer_api",
         healthyTitle: (port) =>
             `${chalk.cyan("explorer")} service ready at ${chalk.cyan(`${host}:${port}/explorer`)}`,
         waitTitle: `${chalk.cyan("explorer")} service starting...`,
@@ -162,7 +171,7 @@ const availableServices: Service[] = [
     },
     {
         name: "passkey",
-        healthySemaphore: "passkey-server",
+        healthySemaphore: "passkey_server",
         healthyTitle: (port) =>
             `${chalk.cyan("passkey")} service ready at ${chalk.cyan(`${host}:${port}/passkey`)}`,
         waitTitle: `${chalk.cyan("passkey")} service starting...`,
@@ -205,7 +214,7 @@ const serviceMonitorTask = (options: {
 export const startEnvironment = async (options: {
     blockTime: number;
     cpus?: number;
-    defaultBlock: string;
+    defaultBlock: "latest" | "safe" | "pending" | "finalized";
     dryRun: boolean;
     memory?: number;
     port: number;
@@ -236,49 +245,38 @@ export const startEnvironment = async (options: {
         CARTESI_LOG_LEVEL: verbose ? "debug" : "info",
     };
 
-    const composeFile: ComposeBuilder = new ComposeBuilder()
-        .withName(projectName)
-        .withAnvil({
-            blockTime,
+    const files = [
+        anvil({ blockTime, imageTag: runtimeVersion }),
+        database({ imageTag: runtimeVersion, password: "password" }),
+        node({
+            cpus,
+            databasePassword: "password",
+            defaultBlock,
             imageTag: runtimeVersion,
-        })
-        .withDatabase({
-            imageTag: runtimeVersion,
-        })
-        .withRollupsNode({
-            imageTag: runtimeVersion,
-        })
-        .withProxy({
-            imageTag: "v3.3.4",
-            listenPort: port,
-        });
-
-    // cpu and memory limits, mostly for testing and debugging purposes
-    if (cpus) {
-        composeFile.withRollupsNode({ cpus });
-    }
-    if (memory) {
-        composeFile.withRollupsNode({ memory });
-    }
+            logLevel: verbose ? "debug" : "info",
+            memory,
+        }),
+        proxy({ imageTag: "v3.3.4", port }),
+    ];
 
     if (services.includes("explorer")) {
-        composeFile
-            .withExplorer({
+        files.push(
+            explorer({
                 imageTag: "1.3.3",
-                listenPort: port,
-            })
-            .withExplorerApi({
-                imageTag: "1.0.0",
-            });
+                apiTag: "1.0.0",
+                databasePassword: "password",
+                port,
+            }),
+        );
     }
     if (services.includes("bundler")) {
-        composeFile.withBundler({ imageTag: runtimeVersion });
+        files.push(bundler({ imageTag: runtimeVersion }));
     }
     if (services.includes("paymaster")) {
-        composeFile.withPaymaster({ imageTag: runtimeVersion });
+        files.push(paymaster({ imageTag: runtimeVersion }));
     }
     if (services.includes("passkey")) {
-        composeFile.withPasskeyServer({ imageTag: runtimeVersion });
+        files.push(passkey({ imageTag: runtimeVersion }));
     }
 
     const composeArgs = ["compose", "-f", "-", "--project-directory", "."];
@@ -286,13 +284,16 @@ export const startEnvironment = async (options: {
     // run in detached mode (background)
     const upArgs = ["--detach"];
 
+    // merge files, following Docker Compose merge rules
+    const composeFile = concat([{ name: projectName }, ...files]);
+
     // if only dry run, just return the config
     if (dryRun) {
         // parse, resolve and render compose file in canonical format
         const { stdout: config } = await execa(
             "docker",
             [...composeArgs, "config", "--format", "yaml"],
-            { env, input: composeFile.build() },
+            { env, input: stringify(composeFile, { lineWidth: 0, indent: 2 }) },
         );
 
         return { address, config };
@@ -310,7 +311,7 @@ export const startEnvironment = async (options: {
     // run compose
     await execa("docker", [...composeArgs, "up", ...upArgs], {
         env,
-        input: composeFile.build(),
+        input: stringify(composeFile, { lineWidth: 0, indent: 2 }),
     });
 
     return { address };
@@ -373,7 +374,7 @@ export const publishMachine = async (options: {
         projectName,
         "cp",
         snapshotPath,
-        `rollups-node:${containerSnapshotPath}`,
+        `rollups_node:${containerSnapshotPath}`,
     ]);
     return containerSnapshotPath;
 };
@@ -411,7 +412,7 @@ export const deployAuthority = async (options: {
         "--project-name",
         projectName,
         "exec",
-        "rollups-node",
+        "rollups_node",
         "cartesi-rollups-cli",
         "deploy",
         "authority",
@@ -469,7 +470,7 @@ export const deployApplication = async (options: {
         "--project-name",
         projectName,
         "exec",
-        "rollups-node",
+        "rollups_node",
         "cartesi-rollups-cli",
         "deploy",
         "application",
@@ -501,7 +502,7 @@ export const removeApplication = async (options: {
         "--project-name",
         projectName,
         "exec",
-        "rollups-node",
+        "rollups_node",
         "cartesi-rollups-cli",
         "app",
         "status",
@@ -520,7 +521,7 @@ export const removeApplication = async (options: {
         "--project-name",
         projectName,
         "exec",
-        "rollups-node",
+        "rollups_node",
         "cartesi-rollups-cli",
         "app",
         "remove",
