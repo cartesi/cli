@@ -28,5 +28,5 @@ This repo build uses Anvil commands. To install Anvil, you need to follow the in
 To build all apps and packages, run the following command:
 
 ```shell
-pnpm run build
+bun run build
 ```
