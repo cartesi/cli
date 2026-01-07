@@ -3,5 +3,8 @@ libs = ["dependencies"]
 solc_version = "0.8.30"
 optimizer = true
 
+fs_permissions = [{ access = "read-write", path = "build" }]
+
 [dependencies]
 "@openzeppelin-contracts" = "5.5.0"
+forge-std = "1.9.6"
