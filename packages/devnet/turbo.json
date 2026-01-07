@@ -2,7 +2,14 @@
     "extends": ["//"],
     "tasks": {
         "build": {
-            "outputs": ["cache/**", "dependencies/**", "out/**"]
+            "outputs": [
+                "anvil_state.json",
+                "broadcast/**",
+                "cache/**",
+                "dependencies/**",
+                "deployments/**",
+                "out/**"
+            ]
         }
     }
 }
