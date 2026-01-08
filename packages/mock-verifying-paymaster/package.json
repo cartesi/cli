@@ -21,10 +21,11 @@
         "zod-validation-error": "^3.0.3"
     },
     "devDependencies": {
-        "@types/node": "^22.0.0",
+        "@types/node": "^25.0.3",
+        "tsconfig": "workspace:*",
         "ts-node": "^10.9.2",
         "tsup": "^8.2.3",
-        "typescript": "5.5.4",
+        "typescript": "5.9.3",
         "wait-port": "^1.0.4"
     }
 }

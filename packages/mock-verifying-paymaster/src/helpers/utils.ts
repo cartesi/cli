@@ -1,8 +1,12 @@
 import {
+    type Account,
+    type Chain,
     createPublicClient,
     createWalletClient,
     defineChain,
     http,
+    type Transport,
+    type WalletClient,
 } from "viem";
 import { mnemonicToAccount } from "viem/accounts";
 
@@ -11,7 +15,9 @@ export const maxBigInt = (a: bigint, b: bigint) => {
     return a > b ? a : b;
 };
 
-export const getAnvilWalletClient = async () => {
+export const getAnvilWalletClient = async (): Promise<
+    WalletClient<Transport, Chain, Account>
+> => {
     const account = mnemonicToAccount(
         "test test test test test test test test test test test junk",
         {
