@@ -1,16 +1,28 @@
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from "bun:test";
 import fs from "fs-extra";
 import path from "node:path";
-import { describe, expect } from "vitest";
 import { build } from "../../../src/builder/tar.js";
 import type { TarDriveConfig } from "../../../src/config.js";
-import { TEST_SDK } from "../config.js";
-import { tmpdirTest } from "./tmpdirTest.js";
+import { setupIntegrationTests, TEST_SDK } from "../config.js";
+import { cleanupTempDir, createTempDir } from "./tmpdirTest.js";
+
+beforeAll(async () => {
+    await setupIntegrationTests();
+}, { timeout: 60000 });
 
 describe("when building with the tar builder", () => {
     const image = TEST_SDK;
+    let destination: string;
 
-    tmpdirTest("should not build a missing file", async ({ tmpdir }) => {
-        const destination = tmpdir;
+    beforeEach(async () => {
+        destination = await createTempDir();
+    });
+
+    afterEach(async () => {
+        await cleanupTempDir(destination);
+    });
+
+    it("should not build a missing file", async () => {
         const drive: TarDriveConfig = {
             builder: "tar",
             filename: path.join(__dirname, "data", "unexisting.tar"),
@@ -22,8 +34,7 @@ describe("when building with the tar builder", () => {
         );
     });
 
-    tmpdirTest("should build a ext2 drive", async ({ tmpdir }) => {
-        const destination = tmpdir;
+    it("should build a ext2 drive", async () => {
         const drive: TarDriveConfig = {
             builder: "tar",
             filename: path.join(__dirname, "fixtures", "data.tar"),
@@ -36,8 +47,7 @@ describe("when building with the tar builder", () => {
         expect(stat.size).toEqual(36864);
     });
 
-    tmpdirTest("should build a sqfs drive", async ({ tmpdir }) => {
-        const destination = tmpdir;
+    it("should build a sqfs drive", async () => {
         const drive: TarDriveConfig = {
             builder: "tar",
             filename: path.join(__dirname, "fixtures", "data.tar"),

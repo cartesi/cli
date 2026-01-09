@@ -1,13 +1,27 @@
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from "bun:test";
 import fs from "fs-extra";
 import path from "node:path";
-import { describe, expect } from "vitest";
 import { build } from "../../../src/builder/none.js";
 import type { ExistingDriveConfig } from "../../../src/config.js";
-import { tmpdirTest } from "./tmpdirTest.js";
+import { setupIntegrationTests } from "../config.js";
+import { cleanupTempDir, createTempDir } from "./tmpdirTest.js";
+
+beforeAll(async () => {
+    await setupIntegrationTests();
+}, { timeout: 60000 });
 
 describe("when building with the none builder", () => {
-    tmpdirTest("should not build a missing file", async ({ tmpdir }) => {
-        const destination = tmpdir;
+    let destination: string;
+
+    beforeEach(async () => {
+        destination = await createTempDir();
+    });
+
+    afterEach(async () => {
+        await cleanupTempDir(destination);
+    });
+
+    it("should not build a missing file", async () => {
         const drive: ExistingDriveConfig = {
             builder: "none",
             filename: path.join(__dirname, "data", "missing.ext2"),
@@ -18,8 +32,7 @@ describe("when building with the none builder", () => {
         );
     });
 
-    tmpdirTest("should just copy an existing drive", async ({ tmpdir }) => {
-        const destination = tmpdir;
+    it("should just copy an existing drive", async () => {
         const filename = path.join(__dirname, "fixtures", "data.ext2");
         const drive: ExistingDriveConfig = {
             builder: "none",

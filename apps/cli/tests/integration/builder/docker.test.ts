@@ -1,21 +1,28 @@
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from "bun:test";
 import fs from "fs-extra";
 import path from "node:path";
-import { beforeEach } from "node:test";
-import { describe, expect } from "vitest";
 import { build } from "../../../src/builder/docker.js";
 import type { DockerDriveConfig } from "../../../src/config.js";
-import { TEST_SDK } from "../config.js";
-import { tmpdirTest } from "./tmpdirTest.js";
+import { setupIntegrationTests, TEST_SDK } from "../config.js";
+import { cleanupTempDir, createTempDir } from "./tmpdirTest.js";
+
+beforeAll(async () => {
+    await setupIntegrationTests();
+}, { timeout: 60000 });
 
 describe("when building with the docker builder", () => {
     const image = TEST_SDK;
+    let destination: string;
 
-    beforeEach(({ name }) => {
-        fs.mkdirpSync(path.join(__dirname, "output", name));
+    beforeEach(async () => {
+        destination = await createTempDir();
     });
 
-    tmpdirTest("should fail without correct context", async ({ tmpdir }) => {
-        const destination = tmpdir;
+    afterEach(async () => {
+        await cleanupTempDir(destination);
+    });
+
+    it("should fail without correct context", async () => {
         const drive: DockerDriveConfig = {
             buildArgs: [],
             builder: "docker",
@@ -32,8 +39,7 @@ describe("when building with the docker builder", () => {
         ).rejects.toThrow("exit code 1");
     });
 
-    tmpdirTest("should fail a non-riscv image", async ({ tmpdir }) => {
-        const destination = tmpdir;
+    it("should fail a non-riscv image", async () => {
         const drive: DockerDriveConfig = {
             buildArgs: [],
             builder: "docker",
@@ -50,10 +56,9 @@ describe("when building with the docker builder", () => {
         ).rejects.toThrow(/no match for platform in manifest/);
     });
 
-    tmpdirTest(
+    it(
         "should build an ext2 drive with a target definition",
-        async ({ tmpdir }) => {
-            const destination = tmpdir;
+        async () => {
             const drive: DockerDriveConfig = {
                 buildArgs: [],
                 builder: "docker",
@@ -72,8 +77,7 @@ describe("when building with the docker builder", () => {
         },
     );
 
-    tmpdirTest("should build an ext2 drive", async ({ tmpdir }) => {
-        const destination = tmpdir;
+    it("should build an ext2 drive", async () => {
         const drive: DockerDriveConfig = {
             buildArgs: [],
             builder: "docker",
@@ -91,8 +95,7 @@ describe("when building with the docker builder", () => {
         expect(stat.size).toEqual(93716480);
     });
 
-    tmpdirTest.skip("should build a sqfs drive", async ({ tmpdir }) => {
-        const destination = tmpdir;
+    it.skip("should build a sqfs drive", async () => {
         const drive: DockerDriveConfig = {
             buildArgs: [],
             builder: "docker",

@@ -1,18 +1,30 @@
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from "bun:test";
 import fs from "fs-extra";
 import path from "node:path";
-import { describe, expect } from "vitest";
 import { build } from "../../../src/builder/directory.js";
 import type { DirectoryDriveConfig } from "../../../src/config.js";
-import { TEST_SDK } from "../config.js";
-import { tmpdirTest } from "./tmpdirTest.js";
+import { setupIntegrationTests, TEST_SDK } from "../config.js";
+import { cleanupTempDir, createTempDir } from "./tmpdirTest.js";
+
+beforeAll(async () => {
+    await setupIntegrationTests();
+}, { timeout: 60000 });
 
 describe("when building with the directory builder", () => {
     const image = TEST_SDK;
+    let destination: string;
 
-    tmpdirTest(
+    beforeEach(async () => {
+        destination = await createTempDir();
+    });
+
+    afterEach(async () => {
+        await cleanupTempDir(destination);
+    });
+
+    it(
         "should fail when the directory doesn't exists",
-        async ({ tmpdir }) => {
-            const destination = tmpdir;
+        async () => {
             const drive: DirectoryDriveConfig = {
                 builder: "directory",
                 directory: path.join(__dirname, "data", "invalid"),
@@ -25,10 +37,9 @@ describe("when building with the directory builder", () => {
         },
     );
 
-    tmpdirTest(
+    it(
         "should fail when the directory is empty",
-        async ({ tmpdir }) => {
-            const destination = tmpdir;
+        async () => {
             const directory = path.join(__dirname, "data", "empty");
             fs.ensureDirSync(directory);
             const drive: DirectoryDriveConfig = {
@@ -43,10 +54,9 @@ describe("when building with the directory builder", () => {
         },
     );
 
-    tmpdirTest(
+    it(
         "should pass when the directory is empty but extra size is defined",
-        async ({ tmpdir }) => {
-            const destination = tmpdir;
+        async () => {
             const directory = path.join(__dirname, "data", "empty");
             fs.ensureDirSync(directory);
             const drive: DirectoryDriveConfig = {
@@ -62,10 +72,9 @@ describe("when building with the directory builder", () => {
         },
     );
 
-    tmpdirTest(
+    it(
         "should pass for a populated directory (ext2)",
-        async ({ tmpdir }) => {
-            const destination = tmpdir;
+        async () => {
             const drive: DirectoryDriveConfig = {
                 builder: "directory",
                 directory: path.join(__dirname, "fixtures", "sample1"),
@@ -79,10 +88,9 @@ describe("when building with the directory builder", () => {
         },
     );
 
-    tmpdirTest(
+    it(
         "should pass for a populated directory (sqfs)",
-        async ({ tmpdir }) => {
-            const destination = tmpdir;
+        async () => {
             const drive: DirectoryDriveConfig = {
                 builder: "directory",
                 directory: path.join(__dirname, "fixtures", "sample1"),
