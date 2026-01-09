@@ -1,7 +1,14 @@
+import { beforeAll, describe, expect, it } from "bun:test";
 import { type SemVer, satisfies } from "semver";
-import { describe, expect, it } from "vitest";
 import { cartesiMachine } from "../../../src/exec/index.js";
-import { TEST_SDK } from "../config.js";
+import { setupIntegrationTests, TEST_SDK } from "../config.js";
+
+beforeAll(
+    async () => {
+        await setupIntegrationTests();
+    },
+    { timeout: 60000 },
+);
 
 describe("cartesi-machine", () => {
     it("should report version", async () => {

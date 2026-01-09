@@ -1,16 +1,38 @@
+import {
+    afterEach,
+    beforeAll,
+    beforeEach,
+    describe,
+    expect,
+    it,
+} from "bun:test";
 import fs from "fs-extra";
 import path from "node:path";
-import { describe, expect } from "vitest";
 import { build } from "../../../src/builder/empty.js";
 import type { EmptyDriveConfig } from "../../../src/config.js";
-import { TEST_SDK } from "../config.js";
-import { tmpdirTest } from "./tmpdirTest.js";
+import { setupIntegrationTests, TEST_SDK } from "../config.js";
+import { cleanupTempDir, createTempDir } from "./tmpdirTest.js";
+
+beforeAll(
+    async () => {
+        await setupIntegrationTests();
+    },
+    { timeout: 60000 },
+);
 
 describe("when building with the empty builder", () => {
     const image = TEST_SDK;
+    let destination: string;
 
-    tmpdirTest("should fail with an invalid size", async ({ tmpdir }) => {
-        const destination = tmpdir;
+    beforeEach(async () => {
+        destination = await createTempDir();
+    });
+
+    afterEach(async () => {
+        await cleanupTempDir(destination);
+    });
+
+    it("should fail with an invalid size", async () => {
         const drive: EmptyDriveConfig = {
             builder: "empty",
             format: "ext2",
@@ -21,8 +43,7 @@ describe("when building with the empty builder", () => {
         );
     });
 
-    tmpdirTest("should pass and create ext2 drive", async ({ tmpdir }) => {
-        const destination = tmpdir;
+    it("should pass and create ext2 drive", async () => {
         const driveName = "root.ext2";
         const drive: EmptyDriveConfig = {
             builder: "empty",
@@ -38,8 +59,7 @@ describe("when building with the empty builder", () => {
         expect(stat.size).toEqual(1 * 1024 * 1024);
     });
 
-    tmpdirTest("should pass and create raw drive", async ({ tmpdir }) => {
-        const destination = tmpdir;
+    it("should pass and create raw drive", async () => {
         const driveName = "root.raw";
         const drive: EmptyDriveConfig = {
             builder: "empty",
