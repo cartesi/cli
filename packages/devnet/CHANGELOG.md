@@ -1,5 +1,11 @@
 # devnet
 
+## 2.0.0-alpha.9
+
+### Patch Changes
+
+- a0b80bb: remove cannon
+
 ## 2.0.0-alpha.8
 
 ### Patch Changes

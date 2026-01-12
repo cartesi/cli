@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.0.0-alpha.22
+
+### Patch Changes
+
+- e80638c: migrate compose from YAML to TS
+- d2d7f9a: bump devnet to 2.0.0-alpha.8
+- 8f82c4e: optional authority deployment
+- c54d179: bump explorer
+- 8a6bf9e: PRT application deployment
+- 7812a8d: migrate to bun
+- fdd9154: bump to cartesi/sdk:0.12.0-alpha.27
+- 5490a39: fetch application template without giget dependency
+
 ## 2.0.0-alpha.21
 
 ### Minor Changes

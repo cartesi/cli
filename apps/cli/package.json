@@ -1,6 +1,6 @@
 {
     "name": "@cartesi/cli",
-    "version": "2.0.0-alpha.21",
+    "version": "2.0.0-alpha.22",
     "description": "Cartesi CLI",
     "author": "Danilo Tuler <tuler@pobox.com>",
     "bin": {
@@ -11,7 +11,9 @@
     "license": "Apache-2.0",
     "exports": "./dist/index.js",
     "repository": "cartesi/cli",
-    "files": ["/dist"],
+    "files": [
+        "/dist"
+    ],
     "dependencies": {
         "@commander-js/extra-typings": "^14.0.0",
         "@inquirer/confirm": "^6.0.3",
