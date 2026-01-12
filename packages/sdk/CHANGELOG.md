@@ -1,5 +1,11 @@
 # sdk
 
+## 0.12.0-alpha.28
+
+### Patch Changes
+
+- c5ca37b: bump cartesi/devnet to 2.0.0-alpha.9
+
 ## 0.12.0-alpha.27
 
 ### Patch Changes
