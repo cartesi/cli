@@ -18,7 +18,7 @@ target "default" {
     CARTESI_ROLLUPS_NODE_VERSION      = "2.0.0-alpha.9"
     FOUNDRY_VERSION                   = "1.4.3"
     NITRO_VERSION                     = "8c376d4a5baa7f32999620f9fe3eb51ca8e0dcbc" # v0.5
-    NODE_VERSION                      = "22.15.1"
+    NODE_VERSION                      = "24.12.0"
     NVM_VERSION                       = "977563e97ddc66facf3a8e31c6cff01d236f09bd" # 0.40.3
     POSTGRES_BASE_IMAGE               = "docker.io/library/postgres:17-trixie@sha256:bac8128cd62a35471a1e97966861aa2ac88c8d2f408767a425ae70695a607c99"
     SQUASHFS_TOOLS_VERSION            = "99d23a31b471433c51e9c145aeba2ab1536e34df" # 4.7.2
