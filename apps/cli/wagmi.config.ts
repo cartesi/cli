@@ -1,14 +1,6 @@
 import { type Plugin, defineConfig } from "@wagmi/cli";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
-import type { Abi } from "viem";
-
-const DataAvailability = JSON.parse(
-    readFileSync(
-        "node_modules/@cartesi/rollups/out/DataAvailability.sol/DataAvailability.json",
-        "utf8",
-    ),
-);
 
 interface CannonOptions {
     directory: string;
@@ -67,16 +59,9 @@ const cannonDeployments = (config: CannonOptions): Plugin => {
 
 export default defineConfig({
     out: "src/contracts.ts",
-    contracts: [
-        {
-            name: "DataAvailability",
-            abi: DataAvailability.abi as Abi,
-        },
-    ],
     plugins: [
         cannonDeployments({
             directory: "node_modules/@cartesi/devnet/deployments",
-            includes: [/^cartesi*/, /^Test*/],
         }),
     ],
 });
