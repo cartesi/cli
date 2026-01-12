@@ -1,5 +1,11 @@
 # sdk
 
+## 0.12.0-alpha.29
+
+### Patch Changes
+
+- aa6f0aa: bump nodejs
+
 ## 0.12.0-alpha.28
 
 ### Patch Changes
