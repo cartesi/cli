@@ -9,7 +9,7 @@ target "default" {
     ALTO_VERSION                      = "1.2.5"
     ALTO_PACKAGE_VERSION              = "0.0.18"
     CARTESI_BASE_IMAGE                = "docker.io/library/debian:trixie-20251229-slim@sha256:4bcb9db66237237d03b55b969271728dd3d955eaaa254b9db8a3db94550b1885"
-    CARTESI_DEVNET_VERSION            = "2.0.0-alpha.8"
+    CARTESI_DEVNET_VERSION            = "2.0.0-alpha.9"
     CARTESI_IMAGE_KERNEL_VERSION      = "0.20.0"
     CARTESI_LINUX_KERNEL_VERSION      = "6.5.13-ctsi-1-v0.20.0"
     CARTESI_MACHINE_EMULATOR_VERSION  = "0.19.0"
