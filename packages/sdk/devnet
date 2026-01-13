@@ -1,4 +1,4 @@
 #!/bin/sh
 set -e
 jq -rs '. | map({contractName,address}) | unique_by(.address) | sort_by(.contractName) | .[] | "\(.address) \(.contractName)"' /usr/share/cartesi/deployments/*.json
-exec anvil --chain-id 13370 --load-state /usr/share/cartesi/anvil_state.json "$@"
+exec anvil --load-state /usr/share/cartesi/anvil_state.json "$@"
