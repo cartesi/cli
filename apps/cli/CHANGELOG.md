@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.0-alpha.25
+
+### Patch Changes
+
+- 300a98b: migrate format from prettier to biome
+- 5b127df: switching back chainId from 13370 to 31337
+
 ## 2.0.0-alpha.24
 
 ### Patch Changes
