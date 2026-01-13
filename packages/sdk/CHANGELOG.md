@@ -1,5 +1,11 @@
 # sdk
 
+## 0.12.0-alpha.30
+
+### Patch Changes
+
+- 2790e9c: bump squashfs-tools
+
 ## 0.12.0-alpha.29
 
 ### Patch Changes
