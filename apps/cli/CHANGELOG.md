@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0-alpha.23
+
+### Patch Changes
+
+- 0cff1cd: bump sdk
+
 ## 2.0.0-alpha.22
 
 ### Patch Changes
