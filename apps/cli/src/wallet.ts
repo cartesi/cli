@@ -6,13 +6,13 @@ import {
     publicActions,
     walletActions,
 } from "viem";
-import { cannon } from "viem/chains";
+import { anvil } from "viem/chains";
 import { getProjectName } from "./base.js";
 import { PREFERRED_PORT } from "./config.js";
 import { getProjectPort } from "./exec/rollups.js";
 
 export const cartesi = defineChain({
-    ...cannon,
+    ...anvil,
     name: "Cartesi Devnet",
     testnet: true,
 });
