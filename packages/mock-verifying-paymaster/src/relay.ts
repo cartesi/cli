@@ -68,7 +68,7 @@ const handleMethodV06 = async (
     if (estimateGas) {
         let gasEstimates:
             | EstimateUserOperationGasReturnType<ENTRYPOINT_ADDRESS_V06_TYPE>
-            | undefined = undefined;
+            | undefined;
         try {
             gasEstimates = await altoBundlerV06.estimateUserOperationGas({
                 userOperation: op,
@@ -171,7 +171,7 @@ const handleMethodV07 = async (
     if (estimateGas) {
         let gasEstimates:
             | EstimateUserOperationGasReturnType<ENTRYPOINT_ADDRESS_V07_TYPE>
-            | undefined = undefined;
+            | undefined;
         try {
             gasEstimates = await altoBundlerV07.estimateUserOperationGas({
                 userOperation: op,
@@ -445,12 +445,9 @@ export const createRpcHandler = (
             console.log(`JSON.stringify(err): ${util.inspect(err)}`);
 
             const error = {
-                // biome-ignore lint/suspicious/noExplicitAny:
-                message: (err as any).message,
-                // biome-ignore lint/suspicious/noExplicitAny:
-                data: (err as any).data,
-                // biome-ignore lint/suspicious/noExplicitAny:
-                code: (err as any).code ?? -32603,
+                message: (err as unknown as { message: string }).message,
+                data: (err as unknown as { data: unknown }).data,
+                code: (err as unknown as { code: number }).code ?? -32603,
             };
 
             return {

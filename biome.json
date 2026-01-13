@@ -8,12 +8,20 @@
         }
     },
     "formatter": {
-        "enabled": false
+        "enabled": true,
+        "includes": ["**", "!.changeset/pre.json"],
+        "indentStyle": "space",
+        "indentWidth": 4
     },
     "linter": {
         "enabled": true,
         "rules": {
             "recommended": true
         }
+    },
+    "vcs": {
+        "enabled": true,
+        "clientKind": "git",
+        "useIgnoreFile": true
     }
 }
