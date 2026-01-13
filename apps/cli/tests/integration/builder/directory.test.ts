@@ -4,7 +4,7 @@ import path from "node:path";
 import { build } from "../../../src/builder/directory.js";
 import type { DirectoryDriveConfig } from "../../../src/config.js";
 import { setupIntegrationTests, TEST_SDK } from "../config.js";
-import { cleanupTempDir, createTempDir } from "./tmpdirTest.js";
+import { cleanupTempDir, createTempDir } from "../tmpdirTest.js";
 
 beforeAll(async () => {
     await setupIntegrationTests();

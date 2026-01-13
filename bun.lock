@@ -14,7 +14,7 @@
     },
     "apps/cli": {
       "name": "@cartesi/cli",
-      "version": "2.0.0-alpha.23",
+      "version": "2.0.0-alpha.24",
       "bin": {
         "cartesi": "./dist/index.js",
       },
