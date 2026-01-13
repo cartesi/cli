@@ -1,5 +1,11 @@
 # sdk
 
+## 0.12.0-alpha.31
+
+### Patch Changes
+
+- 310e867: switching back chainId from 13370 to 31337
+
 ## 0.12.0-alpha.30
 
 ### Patch Changes
