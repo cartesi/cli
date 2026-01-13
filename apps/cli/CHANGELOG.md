@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0-alpha.26
+
+### Patch Changes
+
+- 7d602a5: fix package.json loading for version
+
 ## 2.0.0-alpha.25
 
 ### Patch Changes
