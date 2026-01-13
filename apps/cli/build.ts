@@ -1,5 +1,6 @@
 // build for npm package
 await Bun.build({
+    banner: "#!/usr/bin/env node",
     entrypoints: ["./src/index.ts"],
     minify: true,
     outdir: "dist",
