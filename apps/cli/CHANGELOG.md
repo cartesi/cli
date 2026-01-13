@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0-alpha.24
+
+### Patch Changes
+
+- fcc8e38: fix node build
+
 ## 2.0.0-alpha.23
 
 ### Patch Changes
