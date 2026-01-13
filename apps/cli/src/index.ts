@@ -1,5 +1,5 @@
 import { Command } from "@commander-js/extra-typings";
-import { createRequire } from "node:module";
+import pkg from "../package.json" with { type: "json" };
 import { createAddressBookCommand } from "./commands/address-book.js";
 import { createBuildCommand } from "./commands/build.js";
 import { createCleanCommand } from "./commands/clean.js";
@@ -13,10 +13,6 @@ import { createRunCommand } from "./commands/run.js";
 import { createSendCommand } from "./commands/send.js";
 import { createShellCommand } from "./commands/shell.js";
 import { createStatusCommand } from "./commands/status.js";
-
-// Use `createRequire` to import JSON in ESM
-const require = createRequire(import.meta.url);
-const pkg = require("../package.json");
 
 const splash = String.raw`         .
         / \
