@@ -1,3 +1,4 @@
+import { anvil } from "viem/chains";
 import {
     daveAppFactoryAddress,
     inputBoxAddress,
@@ -60,7 +61,7 @@ const service = (options: ServiceOptions): Service => {
             CARTESI_AUTH_MNEMONIC: mnemonic,
             CARTESI_BLOCKCHAIN_DEFAULT_BLOCK: defaultBlock,
             CARTESI_BLOCKCHAIN_HTTP_ENDPOINT: "http://anvil:8545",
-            CARTESI_BLOCKCHAIN_ID: "13370",
+            CARTESI_BLOCKCHAIN_ID: anvil.id.toString(),
             CARTESI_BLOCKCHAIN_WS_ENDPOINT: "ws://anvil:8545",
             CARTESI_CONTRACTS_DAVE_APP_FACTORY_ADDRESS: daveAppFactoryAddress,
             CARTESI_CONTRACTS_INPUT_BOX_ADDRESS: inputBoxAddress,
