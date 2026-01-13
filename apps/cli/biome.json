@@ -1,16 +1,12 @@
 {
     "$schema": "https://biomejs.dev/schemas/2.3.11/schema.json",
-    "extends": ["../../biome.json"],
+    "root": false,
+    "extends": "//",
     "linter": {
         "rules": {
             "complexity": {
                 "noBannedTypes": "off"
             }
         }
-    },
-    "vcs": {
-        "enabled": true,
-        "clientKind": "git",
-        "useIgnoreFile": true
     }
 }
