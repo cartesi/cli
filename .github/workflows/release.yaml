@@ -71,6 +71,8 @@ jobs:
                   TAG="@cartesi/cli@${VERSION}"
                   gh release upload "$TAG" cartesi-*.tar.gz
               working-directory: ./apps/cli/bin
+              env:
+                  GH_TOKEN: ${{ github.token }}
 
     build_sdk:
         name: Build SDK
