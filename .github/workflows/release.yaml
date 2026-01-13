@@ -16,6 +16,9 @@ jobs:
     release:
         name: Release
         runs-on: ubuntu-latest
+        outputs:
+            published: ${{ steps.changeset.outputs.published }}
+            publishedPackages: ${{ steps.changeset.outputs.publishedPackages }}
         steps:
             - name: Checkout Repo
               uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
@@ -69,6 +72,9 @@ jobs:
                   gh release upload "$TAG" cartesi-*.tar.gz
               working-directory: ./apps/cli/bin
 
-            - name: Build SDK
-              if: ${{ steps.changeset.outputs.published == 'true' && contains(fromJSON(steps.changeset.outputs.publishedPackages).*.name, '@cartesi/sdk') }}
-              uses: ./.github/workflows/sdk.yaml
+    build_sdk:
+        name: Build SDK
+        needs: release
+        if: ${{ needs.release.outputs.published == 'true' && contains(fromJSON(needs.release.outputs.publishedPackages).*.name, '@cartesi/sdk') }}
+        uses: ./.github/workflows/sdk.yaml
+        secrets: inherit
