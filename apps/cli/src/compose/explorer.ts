@@ -1,3 +1,4 @@
+import { anvil } from "viem/chains";
 import type { ComposeFile, Config, Service } from "../types/compose.js";
 import { DEFAULT_HEALTHCHECK } from "./common.js";
 
@@ -75,19 +76,21 @@ export const squidProcessorService = (options: ServiceOptions): Service => {
     const databasePassword = options.databasePassword;
     const databaseHost = options.databaseHost ?? "database";
     const databasePort = options.databasePort ?? 5432;
+    const chain = anvil;
+    const environment: Record<string, string | number> = {
+        DB_HOST: databaseHost,
+        DB_NAME: "explorer",
+        DB_PASS: databasePassword,
+        DB_PORT: databasePort.toString(),
+        CHAIN_IDS: chain.id.toString(),
+    };
+    environment[`RPC_URL_${chain.id}`] = `http://anvil:8545`;
+    environment[`BLOCK_CONFIRMATIONS_${chain.id}`] = 0;
+    environment[`GENESIS_BLOCK_${chain.id}`] = 1;
 
     return {
         image: `cartesi/rollups-explorer-api:${imageTag}`,
-        environment: {
-            DB_HOST: databaseHost,
-            DB_NAME: "explorer",
-            DB_PASS: databasePassword,
-            DB_PORT: databasePort.toString(),
-            CHAIN_IDS: "13370",
-            RPC_URL_13370: "http://anvil:8545",
-            BLOCK_CONFIRMATIONS_13370: 0,
-            GENESIS_BLOCK_13370: 1,
-        },
+        environment,
         command: ["sqd", "process:prod"],
         depends_on: {
             database: { condition: "service_healthy" },
@@ -106,8 +109,9 @@ export const explorerService = (options: ServiceOptions): Service => {
     return {
         image: `cartesi/rollups-explorer:${imageTag}`,
         environment: {
-            NODE_RPC_URL: nodeRpcUrl,
+            CHAIN_ID: 31337,
             EXPLORER_API_URL: explorerApiUrl,
+            NODE_RPC_URL: nodeRpcUrl,
         },
         expose: ["3000"],
         depends_on: {
