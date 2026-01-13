@@ -14,7 +14,7 @@
     },
     "apps/cli": {
       "name": "@cartesi/cli",
-      "version": "2.0.0-alpha.22",
+      "version": "2.0.0-alpha.23",
       "bin": {
         "cartesi": "./dist/index.js",
       },
@@ -46,7 +46,7 @@
       },
       "devDependencies": {
         "@biomejs/biome": "^2.2.4",
-        "@cartesi/devnet": "workspace:*",
+        "@cartesi/devnet": "2.0.0-alpha.9",
         "@cartesi/rollups": "2.1.1",
         "@types/bun": "^1.3.5",
         "@types/bytes": "^3.1.5",
