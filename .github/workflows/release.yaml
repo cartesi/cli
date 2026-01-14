@@ -46,13 +46,13 @@ jobs:
               run: bun run build
 
             - name: Test
-              run: bun run test
+              run: bun test
 
-            - name: "Report Coverage"
+            - name: Coverage Report
+              uses: 70-10/bun-coverage-report-action@6173866ce2a31456a726ff3f4c91f230bd94a9e9 # v1.0.3
               if: always()
-              uses: davelosert/vitest-coverage-report-action@5a78cb16e761204097ad8a39369ea5d0ff7c8a5d # v2.8.0
               with:
-                  working-directory: ./apps/cli
+                  lcov-path: coverage/lcov.info
 
             - name: Create Release Pull Request or Publish to npm
               id: changeset
