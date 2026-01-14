@@ -4,8 +4,8 @@ import { execa } from "execa";
 import ora, { type Ora } from "ora";
 import semver from "semver";
 
-const MINIMUM_DOCKER_VERSION = "23.0.0"; // Replace with our minimum required Docker version
-const MINIMUM_DOCKER_COMPOSE_VERSION = "2.21.0"; // Replace with our minimum required Docker Compose version
+const MINIMUM_DOCKER_VERSION = "25.0.0"; // Replace with our minimum required Docker version
+const MINIMUM_DOCKER_COMPOSE_VERSION = "2.24.0"; // Replace with our minimum required Docker Compose version
 const MINIMUM_BUILDX_VERSION = "0.13.0"; // Replace with our minimum required Buildx version
 
 const checkDocker = async (progress: Ora): Promise<true | never> => {
