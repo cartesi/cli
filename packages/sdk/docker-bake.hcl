@@ -20,7 +20,9 @@ target "default" {
     NITRO_VERSION                     = "8c376d4a5baa7f32999620f9fe3eb51ca8e0dcbc" # v0.5
     NODE_VERSION                      = "24.14.0"
     NVM_VERSION                       = "977563e97ddc66facf3a8e31c6cff01d236f09bd" # 0.40.3
-    POSTGRES_BASE_IMAGE               = "docker.io/library/postgres:17-bookworm@sha256:ed736a0232f124704e442614fa13a042c4471b76af79dc74ddcf72023e351ed2"
+    POSTGRES_MAJOR_VERSION            = "17"
+    POSTGRES_BASE_BUILD_IMAGE         = "docker.io/library/postgres:17-bookworm@sha256:c141933f34b7fd6819478e1fa2106c262999c0af1e2cdbf0b4727b53fb194a77"
+    POSTGRES_BASE_RUNTIME_IMAGE       = "dhi.io/postgres:17-debian12@sha256:2e24c142f136f29d8c08d0f3a973462302425bd1b52e337908df4f9a0895bf55"
     SQUASHFS_TOOLS_VERSION            = "bad1d213ab6df587d6fa0ef7286180fbf7b86167" # 4.7.4
     SU_EXEC_VERSION                   = "0.3"
     TELEGRAF_VERSION                  = "1.38.0"

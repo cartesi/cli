@@ -1,6 +1,7 @@
 # syntax=docker.io/docker/dockerfile:1
 ARG CARTESI_BASE_IMAGE
-ARG POSTGRES_BASE_IMAGE
+ARG POSTGRES_BASE_BUILD_IMAGE
+ARG POSTGRES_BASE_RUNTIME_IMAGE
 ARG NODE_VERSION
 
 ################################################################################
@@ -212,7 +213,7 @@ USER cartesi
 
 ################################################################################
 # postgresql initdb
-FROM ${POSTGRES_BASE_IMAGE} AS postgresql-initdb
+FROM ${POSTGRES_BASE_BUILD_IMAGE} AS postgresql-initdb
 
 ARG DEBIAN_FRONTEND=noninteractive
 RUN <<EOF
@@ -245,8 +246,12 @@ RUN /usr/local/bin/docker-ensure-initdb.sh postgres
 
 ################################################################################
 # rollups-database image
-FROM ${POSTGRES_BASE_IMAGE} AS rollups-database
-COPY --from=postgresql-initdb /var/lib/postgresql/data /var/lib/postgresql/data
+FROM ${POSTGRES_BASE_RUNTIME_IMAGE} AS rollups-database
+ARG POSTGRES_MAJOR_VERSION
+COPY --from=postgresql-initdb \
+    --chown=postgres:postgres \
+    --chmod=750 \
+    /var/lib/postgresql/data /var/lib/postgresql/${POSTGRES_MAJOR_VERSION}/data
 
 ################################################################################
 # alto build
