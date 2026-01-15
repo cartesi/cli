@@ -66,6 +66,7 @@ ARG FOUNDRY_VERSION
 ARG TARGETARCH
 ARG TARGETOS
 RUN <<EOF
+mkdir -p /usr/local/bin
 curl -fsSL https://github.com/foundry-rs/foundry/releases/download/v${FOUNDRY_VERSION}/foundry_v${FOUNDRY_VERSION}_${TARGETOS}_${TARGETARCH}.tar.gz \
   -o /tmp/foundry.tar.gz
 case "${TARGETARCH}" in
@@ -210,13 +211,11 @@ COPY --from=postgresql-initdb /var/lib/postgresql/data /var/lib/postgresql/data
 FROM node:${NODE_VERSION} AS alto
 ARG ALTO_VERSION
 ARG NODE_VERSION
-ARG FOUNDRY_VERSION
 ARG TARGETARCH
 ARG TARGETOS
 
 # install foundry, necessary for building alto
-RUN curl -fsSL https://github.com/foundry-rs/foundry/releases/download/v${FOUNDRY_VERSION}/foundry_v${FOUNDRY_VERSION}_${TARGETOS}_${TARGETARCH}.tar.gz \
-    | tar -zx -C /usr/local/bin
+COPY --from=foundry /usr/local/bin/forge /usr/local/bin/forge
 
 WORKDIR /app
 COPY alto.patch /app/alto.patch
