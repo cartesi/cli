@@ -66,6 +66,7 @@ FROM base AS foundry
 ARG FOUNDRY_VERSION
 ARG TARGETARCH
 ARG TARGETOS
+WORKDIR /usr/local/bin
 RUN <<EOF
 mkdir -p /usr/local/bin
 curl -fsSL https://github.com/foundry-rs/foundry/releases/download/v${FOUNDRY_VERSION}/foundry_v${FOUNDRY_VERSION}_${TARGETOS}_${TARGETARCH}.tar.gz \
@@ -103,6 +104,7 @@ FROM base AS tini
 ARG TINI_VERSION
 ARG TARGETARCH
 RUN <<EOF
+mkdir -p /usr/local/bin
 case "${TARGETARCH}" in
     amd64)
         curl -fsSL https://github.com/krallin/tini/releases/download/v${TINI_VERSION}/tini-${TARGETARCH} \
@@ -149,12 +151,10 @@ ARG DEBIAN_FRONTEND=noninteractive
 RUN <<EOF
 apt-get install -y --no-install-recommends \
     libslirp0 \
-    lua5.4
-rm -rf /var/lib/apt/lists/*
-EOF
+    lua5.4 \
+    passwd
 
-RUN <<EOF
-set -e
+# create cartesi user
 useradd \
     --comment "cartesi user" \
     --no-create-home \
@@ -164,6 +164,9 @@ useradd \
     --uid 102 \
     --user-group \
     cartesi
+
+apt-get remove -y --purge passwd
+rm -rf /var/lib/apt/lists/*
 EOF
 
 # Install cartesi-machine emulator
@@ -323,9 +326,7 @@ apt-get install -y --no-install-recommends \
     liblzo2-2 \
     libslirp0 \
     locales \
-    lua5.4 \
-    xxd \
-    xz-utils
+    xxd
 rm -rf /var/lib/apt/lists/*
 EOF
 
