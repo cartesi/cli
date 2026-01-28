@@ -33,7 +33,7 @@ export const download = async (
         filter: (header) => {
             // remove first path segment
             const pathname = header.name.split("/").splice(1).join("/");
-            return pathname.startsWith(template);
+            return pathname.startsWith(`${template}/`);
         },
         map: (header) => {
             // remove first path segment
