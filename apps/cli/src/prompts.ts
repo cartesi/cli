@@ -151,25 +151,27 @@ export const abiParamsInput = async (
         },
     });
     const abiParameters = parseAbiParameters(encoding);
-    const values = [];
+    const values: (string | boolean | Hex)[] = [];
     for (const param of abiParameters) {
         const message = `${config.message} -> ${param.type} ${
             param.name ?? ""
         }`;
         switch (param.type) {
-            case "string":
+            case "string": {
                 values.push(await input({ message }));
                 break;
-            case "bool":
+            }
+            case "bool": {
                 values.push(await confirm({ message }));
                 break;
+            }
             case "uint":
             case "uint8":
             case "uint16":
             case "uint32":
             case "uint64":
             case "uint128":
-            case "uint256":
+            case "uint256": {
                 values.push(
                     await input({
                         message,
@@ -184,10 +186,12 @@ export const abiParamsInput = async (
                     }),
                 );
                 break;
-            case "bytes":
+            }
+            case "bytes": {
                 values.push(await bytesInput({ message }));
                 break;
-            case "address":
+            }
+            case "address": {
                 values.push(
                     await input({
                         message,
@@ -196,6 +200,7 @@ export const abiParamsInput = async (
                     }),
                 );
                 break;
+            }
             default:
                 throw new Error(`Unsupported type ${param.type}`);
         }
