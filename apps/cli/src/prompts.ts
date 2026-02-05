@@ -217,33 +217,6 @@ export type SelectAutoConfig<ValueType> = SelectConfig<ValueType> & {
     pageSize?: number;
 };
 
-export const selectAuto = <ValueType>(
-    config: SelectAutoConfig<ValueType> & { discardDisabled?: boolean },
-    context?: Context | undefined,
-): Promise<ValueType> => {
-    const choices = config.choices;
-
-    const list = config.discardDisabled
-        ? choices.filter((c) => !(c instanceof Separator) && !c.disabled)
-        : choices;
-
-    if (list.length === 1) {
-        const choice = list[0];
-        if (!(choice instanceof Separator)) {
-            const output = context?.output || process.stdout;
-            const prefix = chalk.green("?");
-            const message: string = chalk.bold(config.message);
-            output.write(
-                `${prefix} ${message} ${chalk.cyan(
-                    choice.name || choice.value,
-                )}\n`,
-            );
-            return new Promise<ValueType>((resolve) => resolve(choice.value));
-        }
-    }
-    return select(config, context);
-};
-
 type KeySelectConfig<Value> = {
     choices: ReadonlyArray<Choice<Value>>;
     separator?: string;
