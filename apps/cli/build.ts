@@ -9,7 +9,7 @@ await Bun.build({
 });
 
 // build bun binaries for all supported platforms
-const targets: Bun.Build.Target[] = [
+const targets: Bun.Build.CompileTarget[] = [
     "bun-darwin-arm64",
     "bun-darwin-x64",
     "bun-linux-arm64",
