@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.0.0-alpha.27
+
+### Patch Changes
+
+- 9c7454c: bump minimum Docker and Docker Compose versions
+- 0cab5f4: migrate from vitest to bun:test
+- a8b705c: option to send abi packed encoded inputs
+- 48abd21: fix command create --template=cpp was conflicting with cpp-low-level
+
 ## 2.0.0-alpha.26
 
 ### Patch Changes

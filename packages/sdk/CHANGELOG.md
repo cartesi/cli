@@ -1,5 +1,11 @@
 # sdk
 
+## 0.12.0-alpha.32
+
+### Patch Changes
+
+- 16bb0a6: bump baseimage to debian:trixie-20260202-slim
+
 ## 0.12.0-alpha.31
 
 ### Patch Changes
