@@ -2,6 +2,7 @@ import { Command, Option } from "@commander-js/extra-typings";
 import ora from "ora";
 import {
     encodeAbiParameters,
+    encodePacked,
     getAddress,
     isAddress,
     isHex,
@@ -16,7 +17,7 @@ import { connect } from "../wallet.js";
 const getInput = async (
     input: string | undefined,
     options: {
-        encoding?: "abi" | "hex" | "string";
+        encoding?: "abi" | "abi-packed" | "hex" | "string";
         abiParams?: string;
     },
 ): Promise<`0x${string}` | undefined> => {
@@ -33,7 +34,7 @@ const getInput = async (
             // encode UTF-8 string as hex
             return stringToHex(input);
         }
-        if (encoding === "abi") {
+        if (encoding === "abi" || encoding === "abi-packed") {
             const abiParams = options.abiParams;
             if (!abiParams) {
                 throw new Error("Undefined input-abi-params");
@@ -61,6 +62,13 @@ const getInput = async (
                     case "uint64":
                     case "uint128":
                     case "uint256":
+                    case "int":
+                    case "int8":
+                    case "int16":
+                    case "int32":
+                    case "int64":
+                    case "int128":
+                    case "int256":
                         try {
                             return BigInt(v);
                         } catch {
@@ -85,7 +93,12 @@ const getInput = async (
                     `Not enough values, expected ${abiParameters.length} values based on --input-abi-params '${abiParams}', parsed ${values.length} values from input '${input}'`,
                 );
             }
-            return encodeAbiParameters(abiParameters, values);
+            if (encoding === "abi") {
+                return encodeAbiParameters(abiParameters, values);
+            } else if (encoding === "abi-packed") {
+                const types = abiParameters.map((p) => p.type);
+                return encodePacked(types, values);
+            }
         }
         if (isHex(input)) {
             // encoding not specified, if starts with 0x, assume hex
@@ -108,6 +121,7 @@ export const createSendCommand = () => {
                 "hex",
                 "string",
                 "abi",
+                "abi-packed",
             ]),
         )
         .option("--abi-params <abi-params>", "input abi params")
@@ -139,6 +153,7 @@ export const createSendCommand = () => {
             const payload =
                 (await getInput(input, options)) ||
                 (await bytesInput({
+                    abiParams: options.abiParams,
                     encoding: options.encoding,
                     message: "Input",
                 }));

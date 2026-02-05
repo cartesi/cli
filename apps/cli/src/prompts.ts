@@ -1,13 +1,13 @@
 import confirm from "@inquirer/confirm";
-import { Separator, createPrompt, useKeypress } from "@inquirer/core";
+import { type Separator, createPrompt, useKeypress } from "@inquirer/core";
 import input from "@inquirer/input";
 import select from "@inquirer/select";
-import type { Context } from "@inquirer/type";
 import chalk from "chalk";
 import {
     type Address,
     type Hex,
     encodeAbiParameters,
+    encodePacked,
     formatUnits,
     getAddress,
     isAddress,
@@ -75,9 +75,12 @@ export const bigintInput = async (
  * @returns bytes as hex string
  */
 export const bytesInput = async (
-    config: InputConfig & {
-        encoding?: "string" | "hex" | "abi";
-        message: string;
+    config: Omit<
+        SelectConfig<"string" | "hex" | "abi" | "abi-packed">,
+        "choices"
+    > & {
+        abiParams?: string;
+        encoding?: "string" | "hex" | "abi" | "abi-packed";
     },
 ): Promise<Hex> => {
     const encoding =
@@ -102,6 +105,12 @@ export const bytesInput = async (
                     description:
                         "Input as ABI encoding parameters https://abitype.dev/api/human#parseabiparameters",
                 },
+                {
+                    value: "abi-packed",
+                    name: "ABI packed encoding",
+                    description:
+                        "Input as ABI encoding parameters https://abitype.dev/api/human#parseabiparameters",
+                },
             ] as const,
         }));
 
@@ -123,8 +132,13 @@ export const bytesInput = async (
             return stringToHex(valueString);
         }
 
-        case "abi":
-            return await abiParamsInput(config);
+        case "abi": {
+            return abiParamsInput(config);
+        }
+
+        case "abi-packed": {
+            return abiParamsInput(config, true);
+        }
 
         default:
             throw new Error(`Unsupported encoding ${encoding}`);
@@ -137,19 +151,22 @@ export const bytesInput = async (
  * @returns ABI encoded parameters as hex string
  */
 export const abiParamsInput = async (
-    config: InputConfig & { message: string },
+    config: InputConfig & { abiParams?: string },
+    packed?: boolean,
 ): Promise<`0x${string}`> => {
-    const encoding = await input({
-        message: `${config.message} (as ABI encoded https://abitype.dev/api/human#parseabiparameters )`,
-        validate: (value) => {
-            try {
-                parseAbiParameters(value);
-                return true;
-            } catch {
-                return "Invalid ABI parameters";
-            }
-        },
-    });
+    const encoding =
+        config.abiParams ??
+        (await input({
+            message: `${config.message} (as ABI encoded https://abitype.dev/api/human#parseabiparameters )`,
+            validate: (value) => {
+                try {
+                    parseAbiParameters(value);
+                    return true;
+                } catch {
+                    return "Invalid ABI parameters";
+                }
+            },
+        }));
     const abiParameters = parseAbiParameters(encoding);
     const values: (string | boolean | Hex)[] = [];
     for (const param of abiParameters) {
@@ -171,7 +188,14 @@ export const abiParamsInput = async (
             case "uint32":
             case "uint64":
             case "uint128":
-            case "uint256": {
+            case "uint256":
+            case "int":
+            case "int8":
+            case "int16":
+            case "int32":
+            case "int64":
+            case "int128":
+            case "int256": {
                 values.push(
                     await input({
                         message,
@@ -205,7 +229,12 @@ export const abiParamsInput = async (
                 throw new Error(`Unsupported type ${param.type}`);
         }
     }
-    return encodeAbiParameters(abiParameters, values);
+    return packed
+        ? encodePacked(
+              abiParameters.map((p) => p.type),
+              values,
+          )
+        : encodeAbiParameters(abiParameters, values);
 };
 
 // types below should be exported by @inquirer/select
