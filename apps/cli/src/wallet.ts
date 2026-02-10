@@ -49,6 +49,7 @@ export const connect = async (options: {
         chain: cartesi,
         mode: "anvil",
         transport: http(rpcUrl),
+        pollingInterval: 200, // default is 4000ms (12s / 3)
     })
         .extend(publicActions)
         .extend(walletActions);
