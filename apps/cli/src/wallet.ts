@@ -2,9 +2,11 @@ import input from "@inquirer/input";
 import {
     createTestClient,
     defineChain,
+    fallback,
     http,
     publicActions,
     walletActions,
+    webSocket,
 } from "viem";
 import { anvil } from "viem/chains";
 import { getProjectName } from "./base.js";
@@ -37,18 +39,35 @@ const getRpcUrl = async (options: {
     }
 };
 
+const getWsUrl = async (options: { wsUrl?: string; projectName?: string }) => {
+    if (options.wsUrl) return options.wsUrl;
+
+    // otherwise, try to resolve host:port of the docker project
+    try {
+        const projectName = getProjectName(options);
+        const host = await getProjectPort({ projectName });
+        return `ws://${host}/anvil`;
+    } catch {
+        return await input({
+            message: "WebSocket URL",
+            default: `ws://127.0.0.1:${PREFERRED_PORT}/anvil`,
+        });
+    }
+};
+
 export const connect = async (options: {
     rpcUrl?: string;
     projectName?: string;
 }) => {
     // resolve rpc url
     const rpcUrl = await getRpcUrl(options);
+    const wsUrl = await getWsUrl(options);
 
     // create test client
     const client = createTestClient({
         chain: cartesi,
         mode: "anvil",
-        transport: http(rpcUrl),
+        transport: fallback([webSocket(wsUrl), http(rpcUrl)]),
         pollingInterval: 200, // default is 4000ms (12s / 3)
     })
         .extend(publicActions)
