@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0-alpha.28
+
+### Patch Changes
+
+- 4d8a561: faster polling interval for cartesi send
+
 ## 2.0.0-alpha.27
 
 ### Patch Changes
