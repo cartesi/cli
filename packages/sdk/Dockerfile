@@ -330,8 +330,6 @@ ENV LANGUAGE=en_US:en
 COPY alto /usr/local/bin
 COPY devnet /usr/local/bin
 COPY eth_isready /usr/local/bin
-COPY eth_dump /usr/local/bin
-COPY eth_load /usr/local/bin
 
 COPY entrypoint.sh /usr/local/bin/
 COPY --from=foundry /usr/local/bin/anvil /usr/local/bin/
