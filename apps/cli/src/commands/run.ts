@@ -8,19 +8,31 @@ import chalk from "chalk";
 import { ExecaError } from "execa";
 import getPort, { portNumbers } from "get-port";
 import ora from "ora";
-import { type Address, type Hex, numberToHex } from "viem";
+import {
+    type Address,
+    createPublicClient,
+    type Hex,
+    http,
+    numberToHex,
+} from "viem";
 import { getMachineHash, getProjectName } from "../base.js";
 import { DEFAULT_SDK_VERSION, PREFERRED_PORT } from "../config.js";
 import {
     AVAILABLE_SERVICES,
-    type RollupsDeployment,
     deployApplication,
     removeApplication,
+    type RollupsDeployment,
     startEnvironment,
     stopEnvironment,
     waitHealthyEnvironment,
 } from "../exec/rollups.js";
 import { keySelect } from "../prompts.js";
+
+export type ForkConfig = {
+    blockNumber?: bigint;
+    chainId: number;
+    url: string;
+};
 
 const commaSeparatedList = (value: string) => value.split(",");
 
@@ -165,6 +177,32 @@ const deploy = async (options: {
     return application;
 };
 
+const configureFork = async (options: {
+    forkUrl?: string;
+    forkBlockNumber?: number;
+}): Promise<ForkConfig | undefined> => {
+    if (!options.forkUrl) {
+        return undefined;
+    }
+
+    const url = options.forkUrl;
+
+    // create a client to upstream so we can query it
+    const client = createPublicClient({
+        transport: http(url),
+    });
+
+    // use explicit fork-block-number or query from upstream
+    const blockNumber = options.forkBlockNumber
+        ? BigInt(options.forkBlockNumber)
+        : await client.getBlockNumber();
+
+    // need to query fork chainId if forkUrl is specified
+    const chainId = await client.getChainId();
+
+    return { blockNumber, chainId, url };
+};
+
 export const createRunCommand = () => {
     return new Command("run")
         .description("Run a local cartesi node for the application.")
@@ -197,6 +235,13 @@ export const createRunCommand = () => {
                 .default("latest"),
         )
         .option("--dry-run", "show the docker compose configuration", false)
+        .option("--fork-url <url>", "RPC URL to fork from")
+        .addOption(
+            new Option(
+                "--fork-block-number <number>",
+                "block number to fork from",
+            ).argParser(Number),
+        )
         .addOption(
             new Option(
                 "--memory <number>",
@@ -265,12 +310,16 @@ export const createRunCommand = () => {
                     port: portNumbers(PREFERRED_PORT, PREFERRED_PORT + 10),
                 }));
 
+            // configure optional anvil fork
+            const forkConfig = await configureFork(options);
+
             // run compose environment (detached)
             const { address, config } = await startEnvironment({
                 blockTime,
                 cpus,
                 defaultBlock,
                 dryRun,
+                forkConfig,
                 memory,
                 port,
                 projectName,

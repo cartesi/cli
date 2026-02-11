@@ -6,8 +6,10 @@ import {
     type Address,
     type Hash,
     type Hex,
+    createPublicClient,
     getAddress,
     hexToNumber,
+    http,
 } from "viem";
 import { stringify } from "yaml";
 import {
@@ -16,6 +18,7 @@ import {
     getProjectName,
     getServiceHealth,
 } from "../base.js";
+import type { ForkConfig } from "../commands/run.js";
 import anvil from "../compose/anvil.js";
 import { concat } from "../compose/builder.js";
 import bundler from "../compose/bundler.js";
@@ -98,6 +101,30 @@ export const getApplicationAddress = async (options: {
     const projectName = getProjectName(options ?? {});
     const deployment = await getApplicationDeployment({ projectName });
     return deployment?.address;
+};
+
+/**
+ * Get anvil node configuration and query the chainId of its fork
+ * @param options projectName
+ * @returns chainId of anvil fork
+ */
+export const getForkChainId = async (options: {
+    projectName?: string;
+}): Promise<number | undefined> => {
+    const projectName = getProjectName(options ?? {});
+    try {
+        const nodeInfo = await getAnvilNodeInfo({ projectName });
+        const forkUrl = nodeInfo?.forkConfig?.forkUrl;
+        if (forkUrl) {
+            // if anvil is configured with a forkUrl, connect to it and query the chainId
+            const client = createPublicClient({ transport: http(forkUrl) });
+            return client.getChainId();
+        }
+    } catch {
+        // service may not be running, just return as there is no fork
+        return undefined;
+    }
+    return undefined;
 };
 
 type Service = {
@@ -216,6 +243,7 @@ export const startEnvironment = async (options: {
     cpus?: number;
     defaultBlock: "latest" | "safe" | "pending" | "finalized";
     dryRun: boolean;
+    forkConfig?: ForkConfig;
     memory?: number;
     port: number;
     projectName: string;
@@ -228,6 +256,7 @@ export const startEnvironment = async (options: {
         cpus,
         defaultBlock,
         dryRun,
+        forkConfig,
         memory,
         port,
         projectName,
@@ -246,12 +275,17 @@ export const startEnvironment = async (options: {
     };
 
     const files = [
-        anvil({ blockTime, imageTag: runtimeVersion }),
+        anvil({
+            blockTime,
+            forkConfig,
+            imageTag: runtimeVersion,
+        }),
         database({ imageTag: runtimeVersion, password: "password" }),
         node({
             cpus,
             databasePassword: "password",
             defaultBlock,
+            forkChainId: forkConfig?.chainId,
             imageTag: runtimeVersion,
             logLevel: verbose ? "debug" : "info",
             memory,
@@ -545,4 +579,24 @@ export const getProjectPort = async (options: { projectName: string }) => {
         "8088",
     ]);
     return stdout;
+};
+
+/**
+ * Get anvil node info returned by RPC method anvil_nodeInfo
+ * @param options
+ * @returns anvil node info
+ */
+export const getAnvilNodeInfo = async (options: { projectName: string }) => {
+    const { projectName } = options;
+    const { stdout } = await execa("docker", [
+        "compose",
+        "--project-name",
+        projectName,
+        "exec",
+        "anvil",
+        "cast",
+        "rpc",
+        "anvil_nodeInfo",
+    ]);
+    return JSON.parse(stdout);
 };
