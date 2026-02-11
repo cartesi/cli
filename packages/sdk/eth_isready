@@ -1,4 +1,14 @@
 #!/usr/bin/env sh
+set -eu
 
-# https://ethereum.org/en/developers/docs/apis/json-rpc/#net_listening
-curl -X POST -s -H 'Content-Type: application/json' -d '{"jsonrpc":"2.0","id":"1","method":"net_listening","params":[]}' ${RPC_URL:-http://127.0.0.1:8545} | jq '.result'
+RPC_URL="${RPC_URL:-http://127.0.0.1:8545}"
+
+# If a block number argument is provided, check that the chain has reached it
+if [ -n "$1" ]; then
+    current=$(cast block-number --rpc-url "$RPC_URL" 2>/dev/null) || exit 1
+    target=$(($1))
+    [ "$current" -ge "$target" ] && exit 0 || exit 1
+fi
+
+# Check if the node is listening
+cast client --rpc-url "$RPC_URL" > /dev/null 2>&1
