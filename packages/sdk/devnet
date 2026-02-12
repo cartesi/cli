@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env sh
 set -e
-jq -rs '. | map({contractName,address}) | unique_by(.address) | sort_by(.contractName) | .[] | "\(.address) \(.contractName)"' /usr/share/cartesi/deployments/*.json
+jq -r '.contracts | to_entries | sort_by(.key) | .[] | "\(.value.address) \(.key)"' /usr/share/cartesi/deployments/anvil.json
 exec anvil --load-state /usr/share/cartesi/anvil_state.json "$@"
