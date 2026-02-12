@@ -1,5 +1,13 @@
 # devnet
 
+## 2.0.0-alpha.10
+
+### Patch Changes
+
+- 5134e39: include cannon packages deployments
+- 1e1e04e: bump dependencies
+- e458b9f: fix typescript errors
+
 ## 2.0.0-alpha.9
 
 ### Patch Changes
