@@ -5,10 +5,10 @@
     "": {
       "name": "cartesi-cli-monorepo",
       "devDependencies": {
-        "@biomejs/biome": "^2.3.14",
+        "@biomejs/biome": "^2.3.15",
         "@changesets/cli": "^2.29.8",
         "@types/bun": "^1.3.9",
-        "turbo": "^2.8.4",
+        "turbo": "^2.8.7",
       },
     },
     "apps/cli": {
@@ -66,7 +66,7 @@
     },
     "packages/devnet": {
       "name": "@cartesi/devnet",
-      "version": "2.0.0-alpha.9",
+      "version": "2.0.0-alpha.10",
       "devDependencies": {
         "@types/bun": "^1.3.9",
         "@types/fs-extra": "^11.0.4",
