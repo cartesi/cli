@@ -1,3 +1,4 @@
+import { $ } from "bun";
 import pRetry from "p-retry";
 
 /**
@@ -5,8 +6,7 @@ import pRetry from "p-retry";
  * @returns the installed anvil version
  */
 export const version = async () => {
-    const proc = Bun.spawn(["anvil", "--version"]);
-    const output = await proc.stdout.text();
+    const output = await $`anvil --version`.text();
 
     // anvil Version: 1.4.3-v1.4.3
     // Commit SHA: fa9f934bdac4bcf57e694e852a61997dda90668a

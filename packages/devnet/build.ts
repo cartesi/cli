@@ -58,7 +58,7 @@ const deploy = async (options: { privateKey: string; rpcUrl: string }) => {
     const exitCode = await proc.exited;
     if (exitCode !== 0) {
         throw new Error(`Forge script exited with code ${exitCode}`, {
-            cause: await proc.stderr.text(),
+            cause: await new Response(proc.stderr).text(),
         });
     }
     return exitCode;
