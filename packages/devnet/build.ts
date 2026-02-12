@@ -1,13 +1,35 @@
-import { semver } from "bun";
+import { $, semver } from "bun";
 import { existsSync, readdirSync } from "fs-extra";
 import { Listr, type ListrTask } from "listr2";
+import * as path from "node:path";
+import {
+    arbitrum,
+    arbitrumSepolia,
+    base,
+    baseSepolia,
+    mainnet,
+    optimism,
+    optimismSepolia,
+    sepolia,
+} from "viem/chains";
 import * as anvil from "./anvil";
 import { downloadAndExtract } from "./download";
-import path = require("node:path");
 
 const ANVIL_VERSION = "1.4.3";
 const ROLLUPS_VERSION = "2.1.1";
 const PRT_VERSION = "2.0.1";
+const CANNON_VERSION = "2.0.0";
+
+const supportedChains = {
+    arbitrum,
+    arbitrumSepolia,
+    base,
+    baseSepolia,
+    mainnet,
+    optimism,
+    optimismSepolia,
+    sepolia,
+};
 
 /**
  * Tasks to download and extract dependencies
@@ -30,6 +52,77 @@ const dependencies: ListrTask[] = [
     title: `${file.url} -> ${file.destination}`,
     task: async () => await downloadAndExtract(file),
 }));
+
+type ContractDeployments = Record<string, { address: string; abi: any }>;
+
+/**
+ * Collect contracts from deployments, objects keyed by contractName, with abi and address
+ * @returns
+ */
+const collectContracts = async (dir: string): Promise<ContractDeployments> => {
+    const deployments = await Promise.all(
+        readdirSync(dir, { recursive: true, withFileTypes: true })
+            .filter((entry) => entry.isFile())
+            .map((entry) => path.join(entry.parentPath, entry.name))
+            .map(async (file) => {
+                const deployment = await Bun.file(file).json();
+                let { abi, address, contractName } = deployment;
+
+                // if abi exist in original file, use it
+                if (!abi) {
+                    // otherwise read abi from forge artifact (if it exists, error if it doesn't)
+                    const filename = path.join(
+                        "out",
+                        `${contractName}.sol`,
+                        `${contractName}.json`,
+                    );
+
+                    const artifact = existsSync(filename)
+                        ? await Bun.file(filename).json()
+                        : undefined;
+
+                    abi = artifact?.abi;
+                }
+                if (!abi) {
+                    throw new Error(`ABI file not found for ${contractName}`);
+                }
+
+                return { abi, address, contractName };
+            }),
+    );
+
+    return deployments.reduce((contracts, deployment) => {
+        const { abi, address, contractName } = deployment;
+        contracts[contractName] = { abi, address };
+        return contracts;
+    }, {});
+};
+
+/**
+ * Inspect cannon package and export to a directory
+ * @param options.chainId - chainId to export
+ */
+const cannonTasks: ListrTask[] = Object.entries(supportedChains).map(
+    ([name, chain]) => ({
+        title: `Export chain ${chain.id} of cannon package cartesi-dave-app-factory:${CANNON_VERSION}`,
+        task: async () => {
+            const chainId = chain.id.toString();
+            const exportDir = path.join("build", "deployments", chainId);
+            await $`cannon inspect cartesi-dave-app-factory:${CANNON_VERSION} --chain-id ${chainId} --write-deployments ${exportDir} --quiet`;
+            const contracts = await collectContracts(exportDir);
+
+            const filename = path.join("deployments", `${name}.json`);
+            await Bun.write(
+                filename,
+                JSON.stringify({
+                    name,
+                    chainId,
+                    contracts,
+                }),
+            );
+        },
+    }),
+);
 
 /**
  * Deploy contracts using forge script
@@ -62,41 +155,6 @@ const deploy = async (options: { privateKey: string; rpcUrl: string }) => {
         });
     }
     return exitCode;
-};
-
-/**
- * Generate artifacts from deployed contracts (with { abi, address, contractName })
- * @returns
- */
-const artifacts = (dir: string) => {
-    return readdirSync(dir).map((file) => ({
-        title: file,
-        task: async () => {
-            const deployment = await Bun.file(path.join(dir, file)).json();
-            const { address, contractName } = deployment;
-
-            const filename = path.join(
-                "out",
-                `${contractName}.sol`,
-                `${contractName}.json`,
-            );
-
-            // read abi from forge artifact (if it exists, error if it doesn't)
-            const { abi } = existsSync(filename)
-                ? await Bun.file(filename).json()
-                : undefined;
-            if (!abi) {
-                throw new Error(`ABI file not found for ${contractName}`);
-            }
-
-            // write deployments (with { abi, address, contractName })
-            const artifact = path.join("deployments", `${contractName}.json`);
-            return Bun.write(
-                artifact,
-                JSON.stringify({ abi, address, contractName }, null, 2),
-            );
-        },
-    }));
 };
 
 const build = async () => {
@@ -157,12 +215,30 @@ const build = async () => {
                 },
             },
             {
-                title: "Generating artifacts",
+                title: "Generating local deployment",
+                task: async (_, task) => {
+                    // load deployments structure
+                    const contracts = await collectContracts(
+                        path.join("build", "deployments", "31337"),
+                    );
+
+                    // write to anvil.json
+                    const destination = path.join("deployments", "anvil.json");
+                    await Bun.write(
+                        destination,
+                        JSON.stringify({
+                            name: "anvil",
+                            chainId: "31337",
+                            contracts,
+                        }),
+                    );
+                    task.title = `Local deployments written to ${destination}`;
+                },
+            },
+            {
+                title: "Export cannon packages",
                 task: async (_, task) =>
-                    task.newListr(
-                        artifacts(path.join("build", "deployments", "31337")),
-                        { concurrent: true },
-                    ),
+                    task.newListr(cannonTasks, { concurrent: true }),
             },
             {
                 title: "Stopping anvil...",
