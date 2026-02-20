@@ -20,6 +20,7 @@ import { DEFAULT_SDK_VERSION, PREFERRED_PORT } from "../config.js";
 import {
     AVAILABLE_SERVICES,
     deployApplication,
+    host,
     removeApplication,
     type RollupsDeployment,
     startEnvironment,
@@ -38,32 +39,17 @@ const commaSeparatedList = (value: string) => value.split(",");
 
 const shell = async (options: {
     build?: CommandUnknownOpts;
+    deployment?: RollupsDeployment;
     epochLength: number;
     log?: CommandUnknownOpts;
     projectName: string;
     prt?: boolean;
+    salt: number;
 }) => {
     const { build, epochLength, log, projectName, prt } = options;
 
-    // keep track of last deployment
-    let lastDeployment: RollupsDeployment | undefined;
-    let salt = 0;
-
-    // deploy for the first time
-    const hash = getMachineHash();
-    if (hash) {
-        lastDeployment = await deploy({
-            epochLength,
-            hash,
-            projectName,
-            prt,
-            salt: numberToHex(salt++, { size: 32 }),
-        });
-    } else {
-        console.warn(
-            chalk.yellow("machine snapshot not found, waiting for build"),
-        );
-    }
+    let lastDeployment = options.deployment;
+    let salt = options.salt;
 
     while (true) {
         try {
@@ -313,11 +299,15 @@ export const createRunCommand = () => {
             // configure optional anvil fork
             const forkConfig = await configureFork(options);
 
+            // if TTY is not attached, run on foreground (not detached)
+            const detach = process.stdin.isTTY;
+
             // run compose environment (detached)
-            const { address, config } = await startEnvironment({
+            const { cmd, config } = await startEnvironment({
                 blockTime,
                 cpus,
                 defaultBlock,
+                detach,
                 dryRun,
                 forkConfig,
                 memory,
@@ -327,6 +317,9 @@ export const createRunCommand = () => {
                 services,
                 verbose,
             });
+
+            // host address
+            const address = `${host}:${port}`;
 
             if (dryRun && config) {
                 // just show the docker compose configuration and quit
@@ -346,6 +339,27 @@ export const createRunCommand = () => {
                 services,
             });
 
+            // deploy the application
+            let deployment: RollupsDeployment | undefined;
+            let salt = 0;
+            const prt = !authority;
+            const hash = getMachineHash();
+            if (hash) {
+                deployment = await deploy({
+                    epochLength,
+                    hash,
+                    projectName,
+                    prt,
+                    salt: numberToHex(salt++, { size: 32 }),
+                });
+            } else {
+                console.warn(
+                    chalk.yellow(
+                        "machine snapshot not found, waiting for build",
+                    ),
+                );
+            }
+
             const shutdown = async () => {
                 progress.start(`${chalk.cyan(projectName)} stopping...`);
                 try {
@@ -359,23 +373,41 @@ export const createRunCommand = () => {
                 process.exit(0);
             };
 
-            // inhibit SIGINT and SIGTERM, will be handled gracefully by the shell
-            process.on("SIGINT", () => {});
-            process.on("SIGTERM", () => {});
+            if (detach) {
+                // inhibit SIGINT and SIGTERM, will be handled gracefully by the shell
+                process.on("SIGINT", () => {});
+                process.on("SIGTERM", () => {});
 
-            const log = program.parent?.commands.find(
-                (c) => c.name() === "logs",
-            );
-            const build = program.parent?.commands.find(
-                (c) => c.name() === "build",
-            );
-            await shell({
-                build,
-                epochLength,
-                log,
-                projectName,
-                prt: !authority,
-            });
-            await shutdown();
+                const log = program.parent?.commands.find(
+                    (c) => c.name() === "logs",
+                );
+                const build = program.parent?.commands.find(
+                    (c) => c.name() === "build",
+                );
+                await shell({
+                    build,
+                    deployment,
+                    epochLength,
+                    log,
+                    projectName,
+                    prt,
+                    salt,
+                });
+                await shutdown();
+            } else {
+                process.on("SIGINT", shutdown);
+                process.on("SIGTERM", shutdown);
+                try {
+                    await cmd;
+                } catch (error: unknown) {
+                    if (error instanceof ExecaError) {
+                        // just continue gracefully
+                        if (error.exitCode === 130) {
+                            return;
+                        }
+                        throw error;
+                    }
+                }
+            }
         });
 };
