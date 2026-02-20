@@ -135,7 +135,7 @@ type Service = {
     errorTitle?: string; // title of the service when it is not healthy
 };
 
-const host = "http://127.0.0.1";
+export const host = "http://127.0.0.1";
 
 // services configuration
 const baseServices: Service[] = [
@@ -242,6 +242,7 @@ export const startEnvironment = async (options: {
     blockTime: number;
     cpus?: number;
     defaultBlock: "latest" | "safe" | "pending" | "finalized";
+    detach: boolean;
     dryRun: boolean;
     forkConfig?: ForkConfig;
     memory?: number;
@@ -255,6 +256,7 @@ export const startEnvironment = async (options: {
         blockTime,
         cpus,
         defaultBlock,
+        detach,
         dryRun,
         forkConfig,
         memory,
@@ -265,8 +267,6 @@ export const startEnvironment = async (options: {
         verbose,
     } = options;
 
-    const address = `${host}:${port}`;
-
     // setup the environment variable used in docker compose
     const env: NodeJS.ProcessEnv = {
         CARTESI_BLOCKCHAIN_DEFAULT_BLOCK: defaultBlock,
@@ -274,16 +274,19 @@ export const startEnvironment = async (options: {
         CARTESI_LOG_LEVEL: verbose ? "debug" : "info",
     };
 
+    // local dev environment, we don't need security
+    const databasePassword = "password";
+
     const files = [
         anvil({
             blockTime,
             forkConfig,
             imageTag: runtimeVersion,
         }),
-        database({ imageTag: runtimeVersion, password: "password" }),
+        database({ imageTag: runtimeVersion, password: databasePassword }),
         node({
             cpus,
-            databasePassword: "password",
+            databasePassword,
             defaultBlock,
             forkChainId: forkConfig?.chainId,
             imageTag: runtimeVersion,
@@ -298,7 +301,7 @@ export const startEnvironment = async (options: {
             explorer({
                 imageTag: "1.4.0",
                 apiTag: "1.1.0",
-                databasePassword: "password",
+                databasePassword,
                 port,
             }),
         );
@@ -316,7 +319,7 @@ export const startEnvironment = async (options: {
     const composeArgs = ["compose", "-f", "-", "--project-directory", "."];
 
     // run in detached mode (background)
-    const upArgs = ["--detach"];
+    const upArgs = detach ? ["--detach"] : [];
 
     // merge files, following Docker Compose merge rules
     const composeFile = concat([{ name: projectName }, ...files]);
@@ -330,25 +333,21 @@ export const startEnvironment = async (options: {
             { env, input: stringify(composeFile, { lineWidth: 0, indent: 2 }) },
         );
 
-        return { address, config };
+        return { config };
     }
 
-    // pull images first
-    // const pullArgs = ["--policy", "missing"];
-    // await execa("docker", [...composeArgs, "pull", ...pullArgs], {
-    //     env,
-    ////FIXME: stdio and input won't work together
-    //     stdio: "inherit",
-    //     input: composeFile.build()
-    // });
-
     // run compose
-    await execa("docker", [...composeArgs, "up", ...upArgs], {
+    const cmd = execa("docker", [...composeArgs, "up", ...upArgs], {
         env,
         input: stringify(composeFile, { lineWidth: 0, indent: 2 }),
     });
 
-    return { address };
+    // if detached, wait to finish
+    if (detach) {
+        await cmd;
+    }
+
+    return { cmd };
 };
 
 /**
