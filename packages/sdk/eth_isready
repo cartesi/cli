@@ -1,10 +1,11 @@
 #!/usr/bin/env sh
-set -eu
+set -euo pipefail
 
 RPC_URL="${RPC_URL:-http://127.0.0.1:8545}"
+BLOCK_NUMBER=${1:-}
 
 # If a block number argument is provided, check that the chain has reached it
-if [ -n "$1" ]; then
+if [ -n "$BLOCK_NUMBER" ]; then
     current=$(cast block-number --rpc-url "$RPC_URL" 2>/dev/null) || exit 1
     target=$(($1))
     [ "$current" -ge "$target" ] && exit 0 || exit 1
