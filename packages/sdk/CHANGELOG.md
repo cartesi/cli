@@ -1,5 +1,11 @@
 # sdk
 
+## 0.12.0-alpha.34
+
+### Patch Changes
+
+- 2c910f3: eth_isready won't fail without a block number
+
 ## 0.12.0-alpha.33
 
 ### Patch Changes
