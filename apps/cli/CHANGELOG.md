@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.0-alpha.29
+
+### Patch Changes
+
+- 37f7452: add anvil fork mode to `cartesi run`
+- 4d364b7: changes to run to work better with detached stdin (no shell)
+
 ## 2.0.0-alpha.28
 
 ### Patch Changes
