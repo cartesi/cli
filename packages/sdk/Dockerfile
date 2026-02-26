@@ -12,7 +12,8 @@ RUN <<EOF
 apt-get update
 apt-get install -y --no-install-recommends \
     ca-certificates \
-    curl
+    curl \
+    xz-utils
 EOF
 
 ################################################################################
@@ -106,8 +107,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 RUN <<EOF
 apt-get install -y --no-install-recommends \
     libslirp0 \
-    lua5.4 \
-    xz-utils
+    lua5.4
 rm -rf /var/lib/apt/lists/*
 EOF
 
@@ -234,13 +234,32 @@ cd src && pnpm pack # produces pimlico-alto-${ALTO_PACKAGE_VERSION}.tgz
 EOF
 
 ################################################################################
+# linux kernel image stage
+FROM scratch AS kernel-image
+ARG CARTESI_IMAGE_KERNEL_VERSION
+ARG CARTESI_LINUX_KERNEL_VERSION
+
+ADD --checksum=sha256:65dd100ff6204346ac2f50f772721358b5c1451450ceb39a154542ee27b4c947 \
+    https://github.com/cartesi/image-kernel/releases/download/v${CARTESI_IMAGE_KERNEL_VERSION}/linux-${CARTESI_LINUX_KERNEL_VERSION}.bin \
+    /usr/share/cartesi-machine/images/linux.bin
+
+################################################################################
+# linux headers stage
+FROM base AS kernel-headers
+ARG CARTESI_IMAGE_KERNEL_VERSION
+ARG CARTESI_LINUX_KERNEL_VERSION
+
+ADD --checksum=sha256:4a4714bfa8c0028cb443db2036fad4f8da07065c1cb4ac8e0921a259fddd731b \
+    https://github.com/cartesi/image-kernel/releases/download/v${CARTESI_IMAGE_KERNEL_VERSION}/linux-headers-${CARTESI_LINUX_KERNEL_VERSION}.tar.xz \
+    /tmp/linux-headers-${CARTESI_LINUX_KERNEL_VERSION}.tar.xz
+RUN tar -xJf "/tmp/linux-headers-${CARTESI_LINUX_KERNEL_VERSION}.tar.xz" -C /
+
+################################################################################
 # sdk final image
 FROM rollups-runtime
 ARG ALTO_VERSION
 ARG ALTO_PACKAGE_VERSION
 ARG CARTESI_DEVNET_VERSION
-ARG CARTESI_IMAGE_KERNEL_VERSION
-ARG CARTESI_LINUX_KERNEL_VERSION
 ARG CARTESI_MACHINE_EMULATOR_VERSION
 ARG CARTESI_PAYMASTER_VERSION
 ARG CARTESI_PASSKEY_SERVER_VERSION
@@ -304,24 +323,6 @@ cp -r "$(npm root -g)/@cartesi/devnet/deployments" /usr/share/cartesi/
 cp "$(npm root -g)/@cartesi/devnet/anvil_state.json" /usr/share/cartesi/
 EOF
 
-# Install linux kernel image
-RUN <<EOF
-curl -fsSL "https://github.com/cartesi/image-kernel/releases/download/v${CARTESI_IMAGE_KERNEL_VERSION}/linux-${CARTESI_LINUX_KERNEL_VERSION}.bin" \
-    -o /usr/share/cartesi-machine/images/linux.bin
-echo "e4663365ea565792110129a6b479eca896cb31c23f561cb42214609588689f9d3d173a82b4ea27ff74ae05334747cc76ed6bc4c200a7499ac5134abfd2b3045e /usr/share/cartesi-machine/images/linux.bin" \
-    | sha512sum -c
-EOF
-
-# Install linux headers
-RUN <<EOF
-curl -fsSL "https://github.com/cartesi/image-kernel/releases/download/v${CARTESI_IMAGE_KERNEL_VERSION}/linux-headers-${CARTESI_LINUX_KERNEL_VERSION}.tar.xz" \
-    -o "/tmp/linux-headers-${CARTESI_LINUX_KERNEL_VERSION}.tar.xz"
-echo "2ecdb9c9f02a96faed2605ec811ef7188f963feb21b32d057b1ab3278f27ac42887f235a3f52eadd5f5caa56a61e141ad2bb666793d5bdd755c273adba167d45 /tmp/linux-headers-${CARTESI_LINUX_KERNEL_VERSION}.tar.xz" \
-    | sha512sum -c
-tar -xJf "/tmp/linux-headers-${CARTESI_LINUX_KERNEL_VERSION}.tar.xz" -C /
-rm "/tmp/linux-headers-${CARTESI_LINUX_KERNEL_VERSION}.tar.xz"
-EOF
-
 ENV LC_ALL=en_US.UTF-8
 ENV LANG=en_US.UTF-8
 ENV LANGUAGE=en_US:en
@@ -335,6 +336,8 @@ COPY entrypoint.sh /usr/local/bin/
 COPY --from=foundry /usr/local/bin/anvil /usr/local/bin/
 COPY --from=foundry /usr/local/bin/cast /usr/local/bin/
 COPY --from=squashfs-tools /usr/local/src/squashfs-tools/mksquashfs /usr/local/bin/
+COPY --from=kernel-image /usr/share/cartesi-machine/images/linux.bin /usr/share/cartesi-machine/images/linux.bin
+COPY --from=kernel-headers /include/linux /include/linux
 
 WORKDIR /mnt
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
