@@ -54,8 +54,8 @@ type ComposeParams = {
 const parseDeployment = (
     deployment: CliRollupsDeployment,
 ): RollupsDeployment => ({
-    address: deployment.iapplication_address as Address,
-    consensus: deployment.iconsensus_address as Address,
+    address: getAddress(deployment.iapplication_address),
+    consensus: getAddress(deployment.iconsensus_address),
     epochLength: hexToNumber(deployment.epoch_length as Hex),
     name: deployment.name,
     state: deployment.state as "ENABLED" | "DISABLED",
@@ -515,6 +515,72 @@ export const deployApplication = async (options: {
         return deployment;
     }
     throw new Error("Failed to deploy application");
+};
+
+/**
+ * Register application to rollups node
+ * @param options
+ * @returns address of the application
+ */
+export const registerApplication = async (options: {
+    address: Address;
+    consensus?: Address;
+    epochLength: number;
+    name: string;
+    projectName: string;
+    prt?: boolean;
+    snapshotPath: string;
+}): Promise<RollupsDeployment> => {
+    const {
+        address,
+        consensus,
+        epochLength,
+        name,
+        projectName,
+        prt,
+        snapshotPath,
+    } = options;
+
+    // app register args
+    const registerArgs: string[] = [
+        "--address",
+        address,
+        "--name",
+        name,
+        "--template-path",
+        snapshotPath,
+    ];
+
+    if (consensus) {
+        registerArgs.push("--consensus", consensus);
+    } else {
+        registerArgs.push("--epoch-length", epochLength.toString());
+    }
+    if (prt) {
+        registerArgs.push("--prt");
+    }
+    registerArgs.push("--print-json");
+
+    // deploy application
+    const { stdout } = await execa("docker", [
+        "compose",
+        "--project-name",
+        projectName,
+        "exec",
+        "rollups_node",
+        "cartesi-rollups-cli",
+        "app",
+        "register",
+        ...registerArgs,
+    ]);
+
+    const registration = stdout
+        ? parseDeployment(JSON.parse(stdout))
+        : undefined;
+    if (registration) {
+        return registration;
+    }
+    throw new Error("Failed to register application");
 };
 
 /**

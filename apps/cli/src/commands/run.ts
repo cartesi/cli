@@ -11,8 +11,10 @@ import ora from "ora";
 import {
     type Address,
     createPublicClient,
+    getAddress,
     type Hex,
     http,
+    isAddress,
     numberToHex,
 } from "viem";
 import { getMachineHash, getProjectName } from "../base.js";
@@ -21,6 +23,7 @@ import {
     AVAILABLE_SERVICES,
     deployApplication,
     host,
+    registerApplication,
     removeApplication,
     type RollupsDeployment,
     startEnvironment,
@@ -130,6 +133,34 @@ const undeploy = async (options: { projectName: string }) => {
     progress.succeed(`${chalk.cyan(projectName)} undeployed`);
 };
 
+const register = async (options: {
+    address: Address;
+    epochLength: number;
+    projectName: string;
+    prt?: boolean;
+}) => {
+    const { address, epochLength, projectName, prt } = options;
+
+    // register existing application to node
+    const progress = ora(
+        `registering ${chalk.cyan(address)} as ${chalk.cyan(projectName)}`,
+    );
+
+    const application = await registerApplication({
+        address,
+        epochLength,
+        name: projectName,
+        projectName,
+        snapshotPath: "/var/lib/cartesi-rollups-node/snapshots/image",
+        prt,
+    });
+
+    progress.succeed(
+        `${chalk.cyan(projectName)} registered from ${chalk.cyan(application.address)}`,
+    );
+    return application;
+};
+
 const deploy = async (options: {
     consensus?: Address;
     epochLength: number;
@@ -164,8 +195,8 @@ const deploy = async (options: {
 };
 
 const configureFork = async (options: {
-    forkUrl?: string;
     forkBlockNumber?: number;
+    forkUrl?: string;
 }): Promise<ForkConfig | undefined> => {
     if (!options.forkUrl) {
         return undefined;
@@ -174,9 +205,7 @@ const configureFork = async (options: {
     const url = options.forkUrl;
 
     // create a client to upstream so we can query it
-    const client = createPublicClient({
-        transport: http(url),
-    });
+    const client = createPublicClient({ transport: http(url) });
 
     // use explicit fork-block-number or query from upstream
     const blockNumber = options.forkBlockNumber
@@ -187,6 +216,13 @@ const configureFork = async (options: {
     const chainId = await client.getChainId();
 
     return { blockNumber, chainId, url };
+};
+
+const addressParser = (value: string) => {
+    if (!isAddress(value)) {
+        throw new Error(`invalid address ${value}`);
+    }
+    return getAddress(value);
 };
 
 export const createRunCommand = () => {
@@ -222,6 +258,12 @@ export const createRunCommand = () => {
         )
         .option("--dry-run", "show the docker compose configuration", false)
         .option("--fork-url <url>", "RPC URL to fork from")
+        .addOption(
+            new Option(
+                "--fork-application <string>",
+                "deployed application to fork from",
+            ).argParser(addressParser),
+        )
         .addOption(
             new Option(
                 "--fork-block-number <number>",
@@ -270,6 +312,7 @@ export const createRunCommand = () => {
                 defaultBlock,
                 dryRun,
                 epochLength,
+                forkApplication,
                 memory,
                 runtimeVersion,
                 services,
@@ -339,25 +382,41 @@ export const createRunCommand = () => {
                 services,
             });
 
-            // deploy the application
+            // deploy or register the application
             let deployment: RollupsDeployment | undefined;
             let salt = 0;
             const prt = !authority;
             const hash = getMachineHash();
-            if (hash) {
-                deployment = await deploy({
+            if (forkApplication) {
+                deployment = await register({
+                    address: forkApplication,
                     epochLength,
-                    hash,
                     projectName,
                     prt,
-                    salt: numberToHex(salt++, { size: 32 }),
                 });
+                if (hash && deployment && deployment.templateHash !== hash) {
+                    console.warn(
+                        chalk.yellow(
+                            "forked machine hash and local machine hash don't match",
+                        ),
+                    );
+                }
             } else {
-                console.warn(
-                    chalk.yellow(
-                        "machine snapshot not found, waiting for build",
-                    ),
-                );
+                if (hash) {
+                    deployment = await deploy({
+                        epochLength,
+                        hash,
+                        projectName,
+                        prt,
+                        salt: numberToHex(salt++, { size: 32 }),
+                    });
+                } else {
+                    console.warn(
+                        chalk.yellow(
+                            "machine snapshot not found, waiting for build",
+                        ),
+                    );
+                }
             }
 
             const shutdown = async () => {
