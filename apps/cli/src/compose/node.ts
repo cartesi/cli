@@ -41,6 +41,7 @@ const service = (options: ServiceOptions): Service => {
 
     return {
         image: `cartesi/rollups-runtime:${imageTag}`,
+        init: true,
         depends_on: {
             database: { condition: "service_healthy" },
             anvil: { condition: "service_healthy" },
