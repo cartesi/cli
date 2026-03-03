@@ -1,5 +1,12 @@
 # sdk
 
+## 0.12.0-alpha.35
+
+### Patch Changes
+
+- aba475c: bump baseimage to debian:trixie-20260223-slim
+- 2cce969: add tini to cartesi/rollups-runtime
+
 ## 0.12.0-alpha.34
 
 ### Patch Changes
