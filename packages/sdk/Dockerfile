@@ -97,6 +97,27 @@ make
 EOF
 
 ################################################################################
+# install tini
+FROM base AS tini
+ARG TINI_VERSION
+ARG TARGETARCH
+RUN <<EOF
+case "${TARGETARCH}" in
+    amd64)
+        curl -fsSL https://github.com/krallin/tini/releases/download/v${TINI_VERSION}/tini-${TARGETARCH} \
+        -o /usr/local/bin/tini;
+        echo "93dcc18adc78c65a028a84799ecf8ad40c936fdfc5f2a57b1acda5a8117fa82c /usr/local/bin/tini" | sha256sum --check ;;
+    arm64)
+        curl -fsSL https://github.com/krallin/tini/releases/download/v${TINI_VERSION}/tini-${TARGETARCH} \
+        -o /usr/local/bin/tini;
+        echo "07952557df20bfd2a95f9bef198b445e006171969499a1d361bd9e6f8e5e0e81 /usr/local/bin/tini" | sha256sum --check ;;
+    *) echo "unsupported architecture: ${TARGETARCH}"; exit 1 ;;
+esac
+chmod +x /usr/local/bin/tini
+tini --version
+EOF
+
+################################################################################
 # cartesi rollups-runtime target
 FROM base AS rollups-runtime
 ARG CARTESI_MACHINE_EMULATOR_VERSION
@@ -159,6 +180,7 @@ EOF
 COPY --from=su-exec /usr/local/bin/su-exec /usr/local/bin/
 COPY --from=nitro /usr/local/src/nitro /usr/local/bin/
 COPY --from=nitro /usr/local/src/nitroctl /usr/local/bin/
+COPY --from=tini /usr/local/bin/tini /usr/local/bin/
 COPY skel/ /
 RUN <<EOF
 mkdir -p /run/nitro
