@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0-alpha.30
+
+### Patch Changes
+
+- 848cd68: enable docker-init for rollups_node service
+
 ## 2.0.0-alpha.29
 
 ### Patch Changes
