@@ -72,7 +72,7 @@ curl -fsSL https://github.com/foundry-rs/foundry/releases/download/v${FOUNDRY_VE
 case "${TARGETARCH}" in
     amd64) echo "325ba04dc5cb41c110723b00ac291f8269f8cd785028299aad8252ef980961a7 /tmp/foundry.tar.gz" | sha256sum --check ;;
     arm64) echo "209492cb4ebd723d9eac002fa30f41f53c8810105b67d3c32fe8201cf70f89d4 /tmp/foundry.tar.gz" | sha256sum --check ;;
-    *) echo "unsupported architecture: $ARCH"; exit 1 ;;
+    *) echo "unsupported architecture: ${TARGETARCH}"; exit 1 ;;
 esac
 tar -zx -f /tmp/foundry.tar.gz -C /usr/local/bin
 EOF
