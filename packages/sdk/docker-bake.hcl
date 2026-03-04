@@ -19,6 +19,7 @@ target "default" {
     NODE_VERSION                      = "24.12.0"
     NVM_VERSION                       = "977563e97ddc66facf3a8e31c6cff01d236f09bd" # 0.40.3
     POSTGRES_BASE_IMAGE               = "docker.io/library/postgres:17-trixie@sha256:9ba47fa6d1c34e9cc4c1758640e7774a9b73ea0fba891f14088321ba7561d253"
+    RUNDLER_VERSION                   = "0.11.0"
     SQUASHFS_TOOLS_VERSION            = "bad1d213ab6df587d6fa0ef7286180fbf7b86167" # 4.7.4
     SU_EXEC_VERSION                   = "0.3"
     TINI_VERSION                      = "0.19.0"

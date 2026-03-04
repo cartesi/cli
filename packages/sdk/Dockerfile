@@ -229,6 +229,28 @@ FROM ${POSTGRES_BASE_IMAGE} AS rollups-database
 COPY --from=postgresql-initdb /var/lib/postgresql/data /var/lib/postgresql/data
 
 ################################################################################
+# rundler install
+FROM base AS rundler
+ARG RUNDLER_VERSION
+ARG TARGETARCH
+ARG TARGETOS
+WORKDIR /usr/local/bin
+RUN <<EOF
+case "${TARGETARCH}" in
+    amd64)
+        curl -fsSL https://github.com/alchemyplatform/rundler/releases/download/v${RUNDLER_VERSION}/rundler-v${RUNDLER_VERSION}-x86_64-unknown-${TARGETOS}-gnu.tar.gz \
+            -o /tmp/rundler.tar.gz
+        echo "b9d9baf7ee145976aab5c392e3e6de16d6aae2e9126a0b20b10a0acab3d75240 /tmp/rundler.tar.gz" | sha256sum --check ;;
+    arm64)
+        https://github.com/alchemyplatform/rundler/releases/download/v${RUNDLER_VERSION}/rundler-v${RUNDLER_VERSION}-x86_64-unknown-${TARGETOS}-gnu.tar.gz \
+            -o /tmp/rundler.tar.gz
+        echo "3c00812dfc10770d3b7e9ca946e8678927664b65a130a4e47c796380471cfb43 /tmp/rundler.tar.gz" | sha256sum --check ;;
+    *) echo "unsupported architecture: ${TARGETARCH}"; exit 1 ;;
+esac
+tar -xvzf /tmp/rundler.tar.gz
+EOF
+
+################################################################################
 # linux kernel image stage
 FROM scratch AS kernel-image
 ARG CARTESI_IMAGE_KERNEL_VERSION
@@ -327,6 +349,7 @@ COPY --from=foundry /usr/local/bin/cast /usr/local/bin/
 COPY --from=squashfs-tools /usr/local/src/squashfs-tools/mksquashfs /usr/local/bin/
 COPY --from=kernel-image /usr/share/cartesi-machine/images/linux.bin /usr/share/cartesi-machine/images/linux.bin
 COPY --from=kernel-headers /include/linux /include/linux
+COPY --from=rundler /usr/local/bin/rundler /usr/local/bin/
 
 WORKDIR /mnt
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
