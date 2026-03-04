@@ -242,7 +242,7 @@ case "${TARGETARCH}" in
             -o /tmp/rundler.tar.gz
         echo "b9d9baf7ee145976aab5c392e3e6de16d6aae2e9126a0b20b10a0acab3d75240 /tmp/rundler.tar.gz" | sha256sum --check ;;
     arm64)
-        curl -fsSL https://github.com/alchemyplatform/rundler/releases/download/v${RUNDLER_VERSION}/rundler-v${RUNDLER_VERSION}-x86_64-unknown-${TARGETOS}-gnu.tar.gz \
+        curl -fsSL https://github.com/alchemyplatform/rundler/releases/download/v${RUNDLER_VERSION}/rundler-v${RUNDLER_VERSION}-aarch64-unknown-${TARGETOS}-gnu.tar.gz \
             -o /tmp/rundler.tar.gz
         echo "3c00812dfc10770d3b7e9ca946e8678927664b65a130a4e47c796380471cfb43 /tmp/rundler.tar.gz" | sha256sum --check ;;
     *) echo "unsupported architecture: ${TARGETARCH}"; exit 1 ;;
