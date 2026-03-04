@@ -240,14 +240,12 @@ ARG TARGETOS
 COPY --from=foundry /usr/local/bin/forge /usr/local/bin/forge
 
 WORKDIR /app
-COPY alto.patch /app/alto.patch
 
 RUN <<EOF
 set -eu
 npm install -g pnpm
 git clone --branch v${ALTO_VERSION} --depth 1 --recurse-submodules https://github.com/pimlicolabs/alto.git
 cd alto
-patch -p1 < /app/alto.patch
 pnpm install
 pnpm run build:contracts
 pnpm run build
