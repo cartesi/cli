@@ -229,29 +229,25 @@ FROM ${POSTGRES_BASE_IMAGE} AS rollups-database
 COPY --from=postgresql-initdb /var/lib/postgresql/data /var/lib/postgresql/data
 
 ################################################################################
-# alto build
-FROM node:${NODE_VERSION} AS alto
-ARG ALTO_VERSION
-ARG NODE_VERSION
+# rundler install
+FROM base AS rundler
+ARG RUNDLER_VERSION
 ARG TARGETARCH
 ARG TARGETOS
-
-# install foundry, necessary for building alto
-COPY --from=foundry /usr/local/bin/forge /usr/local/bin/forge
-
-WORKDIR /app
-COPY alto.patch /app/alto.patch
-
+WORKDIR /usr/local/bin
 RUN <<EOF
-set -eu
-npm install -g pnpm
-git clone --branch v${ALTO_VERSION} --depth 1 --recurse-submodules https://github.com/pimlicolabs/alto.git
-cd alto
-patch -p1 < /app/alto.patch
-pnpm install
-pnpm run build:contracts
-pnpm run build
-cd src && pnpm pack # produces pimlico-alto-${ALTO_PACKAGE_VERSION}.tgz
+case "${TARGETARCH}" in
+    amd64)
+        curl -fsSL https://github.com/alchemyplatform/rundler/releases/download/v${RUNDLER_VERSION}/rundler-v${RUNDLER_VERSION}-x86_64-unknown-${TARGETOS}-gnu.tar.gz \
+            -o /tmp/rundler.tar.gz
+        echo "b9d9baf7ee145976aab5c392e3e6de16d6aae2e9126a0b20b10a0acab3d75240 /tmp/rundler.tar.gz" | sha256sum --check ;;
+    arm64)
+        curl -fsSL https://github.com/alchemyplatform/rundler/releases/download/v${RUNDLER_VERSION}/rundler-v${RUNDLER_VERSION}-aarch64-unknown-${TARGETOS}-gnu.tar.gz \
+            -o /tmp/rundler.tar.gz
+        echo "3c00812dfc10770d3b7e9ca946e8678927664b65a130a4e47c796380471cfb43 /tmp/rundler.tar.gz" | sha256sum --check ;;
+    *) echo "unsupported architecture: ${TARGETARCH}"; exit 1 ;;
+esac
+tar -xvzf /tmp/rundler.tar.gz
 EOF
 
 ################################################################################
@@ -278,8 +274,6 @@ RUN tar -xJf "/tmp/linux-headers-${CARTESI_LINUX_KERNEL_VERSION}.tar.xz" -C /
 ################################################################################
 # sdk final image
 FROM rollups-runtime
-ARG ALTO_VERSION
-ARG ALTO_PACKAGE_VERSION
 ARG CARTESI_DEVNET_VERSION
 ARG CARTESI_MACHINE_EMULATOR_VERSION
 ARG CARTESI_PAYMASTER_VERSION
@@ -330,15 +324,12 @@ update-locale LANG=en_US.UTF-8
 EOF
 
 # Install nodejs packages
-COPY --from=alto /app/alto/src/pimlico-alto-${ALTO_PACKAGE_VERSION}.tgz /tmp/pimlico-alto.tgz
 RUN <<EOF
 npm install -g \
     @cartesi/devnet@${CARTESI_DEVNET_VERSION} \
     @cartesi/mock-verifying-paymaster@${CARTESI_PAYMASTER_VERSION} \
-    @cartesi/passkey-server@${CARTESI_PASSKEY_SERVER_VERSION} \
-    /tmp/pimlico-alto.tgz
+    @cartesi/passkey-server@${CARTESI_PASSKEY_SERVER_VERSION}
 
-rm /tmp/pimlico-alto.tgz
 mkdir -p /usr/share/cartesi
 cp -r "$(npm root -g)/@cartesi/devnet/deployments" /usr/share/cartesi/
 cp "$(npm root -g)/@cartesi/devnet/anvil_state.json" /usr/share/cartesi/
@@ -349,7 +340,6 @@ ENV LANG=en_US.UTF-8
 ENV LANGUAGE=en_US:en
 
 # healthcheck script using net_listening JSON-RPC method
-COPY alto /usr/local/bin
 COPY devnet /usr/local/bin
 COPY eth_isready /usr/local/bin
 
@@ -359,6 +349,7 @@ COPY --from=foundry /usr/local/bin/cast /usr/local/bin/
 COPY --from=squashfs-tools /usr/local/src/squashfs-tools/mksquashfs /usr/local/bin/
 COPY --from=kernel-image /usr/share/cartesi-machine/images/linux.bin /usr/share/cartesi-machine/images/linux.bin
 COPY --from=kernel-headers /include/linux /include/linux
+COPY --from=rundler /usr/local/bin/rundler /usr/local/bin/
 
 WORKDIR /mnt
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

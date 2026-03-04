@@ -6,8 +6,6 @@ target "docker-platforms" {}
 target "default" {
   inherits = ["docker-platforms"]
   args = {
-    ALTO_VERSION                      = "1.2.5"
-    ALTO_PACKAGE_VERSION              = "0.0.18"
     CARTESI_BASE_IMAGE                = "docker.io/library/debian:trixie-20260223-slim@sha256:1d3c811171a08a5adaa4a163fbafd96b61b87aa871bbc7aa15431ac275d3d430"
     CARTESI_DEVNET_VERSION            = "2.0.0-alpha.10"
     CARTESI_IMAGE_KERNEL_VERSION      = "0.20.0"
@@ -21,6 +19,7 @@ target "default" {
     NODE_VERSION                      = "24.12.0"
     NVM_VERSION                       = "977563e97ddc66facf3a8e31c6cff01d236f09bd" # 0.40.3
     POSTGRES_BASE_IMAGE               = "docker.io/library/postgres:17-trixie@sha256:9ba47fa6d1c34e9cc4c1758640e7774a9b73ea0fba891f14088321ba7561d253"
+    RUNDLER_VERSION                   = "0.11.0"
     SQUASHFS_TOOLS_VERSION            = "bad1d213ab6df587d6fa0ef7286180fbf7b86167" # 4.7.4
     SU_EXEC_VERSION                   = "0.3"
     TINI_VERSION                      = "0.19.0"
