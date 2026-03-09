@@ -18,6 +18,7 @@ type ServiceOptions = {
     memory?: number;
     mnemonic?: string;
     imageTag?: string;
+    prt?: boolean;
 };
 
 // Rollups Node service
@@ -31,12 +32,16 @@ const service = (options: ServiceOptions): Service => {
     const mnemonic =
         options.mnemonic ??
         "test test test test test test test test test test test junk";
+    const prt = options.prt ?? false;
     const chainId = (options.forkChainId ??
         31337) as keyof typeof daveAppFactoryAddress;
 
-    const chainDaveAppFactoryAddress = daveAppFactoryAddress[chainId];
-    if (!chainDaveAppFactoryAddress) {
-        throw new Error(`Unsupported fork chain ${chainId}`);
+    let chainDaveAppFactoryAddress: string | undefined;
+    if (prt) {
+        chainDaveAppFactoryAddress = daveAppFactoryAddress[chainId];
+        if (!chainDaveAppFactoryAddress) {
+            throw new Error(`Unsupported fork chain ${chainId}`);
+        }
     }
 
     return {
@@ -72,8 +77,10 @@ const service = (options: ServiceOptions): Service => {
             CARTESI_BLOCKCHAIN_HTTP_ENDPOINT: "http://anvil:8545",
             CARTESI_BLOCKCHAIN_ID: anvil.id.toString(),
             CARTESI_BLOCKCHAIN_WS_ENDPOINT: "ws://anvil:8545",
-            CARTESI_CONTRACTS_DAVE_APP_FACTORY_ADDRESS:
-                chainDaveAppFactoryAddress,
+            ...(chainDaveAppFactoryAddress && {
+                CARTESI_CONTRACTS_DAVE_APP_FACTORY_ADDRESS:
+                    chainDaveAppFactoryAddress,
+            }),
             CARTESI_CONTRACTS_INPUT_BOX_ADDRESS: inputBoxAddress,
             CARTESI_CONTRACTS_SELF_HOSTED_APPLICATION_FACTORY_ADDRESS:
                 selfHostedApplicationFactoryAddress,

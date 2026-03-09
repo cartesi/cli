@@ -248,6 +248,7 @@ export const startEnvironment = async (options: {
     memory?: number;
     port: number;
     projectName: string;
+    prt?: boolean;
     runtimeVersion: string;
     services: string[];
     verbose: boolean;
@@ -262,6 +263,7 @@ export const startEnvironment = async (options: {
         memory,
         port,
         projectName,
+        prt,
         runtimeVersion,
         services,
         verbose,
@@ -292,6 +294,7 @@ export const startEnvironment = async (options: {
             imageTag: runtimeVersion,
             logLevel: verbose ? "debug" : "info",
             memory,
+            prt,
         }),
         proxy({ imageTag: "v3.3.4", port }),
     ];

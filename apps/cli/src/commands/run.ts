@@ -194,8 +194,8 @@ export const createRunCommand = () => {
         .description("Run a local cartesi node for the application.")
         .addOption(
             new Option(
-                "--authority",
-                "deploy application with authority consensus",
+                "--prt",
+                "deploy application with PRT consensus",
             ).default(false),
         )
         .addOption(
@@ -264,7 +264,7 @@ export const createRunCommand = () => {
         .option("-v, --verbose", "verbose output", false)
         .action(async (options, program) => {
             const {
-                authority,
+                prt,
                 blockTime,
                 cpus,
                 defaultBlock,
@@ -313,6 +313,7 @@ export const createRunCommand = () => {
                 memory,
                 port,
                 projectName,
+                prt,
                 runtimeVersion,
                 services,
                 verbose,
@@ -342,7 +343,6 @@ export const createRunCommand = () => {
             // deploy the application
             let deployment: RollupsDeployment | undefined;
             let salt = 0;
-            const prt = !authority;
             const hash = getMachineHash();
             if (hash) {
                 deployment = await deploy({
