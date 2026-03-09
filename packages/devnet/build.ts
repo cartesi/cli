@@ -16,8 +16,8 @@ import * as anvil from "./anvil";
 import { downloadAndExtract } from "./download";
 
 const ANVIL_VERSION = "1.4.3";
-const ROLLUPS_VERSION = "2.1.1";
-const PRT_VERSION = "2.0.1";
+const ROLLUPS_VERSION = "2.2.0";
+const PRT_VERSION = "2.1.0";
 const CANNON_VERSION = "2.0.0";
 
 const supportedChains = {
@@ -36,11 +36,11 @@ const supportedChains = {
  */
 const dependencies: ListrTask[] = [
     {
-        url: `https://github.com/cartesi/dave/releases/download/v${PRT_VERSION}/cartesi-rollups-prt-anvil-v${ANVIL_VERSION}.tar.gz`,
+        url: `https://github.com/cartesi/dave/releases/download/v${PRT_VERSION}/cartesi-rollups-prt-${PRT_VERSION}-anvil-v${ANVIL_VERSION}.tar.gz`,
         destination: "build",
     },
     {
-        url: `https://github.com/cartesi/dave/releases/download/v${PRT_VERSION}/cartesi-rollups-prt-contract-artifacts.tar.gz`,
+        url: `https://github.com/cartesi/dave/releases/download/v${PRT_VERSION}/cartesi-rollups-prt-${PRT_VERSION}-contract-artifacts.tar.gz`,
         destination: "out",
         stripComponents: 3,
     },
