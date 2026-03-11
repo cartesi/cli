@@ -118,6 +118,25 @@ tini --version
 EOF
 
 ################################################################################
+# install telegraf
+FROM base AS telegraf
+ARG TELEGRAF_VERSION
+ARG TARGETARCH
+WORKDIR /tmp
+RUN <<EOF
+curl -fsSL https://dl.influxdata.com/telegraf/releases/telegraf-${TELEGRAF_VERSION}_linux_${TARGETARCH}.tar.gz \
+    -o ./telegraf.tar.gz;
+case "${TARGETARCH}" in
+    amd64) echo "57e6d733de44335127c06d9d9099c9dee7307beff992783438ce38b9ba1b8e5e /tmp/telegraf.tar.gz" | sha256sum --check ;;
+    arm64) echo "d42aa06b113f15fdc14775a2d1971e31a0adb82a6e0da28e40a17e819ddaeb06 /tmp/telegraf.tar.gz" | sha256sum --check ;;
+    *) echo "unsupported architecture: ${TARGETARCH}"; exit 1 ;;
+esac
+tar -xvzf /tmp/telegraf.tar.gz -C / --strip-components=2 ./telegraf-${TELEGRAF_VERSION}/usr/bin/telegraf
+cp /usr/bin/telegraf /usr/local/bin/telegraf
+telegraf --version
+EOF
+
+################################################################################
 # cartesi rollups-runtime target
 FROM base AS rollups-runtime
 ARG CARTESI_MACHINE_EMULATOR_VERSION
@@ -181,6 +200,7 @@ COPY --from=su-exec /usr/local/bin/su-exec /usr/local/bin/
 COPY --from=nitro /usr/local/src/nitro /usr/local/bin/
 COPY --from=nitro /usr/local/src/nitroctl /usr/local/bin/
 COPY --from=tini /usr/local/bin/tini /usr/local/bin/
+COPY --from=telegraf /usr/local/bin/telegraf /usr/local/bin/
 COPY skel/ /
 RUN <<EOF
 mkdir -p /run/nitro
