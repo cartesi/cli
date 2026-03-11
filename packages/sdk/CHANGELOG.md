@@ -1,5 +1,12 @@
 # sdk
 
+## 0.12.0-alpha.36
+
+### Patch Changes
+
+- 3fd22a0: bump nodejs to 24.14.0
+- c2506cd: bump alto to 1.2.7
+
 ## 0.12.0-alpha.35
 
 ### Patch Changes
