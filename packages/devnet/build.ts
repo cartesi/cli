@@ -17,8 +17,8 @@ import { downloadAndExtract } from "./download";
 
 const ANVIL_VERSION = "1.4.3";
 const ROLLUPS_VERSION = "2.2.0";
-const PRT_VERSION = "2.1.0";
-const CANNON_VERSION = "2.0.0";
+const PRT_VERSION = "2.1.1";
+const CANNON_VERSION = "2.1.1";
 
 const supportedChains = {
     arbitrum,
