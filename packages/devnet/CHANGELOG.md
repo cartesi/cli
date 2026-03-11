@@ -1,5 +1,12 @@
 # devnet
 
+## 2.0.0-alpha.11
+
+### Patch Changes
+
+- 82cd416: Bump prt to version 2.1.1
+- c3f9179: Upgrade PRT to v2.1.0, rollups contract to v2.2.0 and update url as dave artefacts filename changed.
+
 ## 2.0.0-alpha.10
 
 ### Patch Changes

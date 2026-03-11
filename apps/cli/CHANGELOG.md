@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0-alpha.31
+
+### Patch Changes
+
+- 9444f31: make Authority the default consensus mode
+
 ## 2.0.0-alpha.30
 
 ### Patch Changes
