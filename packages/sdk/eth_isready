@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/usr/bin/env bash
 set -euo pipefail
 
 RPC_URL="${RPC_URL:-http://127.0.0.1:8545}"
