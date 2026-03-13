@@ -13,7 +13,7 @@
     },
     "apps/cli": {
       "name": "@cartesi/cli",
-      "version": "2.0.0-alpha.28",
+      "version": "2.0.0-alpha.31",
       "bin": {
         "cartesi": "./dist/index.js",
       },
@@ -44,8 +44,8 @@
         "yaml": "^2.8.2",
       },
       "devDependencies": {
-        "@cartesi/devnet": "2.0.0-alpha.10",
-        "@cartesi/rollups": "2.1.1",
+        "@cartesi/devnet": "2.0.0-alpha.11",
+        "@cartesi/rollups": "2.2.0",
         "@sunodo/wagmi-plugin-hardhat-deploy": "^0.4.0",
         "@types/bun": "^1.3.6",
         "@types/bytes": "^3.1.5",
@@ -67,7 +67,7 @@
     },
     "packages/devnet": {
       "name": "@cartesi/devnet",
-      "version": "2.0.0-alpha.10",
+      "version": "2.0.0-alpha.11",
       "devDependencies": {
         "@types/bun": "^1.3.9",
         "@types/fs-extra": "^11.0.4",
@@ -107,7 +107,7 @@
     },
     "packages/sdk": {
       "name": "@cartesi/sdk",
-      "version": "0.12.0-alpha.32",
+      "version": "0.12.0-alpha.36",
     },
     "packages/tsconfig": {
       "name": "tsconfig",
@@ -149,7 +149,7 @@
 
     "@cartesi/mock-verifying-paymaster": ["@cartesi/mock-verifying-paymaster@workspace:packages/mock-verifying-paymaster"],
 
-    "@cartesi/rollups": ["@cartesi/rollups@2.1.1", "", {}, "sha512-1k+8gEp6VL6pGr0hlUTqK1hEIvBmRKUBodU3259e7rpR7ECaTLUV08C+P4efnXrz5Zj2SYWF8QZuFUVMxsMBVA=="],
+    "@cartesi/rollups": ["@cartesi/rollups@2.2.0", "", {}, "sha512-I4mC6UBvLmz52d+jSHvbWXh9VLSprWYRcT3VoufBypA7P66sXU7XKoOgHiiBzoVp/KX4lL3agv3Fx0rxE+nvWg=="],
 
     "@cartesi/sdk": ["@cartesi/sdk@workspace:packages/sdk"],
 
@@ -1451,7 +1451,7 @@
 
     "zod-validation-error": ["zod-validation-error@3.5.4", "", { "peerDependencies": { "zod": "^3.24.4" } }, "sha512-+hEiRIiPobgyuFlEojnqjJnhFvg4r/i3cqgcm67eehZf/WBaK3g6cD02YU9mtdVxZjv8CzCA9n/Rhrs3yAAvAw=="],
 
-    "@cartesi/cli/@cartesi/devnet": ["@cartesi/devnet@2.0.0-alpha.10", "", {}, "sha512-hXHrfT5jNorFLX9Sc+04Zlr4hVymT+eLQi+8ZivW49llYOyYYUde32w+SCNu4bIrB6u9x2KdKucQjU0e+fSE5w=="],
+    "@cartesi/cli/@cartesi/devnet": ["@cartesi/devnet@2.0.0-alpha.11", "", {}, "sha512-IMpYCuLwXa+dIJYcA0IQWfrHiVXAbkDXtf9xzVHGo6iKzR1skhw6x6cv5YqgJrXlJzna2cT3zKG/Nd4VbQTJvg=="],
 
     "@cartesi/mock-verifying-paymaster/viem": ["viem@2.18.4", "", { "dependencies": { "@adraffy/ens-normalize": "1.10.0", "@noble/curves": "1.4.0", "@noble/hashes": "1.4.0", "@scure/bip32": "1.4.0", "@scure/bip39": "1.3.0", "abitype": "1.0.5", "isows": "1.0.4", "webauthn-p256": "0.0.5", "ws": "8.17.1" }, "peerDependencies": { "typescript": ">=5.0.4" }, "optionalPeers": ["typescript"] }, "sha512-JGdN+PgBnZMbm7fc9o0SfHvL0CKyfrlhBUtaz27V+PeHO43Kgc9Zd4WyIbM8Brafq4TvVcnriRFW/FVGOzwEJw=="],
 
