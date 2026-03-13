@@ -41,8 +41,8 @@
         "yaml": "^2.8.2"
     },
     "devDependencies": {
-        "@cartesi/devnet": "2.0.0-alpha.10",
-        "@cartesi/rollups": "2.1.1",
+        "@cartesi/devnet": "2.0.0-alpha.11",
+        "@cartesi/rollups": "2.2.0",
         "@sunodo/wagmi-plugin-hardhat-deploy": "^0.4.0",
         "@types/bun": "^1.3.6",
         "@types/bytes": "^3.1.5",
