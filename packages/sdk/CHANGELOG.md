@@ -1,5 +1,11 @@
 # sdk
 
+## 0.12.0-alpha.37
+
+### Patch Changes
+
+- 8feb853: Upgrade devnet and rollups-node versions in SDK package docker bake file.
+
 ## 0.12.0-alpha.36
 
 ### Patch Changes
