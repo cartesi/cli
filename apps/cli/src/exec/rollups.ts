@@ -549,7 +549,7 @@ export const removeApplication = async (options: {
     const removeArgs = [application];
 
     if (force) {
-        removeArgs.push("--force");
+        removeArgs.push("--yes");
     }
 
     return execa("docker", [
