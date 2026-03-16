@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.0.0-alpha.32
+
+### Patch Changes
+
+- 207c7b4: Replace --force flag to the new --yes to skip confirmation prompts on apps remove action.
+- e1ea313: Bump devnet@2.0.0-alpha.11 and cartesi/rollup@2.2.0 npm packages.
+- d0cbdbe: Bump CLI default SDK version from alpha.34 to alpha.37.
+
 ## 2.0.0-alpha.31
 
 ### Patch Changes
