@@ -375,7 +375,7 @@ COPY entrypoint.sh /usr/local/bin/
 COPY --from=foundry /usr/local/bin/anvil /usr/local/bin/
 COPY --from=foundry /usr/local/bin/cast /usr/local/bin/
 COPY --from=squashfs-tools /usr/local/src/squashfs-tools/mksquashfs /usr/local/bin/
-COPY --from=kernel-image /usr/share/cartesi-machine/images/linux.bin /usr/share/cartesi-machine/images/linux.bin
+COPY --from=kernel-image --chmod=644 /usr/share/cartesi-machine/images/linux.bin /usr/share/cartesi-machine/images/linux.bin
 COPY --from=kernel-headers /include/linux /include/linux
 
 WORKDIR /mnt
