@@ -182,7 +182,7 @@ const availableServices: Service[] = [
     },
     {
         name: "explorer",
-        healthySemaphore: "explorer_api",
+        healthySemaphore: "explorer",
         healthyTitle: (port) =>
             `${chalk.cyan("explorer")} service ready at ${chalk.cyan(`${host}:${port}/explorer`)}`,
         waitTitle: `${chalk.cyan("explorer")} service starting...`,
@@ -302,9 +302,7 @@ export const startEnvironment = async (options: {
     if (services.includes("explorer")) {
         files.push(
             explorer({
-                imageTag: "1.4.0",
-                apiTag: "1.1.0",
-                databasePassword,
+                imageTag: "2.0.0-alpha.2",
                 port,
             }),
         );
