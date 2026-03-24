@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0-alpha.33
+
+### Patch Changes
+
+- b612d55: Bump CLI default SDK version from alpha.37 to alpha.38.
+
 ## 2.0.0-alpha.32
 
 ### Patch Changes
