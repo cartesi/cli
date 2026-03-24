@@ -1,5 +1,11 @@
 # sdk
 
+## 0.12.0-alpha.38
+
+### Patch Changes
+
+- 1aa4d79: Add read permission to group and others. Modified file /usr/share/cartesi-machine/linux.bin
+
 ## 0.12.0-alpha.37
 
 ### Patch Changes
