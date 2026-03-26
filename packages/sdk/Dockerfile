@@ -127,6 +127,7 @@ ARG TELEGRAF_VERSION
 ARG TARGETARCH
 WORKDIR /tmp
 RUN <<EOF
+mkdir -p /usr/local/bin
 curl -fsSL https://dl.influxdata.com/telegraf/releases/telegraf-${TELEGRAF_VERSION}_linux_${TARGETARCH}.tar.gz \
     -o ./telegraf.tar.gz;
 case "${TARGETARCH}" in
@@ -151,8 +152,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 RUN <<EOF
 apt-get install -y --no-install-recommends \
     libslirp0 \
-    lua5.4 \
-    passwd
+    lua5.4
 
 # create cartesi user
 useradd \
@@ -165,7 +165,6 @@ useradd \
     --user-group \
     cartesi
 
-apt-get remove -y --purge passwd
 rm -rf /var/lib/apt/lists/*
 EOF
 
