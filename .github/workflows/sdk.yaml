@@ -143,8 +143,15 @@ jobs:
         permissions:
             contents: read
             packages: read
-        name: trivy-${{ matrix.target }}
+        name: docker-scout-${{ matrix.target }}
         steps:
+            - name: Login to GitHub Container Registry
+              uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+              with:
+                  registry: ghcr.io
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
             - name: Login to DockerHub
               uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
               with:
