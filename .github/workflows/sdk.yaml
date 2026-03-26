@@ -158,6 +158,7 @@ jobs:
               with:
                 command: quickview,cves
                 image: ghcr.io/cartesi/${{ matrix.target }}:pr-${{ github.event.pull_request.number }}
+                ignore-base: true
                 ignore-unchanged: true
                 only-severities: critical,high
                 github-token: ${{ secrets.GITHUB_TOKEN }}
