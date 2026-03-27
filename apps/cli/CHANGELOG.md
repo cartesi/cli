@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.0-alpha.34
+
+### Patch Changes
+
+- 7b7377c: Bump cartesi SDK to version 0.12.0-alpha.39. It includes the new rollups-node 2.0.0-alpha.11
+- 2ff3889: Update explorer compose definitions to integrate with new rollups-explorer service.
+
 ## 2.0.0-alpha.33
 
 ### Patch Changes
