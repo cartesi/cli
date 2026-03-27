@@ -1,5 +1,11 @@
 # sdk
 
+## 0.12.0-alpha.39
+
+### Patch Changes
+
+- 8fc4db2: bump rollups-node to 2.0.0-alpha.11
+
 ## 0.12.0-alpha.38
 
 ### Patch Changes
