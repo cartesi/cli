@@ -1,4 +1,4 @@
-import { $, semver } from "bun";
+import { semver } from "bun";
 import { existsSync, readdirSync } from "fs-extra";
 import { Listr, type ListrTask } from "listr2";
 import * as path from "node:path";
@@ -16,9 +16,8 @@ import * as anvil from "./anvil";
 import { downloadAndExtract } from "./download";
 
 const ANVIL_VERSION = "1.4.3";
-const ROLLUPS_VERSION = "2.2.0";
-const PRT_VERSION = "2.1.1";
-const CANNON_VERSION = "2.1.1";
+const ROLLUPS_VERSION = "3.0.0-alpha.6";
+const PRT_VERSION = "3.0.0-alpha.3";
 
 const supportedChains = {
     arbitrum,
@@ -37,6 +36,10 @@ const supportedChains = {
 const dependencies: ListrTask[] = [
     {
         url: `https://github.com/cartesi/dave/releases/download/v${PRT_VERSION}/cartesi-rollups-prt-${PRT_VERSION}-anvil-v${ANVIL_VERSION}.tar.gz`,
+        destination: "build",
+    },
+    {
+        url: `https://github.com/cartesi/dave/releases/download/v${PRT_VERSION}/cartesi-rollups-prt-${PRT_VERSION}-deployment-addresses.tar.gz`,
         destination: "build",
     },
     {
@@ -91,38 +94,41 @@ const collectContracts = async (dir: string): Promise<ContractDeployments> => {
             }),
     );
 
-    return deployments.reduce((contracts, deployment) => {
-        const { abi, address, contractName } = deployment;
-        contracts[contractName] = { abi, address };
-        return contracts;
-    }, {});
+    return deployments.reduce(
+        (contracts, deployment) => {
+            const { abi, address, contractName } = deployment;
+            contracts[contractName] = { abi, address };
+            return contracts;
+        },
+        {} as Record<string, { abi: any; address: string }>,
+    );
 };
 
 /**
- * Inspect cannon package and export to a directory
+ * Prepare deployment information per chain
+ * by collection contract information based on GitHub release from cartesi-rollups-prt
  * @param options.chainId - chainId to export
  */
-const cannonTasks: ListrTask[] = Object.entries(supportedChains).map(
-    ([name, chain]) => ({
-        title: `Export chain ${chain.id} of cannon package cartesi-dave-app-factory:${CANNON_VERSION}`,
-        task: async () => {
-            const chainId = chain.id.toString();
-            const exportDir = path.join("build", "deployments", chainId);
-            await $`cannon inspect cartesi-dave-app-factory:${CANNON_VERSION} --chain-id ${chainId} --write-deployments ${exportDir} --quiet`;
-            const contracts = await collectContracts(exportDir);
+const perChainDeploymentTasks: ListrTask[] = Object.entries(
+    supportedChains,
+).map(([name, chain]) => ({
+    title: `Prepare deployment for chain ${chain.id} for cartesi-rollups-prt ${PRT_VERSION}`,
+    task: async () => {
+        const chainId = chain.id.toString();
+        const exportDir = path.join("build", "deployments", chainId);
+        const contracts = await collectContracts(exportDir);
 
-            const filename = path.join("deployments", `${name}.json`);
-            await Bun.write(
-                filename,
-                JSON.stringify({
-                    name,
-                    chainId,
-                    contracts,
-                }),
-            );
-        },
-    }),
-);
+        const filename = path.join("deployments", `${name}.json`);
+        await Bun.write(
+            filename,
+            JSON.stringify({
+                name,
+                chainId,
+                contracts,
+            }),
+        );
+    },
+}));
 
 /**
  * Deploy contracts using forge script
@@ -198,7 +204,9 @@ const build = async () => {
 
                     // setup graceful anvil shutdown, just in case process is terminated prematurely
                     const shutdown = async () => {
-                        await anvil.stop(ctx.anvilProc);
+                        if (ctx.anvilProc) {
+                            await anvil.stop(ctx.anvilProc);
+                        }
                     };
                     process.on("SIGINT", shutdown);
                     process.on("SIGTERM", shutdown);
@@ -236,9 +244,11 @@ const build = async () => {
                 },
             },
             {
-                title: "Export cannon packages",
+                title: "Generate deployment per supported chain",
                 task: async (_, task) =>
-                    task.newListr(cannonTasks, { concurrent: true }),
+                    task.newListr(perChainDeploymentTasks, {
+                        concurrent: true,
+                    }),
             },
             {
                 title: "Stopping anvil...",
