@@ -1,5 +1,13 @@
 # devnet
 
+## 2.0.0-alpha.12
+
+### Patch Changes
+
+- 6375703: Bump rollups-contracts to version v3.0.0-alpha.6
+- 6375703: Bump github release prt version to v3.0.0-alpha.3
+- 6375703: Replace the use of Cannon with GitHub pre-computed addresses package.
+
 ## 2.0.0-alpha.11
 
 ### Patch Changes
