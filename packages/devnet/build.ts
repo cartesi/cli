@@ -189,7 +189,7 @@ const build = async () => {
             {
                 title: "Download dependencies",
                 task: async (_, task) =>
-                    task.newListr(dependencies, { concurrent: true }),
+                    task.newListr(dependencies, { concurrent: false }),
             },
             {
                 title: "Starting anvil...",
@@ -261,7 +261,7 @@ const build = async () => {
                 },
             },
         ],
-        { exitOnError: false },
+        { exitOnError: true },
     );
 
     await tasks.run({
