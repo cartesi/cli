@@ -183,6 +183,8 @@ export type DirectoryDriveConfig = {
 export type DockerDriveConfig = {
     builder: "docker";
     buildArgs: string[]; // default is empty array
+    cacheFrom: string[]; // default is empty array
+    cacheTo: string[]; // default is empty array
     context: string;
     dockerfile: string;
     extraSize: number; // default is 0 (no extra size)
@@ -424,6 +426,8 @@ type TomlTable = { [key: string]: TomlPrimitive };
 export const defaultRootDriveConfig = (): DriveConfig => ({
     builder: "docker",
     buildArgs: [],
+    cacheFrom: [],
+    cacheTo: [],
     context: ".",
     dockerfile: "Dockerfile", // file on current working directory
     extraSize: 0,
@@ -824,6 +828,8 @@ const parseBuilderDrive = (drive: TomlPrimitive): DriveConfig => {
         case "docker": {
             const {
                 build_args,
+                cache_from,
+                cache_to,
                 context,
                 dockerfile,
                 extra_size,
@@ -838,6 +844,8 @@ const parseBuilderDrive = (drive: TomlPrimitive): DriveConfig => {
             return {
                 builder: "docker",
                 buildArgs: parseStringArray(build_args),
+                cacheFrom: parseStringArray(cache_from),
+                cacheTo: parseStringArray(cache_to),
                 image: parseOptionalString(image),
                 context: parseString(context, "."),
                 dockerfile: parseString(dockerfile, "Dockerfile"),
