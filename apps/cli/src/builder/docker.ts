@@ -6,7 +6,13 @@ import { genext2fs, mksquashfs } from "../exec/index.js";
 
 type ImageBuildOptions = Pick<
     DockerDriveConfig,
-    "buildArgs" | "context" | "dockerfile" | "tags" | "target"
+    | "buildArgs"
+    | "cacheFrom"
+    | "cacheTo"
+    | "context"
+    | "dockerfile"
+    | "tags"
+    | "target"
 > & { destination: string; dockerfileContent?: string };
 
 type ImageInfo = {
@@ -22,6 +28,8 @@ type ImageInfo = {
 const buildImage = async (options: ImageBuildOptions): Promise<string> => {
     const {
         buildArgs,
+        cacheFrom,
+        cacheTo,
         context,
         destination,
         dockerfile,
@@ -51,6 +59,10 @@ const buildImage = async (options: ImageBuildOptions): Promise<string> => {
 
     // set build args
     args.push(...buildArgs.flatMap((arg) => ["--build-arg", arg]));
+
+    // set cache options
+    args.push(...cacheFrom.flatMap((spec) => ["--cache-from", spec]));
+    args.push(...cacheTo.flatMap((spec) => ["--cache-to", spec]));
 
     if (target) {
         args.push("--target", target);

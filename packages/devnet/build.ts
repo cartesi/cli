@@ -56,7 +56,7 @@ const dependencies: ListrTask[] = [
     task: async () => await downloadAndExtract(file),
 }));
 
-type ContractDeployments = Record<string, { address: string; abi: any }>;
+type ContractDeployments = Record<string, { address: string; abi: unknown[] }>;
 
 /**
  * Collect contracts from deployments, objects keyed by contractName, with abi and address
@@ -100,7 +100,7 @@ const collectContracts = async (dir: string): Promise<ContractDeployments> => {
             contracts[contractName] = { abi, address };
             return contracts;
         },
-        {} as Record<string, { abi: any; address: string }>,
+        {} as Record<string, { abi: unknown[]; address: string }>,
     );
 };
 

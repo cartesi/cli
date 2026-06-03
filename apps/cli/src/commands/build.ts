@@ -17,6 +17,8 @@ import { bootMachine } from "../machine.js";
 
 // context for Listr build tasks
 interface BuildContext {
+    cacheFrom: string[];
+    cacheTo: string[];
     config: Config;
     debug: boolean;
     destination: string;
@@ -37,6 +39,8 @@ const buildDriveTask = (
                 break;
             }
             case "docker": {
+                if (ctx.cacheFrom.length > 0) drive.cacheFrom = ctx.cacheFrom;
+                if (ctx.cacheTo.length > 0) drive.cacheTo = ctx.cacheTo;
                 const imageInfo = await buildDocker(
                     name,
                     drive,
@@ -86,10 +90,22 @@ export const createBuildCommand = () => {
                 .default(false)
                 .hideHelp(),
         )
+        .option(
+            "--cache-from <spec>",
+            "cache source for docker buildx build (can be repeated)",
+            (value, prev) => prev.concat([value]),
+            [],
+        )
+        .option(
+            "--cache-to <spec>",
+            "cache destination for docker buildx build (can be repeated)",
+            (value, prev) => prev.concat([value]),
+            [],
+        )
         .option("-d, --drives-only", "only build drives, do not boot machine")
         .option("-v, --verbose", "verbose output", false)
         .action(async (options) => {
-            const { debug, drivesOnly, verbose } = options;
+            const { cacheFrom, cacheTo, debug, drivesOnly, verbose } = options;
 
             // clean up temp files we create along the process
             tmp.setGracefulCleanup();
@@ -104,7 +120,14 @@ export const createBuildCommand = () => {
             await fs.emptyDir(destination); // XXX: make it less error prone
 
             // build context
-            const ctx = { config, debug, destination, imageInfo: undefined };
+            const ctx = {
+                cacheFrom,
+                cacheTo,
+                config,
+                debug,
+                destination,
+                imageInfo: undefined,
+            };
 
             // tasks to build drives
             const driveTasks = Object.entries(config.drives).map(
