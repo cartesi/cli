@@ -66,6 +66,8 @@ describe("when parsing the fixtures", () => {
                 root: {
                     builder: "docker",
                     buildArgs: ["RELEASE=1"],
+                    cacheFrom: ["type=gha"],
+                    cacheTo: ["type=gha,mode=max"],
                     context: "backend",
                     dockerfile: "backend/Dockerfile",
                     extraSize: 100 * 1024 * 1024,
@@ -80,6 +82,8 @@ describe("when parsing the fixtures", () => {
                 tools: {
                     builder: "docker",
                     buildArgs: [],
+                    cacheFrom: [],
+                    cacheTo: [],
                     context: ".",
                     dockerfile: "Dockerfile",
                     extraSize: 0,
@@ -207,6 +211,8 @@ shared = true`,
                 root: {
                     buildArgs: [],
                     builder: "docker",
+                    cacheFrom: [],
+                    cacheTo: [],
                     dockerfile: "backend/Dockerfile",
                     context: ".",
                     extraSize: 0,
@@ -219,6 +225,19 @@ shared = true`,
                     user: undefined,
                 },
             },
+        });
+    });
+
+    it("should parse cache_from and cache_to for docker drive", () => {
+        const config = parse([
+            `[drives.root]
+builder = "docker"
+cache_from = ["type=gha"]
+cache_to = ["type=gha,mode=max"]`,
+        ]);
+        expect(config.drives.root).toMatchObject({
+            cacheFrom: ["type=gha"],
+            cacheTo: ["type=gha,mode=max"],
         });
     });
 
@@ -1451,7 +1470,7 @@ shared = true`,
 
         it("should fail for an unknown key in [drives.<name>]", () => {
             expect(() => parse(['[drives.root]\nsise = "1Gi"'])).toThrowError(
-                "Unknown key 'sise' in [drives.root] (builder = \"docker\" by default), expected one of: accounts_drive, accounts_drive_size, build_args, builder, context, dockerfile, extra_size, format, image, mount, shared, tags, target, user",
+                "Unknown key 'sise' in [drives.root] (builder = \"docker\" by default), expected one of: accounts_drive, accounts_drive_size, build_args, builder, cache_from, cache_to, context, dockerfile, extra_size, format, image, mount, shared, tags, target, user",
             );
         });
 

@@ -9,6 +9,8 @@ import type { Config, DriveConfig, MachineConfig } from "./types.js";
 export const defaultRootDriveConfig = (): DriveConfig => ({
     builder: "docker",
     buildArgs: [],
+    cacheFrom: [],
+    cacheTo: [],
     context: ".",
     dockerfile: "Dockerfile", // file on current working directory
     extraSize: 0,

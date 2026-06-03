@@ -9,7 +9,13 @@ import type { BuildxMetadata } from "../types/docker.js";
 
 type ImageBuildOptions = Pick<
     DockerDriveConfig,
-    "buildArgs" | "context" | "dockerfile" | "tags" | "target"
+    | "buildArgs"
+    | "cacheFrom"
+    | "cacheTo"
+    | "context"
+    | "dockerfile"
+    | "tags"
+    | "target"
 > & { destination: string; dockerfileContent?: string; reporter?: Reporter };
 
 type ImageInfo = {
@@ -25,6 +31,8 @@ type ImageInfo = {
 const buildImage = async (options: ImageBuildOptions): Promise<string> => {
     const {
         buildArgs,
+        cacheFrom,
+        cacheTo,
         context,
         destination,
         dockerfile,
@@ -61,6 +69,10 @@ const buildImage = async (options: ImageBuildOptions): Promise<string> => {
     const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "cartesi-buildx-"));
     const metadataFile = path.join(tmpDir, "metadata.json");
     args.push("--metadata-file", metadataFile);
+
+    // set cache options
+    args.push(...cacheFrom.flatMap((spec) => ["--cache-from", spec]));
+    args.push(...cacheTo.flatMap((spec) => ["--cache-to", spec]));
 
     if (target) {
         args.push("--target", target);

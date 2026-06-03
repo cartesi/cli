@@ -99,6 +99,8 @@ const BUILDER_KEYS: Record<Builder, readonly string[]> = {
     directory: ["directory", "extra_size", "format"],
     docker: [
         "build_args",
+        "cache_from",
+        "cache_to",
         "context",
         "dockerfile",
         "extra_size",
@@ -149,6 +151,8 @@ const parseBuilderDrive = (builder: Builder, drive: TomlTable): DriveConfig => {
         case "docker": {
             const {
                 build_args,
+                cache_from,
+                cache_to,
                 context,
                 dockerfile,
                 extra_size,
@@ -163,6 +167,8 @@ const parseBuilderDrive = (builder: Builder, drive: TomlTable): DriveConfig => {
             return {
                 builder: "docker",
                 buildArgs: parseStringArray(build_args),
+                cacheFrom: parseStringArray(cache_from),
+                cacheTo: parseStringArray(cache_to),
                 image: parseOptionalString(image),
                 context: parseString(context, "."),
                 dockerfile: parseString(dockerfile, "Dockerfile"),

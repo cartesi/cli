@@ -22,6 +22,8 @@ FOO = "bar"
 [drives.root] # the default builder, from a Dockerfile
 builder = "docker"
 build_args = ["RELEASE=1"]
+cache_from = ["type=gha"] # docker buildx --cache-from specs, default is empty
+cache_to = ["type=gha,mode=max"] # docker buildx --cache-to specs, default is empty
 context = "backend" # default is "."
 dockerfile = "backend/Dockerfile" # default is "Dockerfile"
 extra_size = "100Mb" # added to the size of the image contents, default is 0
