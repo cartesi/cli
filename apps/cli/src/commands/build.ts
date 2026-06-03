@@ -36,12 +36,27 @@ export const createBuildCommand = () => {
                 .default(false)
                 .hideHelp(),
         )
+        .option(
+            "--cache-from <spec>",
+            "cache source for docker buildx build (can be repeated)",
+            (value: string, prev: string[]) => prev.concat([value]),
+            [] as string[],
+        )
+        .option(
+            "--cache-to <spec>",
+            "cache destination for docker buildx build (can be repeated)",
+            (value: string, prev: string[]) => prev.concat([value]),
+            [] as string[],
+        )
         .option("-d, --drives-only", "only build drives, do not boot machine")
         .option("-v, --verbose", "verbose output", false)
         .action(async (options) => {
-            const { config, debug, drivesOnly, verbose } = options;
+            const { cacheFrom, cacheTo, config, debug, drivesOnly, verbose } =
+                options;
 
             const result = await build({
+                cacheFrom,
+                cacheTo,
                 config,
                 debug,
                 drivesOnly,

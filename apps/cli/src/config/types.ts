@@ -25,6 +25,8 @@ export type DirectoryDriveConfig = {
 export type DockerDriveConfig = {
     builder: "docker";
     buildArgs: string[]; // default is empty array
+    cacheFrom: string[]; // default is empty array
+    cacheTo: string[]; // default is empty array
     context: string;
     dockerfile: string;
     extraSize: number; // default is 0 (no extra size)

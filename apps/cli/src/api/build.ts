@@ -36,6 +36,20 @@ export type BuildOptions = ConfigOptions &
         debug?: boolean;
 
         /**
+         * Docker Buildx cache sources (`--cache-from`) of every docker drive,
+         * replacing the ones of the configuration when not empty.
+         * @default []
+         */
+        cacheFrom?: string[];
+
+        /**
+         * Docker Buildx cache destinations (`--cache-to`) of every docker
+         * drive, replacing the ones of the configuration when not empty.
+         * @default []
+         */
+        cacheTo?: string[];
+
+        /**
          * Only build the drives, do not boot the machine.
          * @default false
          */
@@ -65,6 +79,8 @@ export type BuildResult = {
 
 // context for Listr build tasks
 type BuildContext = {
+    cacheFrom: string[];
+    cacheTo: string[];
     config: Config;
     debug: boolean;
     destination: string;
@@ -77,7 +93,7 @@ const buildDriveTask = (
 ): ListrTask<BuildContext> => ({
     title: `Building drive ${chalk.cyan(name)}`,
     task: async (ctx, task) => {
-        const { config, debug, destination } = ctx;
+        const { cacheFrom, cacheTo, config, debug, destination } = ctx;
         const sdk = config.sdk;
         const reporter = (line: string) => {
             task.output = line;
@@ -98,7 +114,12 @@ const buildDriveTask = (
             case "docker": {
                 const imageInfo = await buildDocker(
                     name,
-                    drive,
+                    {
+                        ...drive,
+                        cacheFrom:
+                            cacheFrom.length > 0 ? cacheFrom : drive.cacheFrom,
+                        cacheTo: cacheTo.length > 0 ? cacheTo : drive.cacheTo,
+                    },
                     sdk,
                     destination,
                     debug,
@@ -151,7 +172,13 @@ const buildNvramTask = (
 export const build = async (
     options: BuildOptions = {},
 ): Promise<BuildResult> => {
-    const { debug = false, drivesOnly = false, progress = "silent" } = options;
+    const {
+        cacheFrom = [],
+        cacheTo = [],
+        debug = false,
+        drivesOnly = false,
+        progress = "silent",
+    } = options;
 
     // get application configuration, from a Config object or 'cartesi.toml'
     const config = resolveConfig(options.config);
@@ -164,6 +191,8 @@ export const build = async (
 
     // build context
     const ctx: BuildContext = {
+        cacheFrom,
+        cacheTo,
         config,
         debug,
         destination,
