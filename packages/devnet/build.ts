@@ -138,12 +138,11 @@ const perChainDeploymentTasks: ListrTask[] = Object.entries(
  * @returns
  */
 const deploy = async (options: { privateKey: string; rpcUrl: string }) => {
-    // execute forge script
     const proc = Bun.spawn(
         [
             "forge",
             "script",
-            "Deploy",
+            "DeployUsdWithdrawalOutputBuilder",
             "--broadcast",
             "--non-interactive",
             "--private-key",
@@ -155,11 +154,13 @@ const deploy = async (options: { privateKey: string; rpcUrl: string }) => {
         { stdio: ["ignore", "pipe", "pipe"] },
     );
     const exitCode = await proc.exited;
+
     if (exitCode !== 0) {
         throw new Error(`Forge script exited with code ${exitCode}`, {
             cause: await new Response(proc.stderr).text(),
         });
     }
+
     return exitCode;
 };
 
