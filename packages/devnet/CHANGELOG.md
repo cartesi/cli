@@ -1,5 +1,11 @@
 # devnet
 
+## 2.0.0-alpha.14
+
+### Patch Changes
+
+- 2a84577: Add a deployment script for UsdWithdrawalOutputBuilder to support emergency withdrawal tests. Remove solidity code and deployment script for test-tokens, instead it will package only the ones provided by rollups-contracts artifacts (devnet only).
+
 ## 2.0.0-alpha.13
 
 ### Patch Changes
