@@ -1,5 +1,5 @@
 import { semver } from "bun";
-import { existsSync, readdirSync } from "fs-extra";
+import { cpSync, existsSync, readdirSync } from "fs-extra";
 import { Listr, type ListrTask } from "listr2";
 import * as path from "node:path";
 import {
@@ -135,14 +135,18 @@ const perChainDeploymentTasks: ListrTask[] = Object.entries(
  * @param options - The options for deploying contracts
  * @param options.privateKey - The private key to use for the deployment
  * @param options.rpcUrl - The RPC URL to use for the deployment
- * @returns
+ * @returns <number> - the exit code of the deployment script, 0 if successful
+ * @throws {Error} - if the deployment script exits with a non-zero code, the error message will contain the stderr output of the script
  */
-const deploy = async (options: { privateKey: string; rpcUrl: string }) => {
+const runDeploymentScript = async (
+    scriptName: string,
+    options: { privateKey: string; rpcUrl: string },
+) => {
     const proc = Bun.spawn(
         [
             "forge",
             "script",
-            "DeployUsdWithdrawalOutputBuilder",
+            scriptName,
             "--broadcast",
             "--non-interactive",
             "--private-key",
@@ -162,6 +166,56 @@ const deploy = async (options: { privateKey: string; rpcUrl: string }) => {
     }
 
     return exitCode;
+};
+
+const deploy = async (options: { privateKey: string; rpcUrl: string }) => {
+    const contractName = "UsdWithdrawalOutputBuilder";
+
+    // Deploys an UsdWithdrawalOutputBuilder but saves the deployment information as TestUsdWithdrawalOutputBuilder.
+    const exitCode = await runDeploymentScript(
+        `DeployTest${contractName}`,
+        options,
+    );
+
+    if (exitCode === 0) {
+        // To continue the build process, we make sure there is a copy of the expected <contract-name>.sol folder + JSON content with added prefix
+        // in the name (i.e. Test<contract-name>[.sol, .json]) in the out folder. Therefore, the rest of the process can find the expected information
+        // and copy it to the right place.
+        const targetPath = path.join(
+            "out",
+            `${contractName}.sol`,
+            `${contractName}.json`,
+        );
+        const destinationPath = path.join(
+            "out",
+            `Test${contractName}.sol`,
+            `Test${contractName}.json`,
+        );
+        createCopy(targetPath, destinationPath);
+    }
+
+    return exitCode;
+};
+
+/**
+ * Copy file or directory from source to destination, if source is a directory it will be copied recursively,
+ * if destination already exist it will be overwritten.
+ * @param source - path to file or directory to be copied
+ * @param destination - path to destination where file or directory should be copied
+ * @returns true if copy was successful, otherwise throws an error
+ * @throws {Error} if copy operation fails, the error message will contain the original error message
+ */
+const createCopy = (source: string, destination: string) => {
+    try {
+        cpSync(source, destination, { recursive: true, force: true });
+        console.info(`Source copied from ${source} to ${destination}`);
+    } catch (error) {
+        throw new Error(`Failed to copy from ${source} to ${destination}`, {
+            cause: (error as Error).message,
+        });
+    }
+
+    return true;
 };
 
 const build = async () => {
