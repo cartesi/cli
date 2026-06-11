@@ -5,7 +5,7 @@ import {BaseDeploymentScript} from "./BaseDeploymentScript.sol";
 import {IERC20} from "@openzeppelin-contracts-5.2.0/token/ERC20/IERC20.sol";
 import {IUsdWithdrawalOutputBuilderFactory} from "cartesi-rollups-contracts-3.0.0-alpha.6/src/withdrawal/IUsdWithdrawalOutputBuilderFactory.sol";
 
-contract DeployUsdWithdrawalOutputBuilder is BaseDeploymentScript {
+contract DeployTestUsdWithdrawalOutputBuilder is BaseDeploymentScript {
     bytes32 private constant SALT = bytes32(uint256(0));
 
     function run() public {
@@ -33,7 +33,7 @@ contract DeployUsdWithdrawalOutputBuilder is BaseDeploymentScript {
             builder = deployed;
         }
 
-        _storeDeployment("UsdWithdrawalOutputBuilder", builder);
+        _storeDeployment("TestUsdWithdrawalOutputBuilder", builder);
 
         vm.stopBroadcast();
     }
