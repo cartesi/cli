@@ -3,6 +3,7 @@
     "private": true,
     "version": "0.12.0-alpha.39",
     "scripts": {
-        "build": "docker buildx bake --load --metadata-file=build.json"
+        "build": "docker buildx bake --load --metadata-file=build.json",
+        "digest-update": "../../.github/scripts/update-image-digests.sh ./docker-bake.hcl"
     }
 }

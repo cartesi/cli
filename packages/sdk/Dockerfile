@@ -1,6 +1,7 @@
 # syntax=docker.io/docker/dockerfile:1
 ARG CARTESI_BASE_IMAGE
-ARG POSTGRES_BASE_IMAGE
+ARG POSTGRES_BASE_BUILD_IMAGE
+ARG POSTGRES_BASE_RUNTIME_IMAGE
 ARG NODE_VERSION
 
 ################################################################################
@@ -65,6 +66,7 @@ FROM base AS foundry
 ARG FOUNDRY_VERSION
 ARG TARGETARCH
 ARG TARGETOS
+WORKDIR /usr/local/bin
 RUN <<EOF
 mkdir -p /usr/local/bin
 curl -fsSL https://github.com/foundry-rs/foundry/releases/download/v${FOUNDRY_VERSION}/foundry_v${FOUNDRY_VERSION}_${TARGETOS}_${TARGETARCH}.tar.gz \
@@ -102,6 +104,7 @@ FROM base AS tini
 ARG TINI_VERSION
 ARG TARGETARCH
 RUN <<EOF
+mkdir -p /usr/local/bin
 case "${TARGETARCH}" in
     amd64)
         curl -fsSL https://github.com/krallin/tini/releases/download/v${TINI_VERSION}/tini-${TARGETARCH} \
@@ -124,6 +127,7 @@ ARG TELEGRAF_VERSION
 ARG TARGETARCH
 WORKDIR /tmp
 RUN <<EOF
+mkdir -p /usr/local/bin
 curl -fsSL https://dl.influxdata.com/telegraf/releases/telegraf-${TELEGRAF_VERSION}_linux_${TARGETARCH}.tar.gz \
     -o ./telegraf.tar.gz;
 case "${TARGETARCH}" in
@@ -149,11 +153,8 @@ RUN <<EOF
 apt-get install -y --no-install-recommends \
     libslirp0 \
     lua5.4
-rm -rf /var/lib/apt/lists/*
-EOF
 
-RUN <<EOF
-set -e
+# create cartesi user
 useradd \
     --comment "cartesi user" \
     --no-create-home \
@@ -163,6 +164,8 @@ useradd \
     --uid 102 \
     --user-group \
     cartesi
+
+rm -rf /var/lib/apt/lists/*
 EOF
 
 # Install cartesi-machine emulator
@@ -212,7 +215,7 @@ USER cartesi
 
 ################################################################################
 # postgresql initdb
-FROM ${POSTGRES_BASE_IMAGE} AS postgresql-initdb
+FROM ${POSTGRES_BASE_BUILD_IMAGE} AS postgresql-initdb
 
 ARG DEBIAN_FRONTEND=noninteractive
 RUN <<EOF
@@ -245,8 +248,12 @@ RUN /usr/local/bin/docker-ensure-initdb.sh postgres
 
 ################################################################################
 # rollups-database image
-FROM ${POSTGRES_BASE_IMAGE} AS rollups-database
-COPY --from=postgresql-initdb /var/lib/postgresql/data /var/lib/postgresql/data
+FROM ${POSTGRES_BASE_RUNTIME_IMAGE} AS rollups-database
+ARG POSTGRES_MAJOR_VERSION
+COPY --from=postgresql-initdb \
+    --chown=postgres:postgres \
+    --chmod=750 \
+    /var/lib/postgresql/data /var/lib/postgresql/${POSTGRES_MAJOR_VERSION}/data
 
 ################################################################################
 # alto build
@@ -318,9 +325,7 @@ apt-get install -y --no-install-recommends \
     liblzo2-2 \
     libslirp0 \
     locales \
-    lua5.4 \
-    xxd \
-    xz-utils
+    xxd
 rm -rf /var/lib/apt/lists/*
 EOF
 
