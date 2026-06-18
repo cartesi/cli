@@ -1,5 +1,12 @@
 # sdk
 
+## 0.12.0-alpha.41
+
+### Patch Changes
+
+- 04f01dd: bump nitro to v0.8.1
+- 47f8c14: add cartesi-rollups-prt to nitro init scripts
+
 ## 0.12.0-alpha.40
 
 ### Patch Changes

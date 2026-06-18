@@ -9,6 +9,7 @@
     "tsconfig": "0.0.0"
   },
   "changesets": [
+    "afraid-cooks-relate",
     "afraid-towns-cut",
     "all-carpets-poke",
     "all-goats-call",
@@ -84,6 +85,7 @@
     "free-dogs-try",
     "free-pets-dig",
     "fresh-coats-know",
+    "fresh-doodles-run",
     "fresh-swans-attend",
     "funny-humans-prove",
     "funny-zoos-tell",
