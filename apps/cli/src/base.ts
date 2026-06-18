@@ -22,9 +22,10 @@ import {
     etherPortalAddress,
     inputBoxAddress,
     selfHostedApplicationFactoryAddress,
+    testFungibleTokenAddress,
     testMultiTokenAddress,
-    testNftAddress,
-    testTokenAddress,
+    testNonFungibleTokenAddress,
+    testUsdWithdrawalOutputBuilderAddress,
 } from "./contracts.js";
 import { getApplicationAddress, getForkChainId } from "./exec/rollups.js";
 import type { PsResponse } from "./types/docker.js";
@@ -99,9 +100,10 @@ export const getAddressBook = async (options: {
 
     // contracts that are present only on devnet state
     const devnetContracts: AddressBook = {
-        TestToken: testTokenAddress,
-        TestNFT: testNftAddress,
+        TestToken: testFungibleTokenAddress,
+        TestNFT: testNonFungibleTokenAddress,
         TestMultiToken: testMultiTokenAddress,
+        TestUsdWithdrawalOutputBuilder: testUsdWithdrawalOutputBuilderAddress,
     };
 
     // contracts that are present on both devnet and live chains
