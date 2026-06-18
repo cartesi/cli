@@ -17,7 +17,7 @@ target "default" {
     CARTESI_PAYMASTER_VERSION         = "0.2.0"
     CARTESI_ROLLUPS_NODE_VERSION      = "2.0.0-alpha.12"
     FOUNDRY_VERSION                   = "1.4.3"
-    NITRO_VERSION                     = "8c376d4a5baa7f32999620f9fe3eb51ca8e0dcbc" # v0.5
+    NITRO_VERSION                     = "c937fa4fd202074dd250086ebd92de6884968b84" # v0.8.1
     NODE_VERSION                      = "24.14.0"
     NVM_VERSION                       = "977563e97ddc66facf3a8e31c6cff01d236f09bd" # 0.40.3
     POSTGRES_BASE_IMAGE               = "docker.io/library/postgres:17-trixie@sha256:2203e6282d9e7de7c24d7da234e2a744fb325df366a3fd8ed940e8abbee39527"
