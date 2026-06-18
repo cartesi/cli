@@ -36,11 +36,18 @@ export const getContextPath = (...paths: string[]): string => {
 
 export const getMachineHash = (): Hash | undefined => {
     // read hash of the cartesi machine snapshot, if one exists
-    const hashPath = getContextPath("image", "hash");
+    const hashPath = getContextPath("image", "hash_tree.sht");
     if (fs.existsSync(hashPath)) {
-        const hash = fs.readFileSync(hashPath).toString("hex");
-        if (isHash(`0x${hash}`)) {
-            return `0x${hash}`;
+        const fileBuffer = fs.readFileSync(hashPath);
+        const hashLength = 32;
+        // root hash is located at this offset (0x60)
+        const offset = 0x60;
+
+        const hashBuffer = fileBuffer.subarray(offset, offset + hashLength);
+        const hash = `0x${hashBuffer.toString("hex")}`;
+
+        if (isHash(hash)) {
+            return hash;
         }
     }
     return undefined;
