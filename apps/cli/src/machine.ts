@@ -5,7 +5,7 @@ import type { ExecaOptionsDockerFallback } from "./exec/util.js";
 const flashDrive = (label: string, drive: DriveConfig): string => {
     const { format, mount, shared, user } = drive;
     const filename = `${label}.${format}`;
-    const vars = [`label:${label}`, `filename:${filename}`];
+    const vars = [`label:${label}`, `data_filename:${filename}`];
     if (mount !== undefined) {
         vars.push(`mount:${mount}`);
     }
