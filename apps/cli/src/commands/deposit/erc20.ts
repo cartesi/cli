@@ -15,7 +15,7 @@ import { getProjectName } from "../../base.js";
 import {
     erc20PortalAbi,
     erc20PortalAddress,
-    testTokenAddress,
+    testFungibleTokenAddress,
 } from "../../contracts.js";
 import {
     addressInput,
@@ -68,7 +68,7 @@ const parseToken = async (options: {
             ? getAddress(options.token)
             : await addressInput({
                   message: "Token address",
-                  default: testTokenAddress,
+                  default: testFungibleTokenAddress,
               });
 
     return readToken(testClient, address);

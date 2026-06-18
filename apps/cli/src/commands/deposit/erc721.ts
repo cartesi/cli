@@ -15,8 +15,8 @@ import { getProjectName } from "../../base.js";
 import {
     erc721PortalAbi,
     erc721PortalAddress,
-    testNftAbi,
-    testNftAddress,
+    testNonFungibleTokenAbi,
+    testNonFungibleTokenAddress,
 } from "../../contracts.js";
 import {
     addressInput,
@@ -63,7 +63,7 @@ const parseToken = async (options: {
             ? getAddress(options.token)
             : await addressInput({
                   message: "Token address",
-                  default: testNftAddress,
+                  default: testNonFungibleTokenAddress,
               });
 
     return readToken(testClient, address);
@@ -100,7 +100,9 @@ export const createErc721Command = () => {
                 token: options.token,
             });
             const tokenAbi =
-                token.address === testNftAddress ? testNftAbi : erc721Abi;
+                token.address === testNonFungibleTokenAddress
+                    ? testNonFungibleTokenAbi
+                    : erc721Abi;
 
             // get dapp address from local node, or ask
             const application = await getInputApplicationAddress({
