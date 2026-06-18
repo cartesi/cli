@@ -101,10 +101,29 @@ http:
     routers:
         inspect_server:
             rule: "PathPrefix(\`/inspect\`)"
+            middlewares:
+                - "cors"
             service: inspect_server
         rpc_server:
             rule: "PathPrefix(\`/rpc\`)"
+            middlewares:
+                - "cors"
             service: rpc_server
+    middlewares:
+        cors:
+            headers:
+                accessControlAllowMethods:
+                    - GET
+                    - OPTIONS
+                    - POST
+                accessControlAllowHeaders:
+                    - "Origin"
+                    - "Content-Type"
+                    - "Accept"
+                accessControlAllowOriginList:
+                    - "*"
+                accessControlMaxAge: 86400
+                addVaryHeader: true
     services:
         inspect_server:
             loadBalancer:
