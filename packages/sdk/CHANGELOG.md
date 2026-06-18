@@ -1,5 +1,14 @@
 # sdk
 
+## 0.12.0-alpha.40
+
+### Patch Changes
+
+- 162d1c1: Bump cartesi-machine-emulator to 0.20.0. Also bump cartesi-base-image and postgres-base-image to use debian:trixie on specific date and hash.
+- 7a3099e: Bump rollups-node to v2.0.0-alpha.12 and update the Dockerfile shasum checks.
+- 3e1e8fc: Add new apt-get dependency libgomp1 and update the shasum check for the emulator artefacts based on arch.
+- 5f937ff: Bump cartesi devnet version to 2.0.0-alpha.14.
+
 ## 0.12.0-alpha.39
 
 ### Patch Changes
