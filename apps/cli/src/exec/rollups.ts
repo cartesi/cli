@@ -28,6 +28,9 @@ import node from "../compose/node.js";
 import passkey from "../compose/passkey.js";
 import paymaster from "../compose/paymaster.js";
 import proxy from "../compose/proxy.js";
+import type { WithdrawalConfig } from "../config.js";
+
+type ApplicationStatus = "OK" | "FAILED" | "DIVERGED" | "CORRUPTED";
 
 export type RollupsDeployment = {
     name: string;
@@ -35,7 +38,8 @@ export type RollupsDeployment = {
     consensus: Address;
     templateHash: Hash;
     epochLength: number;
-    state: "ENABLED" | "DISABLED";
+    status: ApplicationStatus;
+    enabled: boolean;
 };
 
 type CliRollupsDeployment = {
@@ -44,7 +48,8 @@ type CliRollupsDeployment = {
     iconsensus_address: string;
     template_hash: string;
     epoch_length: string;
-    state: string;
+    status: string;
+    enabled: boolean;
 };
 
 type ComposeParams = {
@@ -58,7 +63,8 @@ const parseDeployment = (
     consensus: deployment.iconsensus_address as Address,
     epochLength: hexToNumber(deployment.epoch_length as Hex),
     name: deployment.name,
-    state: deployment.state as "ENABLED" | "DISABLED",
+    status: deployment.status as ApplicationStatus,
+    enabled: deployment.enabled,
     templateHash: deployment.template_hash as Hex,
 });
 
@@ -471,6 +477,8 @@ export const deployApplication = async (options: {
     prt?: boolean;
     salt?: Hex;
     snapshotPath: string;
+    withdrawalConfig?: WithdrawalConfig;
+    claimStagingPeriod: number;
 }): Promise<RollupsDeployment> => {
     const {
         consensus,
@@ -480,6 +488,8 @@ export const deployApplication = async (options: {
         prt,
         salt,
         snapshotPath,
+        withdrawalConfig,
+        claimStagingPeriod,
     } = options;
 
     // app deploy args
@@ -490,12 +500,28 @@ export const deployApplication = async (options: {
     } else {
         deployArgs.push("--epoch-length", epochLength.toString());
     }
+
     if (salt) {
         deployArgs.push("--salt", salt);
     }
+
     if (prt) {
         deployArgs.push("--prt");
+    } else {
+        // Claim staging period (Authority/Quorum only)
+        deployArgs.push(
+            "--claim-staging-period",
+            claimStagingPeriod.toString(),
+        );
     }
+
+    if (withdrawalConfig) {
+        deployArgs.push(
+            "--withdrawal-config",
+            JSON.stringify(withdrawalConfig),
+        );
+    }
+
     deployArgs.push("--json");
 
     // deploy application
