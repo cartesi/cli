@@ -15,8 +15,16 @@ import {
     http,
     numberToHex,
 } from "viem";
-import { getMachineHash, getProjectName } from "../base.js";
-import { DEFAULT_SDK_VERSION, PREFERRED_PORT } from "../config.js";
+import {
+    getApplicationConfig,
+    getMachineHash,
+    getProjectName,
+} from "../base.js";
+import {
+    DEFAULT_SDK_VERSION,
+    PREFERRED_PORT,
+    type WithdrawalConfig,
+} from "../config.js";
 import {
     AVAILABLE_SERVICES,
     deployApplication,
@@ -45,8 +53,18 @@ const shell = async (options: {
     projectName: string;
     prt?: boolean;
     salt: number;
+    withdrawalConfig?: WithdrawalConfig;
+    claimStagingPeriod: number;
 }) => {
-    const { build, epochLength, log, projectName, prt } = options;
+    const {
+        build,
+        epochLength,
+        log,
+        projectName,
+        prt,
+        withdrawalConfig,
+        claimStagingPeriod,
+    } = options;
 
     let lastDeployment = options.deployment;
     let salt = options.salt;
@@ -100,6 +118,8 @@ const shell = async (options: {
                             projectName,
                             prt,
                             salt: numberToHex(salt++, { size: 32 }),
+                            withdrawalConfig,
+                            claimStagingPeriod,
                         });
                     }
 
@@ -137,8 +157,19 @@ const deploy = async (options: {
     projectName: string;
     prt?: boolean;
     salt: Hex;
+    withdrawalConfig?: WithdrawalConfig;
+    claimStagingPeriod: number;
 }) => {
-    const { consensus, epochLength, hash, projectName, prt, salt } = options;
+    const {
+        consensus,
+        epochLength,
+        hash,
+        projectName,
+        prt,
+        salt,
+        withdrawalConfig,
+        claimStagingPeriod,
+    } = options;
 
     // deploy application to node (onchain and offchain)
     const progress = ora(
@@ -153,6 +184,8 @@ const deploy = async (options: {
         prt,
         salt,
         snapshotPath: "/var/lib/cartesi-rollups-node/snapshots/image",
+        withdrawalConfig,
+        claimStagingPeriod,
     });
     progress.succeed(
         `${chalk.cyan(projectName)} machine hash is ${chalk.cyan(hash)}`,
@@ -245,6 +278,20 @@ export const createRunCommand = () => {
         .option("-p, --port <number>", "port to listen on", Number)
         .addOption(
             new Option(
+                "--claim-staging-period <number>",
+                "claim staging period (in blocks). Number of blocks between a claim being submitted and accepted (Authority/Quorum Only)",
+            )
+                .argParser(Number)
+                .default(0),
+        )
+        .option(
+            "-c, --config <config>",
+            "Path to the configuration file (.toml)",
+            (value, prev) => prev.concat([value]),
+            ["cartesi.toml"],
+        )
+        .addOption(
+            new Option(
                 "--runtime-version <version>",
                 "version for Cartesi Rollups Runtime to use",
             )
@@ -274,6 +321,8 @@ export const createRunCommand = () => {
                 runtimeVersion,
                 services,
                 verbose,
+                claimStagingPeriod,
+                config: configFiles,
             } = options;
 
             const progress = ora();
@@ -288,6 +337,9 @@ export const createRunCommand = () => {
 
             // project name explicitly defined or the current directory name
             const projectName = getProjectName(options);
+
+            // get application configuration (e.g. use withdrawal config if present)
+            const applicationConfig = getApplicationConfig(configFiles);
 
             // resolve port number, using the first free port in a range, unless explicitly set
             const port =
@@ -351,6 +403,8 @@ export const createRunCommand = () => {
                     projectName,
                     prt,
                     salt: numberToHex(salt++, { size: 32 }),
+                    claimStagingPeriod,
+                    withdrawalConfig: applicationConfig?.withdrawalConfig,
                 });
             } else {
                 console.warn(
@@ -392,6 +446,8 @@ export const createRunCommand = () => {
                     projectName,
                     prt,
                     salt,
+                    claimStagingPeriod,
+                    withdrawalConfig: applicationConfig?.withdrawalConfig,
                 });
                 await shutdown();
             } else {
