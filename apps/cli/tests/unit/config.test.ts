@@ -4,6 +4,7 @@ import * as path from "node:path";
 import {
     defaultConfig,
     defaultMachineConfig,
+    InvalidAddressValueError,
     InvalidBooleanValueError,
     InvalidBuilderError,
     InvalidBytesValueError,
@@ -132,6 +133,244 @@ shared = true`,
                     entrypoint: "echo 'Hello, World!'",
                 },
             });
+        });
+    });
+
+    /**
+     * [withdrawal]
+     */
+    describe("when parsing [withdrawal.config]", () => {
+        it("should parse a valid withdrawal config", () => {
+            const config = `
+                [withdrawal.config]
+                guardian = "0x1111111111111111111111111111111111111111" 
+                log2_leaves_per_account = 0
+                log2_max_num_of_accounts = 20
+                accounts_drive_start_index = 33554432
+                withdrawal_output_builder = "0x2222222222222222222222222222222222222222"
+            `;
+            expect(parse([config])).toEqual({
+                ...defaultConfig(),
+                withdrawalConfig: {
+                    guardian: "0x1111111111111111111111111111111111111111",
+                    log2_leaves_per_account: 0,
+                    log2_max_num_of_accounts: 20,
+                    accounts_drive_start_index: 33554432,
+                    withdrawal_output_builder:
+                        "0x2222222222222222222222222222222222222222",
+                },
+            });
+        });
+
+        it("should parse a valid withdrawal config that uses hex instead of decimal for numbers", () => {
+            const config = `
+                [withdrawal.config]
+                guardian = "0x1111111111111111111111111111111111111111" 
+                log2_leaves_per_account = 0x0
+                log2_max_num_of_accounts = 0x14
+                accounts_drive_start_index = 0x2000000
+                withdrawal_output_builder = "0x2222222222222222222222222222222222222222"
+            `;
+            expect(parse([config])).toEqual({
+                ...defaultConfig(),
+                withdrawalConfig: {
+                    guardian: "0x1111111111111111111111111111111111111111",
+                    log2_leaves_per_account: 0,
+                    log2_max_num_of_accounts: 20,
+                    accounts_drive_start_index: 33554432,
+                    withdrawal_output_builder:
+                        "0x2222222222222222222222222222222222222222",
+                },
+            });
+        });
+
+        it("should parse a valid withdrawal config even when using quoted hex for the numbers", () => {
+            const config = `
+                [withdrawal.config]
+                guardian = "0x1111111111111111111111111111111111111111" 
+                log2_leaves_per_account = "0x0"
+                log2_max_num_of_accounts = "0x14"
+                accounts_drive_start_index = "0x2000000"
+                withdrawal_output_builder = "0x2222222222222222222222222222222222222222"
+            `;
+
+            expect(parse([config])).toEqual({
+                ...defaultConfig(),
+                withdrawalConfig: {
+                    guardian: "0x1111111111111111111111111111111111111111",
+                    log2_leaves_per_account: 0,
+                    log2_max_num_of_accounts: 20,
+                    accounts_drive_start_index: 33554432,
+                    withdrawal_output_builder:
+                        "0x2222222222222222222222222222222222222222",
+                },
+            });
+        });
+
+        it("should return undefined when [withdrawal.config] is not defined", () => {
+            const config = ``;
+            expect(parse([config])).toEqual({
+                ...defaultConfig(),
+                withdrawalConfig: undefined,
+            });
+        });
+
+        it("should return undefined when [withdrawal.config] is empty", () => {
+            const config = `
+                [withdrawal.config]
+            `;
+
+            expect(parse([config])).toEqual({
+                ...defaultConfig(),
+                withdrawalConfig: undefined,
+            });
+        });
+
+        it("should fail when missing guardian field", () => {
+            const config = `
+                [withdrawal.config]
+                log2_leaves_per_account = 0
+                log2_max_num_of_accounts = 20
+                accounts_drive_start_index = 33554432
+                withdrawal_output_builder = "0x2222222222222222222222222222222222222222"
+            `;
+            expect(() => parse([config])).toThrowError(
+                new RequiredFieldError("guardian"),
+            );
+        });
+
+        it("should fail when missing withdrawal_output_builder field", () => {
+            const config = `
+                [withdrawal.config]
+                guardian = "0x1111111111111111111111111111111111111111" 
+                log2_leaves_per_account = 0
+                log2_max_num_of_accounts = 20
+                accounts_drive_start_index = 33554432
+            `;
+            expect(() => parse([config])).toThrowError(
+                new RequiredFieldError("withdrawal_output_builder"),
+            );
+        });
+
+        it("should fail when missing log2_leaves_per_account field", () => {
+            const config = `
+                [withdrawal.config]
+                guardian = "0x1111111111111111111111111111111111111111" 
+                log2_max_num_of_accounts = 20
+                accounts_drive_start_index = 33554432
+                withdrawal_output_builder = "0x2222222222222222222222222222222222222222"
+            `;
+            expect(() => parse([config])).toThrowError(
+                new RequiredFieldError("log2_leaves_per_account"),
+            );
+        });
+
+        it("should fail when missing log2_max_num_of_accounts field", () => {
+            const config = `
+                [withdrawal.config]
+                guardian = "0x1111111111111111111111111111111111111111" 
+                log2_leaves_per_account = 0
+                accounts_drive_start_index = 33554432
+                withdrawal_output_builder = "0x2222222222222222222222222222222222222222222"
+            `;
+            expect(() => parse([config])).toThrowError(
+                new RequiredFieldError("log2_max_num_of_accounts"),
+            );
+        });
+
+        it("should fail when missing accounts_drive_start_index field", () => {
+            const config = `
+                [withdrawal.config]
+                guardian = "0x1111111111111111111111111111111111111111" 
+                log2_leaves_per_account = 0
+                log2_max_num_of_accounts = 20
+                withdrawal_output_builder = "0x2222222222222222222222222222222222222222"
+            `;
+            expect(() => parse([config])).toThrowError(
+                new RequiredFieldError("accounts_drive_start_index"),
+            );
+        });
+
+        it("should fail when guardian is not a valid address", () => {
+            const config = `
+                [withdrawal.config]
+                guardian = "invalid_address" 
+                log2_leaves_per_account = 0
+                log2_max_num_of_accounts = 20
+                accounts_drive_start_index = 33554432
+                withdrawal_output_builder = "0x2222222222222222222222222222222222222222"
+            `;
+            expect(() => parse([config])).toThrowError(
+                new InvalidAddressValueError("invalid_address", "guardian"),
+            );
+        });
+
+        it("should fail when withdrawal_output_builder is not a valid address", () => {
+            const config = `
+                [withdrawal.config]
+                guardian = "0x1111111111111111111111111111111111111111" 
+                log2_leaves_per_account = 0
+                log2_max_num_of_accounts = 20
+                accounts_drive_start_index = 33554432
+                withdrawal_output_builder = "invalid_address"
+            `;
+            expect(() => parse([config])).toThrowError(
+                new InvalidAddressValueError(
+                    "invalid_address",
+                    "withdrawal_output_builder",
+                ),
+            );
+        });
+
+        it("should fail when log2_leaves_per_account is not a number", () => {
+            const config = `
+                [withdrawal.config]
+                guardian = "0x1111111111111111111111111111111111111111" 
+                log2_leaves_per_account = "not_a_number"
+                log2_max_num_of_accounts = 20
+                accounts_drive_start_index = 33554432
+                withdrawal_output_builder = "0x2222222222222222222222222222222222222222"
+            `;
+            expect(() => parse([config])).toThrowError(
+                new InvalidNumberValueError(
+                    "not_a_number",
+                    "log2_leaves_per_account",
+                ),
+            );
+        });
+
+        it("should fail when log2_max_num_of_accounts is not a number", () => {
+            const config = `
+                [withdrawal.config]
+                guardian = "0x1111111111111111111111111111111111111111" 
+                log2_leaves_per_account = 0
+                log2_max_num_of_accounts = "not_a_number"
+                accounts_drive_start_index = 33554432
+                withdrawal_output_builder = "0x2222222222222222222222222222222222222222"
+            `;
+            expect(() => parse([config])).toThrowError(
+                new InvalidNumberValueError(
+                    "not_a_number",
+                    "log2_max_num_of_accounts",
+                ),
+            );
+        });
+
+        it("should fail when accounts_drive_start_index is not a number", () => {
+            const config = `
+                [withdrawal.config]
+                guardian = "0x1111111111111111111111111111111111111111" 
+                log2_leaves_per_account = 0
+                log2_max_num_of_accounts = 20
+                accounts_drive_start_index = "not_a_number"
+                withdrawal_output_builder = "0x2222222222222222222222222222222222222222"
+            `;
+            expect(() => parse([config])).toThrowError(
+                new InvalidNumberValueError(
+                    "not_a_number",
+                    "accounts_drive_start_index",
+                ),
+            );
         });
     });
 

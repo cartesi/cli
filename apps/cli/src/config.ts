@@ -1,6 +1,7 @@
 import bytes from "bytes";
 import { extname } from "node:path";
 import { parse as parseToml, type TomlPrimitive } from "smol-toml";
+import { getAddress, isAddress, isHex, type Address } from "viem";
 
 /**
  * Typed Errors
@@ -41,9 +42,18 @@ export class InvalidBooleanValueError extends Error {
 }
 
 export class InvalidNumberValueError extends Error {
-    constructor(value: TomlPrimitive) {
-        super(`Invalid number value: ${value}`);
+    constructor(value: TomlPrimitive, key?: string) {
+        super(`Invalid number value: ${value}${key ? ` for key: ${key}` : ""}`);
         this.name = "InvalidNumberValueError";
+    }
+}
+
+export class InvalidAddressValueError extends Error {
+    constructor(value: TomlPrimitive, key?: string) {
+        super(
+            `Invalid address value: ${value}${key ? ` for key: ${key}` : ""}`,
+        );
+        this.name = "InvalidAddressValueError";
     }
 }
 
@@ -152,10 +162,24 @@ export type MachineConfig = {
     user?: string; // default given by cartesi-machine
 };
 
+/**
+ * Configuration for Emergercy-withdrawals that will be passed down to the
+ * cartesi-rollups-cli. This is a All or nothing kind of configuration.
+ * The properties are kept snake_case to match the expected input in the cartesi-rollups-cli.
+ */
+export type WithdrawalConfig = {
+    guardian: Address;
+    log2_leaves_per_account: number;
+    log2_max_num_of_accounts: number;
+    accounts_drive_start_index: number;
+    withdrawal_output_builder: Address;
+};
+
 export type Config = {
     drives: Record<string, DriveConfig>;
     machine: MachineConfig;
     sdk: string;
+    withdrawalConfig?: WithdrawalConfig;
 };
 
 type TomlTable = { [key: string]: TomlPrimitive };
@@ -186,6 +210,7 @@ export const defaultConfig = (): Config => ({
     drives: { root: defaultRootDriveConfig() },
     machine: defaultMachineConfig(),
     sdk: `${DEFAULT_SDK_IMAGE}:${DEFAULT_SDK_VERSION}`,
+    withdrawalConfig: undefined,
 });
 
 const parseBoolean = (value: TomlPrimitive, defaultValue: boolean): boolean => {
@@ -244,6 +269,35 @@ const parseRequiredString = (value: TomlPrimitive, key: string): string => {
         return value;
     }
     throw new InvalidStringValueError(value);
+};
+
+const parseRequiredNumber = (value: TomlPrimitive, key: string): number => {
+    if (value === undefined) {
+        throw new RequiredFieldError(key);
+    }
+
+    if (typeof value === "number") {
+        return value;
+    }
+
+    const val =
+        typeof value === "string" && isHex(value) ? parseInt(value, 16) : null;
+
+    if (val !== null && !Number.isNaN(val)) {
+        return val;
+    }
+
+    throw new InvalidNumberValueError(value, key);
+};
+
+const parseRequiredAddress = (value: TomlPrimitive, key: string): Address => {
+    if (value === undefined) {
+        throw new RequiredFieldError(key);
+    }
+    if (typeof value === "string" && isAddress(value)) {
+        return getAddress(value);
+    }
+    throw new InvalidAddressValueError(value, key);
 };
 
 const parseOptionalString = (value: TomlPrimitive): string | undefined => {
@@ -495,6 +549,49 @@ const parseDrives = (config: TomlPrimitive): Record<string, DriveConfig> => {
     return drives;
 };
 
+const parseWithdrawalConfig = (config: TomlTable): WithdrawalConfig => {
+    return {
+        guardian: parseRequiredAddress(config.guardian, "guardian"),
+        log2_leaves_per_account: parseRequiredNumber(
+            config.log2_leaves_per_account,
+            "log2_leaves_per_account",
+        ),
+        log2_max_num_of_accounts: parseRequiredNumber(
+            config.log2_max_num_of_accounts,
+            "log2_max_num_of_accounts",
+        ),
+        accounts_drive_start_index: parseRequiredNumber(
+            config.accounts_drive_start_index,
+            "accounts_drive_start_index",
+        ),
+        withdrawal_output_builder: parseRequiredAddress(
+            config.withdrawal_output_builder,
+            "withdrawal_output_builder",
+        ),
+    };
+};
+
+const parseOptionalWithdrawalConfig = (
+    withdrawal: TomlPrimitive,
+): WithdrawalConfig | undefined => {
+    if (withdrawal === undefined) {
+        return undefined;
+    }
+
+    const config = (withdrawal as TomlTable).config;
+
+    const isNotDefined =
+        config === undefined ||
+        config === null ||
+        Object.keys(config).length === 0;
+
+    if (isNotDefined) {
+        return undefined;
+    }
+
+    return parseWithdrawalConfig(config as TomlTable);
+};
+
 export const parse = (str: string[]): Config => {
     let toml: TomlTable = {};
     for (const s of str) {
@@ -502,6 +599,7 @@ export const parse = (str: string[]): Config => {
     }
 
     const config: Config = {
+        withdrawalConfig: parseOptionalWithdrawalConfig(toml.withdrawal),
         drives: parseDrives(toml.drives),
         machine: parseMachine(toml.machine),
         sdk: parseString(

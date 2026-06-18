@@ -44,3 +44,10 @@
 # builder = "none"
 # filename = "./games/doom.sqfs"
 # mount = "/usr/local/games/doom"
+
+# [withdrawal.config]
+# guardian = "0x1111111111111111111111111111111111111111" 
+# log2_leaves_per_account = 0
+# log2_max_num_of_accounts = 20
+# accounts_drive_start_index = 33554432
+# withdrawal_output_builder = "0x2222222222222222222222222222222222222222"
