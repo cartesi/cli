@@ -44,14 +44,17 @@ export const createStatusCommand = () => {
                     } else {
                         // print as a table
                         const table = new Table({
-                            head: ["Machine", "Address", "State"],
+                            head: ["Machine", "Address", "Status", "Enabled"],
                             style: { border: [], head: [] },
                         });
                         table.push(
                             ...deployments.map((deployment) => [
                                 deployment.templateHash,
                                 deployment.address,
-                                deployment.state,
+                                deployment.status,
+                                deployment.enabled
+                                    ? chalk.green("yes")
+                                    : chalk.red("no"),
                             ]),
                         );
                         console.log(table.toString());
