@@ -78,6 +78,8 @@ shared = true`,
                 root: {
                     buildArgs: [],
                     builder: "docker",
+                    cacheFrom: [],
+                    cacheTo: [],
                     dockerfile: "backend/Dockerfile",
                     context: ".",
                     extraSize: 0,
@@ -90,6 +92,19 @@ shared = true`,
                     user: undefined,
                 },
             },
+        });
+    });
+
+    it("should parse cache_from and cache_to for docker drive", () => {
+        const config = parse([
+            `[drives.root]
+builder = "docker"
+cache_from = ["type=gha"]
+cache_to = ["type=gha,mode=max"]`,
+        ]);
+        expect(config.drives.root).toMatchObject({
+            cacheFrom: ["type=gha"],
+            cacheTo: ["type=gha,mode=max"],
         });
     });
 
