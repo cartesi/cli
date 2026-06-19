@@ -70,6 +70,22 @@ export const getProjectName = (options: { projectName?: string }) => {
     return options.projectName ?? path.basename(process.cwd());
 };
 
+export type CartesiEnvironmentVariables = Record<string, string>;
+/**
+ * Generic function to get all environment variables that start with "CARTESI_"
+ * It is the responsibility of the caller to filter and use only the relevant variables.
+ * @returns A record of environment variables with keys starting with "CARTESI_"
+ */
+export function getCartesiEnvironmentVariables(): CartesiEnvironmentVariables {
+    const env: CartesiEnvironmentVariables = {};
+    for (const [key, value] of Object.entries(process.env)) {
+        if (key.startsWith("CARTESI_") && value !== undefined) {
+            env[key] = value;
+        }
+    }
+    return env;
+}
+
 export type AddressBook = Record<string, Address>;
 
 export const getAddressBook = async (options: {
