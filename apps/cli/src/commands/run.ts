@@ -20,6 +20,7 @@ import {
     getMachineHash,
     getProjectName,
 } from "../base.js";
+import { nodeAllowedEnvironmentVariables } from "../compose/node.js";
 import {
     DEFAULT_SDK_VERSION,
     PREFERRED_PORT,
@@ -254,6 +255,11 @@ export const createRunCommand = () => {
                 .default("latest"),
         )
         .option("--dry-run", "show the docker compose configuration", false)
+        .option(
+            "--list-supported-variables",
+            "Returns JSON formatted information about the environment variables allowed and which service will use them.",
+            false,
+        )
         .option("--fork-url <url>", "RPC URL to fork from")
         .addOption(
             new Option(
@@ -321,11 +327,24 @@ export const createRunCommand = () => {
                 runtimeVersion,
                 services,
                 verbose,
+                listSupportedVariables,
                 claimStagingPeriod,
                 config: configFiles,
             } = options;
 
             const progress = ora();
+
+            if (listSupportedVariables) {
+                const allowedVarsByService = {
+                    rollupsNode: nodeAllowedEnvironmentVariables,
+                };
+
+                // output the allowed environment variables by service in a JSON format and quit
+                process.stdout.write(
+                    JSON.stringify(allowedVarsByService, null, 2),
+                );
+                return;
+            }
 
             if (defaultBlock !== "finalized") {
                 console.warn(

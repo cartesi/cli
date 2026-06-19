@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import buildNodeCompose, {
-    allowedEnvironmentVariables,
     getNodeAllowedVariables,
+    nodeAllowedEnvironmentVariables,
     type ServiceOptions,
 } from "../../../src/compose/node.js";
 import {
@@ -10,9 +10,9 @@ import {
 } from "../../../src/contracts.js";
 
 describe("Compose node service", () => {
-    describe("allowedEnvironmentVariables", () => {
+    describe("Node allowed environment variables", () => {
         it("should match the exact fixed list of allowed variable names", () => {
-            expect(allowedEnvironmentVariables).toEqual([
+            expect(nodeAllowedEnvironmentVariables).toEqual([
                 "CARTESI_AUTH_MNEMONIC",
                 "CARTESI_AUTH_MNEMONIC_ACCOUNT_INDEX",
                 "CARTESI_BLOCKCHAIN_DEFAULT_BLOCK",
@@ -98,11 +98,11 @@ describe("Compose node service", () => {
 
         it("should pass through all allowed variables when every allowed key is present", () => {
             const input = Object.fromEntries(
-                allowedEnvironmentVariables.map((k) => [k, `value-${k}`]),
+                nodeAllowedEnvironmentVariables.map((k) => [k, `value-${k}`]),
             );
             const result = getNodeAllowedVariables(input);
             expect(Object.keys(result).sort()).toEqual(
-                [...allowedEnvironmentVariables].sort(),
+                [...nodeAllowedEnvironmentVariables].sort(),
             );
         });
 
