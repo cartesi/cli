@@ -48,6 +48,7 @@ export const createShellCommand = () => {
                     {
                         cwd: destination,
                         stdio: "inherit",
+                        tty: true,
                     },
                 );
             } catch (error: unknown) {

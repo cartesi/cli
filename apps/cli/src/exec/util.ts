@@ -2,8 +2,8 @@ import { ExecaError, execa, type Options } from "execa";
 import os from "node:os";
 
 export type DockerFallbackOptions =
-    | { image: string; forceDocker: true }
-    | { image?: string; forceDocker?: false };
+    | { image: string; forceDocker: true; tty?: boolean }
+    | { image?: string; forceDocker?: false; tty?: boolean };
 
 /**
  * Calls execa and falls back to docker run if command (on the host) fails
@@ -29,12 +29,14 @@ export const execaDockerFallback = async (
         if (error instanceof ExecaError) {
             if (error.code === "ENOENT" && options.image) {
                 const userInfo = os.userInfo();
+                const optionalTTY = options.tty ? ["--tty"] : [];
                 const dockerOpts = [
                     "--volume",
                     `${options.cwd}:/work`,
                     "--workdir",
                     "/work",
                     "--interactive",
+                    ...optionalTTY,
                     "--rm",
                     "--user",
                     `${userInfo.uid}:${userInfo.gid}`,
