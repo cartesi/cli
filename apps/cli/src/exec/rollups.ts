@@ -13,6 +13,7 @@ import {
 } from "viem";
 import { stringify } from "yaml";
 import {
+    getCartesiEnvironmentVariables,
     getContextPath,
     getMachineHash,
     getProjectName,
@@ -285,6 +286,9 @@ export const startEnvironment = async (options: {
     // local dev environment, we don't need security
     const databasePassword = "password";
 
+    // Load all environment variables from the host that start with CARTESI_.
+    const hostVars = getCartesiEnvironmentVariables();
+
     const files = [
         anvil({
             blockTime,
@@ -301,6 +305,7 @@ export const startEnvironment = async (options: {
             logLevel: verbose ? "debug" : "info",
             memory,
             prt,
+            cartesiEnvironmentVariables: hostVars,
         }),
         proxy({ imageTag: "v3.3.4", port }),
     ];
