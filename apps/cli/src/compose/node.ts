@@ -28,7 +28,7 @@ export type ServiceOptions = {
  * that can be passed to the rollups node service.
  * A number of environment variables are rule out to avoid confusion e.g. CORS, FEATURE Enablement, etc.
  */
-export const allowedEnvironmentVariables = [
+export const nodeAllowedEnvironmentVariables = [
     "CARTESI_AUTH_MNEMONIC",
     "CARTESI_AUTH_MNEMONIC_ACCOUNT_INDEX",
     "CARTESI_BLOCKCHAIN_DEFAULT_BLOCK",
@@ -54,7 +54,7 @@ export const allowedEnvironmentVariables = [
 ] as const;
 
 type NodeAllowedEnvironmentVars = Partial<
-    Record<(typeof allowedEnvironmentVariables)[number], string>
+    Record<(typeof nodeAllowedEnvironmentVariables)[number], string>
 >;
 
 /**
@@ -69,7 +69,7 @@ type NodeAllowedEnvironmentVars = Partial<
 export const getNodeAllowedVariables = (
     cartesiVars?: CartesiEnvironmentVariables,
 ): NodeAllowedEnvironmentVars => {
-    const allowedVars = allowedEnvironmentVariables.reduce(
+    const allowedVars = nodeAllowedEnvironmentVariables.reduce(
         (acc, variableName) => {
             const value = cartesiVars?.[variableName];
 
