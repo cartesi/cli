@@ -35,7 +35,6 @@ export const bootMachine = (
     const {
         assertRollingTemplate,
         maxMCycle,
-        noRollup,
         ramLength,
         ramImage,
         useDockerEnv,
@@ -107,9 +106,6 @@ export const bootMachine = (
     }
     if (bootOptions.interactive) {
         args.push("-it");
-    }
-    if (noRollup) {
-        args.push("--no-rollup");
     }
     if (maxMCycle) {
         args.push(`--max-mcycle=${maxMCycle.toString()}`);

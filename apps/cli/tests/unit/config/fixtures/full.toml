@@ -6,7 +6,6 @@
 # entrypoint = "/usr/local/bin/app"
 # final_hash = true
 # max_mcycle = 0
-# no_rollup = false
 # ram_image = "/usr/share/cartesi-machine/images/linux.bin" # directory inside SDK image
 # ram_length = "128Mi"
 # use_docker_env = true
