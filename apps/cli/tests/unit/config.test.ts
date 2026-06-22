@@ -100,14 +100,14 @@ shared = true`,
     describe("when parsing [machine]", () => {
         const config = `
                 [machine]
-                no_rollup = true
+                use_docker_env = true
             `;
         it("machine-config", () => {
             expect(parse([config])).toEqual({
                 ...defaultConfig(),
                 machine: {
                     ...defaultMachineConfig(),
-                    noRollup: true,
+                    useDockerEnv: true,
                 },
             });
         });
@@ -129,7 +129,7 @@ shared = true`,
                 ...defaultConfig(),
                 machine: {
                     ...defaultMachineConfig(),
-                    noRollup: true,
+                    useDockerEnv: true,
                     entrypoint: "echo 'Hello, World!'",
                 },
             });
@@ -444,9 +444,9 @@ shared = true`,
      */
     describe("when parsing fields types", () => {
         it("should fail for invalid boolean value", () => {
-            expect(() => parse(["[machine]\nno_rollup = 42"])).toThrowError(
-                new InvalidBooleanValueError(42),
-            );
+            expect(() =>
+                parse(["[machine]\nuse_docker_env = 42"]),
+            ).toThrowError(new InvalidBooleanValueError(42));
         });
 
         it("should fail for invalid number value", () => {

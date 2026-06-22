@@ -154,7 +154,6 @@ export type MachineConfig = {
     bootargs: string[];
     entrypoint?: string;
     maxMCycle?: bigint; // default given by cartesi-machine
-    noRollup?: boolean; // default given by cartesi-machine
     ramLength: string;
     ramImage?: string; // default given by cartesi-machine
     useDockerEnv: boolean; // inject docker image ENV into cartesi-machine ENV
@@ -199,7 +198,6 @@ export const defaultMachineConfig = (): MachineConfig => ({
     bootargs: [],
     entrypoint: undefined,
     maxMCycle: undefined,
-    noRollup: undefined,
     ramLength: DEFAULT_RAM,
     useDockerEnv: true,
     useDockerWorkdir: true,
@@ -422,7 +420,6 @@ const parseMachine = (value: TomlPrimitive): MachineConfig => {
         bootargs: parseStringArray(toml.boot_args),
         entrypoint: parseOptionalString(toml.entrypoint),
         maxMCycle: parseOptionalNumber(toml.max_mcycle),
-        noRollup: parseBoolean(toml.no_rollup, false),
         ramLength: parseString(toml.ram_length, DEFAULT_RAM),
         ramImage: parseOptionalString(toml.ram_image),
         useDockerEnv: parseBoolean(toml.use_docker_env, true),
