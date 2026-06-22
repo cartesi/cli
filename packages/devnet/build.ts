@@ -2,6 +2,7 @@ import { semver } from "bun";
 import { cpSync, existsSync, readdirSync } from "fs-extra";
 import { Listr, type ListrTask } from "listr2";
 import * as path from "node:path";
+import type { Abi } from "viem";
 import {
     arbitrum,
     arbitrumSepolia,
@@ -56,7 +57,7 @@ const dependencies: ListrTask[] = [
     task: async () => await downloadAndExtract(file),
 }));
 
-type ContractDeployments = Record<string, { address: string; abi: any }>;
+type ContractDeployments = Record<string, { address: string; abi: Abi }>;
 
 /**
  * Collect contracts from deployments, objects keyed by contractName, with abi and address
@@ -100,7 +101,7 @@ const collectContracts = async (dir: string): Promise<ContractDeployments> => {
             contracts[contractName] = { abi, address };
             return contracts;
         },
-        {} as Record<string, { abi: any; address: string }>,
+        {} as Record<string, { abi: Abi; address: string }>,
     );
 };
 
