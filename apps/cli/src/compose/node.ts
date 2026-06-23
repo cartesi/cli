@@ -101,11 +101,9 @@ const service = (options: ServiceOptions): Service => {
         31337) as keyof typeof daveAppFactoryAddress;
 
     let chainDaveAppFactoryAddress: string | undefined;
+
     if (prt) {
         chainDaveAppFactoryAddress = daveAppFactoryAddress[chainId];
-        if (!chainDaveAppFactoryAddress) {
-            throw new Error(`Unsupported fork chain ${chainId}`);
-        }
     }
 
     const defaultVars = {

@@ -37,12 +37,8 @@ import {
     waitHealthyEnvironment,
 } from "../exec/rollups.js";
 import { keySelect } from "../prompts.js";
-
-export type ForkConfig = {
-    blockNumber?: bigint;
-    chainId: number;
-    url: string;
-};
+import type { ForkConfig } from "../types/chain.js";
+import { assertForkConfig } from "../validations.js";
 
 const commaSeparatedList = (value: string) => value.split(",");
 
@@ -369,6 +365,10 @@ export const createRunCommand = () => {
 
             // configure optional anvil fork
             const forkConfig = await configureFork(options);
+
+            if (forkConfig) {
+                await assertForkConfig(forkConfig, { includePRT: prt });
+            }
 
             // if TTY is not attached, run on foreground (not detached)
             const detach = process.stdin.isTTY;

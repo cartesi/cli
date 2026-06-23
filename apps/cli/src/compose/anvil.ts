@@ -1,4 +1,4 @@
-import type { ForkConfig } from "../commands/run.js";
+import type { ForkConfig } from "../types/chain.js";
 import type { ComposeFile, Config, Service } from "../types/compose.js";
 import { DEFAULT_HEALTHCHECK } from "./common.js";
 

@@ -19,7 +19,6 @@ import {
     getProjectName,
     getServiceHealth,
 } from "../base.js";
-import type { ForkConfig } from "../commands/run.js";
 import anvil from "../compose/anvil.js";
 import { concat } from "../compose/builder.js";
 import bundler from "../compose/bundler.js";
@@ -30,6 +29,7 @@ import passkey from "../compose/passkey.js";
 import paymaster from "../compose/paymaster.js";
 import proxy from "../compose/proxy.js";
 import type { WithdrawalConfig } from "../config.js";
+import type { ForkConfig } from "../types/chain.js";
 
 type ApplicationStatus = "OK" | "FAILED" | "DIVERGED" | "CORRUPTED";
 
@@ -111,21 +111,29 @@ export const getApplicationAddress = async (options: {
 };
 
 /**
- * Get anvil node configuration and query the chainId of its fork
+ * Get the fork configuration of anvil node,
+ * if it is configured with a forkUrl, it will query the chainId of the fork
+ * and return it along with the forkUrl and forkBlockNumber
  * @param options projectName
- * @returns chainId of anvil fork
+ * @returns fork configuration of anvil node, or undefined if it is not configured with a forkUrl
  */
-export const getForkChainId = async (options: {
+export const getForkConfig = async (options: {
     projectName?: string;
-}): Promise<number | undefined> => {
+}): Promise<ForkConfig | undefined> => {
     const projectName = getProjectName(options ?? {});
     try {
         const nodeInfo = await getAnvilNodeInfo({ projectName });
         const forkUrl = nodeInfo?.forkConfig?.forkUrl;
+        const blockNumber = nodeInfo?.forkConfig?.forkBlockNumber;
         if (forkUrl) {
             // if anvil is configured with a forkUrl, connect to it and query the chainId
             const client = createPublicClient({ transport: http(forkUrl) });
-            return client.getChainId();
+            const chainId = await client.getChainId();
+            return {
+                chainId,
+                url: forkUrl,
+                blockNumber: blockNumber ? BigInt(blockNumber) : undefined,
+            };
         }
     } catch {
         // service may not be running, just return as there is no fork
