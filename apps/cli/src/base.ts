@@ -10,6 +10,7 @@ import {
     isHash,
     zeroHash,
 } from "viem";
+import { foundry } from "viem/chains";
 import { type Config, parse } from "./config.js";
 import {
     applicationFactoryAddress,
@@ -27,8 +28,9 @@ import {
     testNonFungibleTokenAddress,
     testUsdWithdrawalOutputBuilderAddress,
 } from "./contracts.js";
-import { getApplicationAddress, getForkChainId } from "./exec/rollups.js";
+import { getApplicationAddress, getForkConfig } from "./exec/rollups.js";
 import type { PsResponse } from "./types/docker.js";
+import { assertForkConfig } from "./validations.js";
 
 export const getContextPath = (...paths: string[]): string => {
     return path.join(".cartesi", ...paths);
@@ -91,19 +93,18 @@ export type AddressBook = Record<string, Address>;
 export const getAddressBook = async (options: {
     projectName?: string;
 }): Promise<AddressBook> => {
-    const forkChainId = await getForkChainId(options);
+    const forkConfig = await getForkConfig(options);
     const applicationAddress = await getApplicationAddress(options);
+
+    if (forkConfig) {
+        await assertForkConfig(forkConfig, { includePRT: true });
+    }
+
+    const chainId = forkConfig?.chainId ?? foundry.id;
 
     // this contract has different addresses on each of the supported chains
     const chainDaveAppFactoryAddress =
-        forkChainId !== undefined
-            ? daveAppFactoryAddress[
-                  forkChainId as keyof typeof daveAppFactoryAddress
-              ]
-            : daveAppFactoryAddress[31337];
-    if (!chainDaveAppFactoryAddress) {
-        throw new Error(`Unsupported fork chain ${forkChainId}`);
-    }
+        daveAppFactoryAddress[chainId as keyof typeof daveAppFactoryAddress];
 
     // contracts that are present only on live chains, with equal addresses on all of them
     const forkContracts: AddressBook = {
@@ -145,7 +146,7 @@ export const getAddressBook = async (options: {
 
     // gather all contracts, depending whether is fork or devnet
     const contracts: AddressBook =
-        forkChainId !== undefined
+        forkConfig !== undefined
             ? {
                   ...commonContracts,
                   ...forkContracts,
