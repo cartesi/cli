@@ -28,6 +28,7 @@ import {
     testNonFungibleTokenAddress,
     testUsdWithdrawalOutputBuilderAddress,
 } from "./contracts.js";
+import { cartesiMachineStoredHash } from "./exec";
 import { getApplicationAddress, getForkConfig } from "./exec/rollups.js";
 import type { PsResponse } from "./types/docker.js";
 import { assertForkConfig } from "./validations.js";
@@ -36,21 +37,11 @@ export const getContextPath = (...paths: string[]): string => {
     return path.join(".cartesi", ...paths);
 };
 
-export const getMachineHash = (): Hash | undefined => {
+export const getMachineHash = async (): Promise<Hash | undefined> => {
     // read hash of the cartesi machine snapshot, if one exists
-    const hashPath = getContextPath("image", "hash_tree.sht");
-    if (fs.existsSync(hashPath)) {
-        const fileBuffer = fs.readFileSync(hashPath);
-        const hashLength = 32;
-        // root hash is located at this offset (0x60)
-        const offset = 0x60;
-
-        const hashBuffer = fileBuffer.subarray(offset, offset + hashLength);
-        const hash = `0x${hashBuffer.toString("hex")}`;
-
-        if (isHash(hash)) {
-            return hash;
-        }
+    const imagePath = getContextPath("image");
+    if (fs.existsSync(imagePath)) {
+        return await cartesiMachineStoredHash.computeHash(imagePath);
     }
     return undefined;
 };

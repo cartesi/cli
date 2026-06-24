@@ -1,4 +1,7 @@
 import { execa } from "execa";
+import fs from "node:fs";
+import path from "node:path";
+import tmp from "tmp";
 import { DEFAULT_SDK_IMAGE, DEFAULT_SDK_VERSION } from "../../src/config.js";
 
 export const TEST_SDK = `${DEFAULT_SDK_IMAGE}:${DEFAULT_SDK_VERSION}`;
@@ -27,6 +30,83 @@ export async function ensureDockerImage(image: string): Promise<void> {
             console.error(`✗ Failed to pull Docker image ${image}`);
             throw error;
         }
+    }
+}
+
+/**
+ * Creates a sandboxed Cartesi application inside a temporary directory,
+ * builds it, and returns the path to the resulting build/machine and the directory itself.
+ *
+ * @returns {Promise<{ appDir: string, machineDir: string, cleanup: () => void }>}
+ */
+export async function createTemporaryCartesiApplication(): Promise<{
+    appDir: string;
+    machineDir: string;
+    cleanup: () => void;
+}> {
+    // Create a secure temporary directory that auto-cleans on exit
+    const tempDir = tmp.dirSync({ unsafeCleanup: true });
+    const cliPath = path.join(__dirname, "..", "..", "dist", "index.js");
+
+    if (!fs.existsSync(cliPath)) {
+        throw new Error(
+            `CLI binary not found at ${cliPath}. Please build the CLI before running tests.`,
+        );
+    }
+
+    console.log(`✓ Temporary sandbox directory created at: ${tempDir.name}`);
+    console.log(`✓ CLI binary located at: ${cliPath}`);
+    console.log(`✓ Using Docker image: ${TEST_SDK}`);
+    console.log(`! Creating a temporary Cartesi application in the sandbox...`);
+
+    // Save original working directory
+    const originalCwd = process.cwd();
+
+    try {
+        // Switch process working directory into the sandbox
+        process.chdir(tempDir.name);
+
+        await execa("node", [
+            cliPath,
+            "create",
+            "--template",
+            "typescript",
+            "temp-app",
+        ]);
+
+        const appDir = path.join(tempDir.name, "temp-app");
+
+        console.log(`✓ Temporary Cartesi application created at: ${appDir}`);
+
+        //  Change directory into the created application
+        process.chdir(appDir);
+
+        console.log(`! Building the temporary Cartesi application...`);
+
+        //  Programmatically BUILD the application
+        await execa("node", [cliPath, "build"], {
+            stdio: ["ignore", "pipe", "pipe"],
+        });
+
+        console.log(`✓ Temporary Cartesi application built successfully.`);
+
+        // Path to the compiled machine image
+        const machineDir = path.join(appDir, ".cartesi", "image");
+
+        return {
+            appDir,
+            machineDir,
+            cleanup: () => {
+                // Restore working directory and wipe temporary files
+                process.chdir(originalCwd);
+                tempDir.removeCallback();
+            },
+        };
+    } catch (error) {
+        // Ensure cwd is restored even if build/creation fails
+        process.chdir(originalCwd);
+        tempDir.removeCallback();
+        throw error;
     }
 }
 
