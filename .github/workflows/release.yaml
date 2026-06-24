@@ -25,6 +25,12 @@ jobs:
               with:
                   fetch-depth: 0
 
+            - name: Set up QEMU
+              uses: docker/setup-qemu-action@06116385d9baf250c9f4dcb4858b16962ea869c3 # v4.1.0
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+
             - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
             - uses: oven-sh/setup-bun@b7a1c7ccf290d58743029c4f6903da283811b979 # v2.1.0
 
