@@ -103,7 +103,7 @@ const shell = async (options: {
                     await build?.parseAsync([], { from: "user" });
 
                     // redeploy
-                    const hash = getMachineHash();
+                    const hash = await getMachineHash();
                     if (hash) {
                         if (lastDeployment) {
                             await undeploy({ projectName });
@@ -414,7 +414,7 @@ export const createRunCommand = () => {
             // deploy the application
             let deployment: RollupsDeployment | undefined;
             let salt = 0;
-            const hash = getMachineHash();
+            const hash = await getMachineHash();
             if (hash) {
                 deployment = await deploy({
                     epochLength,

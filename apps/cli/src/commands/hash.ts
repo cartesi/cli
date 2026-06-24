@@ -9,7 +9,7 @@ export const createHashCommand = () => {
         )
         .option("--json", "Format output as json.")
         .action(async ({ json }, command) => {
-            const hash = getMachineHash();
+            const hash = await getMachineHash();
             if (hash) {
                 if (!json) {
                     console.log(

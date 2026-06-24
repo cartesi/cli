@@ -92,7 +92,7 @@ export const getDeployments = async (
 export const getApplicationDeployment = async (
     options: ComposeParams,
 ): Promise<RollupsDeployment | undefined> => {
-    const machineHash = getMachineHash();
+    const machineHash = await getMachineHash();
     if (!machineHash) {
         return undefined;
     }
