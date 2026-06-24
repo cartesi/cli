@@ -1,5 +1,26 @@
 # Changelog
 
+## 2.0.0-alpha.35
+
+### Patch Changes
+
+- 737a714: Add support to read and check a withdrawal config through a toml file.
+- ffcb643: Update docker flag by adding tty when using the shell command. It fixes "unable to open a TTY" error returned by cartesi-machine.
+- 2e47bbb: Bump cartesi/sdk image to version 0.12.0-alpha.41.
+- b227cce: Improve validation when cli is used with fork-url by checking in the network if it is deployed and also based on ABI if a method can be called.
+- 6953f22: Remove CARTESI_BLOCKCHAIN_WS_ENDPOINT environment variable from the node docker compose file construction. It is not supported by rollups-node alpha.12
+- 6c96461: Bump @cartesi/devnet package to alpha.14 and remove @cartesi/rollups package.
+- e79deeb: Refactor how to retrieve the machine-hash from the image built. the hash file is not generated in the new emulator 0.20.0.
+- c279a3f: Add new TestUsdWithdrawalOutputBuilder to be listed in the address-book. Also, refactor deposits ERC-20 and ERC-721 to use new Fungible and non-fungible test token addresses.
+- dac1497: Add CORS declaration to the node proxy rules when building the docker compose file.
+- ba80b25: Add support to modify rollups-node environment variables by setting your own CARTESI\_\* environment variables in the host machine e.g. CARTESI_AUTH_MNEMONIC and CARTESI_AUTH_MNEMONIC_ACCOUNT_INDEX. This facilitates configuration when testing foreclosure/emergency-withdraws.
+- a8aaa70: Add new --list-supported-variables to RUN command to return a JSON object by service listing all supported variables to that specific service e.g. rollups-node
+- dceddbb: Bump rollups-explorer to version 2.0.0-alpha.3
+- 4abf611: Refactor Status command to use status instead of state and also display the new enabled property. Status and enabled are separated in intent.
+- debec35: Add support to withdrawal-config and way to setup claim-staging-period (Authority/Quorum only) when using the RUN command.
+- 7ea8047: Remove --no-rollup flag pass down to the cartesi-machine as this flag does not exist on 0.19 and 0.20 versions.
+- e354263: Update flashdrive label option from filename to data_filename. Also bump required-version for cartesi-machine tests to 0.20.0
+
 ## 2.0.0-alpha.34
 
 ### Patch Changes
