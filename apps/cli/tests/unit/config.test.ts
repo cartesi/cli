@@ -10,6 +10,7 @@ import {
     InvalidBytesValueError,
     InvalidDriveFormatError,
     InvalidEmptyDriveFormatError,
+    InvalidEnvError,
     InvalidNumberValueError,
     InvalidStringValueError,
     parse,
@@ -133,6 +134,86 @@ shared = true`,
                     entrypoint: "echo 'Hello, World!'",
                 },
             });
+        });
+
+        it("should parse env_file", () => {
+            const envFileConfig = `
+                [machine]
+                env_file = ".env"
+            `;
+            expect(parse([envFileConfig])).toEqual({
+                ...defaultConfig(),
+                machine: {
+                    ...defaultMachineConfig(),
+                    envFile: ".env",
+                },
+            });
+        });
+
+        it("should fail for invalid env_file", () => {
+            expect(() => parse(["[machine]\nenv_file = 42"])).toThrowError(
+                new InvalidStringValueError(42),
+            );
+        });
+
+        it("should parse an env table", () => {
+            const envConfig = `
+                [machine.env]
+                FOO = "bar"
+                LOG_LEVEL = "debug"
+            `;
+            expect(parse([envConfig])).toEqual({
+                ...defaultConfig(),
+                machine: {
+                    ...defaultMachineConfig(),
+                    env: { FOO: "bar", LOG_LEVEL: "debug" },
+                },
+            });
+        });
+
+        it("should parse an inline env table", () => {
+            const envConfig = `
+                [machine]
+                env = { FOO = "bar" }
+            `;
+            expect(parse([envConfig])).toEqual({
+                ...defaultConfig(),
+                machine: {
+                    ...defaultMachineConfig(),
+                    env: { FOO: "bar" },
+                },
+            });
+        });
+
+        it("should coerce non-string scalar env values to string", () => {
+            const envConfig = `
+                [machine.env]
+                PORT = 8080
+                ENABLED = true
+            `;
+            expect(parse([envConfig])).toEqual({
+                ...defaultConfig(),
+                machine: {
+                    ...defaultMachineConfig(),
+                    env: { PORT: "8080", ENABLED: "true" },
+                },
+            });
+        });
+
+        it("should fail for an env that is not a table", () => {
+            expect(() => parse(["[machine]\nenv = 42"])).toThrowError(
+                new InvalidEnvError(42),
+            );
+        });
+
+        it("should fail for an env value that is an array", () => {
+            const envConfig = `
+                [machine.env]
+                FOO = ["bar"]
+            `;
+            expect(() => parse([envConfig])).toThrowError(
+                new InvalidStringValueError(["bar"]),
+            );
         });
     });
 

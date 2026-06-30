@@ -11,6 +11,11 @@
 # use_docker_env = true
 # use_docker_workdir = true
 # user = "dapp"
+# env_file = ".env" # optional. path to a .env file with environment variables
+
+# [machine.env] # optional. environment variables injected into the machine
+# FOO = "bar"
+# LOG_LEVEL = "debug"
 
 # [drives.root]
 # builder = "docker"
