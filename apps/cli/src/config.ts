@@ -78,6 +78,13 @@ export class InvalidStringArrayError extends Error {
     }
 }
 
+export class InvalidEnvError extends Error {
+    constructor(value: TomlPrimitive) {
+        super(`Invalid env configuration: ${value}`);
+        this.name = "InvalidEnvError";
+    }
+}
+
 /**
  * Configuration for drives of a Cartesi Machine. A drive may already exist or be built by a builder
  */
@@ -153,6 +160,8 @@ export type MachineConfig = {
     assertRollingTemplate?: boolean; // default given by cartesi-machine
     bootargs: string[];
     entrypoint?: string;
+    env: Record<string, string>; // explicit environment variables injected into cartesi-machine ENV
+    envFile?: string; // path to a .env file with environment variables injected into cartesi-machine ENV
     maxMCycle?: bigint; // default given by cartesi-machine
     ramLength: string;
     ramImage?: string; // default given by cartesi-machine
@@ -197,6 +206,8 @@ export const defaultMachineConfig = (): MachineConfig => ({
     assertRollingTemplate: undefined,
     bootargs: [],
     entrypoint: undefined,
+    env: {},
+    envFile: undefined,
     maxMCycle: undefined,
     ramLength: DEFAULT_RAM,
     useDockerEnv: true,
@@ -257,6 +268,37 @@ const parseStringArray = (value: TomlPrimitive): string[] => {
         });
     }
     throw new InvalidStringArrayError();
+};
+
+/**
+ * Parses a TOML table into a record of string environment variables.
+ * Non-string scalar values (number, bigint, boolean) are coerced to string,
+ * since environment variable values are always strings.
+ */
+const parseStringRecord = (value: TomlPrimitive): Record<string, string> => {
+    if (value === undefined) {
+        return {};
+    }
+    if (!isTomlTable(value)) {
+        throw new InvalidEnvError(value);
+    }
+    return Object.entries(value).reduce<Record<string, string>>(
+        (acc, [key, val]) => {
+            if (typeof val === "string") {
+                acc[key] = val;
+            } else if (
+                typeof val === "number" ||
+                typeof val === "bigint" ||
+                typeof val === "boolean"
+            ) {
+                acc[key] = String(val);
+            } else {
+                throw new InvalidStringValueError(val);
+            }
+            return acc;
+        },
+        {},
+    );
 };
 
 const parseRequiredString = (value: TomlPrimitive, key: string): string => {
@@ -419,6 +461,8 @@ const parseMachine = (value: TomlPrimitive): MachineConfig => {
         ),
         bootargs: parseStringArray(toml.boot_args),
         entrypoint: parseOptionalString(toml.entrypoint),
+        env: parseStringRecord(toml.env),
+        envFile: parseOptionalString(toml.env_file),
         maxMCycle: parseOptionalNumber(toml.max_mcycle),
         ramLength: parseString(toml.ram_length, DEFAULT_RAM),
         ramImage: parseOptionalString(toml.ram_image),

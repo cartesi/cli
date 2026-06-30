@@ -1,3 +1,5 @@
+import dotenv from "dotenv";
+import fs from "node:fs";
 import type { Config, DriveConfig, ImageInfo } from "./config.js";
 import { cartesiMachine } from "./exec/index.js";
 import type { ExecaOptionsDockerFallback } from "./exec/util.js";
@@ -34,6 +36,8 @@ export const bootMachine = (
     const { machine } = config;
     const {
         assertRollingTemplate,
+        env: envConfig,
+        envFile,
         maxMCycle,
         ramLength,
         ramImage,
@@ -42,12 +46,29 @@ export const bootMachine = (
         user,
     } = machine;
 
-    // list of environment variables of docker image
-    const env = useDockerEnv ? (info?.env ?? []) : [];
-    const envs = env.map((variable) => {
-        const [key, value] = variable.split("=");
-        return `--env=${key}="${value}"`;
-    });
+    // environment variables injected into the cartesi-machine ENV, by
+    // increasing precedence: docker image ENV, env_file, then the env object
+    const envMap: Record<string, string> = {};
+
+    // environment variables of docker image
+    if (useDockerEnv) {
+        for (const variable of info?.env ?? []) {
+            const [key, value = ""] = variable.split("=");
+            envMap[key] = value;
+        }
+    }
+
+    // environment variables from an .env file
+    if (envFile) {
+        Object.assign(envMap, dotenv.parse(fs.readFileSync(envFile)));
+    }
+
+    // environment variables explicitly defined in the config
+    Object.assign(envMap, envConfig);
+
+    const envs = Object.entries(envMap).map(
+        ([key, value]) => `--env=${key}="${value}"`,
+    );
 
     // check if we need a rootfstype boot arg
     const root = config.drives.root;
