@@ -7,15 +7,39 @@ export const createAddressBookCommand = () => {
         .description(
             "Prints the addresses of all smart contracts deployed to the runtime environment of the application.",
         )
+        .argument(
+            "[contract]",
+            "name of a contract; when provided, prints only its address (useful for scripting)",
+        )
         .option("--json", "Format output as json.")
         .option(
             "--project-name <string>",
             "name of project (used by docker compose and cartesi-rollups-node)",
         )
-        .action(async (options) => {
+        .action(async (contract, options, command) => {
             const { json } = options;
             const projectName = getProjectName(options);
             const addressBook = await getAddressBook({ projectName });
+
+            if (contract !== undefined) {
+                // look up a single contract by name (case-insensitive)
+                const entry = Object.entries(addressBook).find(
+                    ([name]) => name.toLowerCase() === contract.toLowerCase(),
+                );
+                if (!entry) {
+                    command.error(`Contract not found: ${contract}`);
+                    return;
+                }
+                const [, address] = entry;
+                if (!json) {
+                    // print only the address, for easy shell integration
+                    console.log(address);
+                } else {
+                    process.stdout.write(JSON.stringify(address));
+                }
+                return;
+            }
+
             if (!json) {
                 // print as a table
                 const table = new Table({
