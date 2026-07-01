@@ -54,6 +54,8 @@ export async function createTemporaryCartesiApplication(): Promise<{
         );
     }
 
+    const isCI = process.env.CI === "true" || process.env.CI === "1";
+
     console.log(`✓ Temporary sandbox directory created at: ${tempDir.name}`);
     console.log(`✓ CLI binary located at: ${cliPath}`);
     console.log(`✓ Using Docker image: ${TEST_SDK}`);
@@ -84,8 +86,10 @@ export async function createTemporaryCartesiApplication(): Promise<{
         console.log(`! Building the temporary Cartesi application...`);
 
         //  Programmatically BUILD the application
-        await execa("node", [cliPath, "build"], {
-            stdio: ["ignore", "pipe", "pipe"],
+        const flags = isCI ? ["--verbose"] : [];
+        await execa("node", [cliPath, "build", ...flags], {
+            stdio: "inherit",
+            reject: true,
         });
 
         console.log(`✓ Temporary Cartesi application built successfully.`);
