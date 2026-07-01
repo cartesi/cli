@@ -24,10 +24,11 @@ export const fromDirectory = (
         output: string;
     } & DockerFallbackOptions,
 ) => {
-    const { cwd, image, input, output } = options;
+    const { cwd, image, input, output, reporter } = options;
     return execaDockerFallback("mksquashfs", [input, output, ...baseArgs()], {
         cwd,
         image,
+        reporter,
     });
 };
 
@@ -38,13 +39,14 @@ export const fromTar = (
         output: string;
     } & DockerFallbackOptions,
 ) => {
-    const { cwd, image, input, output } = options;
+    const { cwd, image, input, output, reporter } = options;
     return execaDockerFallback(
         "mksquashfs",
         ["-", output, "-tar", ...baseArgs()],
         {
             cwd,
             image,
+            reporter,
             inputFile: input, // use stdin in case of tar file
         },
     );

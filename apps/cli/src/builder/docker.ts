@@ -1,13 +1,16 @@
 import { execa } from "execa";
 import fs from "fs-extra";
 import path from "node:path";
+import tmp from "tmp";
 import type { DockerDriveConfig } from "../config.js";
 import { genext2fs, mksquashfs } from "../exec/index.js";
+import type { Reporter } from "../exec/util.js";
+import type { BuildxMetadata } from "../types/docker.js";
 
 type ImageBuildOptions = Pick<
     DockerDriveConfig,
     "buildArgs" | "context" | "dockerfile" | "tags" | "target"
-> & { destination: string; dockerfileContent?: string };
+> & { destination: string; dockerfileContent?: string; reporter?: Reporter };
 
 type ImageInfo = {
     cmd: string[];
@@ -26,6 +29,7 @@ const buildImage = async (options: ImageBuildOptions): Promise<string> => {
         destination,
         dockerfile,
         dockerfileContent,
+        reporter,
         tags,
         target,
     } = options;
@@ -43,7 +47,7 @@ const buildImage = async (options: ImageBuildOptions): Promise<string> => {
         "--output",
         `type=tar,dest=${destination}`,
         "--progress",
-        "quiet",
+        reporter ? "plain" : "quiet",
     ];
 
     // set tags for the image built
@@ -52,16 +56,38 @@ const buildImage = async (options: ImageBuildOptions): Promise<string> => {
     // set build args
     args.push(...buildArgs.flatMap((arg) => ["--build-arg", arg]));
 
+    // use --metadata-file to capture the image ID from json format file, so stdout can be safely
+    // ignored regardless of what --progress mode outputs there
+    const tmpFile = tmp.tmpNameSync();
+    args.push("--metadata-file", tmpFile);
+
     if (target) {
         args.push("--target", target);
     }
 
     args.push(context);
 
-    const { stdout: imageId } = await execa("docker", args, {
-        input: dockerfileContent,
-    });
-    return imageId;
+    if (reporter)
+        reporter(`Building docker image with args: ${args.join(" ")}`);
+
+    const proc = execa("docker", args, { input: dockerfileContent });
+    if (reporter) {
+        proc.stderr?.on("data", (chunk: Buffer) => {
+            for (const line of chunk.toString().split("\n")) {
+                if (line.trim()) reporter(line.trimEnd());
+            }
+        });
+    }
+    await proc;
+    const metadata = JSON.parse(
+        fs.readFileSync(tmpFile, "utf-8"),
+    ) as BuildxMetadata;
+
+    return (
+        metadata["containerimage.config.digest"] ??
+        metadata["containerimage.digest"] ??
+        ""
+    );
 };
 
 /**
@@ -101,6 +127,7 @@ export const build = async (
     sdkImage: string,
     destination: string,
     debug: boolean,
+    reporter?: Reporter,
 ): Promise<ImageInfo | undefined> => {
     const { format } = drive;
 
@@ -116,11 +143,13 @@ export const build = async (
             ...drive,
             destination: path.join(destination, tar),
             dockerfileContent: `FROM ${drive.image}`,
+            reporter,
         });
     } else {
         image = await buildImage({
             ...drive,
             destination: path.join(destination, tar),
+            reporter,
         });
     }
     const imageInfo = await getImageInfo(image);
@@ -134,6 +163,7 @@ export const build = async (
                     output: filename,
                     cwd: destination,
                     image: sdkImage,
+                    reporter,
                 });
                 break;
             }
@@ -143,6 +173,7 @@ export const build = async (
                     output: filename,
                     cwd: destination,
                     image: sdkImage,
+                    reporter,
                 });
                 break;
             }

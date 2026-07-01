@@ -2,12 +2,14 @@ import fs from "fs-extra";
 import path from "node:path";
 import type { TarDriveConfig } from "../config.js";
 import { genext2fs, mksquashfs } from "../exec/index.js";
+import type { Reporter } from "../exec/util.js";
 
 export const build = async (
     name: string,
     drive: TarDriveConfig,
     sdkImage: string,
     destination: string,
+    reporter?: Reporter,
 ): Promise<void> => {
     const tar = `${name}.tar`;
     const filename = `${name}.${drive.format}`;
@@ -23,6 +25,7 @@ export const build = async (
                 output: filename,
                 cwd: destination,
                 image: sdkImage,
+                reporter,
             });
             break;
         }
@@ -32,6 +35,7 @@ export const build = async (
                 output: filename,
                 cwd: destination,
                 image: sdkImage,
+                reporter,
             });
             break;
         }

@@ -2,6 +2,7 @@ import fs from "fs-extra";
 import path from "node:path";
 import type { DirectoryDriveConfig } from "../config.js";
 import { genext2fs, mksquashfs } from "../exec/index.js";
+import type { Reporter } from "../exec/util.js";
 
 export const build = async (
     name: string,
@@ -9,6 +10,7 @@ export const build = async (
     sdkImage: string,
     destination: string,
     debug: boolean,
+    reporter?: Reporter,
 ): Promise<void> => {
     const filename = `${name}.${drive.format}`;
 
@@ -26,6 +28,7 @@ export const build = async (
                     output: filename,
                     cwd: destination,
                     image: sdkImage,
+                    reporter,
                 });
                 break;
             }
@@ -35,6 +38,7 @@ export const build = async (
                     output: filename,
                     cwd: destination,
                     image: sdkImage,
+                    reporter,
                 });
                 break;
             }
