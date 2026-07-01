@@ -20,7 +20,7 @@ export const empty = (
         output: string;
     } & DockerFallbackOptions,
 ) => {
-    const { size, output } = options;
+    const { size, output, reporter } = options;
     const blocks = Math.ceil(size / BLOCK_SIZE); // size in blocks
     return execaDockerFallback(
         "xgenext2fs",
@@ -32,7 +32,7 @@ export const empty = (
             blocks.toString(),
             output,
         ],
-        options,
+        { ...options, reporter },
     );
 };
 
@@ -44,12 +44,12 @@ export const fromDirectory = (
         output: string;
     } & DockerFallbackOptions,
 ) => {
-    const { cwd, extraSize, image, input, output } = options;
+    const { cwd, extraSize, image, input, output, reporter } = options;
     const extraBlocks = Math.ceil(extraSize / BLOCK_SIZE);
     return execaDockerFallback(
         "xgenext2fs",
         [...baseArgs({ extraBlocks }), "--root", input, output],
-        { cwd, image },
+        { cwd, image, reporter },
     );
 };
 
@@ -61,12 +61,12 @@ export const fromTar = (
         output: string;
     } & DockerFallbackOptions,
 ) => {
-    const { cwd, extraSize, image, input, output } = options;
+    const { cwd, extraSize, image, input, output, reporter } = options;
     const extraBlocks = Math.ceil(extraSize / BLOCK_SIZE);
     return execaDockerFallback(
         "xgenext2fs",
         [...baseArgs({ extraBlocks }), "--tarball", input, output],
-        { cwd, image },
+        { cwd, image, reporter },
     );
 };
 

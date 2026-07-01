@@ -1,9 +1,16 @@
 import { ExecaError, execa, type Options } from "execa";
 import os from "node:os";
 
+export type Reporter = (line: string) => void;
+
 export type DockerFallbackOptions =
-    | { image: string; forceDocker: true; tty?: boolean }
-    | { image?: string; forceDocker?: false; tty?: boolean };
+    | { image: string; forceDocker: true; tty?: boolean; reporter?: Reporter }
+    | {
+          image?: string;
+          forceDocker?: false;
+          tty?: boolean;
+          reporter?: Reporter;
+      };
 
 /**
  * Calls execa and falls back to docker run if command (on the host) fails
@@ -13,11 +20,21 @@ export type DockerFallbackOptions =
  * @returns return of execa
  */
 export type ExecaOptionsDockerFallback = Options & DockerFallbackOptions;
+
+const pipeReporter = (proc: ReturnType<typeof execa>, reporter: Reporter) => {
+    proc.stderr?.on("data", (chunk: Buffer) => {
+        for (const line of chunk.toString().split("\n")) {
+            if (line.trim()) reporter(line.trimEnd());
+        }
+    });
+};
+
 export const execaDockerFallback = async (
     command: string,
     args: readonly string[],
     options: ExecaOptionsDockerFallback,
 ) => {
+    const { reporter } = options;
     try {
         if (options.forceDocker) {
             const error = new ExecaError();
@@ -41,11 +58,13 @@ export const execaDockerFallback = async (
                     "--user",
                     `${userInfo.uid}:${userInfo.gid}`,
                 ];
-                return await execa(
+                const proc = execa(
                     "docker",
                     ["run", ...dockerOpts, options.image, command, ...args],
                     options,
                 );
+                if (reporter) pipeReporter(proc, reporter);
+                return await proc;
             }
         }
         throw error;

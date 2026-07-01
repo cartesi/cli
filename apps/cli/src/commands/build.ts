@@ -31,9 +31,20 @@ const buildDriveTask = (
     task: async (ctx, task) => {
         const { config, debug, destination } = ctx;
         const sdk = config.sdk;
+        const reporter = (line: string) => {
+            task.output = line;
+        };
+
         switch (drive.builder) {
             case "directory": {
-                await buildDirectory(name, drive, sdk, destination, debug);
+                await buildDirectory(
+                    name,
+                    drive,
+                    sdk,
+                    destination,
+                    debug,
+                    reporter,
+                );
                 break;
             }
             case "docker": {
@@ -43,6 +54,7 @@ const buildDriveTask = (
                     sdk,
                     destination,
                     debug,
+                    reporter,
                 );
                 if (imageInfo && name === "root") {
                     // only set image info for root drive
@@ -55,7 +67,7 @@ const buildDriveTask = (
                 break;
             }
             case "tar": {
-                await buildTar(name, drive, sdk, destination);
+                await buildTar(name, drive, sdk, destination, reporter);
                 break;
             }
             case "none": {
@@ -104,7 +116,13 @@ export const createBuildCommand = () => {
             await fs.emptyDir(destination); // XXX: make it less error prone
 
             // build context
-            const ctx = { config, debug, destination, imageInfo: undefined };
+            const ctx = {
+                config,
+                debug,
+                destination,
+                verbose,
+                imageInfo: undefined,
+            };
 
             // tasks to build drives
             const driveTasks = Object.entries(config.drives).map(
