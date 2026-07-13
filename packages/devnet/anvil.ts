@@ -1,5 +1,68 @@
 import { $ } from "bun";
 import pRetry from "p-retry";
+import { SemVer } from "semver";
+
+/**
+ * Represents the output of the `anvil --version` command after parsing it into a structured format.
+ * Type defined based on anvil version 1.4.3-v1.4.3 output.
+ *
+ * @example
+ *  // anvil Version: 1.4.3-v1.4.3
+ *  // Commit SHA: fa9f934bdac4bcf57e694e852a61997dda90668a
+ *  // Build Timestamp: 2025-10-22T04:37:38.758664000Z (1761107858)
+ *  // Build Profile: maxperf
+ *
+ */
+type AnvilVersionStdout = {
+    anvil_version: string;
+    commit_sha: string;
+    build_timestamp: string;
+    build_profile: string;
+};
+
+type AnvilVersionStdoutKeys = keyof AnvilVersionStdout;
+
+const normalizeAnvilVersionOutput = (output: string) => {
+    return output.split("\n").reduce(
+        (curr, next) => {
+            const trimmedLine = next.trim();
+            const firstColonIndex = trimmedLine.indexOf(":");
+
+            if (firstColonIndex === -1) return curr;
+
+            const prop = trimmedLine.slice(0, firstColonIndex);
+            const value = trimmedLine.slice(firstColonIndex + 1);
+            const key = prop
+                .trim()
+                .toLowerCase()
+                .replace(/\s+/g, "_") as AnvilVersionStdoutKeys;
+
+            if (key && value) {
+                curr[key] = value.trim();
+            }
+
+            return curr;
+        },
+        {} as Partial<AnvilVersionStdout>,
+    );
+};
+
+/**
+ *  Get the clean version of an anvil version string.
+ *  Anvil uses semver with a quirk by suffixing the version with tag-names e.g. 1.4.3-v1.4.3,
+ *  so we need to parse it with semver and get the clean version.
+ * @param anvilVersion
+ * @returns
+ */
+const getCleanVersion = (anvilVersion: string) => {
+    try {
+        const semver = new SemVer(anvilVersion, { loose: true });
+        return `${semver.major}.${semver.minor}.${semver.patch}`;
+    } catch {
+        // If the version is not a valid semver, return null
+        return null;
+    }
+};
 
 /**
  * Get the installed anvil version
@@ -8,19 +71,21 @@ import pRetry from "p-retry";
 export const version = async () => {
     const output = await $`anvil --version`.text();
 
-    // anvil Version: 1.4.3-v1.4.3
-    // Commit SHA: fa9f934bdac4bcf57e694e852a61997dda90668a
-    // Build Timestamp: 2025-10-22T04:37:38.758664000Z (1761107858)
-    // Build Profile: maxperf
+    const data = normalizeAnvilVersionOutput(output);
 
-    // parse the output to get the version
-    const versionMatch = output.match(
-        /Version: (\d+\.\d+\.\d+)-v(\d+\.\d+\.\d+)/,
-    );
-    if (!versionMatch) {
+    if (!data.anvil_version) {
         throw new Error("Failed to parse anvil version. Is anvil installed?");
     }
-    return versionMatch[1];
+
+    const cleanVersion = getCleanVersion(data.anvil_version);
+
+    if (!cleanVersion) {
+        throw new Error(
+            `Anvil version "${data.anvil_version}" is not a valid semver.`,
+        );
+    }
+
+    return cleanVersion;
 };
 
 type StartOptions = {
