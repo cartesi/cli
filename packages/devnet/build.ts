@@ -16,7 +16,7 @@ import {
 import * as anvil from "./anvil";
 import { downloadAndExtract } from "./download";
 
-const ANVIL_VERSION = "1.4.3";
+const ANVIL_VERSION = "1.5.1";
 const ROLLUPS_VERSION = "3.0.0-alpha.6";
 const PRT_VERSION = "3.0.0-alpha.3";
 
