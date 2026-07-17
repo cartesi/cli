@@ -361,6 +361,7 @@ rm /tmp/pimlico-alto.tgz
 mkdir -p /usr/share/cartesi
 cp -r "$(npm root -g)/@cartesi/devnet/deployments" /usr/share/cartesi/
 cp "$(npm root -g)/@cartesi/devnet/anvil_state.json" /usr/share/cartesi/
+echo ${CARTESI_DEVNET_VERSION} > /usr/share/cartesi/DEVNET_VERSION
 EOF
 
 ENV LC_ALL=en_US.UTF-8
