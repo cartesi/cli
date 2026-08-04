@@ -149,7 +149,8 @@ RUN <<EOF
 apt-get install -y --no-install-recommends \
     libslirp0 \
     libgomp1 \
-    lua5.4
+    lua5.4 \
+    lua-lpeg
 rm -rf /var/lib/apt/lists/*
 EOF
 
@@ -171,8 +172,8 @@ RUN <<EOF
 curl -fsSL https://github.com/cartesi/machine-emulator/releases/download/v${CARTESI_MACHINE_EMULATOR_VERSION}/machine-emulator_${TARGETARCH}.deb \
     -o /tmp/machine-emulator.deb
 case "${TARGETARCH}" in
-    amd64) echo "46b2f37b889091df3b89a8909467935f8dd4a1426eeb0491b6a346a12f0c341c  /tmp/machine-emulator.deb" | sha256sum --check ;;
-    arm64) echo "27ea10571335ad174b75388e7de54a3d3434bd607554d8c0bdf6abca47ceae0d  /tmp/machine-emulator.deb" | sha256sum --check ;;
+    amd64) echo "5f13034f43454c340062c677146daabe77c587cee1bd60342c95b8ad8f1463a3  /tmp/machine-emulator.deb" | sha256sum --check ;;
+    arm64) echo "866f0bde2db53b9b8e6a6eac85e5ad4116338379fa25cdfcc5e4bf835f948bb1  /tmp/machine-emulator.deb" | sha256sum --check ;;
     *) echo "unsupported architecture: ${TARGETARCH}"; exit 1 ;;
 esac
 apt-get install -y --no-install-recommends /tmp/machine-emulator.deb
@@ -279,7 +280,7 @@ FROM scratch AS kernel-image
 ARG CARTESI_IMAGE_KERNEL_VERSION
 ARG CARTESI_LINUX_KERNEL_VERSION
 
-ADD --checksum=sha256:65dd100ff6204346ac2f50f772721358b5c1451450ceb39a154542ee27b4c947 \
+ADD --checksum=sha256:5c900060da2db2bfa84cd39cd9cd722988c83c42225f3cac55f2d3157e48f32f \
     https://github.com/cartesi/image-kernel/releases/download/v${CARTESI_IMAGE_KERNEL_VERSION}/linux-${CARTESI_LINUX_KERNEL_VERSION}.bin \
     /usr/share/cartesi-machine/images/linux.bin
 
@@ -289,7 +290,7 @@ FROM base AS kernel-headers
 ARG CARTESI_IMAGE_KERNEL_VERSION
 ARG CARTESI_LINUX_KERNEL_VERSION
 
-ADD --checksum=sha256:4a4714bfa8c0028cb443db2036fad4f8da07065c1cb4ac8e0921a259fddd731b \
+ADD --checksum=sha256:e3f140a8632fcfb18218e7aea32a7d002124d3dce5ba8121ae061ab7f40a6cf4 \
     https://github.com/cartesi/image-kernel/releases/download/v${CARTESI_IMAGE_KERNEL_VERSION}/linux-headers-${CARTESI_LINUX_KERNEL_VERSION}.tar.xz \
     /tmp/linux-headers-${CARTESI_LINUX_KERNEL_VERSION}.tar.xz
 RUN tar -xJf "/tmp/linux-headers-${CARTESI_LINUX_KERNEL_VERSION}.tar.xz" -C /
