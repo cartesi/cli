@@ -8,7 +8,7 @@ target "default" {
   args = {
     ALTO_VERSION                      = "1.2.7"
     ALTO_PACKAGE_VERSION              = "0.0.20"
-    CARTESI_BASE_IMAGE                = "docker.io/library/debian:trixie-20260610@sha256:fe7312b5f05bf5f43fad76bcd8945642e4e47a68aefd1b73f447615899d0fac1"
+    CARTESI_BASE_IMAGE                = "docker.io/library/debian:trixie-20260803@sha256:34cd9e9fd437c0a095ec39cb2e73422c9f30821b0d0848ed74fd0d43bae4d958"
     CARTESI_DEVNET_VERSION            = "2.0.0-alpha.14"
     CARTESI_IMAGE_KERNEL_VERSION      = "0.20.0"
     CARTESI_LINUX_KERNEL_VERSION      = "6.5.13-ctsi-1-v0.20.0"
