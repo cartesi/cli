@@ -20,7 +20,7 @@ target "default" {
     NITRO_VERSION                     = "c937fa4fd202074dd250086ebd92de6884968b84" # v0.8.1
     NODE_VERSION                      = "24.14.0"
     NVM_VERSION                       = "977563e97ddc66facf3a8e31c6cff01d236f09bd" # 0.40.3
-    POSTGRES_BASE_IMAGE               = "docker.io/library/postgres:17-trixie@sha256:2203e6282d9e7de7c24d7da234e2a744fb325df366a3fd8ed940e8abbee39527"
+    POSTGRES_BASE_IMAGE               = "docker.io/library/postgres:17-trixie@sha256:7958605b474b3d264a969cb3a123d6aa00ad1e1fe9da8a69984dabb704d93317"
     SQUASHFS_TOOLS_VERSION            = "bad1d213ab6df587d6fa0ef7286180fbf7b86167" # 4.7.4
     SU_EXEC_VERSION                   = "0.3"
     TELEGRAF_VERSION                  = "1.38.0"
