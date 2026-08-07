@@ -137,6 +137,23 @@ telegraf --version
 EOF
 
 ################################################################################
+# install cartesi-sequencer
+FROM base AS cartesi-sequencer
+ARG CARTESI_SEQUENCER_VERSION
+ARG TARGETARCH
+RUN <<EOF
+curl -fsSL https://github.com/cartesi/sequencer/releases/download/v${CARTESI_SEQUENCER_VERSION}/sequencer-v${CARTESI_SEQUENCER_VERSION}-linux-${TARGETARCH}.tar.gz \
+    -o /tmp/sequencer.tar.gz
+case "${TARGETARCH}" in
+    amd64) echo "4bf51df82406244769bfa2c9b75021099fe39f399cc2092306b4d6082e3a3d3d /tmp/sequencer.tar.gz" | sha256sum --check ;;
+    arm64) echo "a972fc723d8c8824170831ee0d5ee7afd51758da5a2e4973715452565afc319c /tmp/sequencer.tar.gz" | sha256sum --check ;;
+    *) echo "unsupported architecture: ${TARGETARCH}"; exit 1 ;;
+esac
+tar -xvzf /tmp/sequencer.tar.gz -C /usr/local/bin --strip-components=1 sequencer-v${CARTESI_SEQUENCER_VERSION}-linux-${TARGETARCH}/sequencer
+sequencer --version
+EOF
+
+################################################################################
 # cartesi rollups-runtime target
 FROM base AS rollups-runtime
 ARG CARTESI_MACHINE_EMULATOR_VERSION
@@ -202,6 +219,7 @@ COPY --from=nitro /usr/local/src/nitro /usr/local/bin/
 COPY --from=nitro /usr/local/src/nitroctl /usr/local/bin/
 COPY --from=tini /usr/local/bin/tini /usr/local/bin/
 COPY --from=telegraf /usr/local/bin/telegraf /usr/local/bin/
+COPY --from=cartesi-sequencer /usr/local/bin/sequencer /usr/local/bin/
 COPY skel/ /
 RUN <<EOF
 mkdir -p /run/nitro
