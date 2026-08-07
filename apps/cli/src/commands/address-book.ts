@@ -1,6 +1,6 @@
 import { Command } from "@commander-js/extra-typings";
 import Table from "cli-table3";
-import { getAddressBook, getProjectName } from "../base.js";
+import { addressBook as getAddressBook } from "../api/address-book.js";
 
 export const createAddressBookCommand = () => {
     return new Command("address-book")
@@ -18,8 +18,7 @@ export const createAddressBookCommand = () => {
         )
         .action(async (contract, options, command) => {
             const { json } = options;
-            const projectName = getProjectName(options);
-            const addressBook = await getAddressBook({ projectName });
+            const addressBook = await getAddressBook(options);
 
             if (contract !== undefined) {
                 // look up a single contract by name (case-insensitive)

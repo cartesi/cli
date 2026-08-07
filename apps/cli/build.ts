@@ -7,11 +7,20 @@ const define = {
     ),
 };
 
-// build for npm package
+// build for npm package: the CLI entrypoint (executable) and the library entrypoint
 await Bun.build({
     banner: "#!/usr/bin/env node",
     define,
     entrypoints: ["./src/index.ts"],
+    minify: true,
+    outdir: "dist",
+    sourcemap: true,
+    target: "node",
+});
+
+await Bun.build({
+    define,
+    entrypoints: ["./src/lib.ts"],
     minify: true,
     outdir: "dist",
     sourcemap: true,

@@ -1,9 +1,6 @@
 import { describe, expect, it } from "bun:test";
-import {
-    buildLogsArgs,
-    createLogsCommand,
-    selectLogServices,
-} from "../../../src/commands/logs";
+import { buildLogsArgs, selectLogServices } from "../../../src/api/logs";
+import { createLogsCommand } from "../../../src/commands/logs";
 
 describe("logs command", () => {
     // as `docker compose ps --services --all` lists an environment with a

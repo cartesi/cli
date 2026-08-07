@@ -1,4 +1,4 @@
-import { ExecaError, execa, type Options } from "execa";
+import { ExecaError, execa, type Options, type Result } from "execa";
 import os from "node:os";
 
 export type Reporter = (line: string) => void;
@@ -29,11 +29,13 @@ const pipeReporter = (proc: ReturnType<typeof execa>, reporter: Reporter) => {
     });
 };
 
+// the return type is explicit because the type execa infers for it cannot be
+// named from outside its own package, which breaks declaration emit
 export const execaDockerFallback = async (
     command: string,
     args: readonly string[],
     options: ExecaOptionsDockerFallback,
-) => {
+): Promise<Result> => {
     const { reporter } = options;
     try {
         if (options.forceDocker) {

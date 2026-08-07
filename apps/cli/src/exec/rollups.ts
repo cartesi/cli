@@ -730,9 +730,10 @@ export const waitHealthyEnvironment = async (options: {
     name?: string;
     port: number;
     projectName: string;
+    renderer?: "default" | "silent" | "verbose";
     services: string[];
 }) => {
-    const { name, port, projectName, services } = options;
+    const { name, port, projectName, renderer = "default", services } = options;
 
     // select subset of optional services
     const optionalServices =
@@ -757,7 +758,7 @@ export const waitHealthyEnvironment = async (options: {
             });
         });
 
-    const tasks = new Listr(monitorTasks, { concurrent: true });
+    const tasks = new Listr(monitorTasks, { concurrent: true, renderer });
     await tasks.run();
 };
 
