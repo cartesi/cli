@@ -3,7 +3,6 @@ import chalk from "chalk";
 import ora from "ora";
 import {
     type Address,
-    type PublicClient,
     erc20Abi,
     formatUnits,
     getAddress,
@@ -22,7 +21,7 @@ import {
     bigintInput,
     getInputApplicationAddress,
 } from "../../prompts.js";
-import { connect } from "../../wallet.js";
+import { connect, type DevnetClient } from "../../wallet.js";
 import type { DepositCommandOpts } from "../deposit.js";
 
 type ERC20Token = {
@@ -33,7 +32,7 @@ type ERC20Token = {
 };
 
 const readToken = async (
-    publicClient: PublicClient,
+    publicClient: DevnetClient,
     address: Address,
 ): Promise<ERC20Token> => {
     const args = { abi: erc20Abi, address };
@@ -58,7 +57,7 @@ const readToken = async (
 };
 
 const parseToken = async (options: {
-    testClient: PublicClient;
+    testClient: DevnetClient;
     token?: string;
 }): Promise<ERC20Token> => {
     const { testClient } = options;
