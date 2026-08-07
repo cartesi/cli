@@ -1,22 +1,8 @@
 import { Command } from "@commander-js/extra-typings";
-import chalk from "chalk";
-import ora from "ora";
-import {
-    type Address,
-    type PublicClient,
-    erc20Abi,
-    formatUnits,
-    getAddress,
-    isAddress,
-    isHex,
-    parseUnits,
-} from "viem";
+import { type Address, getAddress, isAddress, isHex } from "viem";
+import { depositErc20, readErc20Token } from "../../api/deposit/erc20.js";
 import { getProjectName } from "../../base.js";
-import {
-    erc20PortalAbi,
-    erc20PortalAddress,
-    testFungibleTokenAddress,
-} from "../../contracts.js";
+import { testFungibleTokenAddress } from "../../contracts.js";
 import {
     addressInput,
     bigintInput,
@@ -24,55 +10,15 @@ import {
 } from "../../prompts.js";
 import { connect } from "../../wallet.js";
 import type { DepositCommandOpts } from "../deposit.js";
+import { reportDepositError } from "./error.js";
 
-type ERC20Token = {
-    address: Address;
-    name: string;
-    symbol: string;
-    decimals: number;
-};
-
-const readToken = async (
-    publicClient: PublicClient,
-    address: Address,
-): Promise<ERC20Token> => {
-    const args = { abi: erc20Abi, address };
-    const symbol = await publicClient.readContract({
-        ...args,
-        functionName: "symbol",
-    });
-    const name = await publicClient.readContract({
-        ...args,
-        functionName: "name",
-    });
-    const decimals = await publicClient.readContract({
-        ...args,
-        functionName: "decimals",
-    });
-    return {
-        address,
-        name,
-        symbol,
-        decimals,
-    };
-};
-
-const parseToken = async (options: {
-    testClient: PublicClient;
-    token?: string;
-}): Promise<ERC20Token> => {
-    const { testClient } = options;
-
-    const address =
-        options.token && isAddress(options.token)
-            ? getAddress(options.token)
-            : await addressInput({
-                  message: "Token address",
-                  default: testFungibleTokenAddress,
-              });
-
-    return readToken(testClient, address);
-};
+const parseTokenAddress = async (token?: string): Promise<Address> =>
+    token && isAddress(token)
+        ? getAddress(token)
+        : addressInput({
+              message: "Token address",
+              default: testFungibleTokenAddress,
+          });
 
 export const createErc20Command = () => {
     return new Command<[], Record<string, never>, DepositCommandOpts>("erc20")
@@ -87,18 +33,16 @@ export const createErc20Command = () => {
             const projectName = getProjectName(command.optsWithGlobals());
 
             // connect to anvil
-            const testClient = await connect(command.optsWithGlobals());
+            const client = await connect(command.optsWithGlobals());
 
             // the input sender, impersonated
             const account =
                 from && isAddress(from)
                     ? getAddress(from)
-                    : (await testClient.getAddresses())[0];
+                    : (await client.getAddresses())[0];
 
-            const token = await parseToken({
-                testClient,
-                token: options.token,
-            });
+            const tokenAddress = await parseTokenAddress(options.token);
+            const token = await readErc20Token(client, tokenAddress);
 
             // get dapp address from local node, or ask
             const application = await getInputApplicationAddress({
@@ -108,7 +52,7 @@ export const createErc20Command = () => {
 
             const { decimals, symbol } = token;
             const amount = amountStr
-                ? parseUnits(amountStr, decimals)
+                ? amountStr
                 : await bigintInput({
                       message: `Amount (${symbol})`,
                       decimals,
@@ -118,64 +62,19 @@ export const createErc20Command = () => {
                 ? options.execLayerData
                 : "0x";
 
-            // progress spinner
-            const progress = ora();
-
-            // check balance
-            const balance = await testClient.readContract({
-                abi: erc20Abi,
-                address: token.address,
-                functionName: "balanceOf",
-                args: [account],
-            });
-            if (balance < amount) {
-                progress.fail("Insufficient balance");
-                return;
-            }
-
-            // check allowance
-            const allowance = await testClient.readContract({
-                abi: erc20Abi,
-                address: token.address,
-                functionName: "allowance",
-                args: [account, erc20PortalAddress],
-            });
-
-            // for messages
-            const amountLabel = `${chalk.cyan(formatUnits(amount, decimals))} ${symbol}`;
-
-            // approve if needed
-            if (allowance < amount) {
-                progress.start(`Approving ${amountLabel}...`);
-                const { request } = await testClient.simulateContract({
-                    abi: erc20Abi,
-                    account,
-                    address: token.address,
-                    functionName: "approve",
-                    args: [erc20PortalAddress, amount],
+            try {
+                await depositErc20({
+                    amount,
+                    application,
+                    client,
+                    execLayerData,
+                    from: account,
+                    progress: "default",
+                    projectName,
+                    token: token.address,
                 });
-                const hash = await testClient.writeContract(request);
-                await testClient.waitForTransactionReceipt({ hash });
-                progress.succeed(`Approved ${amountLabel}`);
+            } catch (e: unknown) {
+                reportDepositError(e);
             }
-
-            // simulate deposit call
-            const { request } = await testClient.simulateContract({
-                abi: erc20PortalAbi,
-                account,
-                address: erc20PortalAddress,
-                functionName: "depositERC20Tokens",
-                args: [token.address, application, amount, execLayerData],
-            });
-
-            // send deposit
-            progress.start(
-                `Depositing ${amountLabel} to ${chalk.cyan(application)}...`,
-            );
-            const hash = await testClient.writeContract(request);
-            await testClient.waitForTransactionReceipt({ hash });
-            progress.succeed(
-                `Deposited ${amountLabel} to ${chalk.cyan(application)}`,
-            );
         });
 };

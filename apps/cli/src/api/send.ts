@@ -10,10 +10,8 @@ import {
     parseAbiParameters,
     stringToHex,
 } from "viem";
-import { getProjectName } from "../base.js";
 import { inputBoxAbi, inputBoxAddress } from "../contracts.js";
-import { getApplicationAddress } from "../exec/rollups.js";
-import { connect, type DevnetClient } from "../wallet.js";
+import { type ConnectionOptions, resolveConnection } from "./connection.js";
 
 /** Encoding of an application input. */
 export type InputEncoding = "abi" | "abi-packed" | "hex" | "string";
@@ -127,43 +125,14 @@ export const encodeInput = async (
     return undefined;
 };
 
-export type SendOptions = EncodeInputOptions & {
-    /** Input payload, encoded according to `encoding`. */
-    input?: string;
+export type SendOptions = ConnectionOptions &
+    EncodeInputOptions & {
+        /** Input payload, encoded according to `encoding`. */
+        input?: string;
 
-    /** Input payload already encoded as hex. Takes precedence over `input`. */
-    payload?: Hex;
-
-    /**
-     * Address of the application the input is sent to.
-     * @default the application deployed to the local node
-     */
-    application?: Address;
-
-    /**
-     * Address of the input sender, which is impersonated.
-     * @default the first account of the devnet
-     */
-    from?: Address;
-
-    /**
-     * Name of the project (used by docker compose and cartesi-rollups-node).
-     * @default basename of the current working directory
-     */
-    projectName?: string;
-
-    /**
-     * RPC URL of the Cartesi Devnet.
-     * @default the anvil of the running project
-     */
-    rpcUrl?: string;
-
-    /**
-     * Client to send the input with.
-     * @default a client connected to the devnet of the running project
-     */
-    client?: DevnetClient;
-};
+        /** Input payload already encoded as hex. Takes precedence over `input`. */
+        payload?: Hex;
+    };
 
 export type SendResult = {
     /** Address of the application the input was sent to. */
@@ -185,8 +154,6 @@ export type SendResult = {
  * @returns the input sent, and the transaction that added it to the input box
  */
 export const send = async (options: SendOptions): Promise<SendResult> => {
-    const projectName = getProjectName(options);
-
     // encode the payload, unless it is already encoded
     const payload =
         options.payload ?? (await encodeInput(options.input, options));
@@ -194,26 +161,7 @@ export const send = async (options: SendOptions): Promise<SendResult> => {
         throw new Error("Undefined input payload");
     }
 
-    // resolve the application address from the local node, if not provided
-    const application =
-        options.application ?? (await getApplicationAddress({ projectName }));
-    if (!application) {
-        throw new Error(
-            `Unable to resolve the address of the application of project '${projectName}', make sure it is deployed, or define 'application'`,
-        );
-    }
-
-    // connect to anvil, without prompting for the RPC URL
-    const client =
-        options.client ??
-        (await connect({
-            interactive: false,
-            projectName,
-            rpcUrl: options.rpcUrl,
-        }));
-
-    // the input sender, impersonated
-    const from = options.from ?? (await client.getAddresses())[0];
+    const { application, client, from } = await resolveConnection(options);
 
     const { request } = await client.simulateContract({
         address: inputBoxAddress,
