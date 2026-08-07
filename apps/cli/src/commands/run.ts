@@ -1,46 +1,20 @@
-import {
-    Command,
-    type CommandUnknownOpts,
-    Option,
-} from "@commander-js/extra-typings";
+import { Command, Option } from "@commander-js/extra-typings";
 import { AbortPromptError, ExitPromptError } from "@inquirer/core";
 import chalk from "chalk";
 import { ExecaError } from "execa";
-import getPort, { portNumbers } from "get-port";
 import ora from "ora";
-import {
-    type Address,
-    createPublicClient,
-    type Hex,
-    http,
-    numberToHex,
-} from "viem";
-import {
-    getApplicationConfig,
-    getMachineHash,
-    getProjectName,
-} from "../base.js";
+import { build } from "../api/build.js";
+import { logs } from "../api/logs.js";
+import { run, type RunResult } from "../api/run.js";
 import { nodeAllowedEnvironmentVariables } from "../compose/node.js";
-import {
-    DEFAULT_SDK_VERSION,
-    PREFERRED_PORT,
-    type WithdrawalConfig,
-} from "../config.js";
+import { DEFAULT_SDK_VERSION } from "../config.js";
 import {
     AVAILABLE_SERVICES,
-    deployApplication,
-    host,
-    removeApplication,
     getDeployments,
     type RollupsDeployment,
-    startEnvironment,
-    stopEnvironment,
     TERMINAL_APPLICATION_STATUSES,
-    waitHealthyEnvironment,
 } from "../exec/rollups.js";
 import { keySelect } from "../prompts.js";
-import type { ForkConfig } from "../types/chain.js";
-import { assertForkConfig } from "../validations.js";
 
 const commaSeparatedList = (value: string) => value.split(",");
 
@@ -76,31 +50,14 @@ const reportApplicationStatus = (deployment: RollupsDeployment) => {
 };
 
 const shell = async (options: {
-    build?: CommandUnknownOpts;
-    deployment?: RollupsDeployment;
-    epochLength: number;
-    log?: CommandUnknownOpts;
-    projectName: string;
-    prt?: boolean;
-    salt: number;
-    sdk: string;
-    withdrawalConfig?: WithdrawalConfig;
-    claimStagingPeriod: number;
+    config: string[];
+    node: RunResult;
+    verbose: boolean;
 }) => {
-    const {
-        build,
-        epochLength,
-        log,
-        projectName,
-        prt,
-        sdk,
-        withdrawalConfig,
-        claimStagingPeriod,
-    } = options;
+    const { config, node, verbose } = options;
+    const { projectName } = node;
 
-    let lastDeployment = options.deployment;
-    let salt = options.salt;
-    let lastStatus = lastDeployment?.status;
+    let lastStatus = node.deployment?.status;
     let pendingReport: RollupsDeployment | undefined;
 
     /**
@@ -109,7 +66,7 @@ const shell = async (options: {
      * here -- the caller aborts the prompt and reports once it has closed.
      */
     const pollStatus = async (abort: () => void) => {
-        const address = lastDeployment?.address;
+        const address = node.deployment?.address;
         if (!address) {
             return;
         }
@@ -154,12 +111,11 @@ const shell = async (options: {
             switch (option) {
                 case "l": {
                     try {
-                        await log?.parseAsync(
-                            ["--project-name", projectName, "--follow"],
-                            {
-                                from: "user",
-                            },
-                        );
+                        await logs({
+                            follow: true,
+                            projectName,
+                            stream: true,
+                        });
                     } catch (error: unknown) {
                         if (error instanceof ExecaError) {
                             // just continue gracefully
@@ -173,25 +129,15 @@ const shell = async (options: {
                 }
                 case "b": {
                     // build
-                    await build?.parseAsync([], { from: "user" });
+                    await build({
+                        config,
+                        progress: verbose ? "verbose" : "default",
+                    });
 
                     // redeploy
-                    const hash = await getMachineHash({ sdk });
-                    if (hash) {
-                        if (lastDeployment) {
-                            await undeploy({ projectName });
-                        }
-                        lastDeployment = await deploy({
-                            consensus: lastDeployment?.consensus,
-                            epochLength,
-                            hash,
-                            projectName,
-                            prt,
-                            salt: numberToHex(salt++, { size: 32 }),
-                            withdrawalConfig,
-                            claimStagingPeriod,
-                        });
-                        lastStatus = lastDeployment?.status;
+                    const deployment = await node.deploy();
+                    if (deployment) {
+                        lastStatus = deployment.status;
                         pendingReport = undefined;
                     }
 
@@ -215,89 +161,6 @@ const shell = async (options: {
             clearInterval(watcher);
         }
     }
-};
-
-const undeploy = async (options: { projectName: string }) => {
-    const { projectName } = options;
-    const progress = ora(`${chalk.cyan(projectName)} undeploying...`).start();
-    await removeApplication({
-        application: projectName,
-        force: true,
-        projectName,
-    });
-    progress.succeed(`${chalk.cyan(projectName)} undeployed`);
-};
-
-const deploy = async (options: {
-    consensus?: Address;
-    epochLength: number;
-    hash: Hex;
-    projectName: string;
-    prt?: boolean;
-    salt: Hex;
-    withdrawalConfig?: WithdrawalConfig;
-    claimStagingPeriod: number;
-}) => {
-    const {
-        consensus,
-        epochLength,
-        hash,
-        projectName,
-        prt,
-        salt,
-        withdrawalConfig,
-        claimStagingPeriod,
-    } = options;
-
-    // deploy application to node (onchain and offchain)
-    const progress = ora(
-        `deploying ${chalk.cyan(hash)} as ${chalk.cyan(projectName)}`,
-    );
-
-    const application = await deployApplication({
-        consensus,
-        epochLength,
-        name: projectName,
-        projectName,
-        prt,
-        salt,
-        snapshotPath: "/var/lib/cartesi-rollups-node/snapshots/image",
-        withdrawalConfig,
-        claimStagingPeriod,
-    });
-    progress.succeed(
-        `${chalk.cyan(projectName)} machine hash is ${chalk.cyan(hash)}`,
-    );
-    progress.succeed(
-        `${chalk.cyan(projectName)} contract deployed at ${chalk.cyan(application.address)}`,
-    );
-    return application;
-};
-
-const configureFork = async (options: {
-    forkUrl?: string;
-    forkBlockNumber?: number;
-}): Promise<ForkConfig | undefined> => {
-    if (!options.forkUrl) {
-        return undefined;
-    }
-
-    const url = options.forkUrl;
-
-    // create a client to upstream so we can query it
-    const client = createPublicClient({
-        transport: http(url),
-    });
-
-    // use explicit fork-block-number or query from upstream
-    const blockNumber = options.forkBlockNumber
-        ? BigInt(options.forkBlockNumber)
-        : await client.getBlockNumber();
-
-    // need to query fork chainId if forkUrl is specified
-    const chainId = await client.getChainId();
-
-    return { blockNumber, chainId, url };
 };
 
 export const createRunCommand = () => {
@@ -392,24 +255,26 @@ export const createRunCommand = () => {
             [],
         )
         .option("-v, --verbose", "verbose output", false)
-        .action(async (options, program) => {
+        .action(async (options) => {
             const {
                 prt,
                 blockTime,
+                config,
                 cpus,
                 defaultBlock,
                 dryRun,
                 epochLength,
+                forkBlockNumber,
+                forkUrl,
                 memory,
+                port,
+                projectName,
                 runtimeVersion,
                 services,
                 verbose,
                 listSupportedVariables,
                 claimStagingPeriod,
-                config: configFiles,
             } = options;
-
-            const progress = ora();
 
             if (listSupportedVariables) {
                 const allowedVarsByService = {
@@ -431,39 +296,23 @@ export const createRunCommand = () => {
                 );
             }
 
-            // project name explicitly defined or the current directory name
-            const projectName = getProjectName(options);
-
-            // get application configuration (e.g. use withdrawal config if present)
-            const applicationConfig = getApplicationConfig(configFiles);
-
-            // resolve port number, using the first free port in a range, unless explicitly set
-            const port =
-                options.port ||
-                (await getPort({
-                    port: portNumbers(PREFERRED_PORT, PREFERRED_PORT + 10),
-                }));
-
-            // configure optional anvil fork
-            const forkConfig = await configureFork(options);
-
-            if (forkConfig) {
-                await assertForkConfig(forkConfig, { includePRT: prt });
-            }
-
             // if TTY is not attached, run on foreground (not detached)
-            const detach = process.stdin.isTTY;
+            const detach = !!process.stdin.isTTY;
 
-            // run compose environment (detached)
-            const { cmd, config } = await startEnvironment({
+            const node = await run({
                 blockTime,
+                claimStagingPeriod,
+                config,
                 cpus,
                 defaultBlock,
                 detach,
                 dryRun,
-                forkConfig,
+                epochLength,
+                forkBlockNumber,
+                forkUrl,
                 memory,
                 port,
+                progress: verbose ? "verbose" : "default",
                 projectName,
                 prt,
                 runtimeVersion,
@@ -471,44 +320,15 @@ export const createRunCommand = () => {
                 verbose,
             });
 
-            // host address
-            const address = `${host}:${port}`;
-
-            if (dryRun && config) {
+            if (dryRun) {
                 // just show the docker compose configuration and quit
-                process.stdout.write(config);
+                if (node.config) {
+                    process.stdout.write(node.config);
+                }
                 return;
             }
 
-            progress.succeed(
-                `${chalk.cyan(projectName)} starting at ${chalk.cyan(`${address}`)}`,
-            );
-
-            // wait for the environment to be healthy
-            await waitHealthyEnvironment({
-                name: projectName,
-                port,
-                projectName,
-                services,
-            });
-
-            // deploy the application
-            let deployment: RollupsDeployment | undefined;
-            let salt = 0;
-            const hash = await getMachineHash({
-                sdk: applicationConfig.sdk,
-            });
-            if (hash) {
-                deployment = await deploy({
-                    epochLength,
-                    hash,
-                    projectName,
-                    prt,
-                    salt: numberToHex(salt++, { size: 32 }),
-                    claimStagingPeriod,
-                    withdrawalConfig: applicationConfig?.withdrawalConfig,
-                });
-            } else {
+            if (!node.deployment) {
                 console.warn(
                     chalk.yellow(
                         "machine snapshot not found, waiting for build",
@@ -517,10 +337,12 @@ export const createRunCommand = () => {
             }
 
             const shutdown = async () => {
-                progress.start(`${chalk.cyan(projectName)} stopping...`);
+                const progress = ora().start(
+                    `${chalk.cyan(node.projectName)} stopping...`,
+                );
                 try {
-                    await stopEnvironment({ projectName });
-                    progress.succeed(`${chalk.cyan(projectName)} stopped`);
+                    await node.stop();
+                    progress.succeed(`${chalk.cyan(node.projectName)} stopped`);
                 } catch (e: unknown) {
                     progress.fail(
                         e instanceof Error ? e.message : "Unknown error",
@@ -534,30 +356,13 @@ export const createRunCommand = () => {
                 process.on("SIGINT", () => {});
                 process.on("SIGTERM", () => {});
 
-                const log = program.parent?.commands.find(
-                    (c) => c.name() === "logs",
-                );
-                const build = program.parent?.commands.find(
-                    (c) => c.name() === "build",
-                );
-                await shell({
-                    build,
-                    deployment,
-                    epochLength,
-                    log,
-                    projectName,
-                    prt,
-                    salt,
-                    sdk: applicationConfig.sdk,
-                    claimStagingPeriod,
-                    withdrawalConfig: applicationConfig?.withdrawalConfig,
-                });
+                await shell({ config, node, verbose });
                 await shutdown();
             } else {
                 process.on("SIGINT", shutdown);
                 process.on("SIGTERM", shutdown);
                 try {
-                    await cmd;
+                    await node.cmd;
                 } catch (error: unknown) {
                     if (error instanceof ExecaError) {
                         // just continue gracefully
