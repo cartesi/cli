@@ -52,7 +52,7 @@ export {
 } from "./exec/rollups.js";
 
 export type { ForkConfig } from "./types/chain.js";
-export { cartesi } from "./wallet.js";
+export { cartesi, type DevnetClient } from "./wallet.js";
 
 // emergency withdrawal, derived from the accounts drive of the built machine
 export {
