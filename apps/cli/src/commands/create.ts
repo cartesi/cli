@@ -1,22 +1,7 @@
 import { Command, Option } from "@commander-js/extra-typings";
 import chalk from "chalk";
 import ora from "ora";
-import { download } from "../template.js";
-
-export const DEFAULT_TEMPLATES_BRANCH = "prerelease/sdk-12";
-
-const TEMPLATES = [
-    "cpp",
-    "cpp-low-level",
-    "go",
-    "java",
-    "javascript",
-    "lua",
-    "python",
-    "ruby",
-    "rust",
-    "typescript",
-] as const;
+import { create, DEFAULT_TEMPLATES_BRANCH, TEMPLATES } from "../api/create.js";
 
 export const createCreateCommand = () => {
     return new Command("create")
@@ -34,7 +19,7 @@ export const createCreateCommand = () => {
         .action(async (name, { branch, template }) => {
             const spinner = ora("Creating application...").start();
             try {
-                const { dir } = await download(template, branch, name);
+                const { dir } = await create({ branch, name, template });
                 spinner.succeed(`Application created at ${chalk.cyan(dir)}`);
             } catch (e: unknown) {
                 spinner.fail(

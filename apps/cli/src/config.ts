@@ -95,7 +95,7 @@ export const DEFAULT_SDK_IMAGE = "cartesi/sdk";
 export const PREFERRED_PORT = 6751;
 
 type Builder = "directory" | "docker" | "empty" | "none" | "tar";
-type DriveFormat = "ext2" | "sqfs";
+export type DriveFormat = "ext2" | "sqfs";
 
 export type ImageInfo = {
     cmd: string[];

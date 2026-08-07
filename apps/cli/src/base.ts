@@ -28,7 +28,7 @@ import {
     testNonFungibleTokenAddress,
     testUsdWithdrawalOutputBuilderAddress,
 } from "./contracts.js";
-import { cartesiMachineStoredHash } from "./exec";
+import { cartesiMachineStoredHash } from "./exec/index.js";
 import { getApplicationAddress, getForkConfig } from "./exec/rollups.js";
 import type { PsResponse } from "./types/docker.js";
 import { assertForkConfig } from "./validations.js";
