@@ -9,7 +9,14 @@
     "type": "module",
     "homepage": "https://github.com/cartesi/cli",
     "license": "Apache-2.0",
-    "exports": "./dist/index.js",
+    "main": "./dist/lib.js",
+    "exports": {
+        ".": {
+            "types": "./dist/types/lib.d.ts",
+            "default": "./dist/lib.js"
+        },
+        "./package.json": "./package.json"
+    },
     "repository": "cartesi/cli",
     "files": [
         "/dist"
@@ -62,11 +69,12 @@
         "typescript": "^5.9.2"
     },
     "scripts": {
-        "build": "run-s clean codegen compile",
+        "build": "run-s clean codegen compile types",
         "clean": "rimraf dist",
         "codegen": "run-p codegen:wagmi",
         "codegen:wagmi": "wagmi generate",
         "compile": "bun build.ts",
+        "types": "tsc -p tsconfig.build.json",
         "lint": "biome lint",
         "posttest": "bun lint",
         "test": "bun test"
@@ -75,5 +83,5 @@
         "node": ">=20.0.0"
     },
     "bugs": "https://github.com/cartesi/cli/issues",
-    "types": "dist/index.d.ts"
+    "types": "./dist/types/lib.d.ts"
 }

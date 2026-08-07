@@ -1,12 +1,11 @@
 import { Command } from "@commander-js/extra-typings";
-import chalk from "chalk";
-import ora from "ora";
-import { formatUnits, getAddress, isAddress, isHex, parseUnits } from "viem";
+import { getAddress, isAddress, isHex } from "viem";
+import { depositEther } from "../../api/deposit/ether.js";
 import { getProjectName } from "../../base.js";
-import { etherPortalAbi, etherPortalAddress } from "../../contracts.js";
 import { bigintInput, getInputApplicationAddress } from "../../prompts.js";
 import { connect } from "../../wallet.js";
 import type { DepositCommandOpts } from "../deposit.js";
+import { reportDepositError } from "./error.js";
 
 export const createEtherCommand = () => {
     return new Command<[], Record<string, never>, DepositCommandOpts>("ether")
@@ -20,13 +19,13 @@ export const createEtherCommand = () => {
             const projectName = getProjectName(command.optsWithGlobals());
 
             // connect to anvil
-            const testClient = await connect(command.optsWithGlobals());
+            const client = await connect(command.optsWithGlobals());
 
             // the input sender, impersonated
             const account =
                 from && isAddress(from)
                     ? getAddress(from)
-                    : (await testClient.getAddresses())[0];
+                    : (await client.getAddresses())[0];
 
             // get dapp address from local node, or ask
             const application = await getInputApplicationAddress({
@@ -34,9 +33,9 @@ export const createEtherCommand = () => {
                 projectName,
             });
 
-            const { decimals, symbol } = testClient.chain.nativeCurrency;
+            const { decimals, symbol } = client.chain.nativeCurrency;
             const amount = amountStr
-                ? parseUnits(amountStr, decimals)
+                ? amountStr
                 : await bigintInput({
                       message: `Amount (${symbol})`,
                       decimals,
@@ -46,38 +45,18 @@ export const createEtherCommand = () => {
                 ? options.execLayerData
                 : "0x";
 
-            // progress spinner
-            const progress = ora();
-
-            // for messages
-            const amountLabel = `${chalk.cyan(formatUnits(amount, decimals))} ${symbol}`;
-
-            // check balance
-            const balance = await testClient.getBalance({
-                address: account,
-            });
-            if (balance < amount) {
-                progress.fail("Insufficient balance");
-                return;
+            try {
+                await depositEther({
+                    amount,
+                    application,
+                    client,
+                    execLayerData,
+                    from: account,
+                    progress: "default",
+                    projectName,
+                });
+            } catch (e: unknown) {
+                reportDepositError(e);
             }
-
-            const { request } = await testClient.simulateContract({
-                abi: etherPortalAbi,
-                account,
-                address: etherPortalAddress,
-                args: [application, execLayerData],
-                functionName: "depositEther",
-                value: amount,
-            });
-
-            // send deposit
-            progress.start(
-                `Depositing ${amountLabel} to ${chalk.cyan(application)}...`,
-            );
-            const hash = await testClient.writeContract(request);
-            await testClient.waitForTransactionReceipt({ hash });
-            progress.succeed(
-                `Deposited ${amountLabel} to ${chalk.cyan(application)}`,
-            );
         });
 };

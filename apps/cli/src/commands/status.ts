@@ -1,8 +1,7 @@
 import { Command } from "@commander-js/extra-typings";
 import chalk from "chalk";
 import Table from "cli-table3";
-import { getProjectName, getServiceState } from "../base.js";
-import { getDeployments } from "../exec/rollups.js";
+import { status } from "../api/status.js";
 
 export const createStatusCommand = () => {
     return new Command("status")
@@ -16,29 +15,22 @@ export const createStatusCommand = () => {
         .action(async (options) => {
             const { json } = options;
 
-            const projectName = getProjectName(options);
-
-            const status = await getServiceState({
-                projectName,
-                service: "rollups_node",
-            });
-            const deployments = await getDeployments({
-                projectName,
-            });
+            const { deployments, projectName, running, state } =
+                await status(options);
 
             if (json) {
                 process.stdout.write(
                     JSON.stringify({
-                        status,
+                        status: state,
                         deployments,
                     }),
                 );
             } else {
                 console.log(
-                    `${chalk.cyan(projectName)} is ${status === "running" ? chalk.green("running") : chalk.red("not running")}`,
+                    `${chalk.cyan(projectName)} is ${running ? chalk.green("running") : chalk.red("not running")}`,
                 );
 
-                if (status === "running") {
+                if (running) {
                     if (deployments.length === 0) {
                         console.log(chalk.red("no applications deployed"));
                     } else {

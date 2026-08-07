@@ -1,114 +1,10 @@
 import { Command, Option } from "@commander-js/extra-typings";
 import ora from "ora";
-import {
-    encodeAbiParameters,
-    encodePacked,
-    getAddress,
-    isAddress,
-    isHex,
-    parseAbiParameters,
-    stringToHex,
-} from "viem";
+import { getAddress, isAddress } from "viem";
+import { encodeInput, send } from "../api/send.js";
 import { getProjectName } from "../base.js";
-import { inputBoxAbi, inputBoxAddress } from "../contracts.js";
 import { bytesInput, getInputApplicationAddress } from "../prompts.js";
 import { connect } from "../wallet.js";
-
-const getInput = async (
-    input: string | undefined,
-    options: {
-        encoding?: "abi" | "abi-packed" | "hex" | "string";
-        abiParams?: string;
-    },
-): Promise<`0x${string}` | undefined> => {
-    const { encoding } = options;
-    if (input) {
-        if (encoding === "hex") {
-            // validate if is a hex value
-            if (!isHex(input)) {
-                throw new Error("input encoded as hex must start with 0x");
-            }
-            return input;
-        }
-        if (encoding === "string") {
-            // encode UTF-8 string as hex
-            return stringToHex(input);
-        }
-        if (encoding === "abi" || encoding === "abi-packed") {
-            const abiParams = options.abiParams;
-            if (!abiParams) {
-                throw new Error("Undefined input-abi-params");
-            }
-            const abiParameters = parseAbiParameters(abiParams);
-            // TODO: decode values
-            const values = input.split(",").map((v, index) => {
-                if (index >= abiParameters.length) {
-                    throw new Error(
-                        `Too many values, expected ${abiParameters.length} values based on --input-abi-params '${abiParams}', parsing value at index ${index} from input '${input}'`,
-                    );
-                }
-                const param = abiParameters[index];
-                switch (param.type) {
-                    case "string":
-                        return v;
-                    case "bool":
-                        if (v === "true") return true;
-                        if (v === "false") return false;
-                        throw new Error(`Invalid boolean value: ${v}`);
-                    case "uint":
-                    case "uint8":
-                    case "uint16":
-                    case "uint32":
-                    case "uint64":
-                    case "uint128":
-                    case "uint256":
-                    case "int":
-                    case "int8":
-                    case "int16":
-                    case "int32":
-                    case "int64":
-                    case "int128":
-                    case "int256":
-                        try {
-                            return BigInt(v);
-                        } catch {
-                            throw new Error(`Invalid uint value: ${v}`);
-                        }
-                    case "bytes":
-                        if (isHex(v)) {
-                            return v as `0x${string}`;
-                        }
-                        throw new Error(`Invalid bytes value: ${v}`);
-                    case "address":
-                        if (isAddress(v)) {
-                            return getAddress(v);
-                        }
-                        throw new Error(`Invalid address value: ${v}`);
-                    default:
-                        throw new Error(`Unsupported type ${param.type}`);
-                }
-            });
-            if (values.length !== abiParameters.length) {
-                throw new Error(
-                    `Not enough values, expected ${abiParameters.length} values based on --input-abi-params '${abiParams}', parsed ${values.length} values from input '${input}'`,
-                );
-            }
-            if (encoding === "abi") {
-                return encodeAbiParameters(abiParameters, values);
-            } else if (encoding === "abi-packed") {
-                const types = abiParameters.map((p) => p.type);
-                return encodePacked(types, values);
-            }
-        }
-        if (isHex(input)) {
-            // encoding not specified, if starts with 0x, assume hex
-            return input;
-        }
-        // encode UTF-8 string as hex
-        return stringToHex(input);
-    }
-    return undefined;
-};
 
 export const createSendCommand = () => {
     const command = new Command("send")
@@ -135,7 +31,7 @@ export const createSendCommand = () => {
 
             const projectName = getProjectName(options);
 
-            // connect to anvil
+            // connect to anvil, so we can ask which account to impersonate
             const testClient = await connect(options);
 
             // the input sender, impersonated
@@ -151,25 +47,22 @@ export const createSendCommand = () => {
             });
 
             const payload =
-                (await getInput(input, options)) ||
+                (await encodeInput(input, options)) ||
                 (await bytesInput({
                     abiParams: options.abiParams,
                     encoding: options.encoding,
                     message: "Input",
                 }));
 
-            const { request } = await testClient.simulateContract({
-                address: inputBoxAddress,
-                abi: inputBoxAbi,
-                account,
-                args: [applicationAddress, payload],
-                functionName: "addInput",
-            });
-
-            const hash = await testClient.writeContract(request);
             const progress = ora("Sending input...").start();
-            await testClient.waitForTransactionReceipt({ hash });
-            progress.succeed(`Input sent: ${hash}`);
+            const { transactionHash } = await send({
+                application: applicationAddress,
+                client: testClient,
+                from: account,
+                payload,
+                projectName,
+            });
+            progress.succeed(`Input sent: ${transactionHash}`);
         });
     return command;
 };

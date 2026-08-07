@@ -16,10 +16,10 @@ import {
     erc721PortalConfig,
     etherPortalConfig,
     inputBoxConfig,
-} from "./contracts";
-import ForkChainValidationError from "./errors/ForkChainValidationError";
-import UnsupportedForkChainError from "./errors/UnsupportedForkChainError";
-import type { ForkConfig } from "./types/chain";
+} from "./contracts.js";
+import ForkChainValidationError from "./errors/ForkChainValidationError.js";
+import UnsupportedForkChainError from "./errors/UnsupportedForkChainError.js";
+import type { ForkConfig } from "./types/chain.js";
 
 interface AssertForkConfigOptions {
     includePRT?: boolean;
