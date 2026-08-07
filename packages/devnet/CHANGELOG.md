@@ -1,5 +1,11 @@
 # devnet
 
+## 2.0.0-alpha.15
+
+### Patch Changes
+
+- 4a19328: Refactor anvil version detection by normalizing the stdout and recovering a clean semver of the normalized object. Throws errors to provide feedback accordingly.
+
 ## 2.0.0-alpha.14
 
 ### Patch Changes
