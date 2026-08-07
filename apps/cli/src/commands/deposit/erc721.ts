@@ -5,7 +5,6 @@ import {
     type Address,
     BaseError,
     ContractFunctionRevertedError,
-    type PublicClient,
     erc721Abi,
     getAddress,
     isAddress,
@@ -23,7 +22,7 @@ import {
     bigintInput,
     getInputApplicationAddress,
 } from "../../prompts.js";
-import { connect } from "../../wallet.js";
+import { connect, type DevnetClient } from "../../wallet.js";
 import type { DepositCommandOpts } from "../deposit.js";
 
 type ERC721Token = {
@@ -33,7 +32,7 @@ type ERC721Token = {
 };
 
 const readToken = async (
-    publicClient: PublicClient,
+    publicClient: DevnetClient,
     address: Address,
 ): Promise<ERC721Token> => {
     const args = { abi: erc721Abi, address };
@@ -53,7 +52,7 @@ const readToken = async (
 };
 
 const parseToken = async (options: {
-    testClient: PublicClient;
+    testClient: DevnetClient;
     token?: string;
 }): Promise<ERC721Token> => {
     const { testClient } = options;

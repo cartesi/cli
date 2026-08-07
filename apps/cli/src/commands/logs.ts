@@ -1,6 +1,5 @@
 import { Command } from "@commander-js/extra-typings";
-import { execa } from "execa";
-import { getProjectName, getServiceInfo } from "../base.js";
+import { logs } from "../api/logs.js";
 
 export const createLogsCommand = () => {
     return new Command("logs")
@@ -25,26 +24,15 @@ export const createLogsCommand = () => {
         )
         .configureHelp({ showGlobalOptions: true })
         .action(async (options) => {
-            const { follow, since, tail, until } = options;
-            const projectName = getProjectName(options);
-            const logOptions: string[] = [];
-            if (follow) logOptions.push("--follow");
-            if (since) logOptions.push("--since", since);
-            if (tail) logOptions.push("--tail", tail);
-            if (until) logOptions.push("--until", until);
+            const { follow, projectName, since, tail, until } = options;
 
-            const serviceInfo = await getServiceInfo({
+            await logs({
+                follow,
                 projectName,
-                service: "rollups_node",
+                since,
+                stream: true,
+                tail,
+                until,
             });
-            if (!serviceInfo) {
-                throw new Error(`service rollups_node not found`);
-            }
-
-            await execa(
-                "docker",
-                ["container", "logs", ...logOptions, serviceInfo.ID],
-                { stdio: "inherit" },
-            );
         });
 };
