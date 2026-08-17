@@ -3,7 +3,6 @@ import chalk from "chalk";
 import { execa } from "execa";
 import ora, { type Ora } from "ora";
 import semver from "semver";
-import { DEFAULT_SDK_IMAGE, DEFAULT_SDK_VERSION } from "../config.js";
 import { cartesiMachine } from "../exec/index.js";
 
 const MINIMUM_DOCKER_VERSION = "25.0.0"; // Replace with our minimum required Docker version
@@ -124,16 +123,12 @@ const checkBuildx = async (progress: Ora): Promise<true | never> => {
 const checkCartesiMachine = async (progress: Ora): Promise<true | never> => {
     progress.start("Checking Cartesi Machine version...");
 
-    // doctor does not read cartesi.toml, so check against the default sdk image. the host binary
-    // still takes precedence, which is the install most likely to be out of date
-    const v = await cartesiMachine.version({
-        image: `${DEFAULT_SDK_IMAGE}:${DEFAULT_SDK_VERSION}`,
-    });
+    // the bindings link against the emulator, so this reports the version
+    // compiled into the CLI rather than probing an install
+    const v = cartesiMachine.version();
 
     if (v === null) {
-        throw new Error(
-            "Could not determine the Cartesi Machine version. Check that Docker is running.",
-        );
+        throw new Error("Could not determine the Cartesi Machine version.");
     }
     if (!semver.satisfies(v.format(), cartesiMachine.requiredVersion)) {
         throw new Error(
