@@ -1,0 +1,10 @@
+# example of an application reading an input nvram and writing an output one
+# the order of the tables is the order of the /dev/uio* devices in the guest
+
+[nvrams.input]
+size = "4Ki"
+
+[nvrams.output]
+size = "4Ki"
+shared = true
+user = "dapp"

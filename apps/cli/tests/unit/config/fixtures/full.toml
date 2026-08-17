@@ -49,6 +49,23 @@
 # filename = "./games/doom.sqfs"
 # mount = "/usr/local/games/doom"
 
+# nvrams are raw byte ranges exposed to the guest as /dev/uio0 to /dev/uio7 (up to 8 of them).
+# unlike drives they have no filesystem and no mount point, so the guest reads and writes them
+# with the readmmap/writemmap tools from machine-guest-tools. requires cartesi-machine 0.21.0.
+# an nvram label cannot be the same as a drive label.
+
+# [nvrams.input]
+# size = "4Ki" # required unless 'filename' is given. must be a multiple of 4Ki
+
+# [nvrams.output]
+# size = "4Ki"
+# shared = true # guest writes are persisted to .cartesi/output.raw, which the next build wipes
+# user = "dapp" # optional. allows the unprivileged entrypoint user to write to it
+
+# [nvrams.seed]
+# filename = "./seed.raw" # existing raw image. it is copied into .cartesi/, never written to
+# size = "4Ki" # optional. when given it must match the size of the file exactly
+
 # [withdrawal.config]
 # guardian = "0x1111111111111111111111111111111111111111" 
 # log2_leaves_per_account = 0
