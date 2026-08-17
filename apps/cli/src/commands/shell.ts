@@ -3,6 +3,7 @@ import { ExecaError } from "execa";
 import fs from "fs-extra";
 import path from "node:path";
 import { getApplicationConfig, getContextPath } from "../base.js";
+import { nvramHasImage, nvramImageFilename } from "../config.js";
 import { bootMachine } from "../machine.js";
 
 export const createShellCommand = () => {
@@ -30,6 +31,17 @@ export const createShellCommand = () => {
                 const pathname = getContextPath(filename);
                 if (!fs.existsSync(pathname)) {
                     throw new Error(`drive '${name}' not built, run 'build'`);
+                }
+            }
+
+            // check if all nvrams backed by an image are built, pristine ones have none
+            for (const [label, nvram] of Object.entries(config.nvrams)) {
+                if (!nvramHasImage(nvram)) {
+                    continue;
+                }
+                const pathname = getContextPath(nvramImageFilename(label));
+                if (!fs.existsSync(pathname)) {
+                    throw new Error(`nvram '${label}' not built, run 'build'`);
                 }
             }
 
