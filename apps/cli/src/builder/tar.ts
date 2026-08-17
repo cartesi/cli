@@ -24,7 +24,6 @@ export const build = async (
                 input: tar,
                 output: filename,
                 cwd: destination,
-                image: sdkImage,
                 reporter,
             });
             break;
