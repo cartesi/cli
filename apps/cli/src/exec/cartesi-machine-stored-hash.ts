@@ -1,42 +1,21 @@
-import { isHash, type Hash } from "viem";
-import { DEFAULT_SDK_IMAGE, DEFAULT_SDK_VERSION } from "../config.js";
-import { execaDockerFallback, type DockerFallbackOptions } from "./util.js";
-
-type ComputeHashOptions = { cwd?: string } & DockerFallbackOptions;
+import { load } from "@cartesi/machine";
+import type { Hash } from "viem";
 
 /**
- *
- * @param machineDir
- * @param options
- * @returns
+ * Reads the root hash of a stored Cartesi machine snapshot.
+ * @param machineDir directory holding the machine snapshot
+ * @returns the machine hash, or undefined if the snapshot can't be read
  */
 export const computeHash = async (
     machineDir: string,
-    options?: ComputeHashOptions,
 ): Promise<Hash | undefined> => {
-    const defaultImage = `${DEFAULT_SDK_IMAGE}:${DEFAULT_SDK_VERSION}`;
-    const execaOptions = Object.assign(
-        {},
-        { image: defaultImage, cwd: process.cwd() },
-        options,
-    );
-
     try {
-        const { stdout } = await execaDockerFallback(
-            "cartesi-machine-stored-hash",
-            [machineDir],
-            execaOptions,
-        );
-
-        if (undefined !== stdout) {
-            const hash = `0x${stdout.toString().trim()}`;
-
-            if (isHash(hash)) {
-                return hash;
-            }
+        const machine = load(machineDir);
+        try {
+            return `0x${machine.getRootHash().toString("hex")}`;
+        } finally {
+            machine.destroy();
         }
-
-        return undefined;
     } catch {
         return undefined;
     }

@@ -162,9 +162,9 @@ export type MachineConfig = {
     entrypoint?: string;
     env: Record<string, string>; // explicit environment variables injected into cartesi-machine ENV
     envFile?: string; // path to a .env file with environment variables injected into cartesi-machine ENV
-    maxMCycle?: bigint; // default given by cartesi-machine
+    maxMCycle?: bigint; // default is no limit
     ramLength: string;
-    ramImage?: string; // default given by cartesi-machine
+    ramImage?: string; // default is the pinned cartesi machine-linux-image release
     useDockerEnv: boolean; // inject docker image ENV into cartesi-machine ENV
     useDockerWorkdir: boolean; // inject docker image WORKDIR into cartesi-machine WORKDIR
     user?: string; // default given by cartesi-machine

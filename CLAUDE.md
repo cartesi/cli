@@ -40,7 +40,7 @@ bun test apps/cli/tests/unit/config.test.ts  # Run a single test
 bun run build --filter @cartesi/devnet
 ```
 
-The CLI build pipeline (`apps/cli`): `clean` → `codegen` (wagmi ABI generation) → `compile` (Bun bundler → `dist/`). It also produces native binaries for darwin-arm64, darwin-x64, linux-arm64, linux-x64 in `apps/cli/bin/`.
+The CLI build pipeline (`apps/cli`): `clean` → `codegen` (wagmi ABI generation) → `compile` (Bun bundler → `dist/`). `@cartesi/machine` is left external — it is a native addon that resolves its platform binary at runtime and cannot be bundled, which is also why there are no standalone `bun --compile` binaries.
 
 ## Architecture
 
@@ -55,7 +55,9 @@ The CLI build pipeline (`apps/cli`): `clean` → `codegen` (wagmi ABI generation
 -   **`commands/`** — Each file exports a `create*Command()` function returning a Commander command. Main commands: `build`, `run`, `deploy`, `send`, `deposit`, `create`, `doctor`, `shell`, `clean`, `hash`, `logs`, `status`, `address-book`.
 -   **`builder/`** — Drive builder implementations (directory, docker, tar, empty, none). Each builder produces ext2 or SquashFS filesystems for Cartesi Machine drives.
 -   **`compose/`** — Docker Compose service definitions generated as TypeScript objects (anvil, node, bundler, database, paymaster, proxy, explorer, etc.).
--   **`exec/`** — Wrappers around subprocess execution (cartesi-machine, rollups) using `execa`.
+-   **`exec/`** — Machine and filesystem tooling. `cartesi-machine` and `cartesi-machine-stored-hash` are native N-API bindings (`@cartesi/machine`); `genext2fs`, `mksquashfs` and `rollups` still spawn subprocesses via `execa`, falling back to `docker run` against the SDK image.
+-   **`machine.ts`** — Translates a `cartesi.toml` `Config` into an emulator `MachineConfig` (bootargs, `dtb.init`, flash drives), mirroring what the `cartesi-machine` CLI does with its command line.
+-   **`images.ts`** — Downloads and caches the Linux kernel image the machine boots, from a pinned `cartesi/machine-linux-image` release.
 -   **`config.ts`** — Parses `cartesi.toml` (TOML-based project config) into typed `Config` objects. Defines drive configs, machine configs, and SDK versions.
 -   **`contracts.ts`** — Generated contract addresses and ABI bindings (via `@wagmi/cli`).
 -   **`wallet.ts`** — Wallet utilities using `viem` for Ethereum interaction.
