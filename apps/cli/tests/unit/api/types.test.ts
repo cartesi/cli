@@ -1,26 +1,34 @@
 import { describe, expect, it } from "bun:test";
 import * as path from "node:path";
 import { listrRenderer, resolveConfig } from "../../../src/api/types.js";
-import { defaultConfig } from "../../../src/config.js";
+import { defaultConfig } from "../../../src/config/index.js";
 
 const fixture = (...paths: string[]) =>
     path.join(__dirname, "..", "config", "fixtures", ...paths);
 
 describe("api/types", () => {
     describe("resolveConfig", () => {
-        it("should default to the default configuration", () => {
-            // there is no cartesi.toml at the root of the repository
-            expect(resolveConfig()).toEqual(defaultConfig());
+        it("should default to the default configuration", async () => {
+            // there is no configuration file at the root of the repository
+            expect(await resolveConfig()).toEqual(defaultConfig());
         });
 
-        it("should return a configuration object as is", () => {
+        it("should normalize a configuration given inline", async () => {
+            const config = await resolveConfig({ sdk: "my/sdk:1.0.0" });
+            expect(config).toEqual({
+                ...defaultConfig(),
+                sdk: "my/sdk:1.0.0",
+            });
+        });
+
+        it("should accept an already resolved configuration", async () => {
             const config = defaultConfig();
             config.sdk = "my/sdk:1.0.0";
-            expect(resolveConfig(config)).toBe(config);
+            expect(await resolveConfig(config)).toEqual(config);
         });
 
-        it("should read a configuration file", () => {
-            const config = resolveConfig(fixture("drives", "rives.toml"));
+        it("should read a configuration file", async () => {
+            const config = await resolveConfig(fixture("drives", "rives.toml"));
             expect(Object.keys(config.drives)).toEqual([
                 "root",
                 "doom",
@@ -29,8 +37,8 @@ describe("api/types", () => {
             expect(config.withdrawalConfig).toBeUndefined();
         });
 
-        it("should merge a list of configuration files", () => {
-            const config = resolveConfig([
+        it("should merge a list of configuration files", async () => {
+            const config = await resolveConfig([
                 fixture("drives", "rives.toml"),
                 fixture("withdrawal", "config.toml"),
             ]);
@@ -44,9 +52,9 @@ describe("api/types", () => {
             );
         });
 
-        it("should fail for a configuration file that does not exist", () => {
-            expect(() => resolveConfig("undefined.toml")).toThrow(
-                "Config file undefined.toml does not exist",
+        it("should fail for a configuration file that does not exist", async () => {
+            expect(resolveConfig("undefined.toml")).rejects.toThrow(
+                "does not exist",
             );
         });
     });

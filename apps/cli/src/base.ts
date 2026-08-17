@@ -11,7 +11,6 @@ import {
     zeroHash,
 } from "viem";
 import { foundry } from "viem/chains";
-import { type Config, parse } from "./config.js";
 import {
     applicationFactoryAddress,
     authorityFactoryAddress,
@@ -44,19 +43,6 @@ export const getMachineHash = async (): Promise<Hash | undefined> => {
         return await cartesiMachineStoredHash.computeHash(imagePath);
     }
     return undefined;
-};
-
-export const getApplicationConfig = (configPaths: string[]): Config => {
-    const tomls = configPaths.map((configPath) => {
-        if (fs.existsSync(configPath)) {
-            return fs.readFileSync(configPath).toString();
-        }
-        if (configPath === "cartesi.toml") {
-            return "";
-        }
-        throw new Error(`Config file ${configPath} does not exist`);
-    });
-    return parse(tomls);
 };
 
 export const getProjectName = (options: { projectName?: string }) => {

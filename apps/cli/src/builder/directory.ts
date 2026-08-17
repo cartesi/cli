@@ -1,6 +1,6 @@
 import fs from "fs-extra";
 import path from "node:path";
-import type { DirectoryDriveConfig } from "../config.js";
+import type { DirectoryDriveConfig } from "../config/index.js";
 import { genext2fs, mksquashfs } from "../exec/index.js";
 import type { Reporter } from "../exec/util.js";
 

@@ -8,7 +8,7 @@ import {
 } from "viem";
 import { anvil } from "viem/chains";
 import { getProjectName } from "./base.js";
-import { PREFERRED_PORT } from "./config.js";
+import { PREFERRED_PORT } from "./config/index.js";
 import { getProjectPort } from "./exec/rollups.js";
 
 export const cartesi = defineChain({

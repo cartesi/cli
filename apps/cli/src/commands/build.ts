@@ -6,11 +6,16 @@ export const createBuildCommand = () => {
         .description(
             "Build application by building Cartesi machine drives, configuring a machine and booting it.",
         )
-        .option(
-            "-c, --config <config>",
-            "path to the configuration file",
-            (value, prev) => prev.concat([value]),
-            ["cartesi.toml"],
+        .addOption(
+            new Option(
+                "-c, --config <config>",
+                "path to the configuration file",
+            )
+                .argParser<string[]>((value, prev) => prev.concat([value]))
+                .default(
+                    [] as string[],
+                    "the configuration file of the project",
+                ),
         )
         .addOption(
             new Option(

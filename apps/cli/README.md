@@ -18,6 +18,97 @@ cartesi --help
 
 More documentation at [https://docs.cartesi.io](https://docs.cartesi.io).
 
+## Configuration
+
+An application is configured by a `cartesi.config.ts` file at its root, which
+exports its configuration through `defineConfig`:
+
+```ts
+import { defineConfig } from "@cartesi/cli/config";
+
+export default defineConfig({
+    drives: {
+        root: { builder: "docker", dockerfile: "Dockerfile" },
+        data: { builder: "empty", size: "64Mi", mount: "/mnt/data" },
+    },
+    machine: {
+        entrypoint: "dapp",
+        ramLength: "256Mi",
+    },
+    run: {
+        epochLength: 10,
+        services: ["explorer"],
+    },
+});
+```
+
+`defineConfig` does nothing at runtime: it exists so the configuration is type
+checked and completed by the editor, without any annotation. A configuration
+file is free to compute its configuration, and to export a function instead of
+an object when it depends on what is being run:
+
+```ts
+export default defineConfig(async ({ command, mode }) => ({
+    machine: { envFile: `.env.${mode}` },
+    run: { epochLength: command === "run" ? 10 : 720 },
+}));
+```
+
+`mode` comes from `CARTESI_ENV` (or `NODE_ENV`), and defaults to
+`development`.
+
+The `run` section holds the defaults of the local development environment
+started by `cartesi run`, so a project does not have to repeat the same
+options on every invocation. Command line options always take precedence over
+it.
+
+An application has no obligation to have a configuration file: without one, it
+is built from a `Dockerfile` of its directory, which is what most applications
+need.
+
+### Applications not written in TypeScript
+
+The very same configuration can be written as plain data, for applications not
+written in TypeScript or JavaScript. The keys are the ones above, and a
+`$schema` key is accepted and ignored:
+
+```yaml
+# cartesi.config.yaml
+machine:
+    entrypoint: dapp
+    ramLength: 256Mi
+drives:
+    data:
+        builder: empty
+        size: 64Mi
+        mount: /mnt/data
+run:
+    epochLength: 10
+```
+
+The configuration file of a project is the first of these that exists:
+
+| File                                                                       | Format                                    |
+| -------------------------------------------------------------------------- | ----------------------------------------- |
+| `cartesi.config.ts`, `.mts`, `.cts`, `.js`, `.mjs`, `.cjs`                 | module exporting `defineConfig({ ... })`  |
+| `cartesi.config.json`                                                      | JSON                                      |
+| `cartesi.config.yaml`, `cartesi.config.yml`                                | YAML                                      |
+| `cartesi.config`                                                           | YAML, which accepts JSON as well          |
+| `cartesi.toml`                                                             | deprecated                                |
+
+TypeScript configuration files are read by the runtime itself, and do not need
+a build step. Sizes accept a number of bytes or a human readable string, and
+every unit is a binary multiple: `64Mi`, `64MiB`, `64Mb` and `64MB` are all
+the same 67108864 bytes.
+
+### Migrating from `cartesi.toml`
+
+`cartesi.toml` still works, and is read when a project has no other
+configuration file, but it is deprecated and prints a warning. The new formats
+describe the same configuration, with two differences: keys are camelCase
+(`extra_size` becomes `extraSize`, `boot_args` becomes `bootargs`), and
+`[withdrawal.config]` becomes a `withdrawal` object.
+
 ## Library
 
 Every command of the CLI is also available as a function, so applications can be
@@ -57,9 +148,15 @@ The following functions are available: `addressBook`, `build`, `clean`,
 A few things to keep in mind:
 
 -   functions operate on the current working directory, just like the CLI, and
-    read `cartesi.toml` from it by default. Functions that take a configuration
-    accept a path, a list of paths (merged in order), or an already parsed
-    `Config` object;
+    look the configuration file of the project up in it by default. Functions
+    that take a configuration accept a path, a list of paths (merged in order),
+    or the configuration written inline, in the same shape a `cartesi.config.ts`
+    file exports:
+
+    ```ts
+    await build({ config: { machine: { ramLength: "256Mi" } } });
+    await build({ config: "cartesi.config.production.ts" });
+    ```
 -   functions are silent, and never write to the terminal. Pass
     `progress: "default"` (or `"verbose"`) to get the same output as the CLI;
 -   functions throw on error, and never terminate the process;
@@ -73,5 +170,7 @@ A few things to keep in mind:
     `DepositError` (`InsufficientBalanceError`, `InvalidAmountError` or
     `TokenNotFoundError`).
 
-The package is typed, and the types of the configuration file (`Config`,
-`DriveConfig`, `MachineConfig`, ...) are exported as well.
+The package is typed, and the types of the configuration file (`UserConfig`,
+`Config`, `DriveConfig`, `MachineConfig`, `RunConfig`, ...) are exported as
+well, along with `defineConfig`, `loadConfig`, `findConfigFile`,
+`normalizeConfig` and `mergeConfig`.

@@ -1,226 +1,45 @@
-import bytes from "bytes";
-import { extname } from "node:path";
 import { parse as parseToml, type TomlPrimitive } from "smol-toml";
-import { getAddress, isAddress, isHex, type Address } from "viem";
+import { type Address, getAddress, isAddress, isHex } from "viem";
+import {
+    InvalidAddressValueError,
+    InvalidBooleanValueError,
+    InvalidBuilderError,
+    InvalidDriveFormatError,
+    InvalidEmptyDriveFormatError,
+    InvalidEnvError,
+    InvalidNumberValueError,
+    InvalidStringArrayError,
+    InvalidStringValueError,
+    RequiredFieldError,
+} from "./errors.js";
+import { parseSize } from "./size.js";
+import {
+    type Builder,
+    type Config,
+    DEFAULT_FORMAT,
+    DEFAULT_RAM,
+    DEFAULT_SDK_IMAGE,
+    DEFAULT_SDK_VERSION,
+    defaultMachineConfig,
+    defaultRootDriveConfig,
+    defaultRunConfig,
+    type DriveConfig,
+    type DriveFormat,
+    getDriveFormat,
+    type MachineConfig,
+    type WithdrawalConfig,
+} from "./types.js";
 
 /**
- * Typed Errors
+ * Parser of the legacy `cartesi.toml` configuration file.
+ *
+ * This format is deprecated in favour of `cartesi.config.ts` (and its plain
+ * data equivalents), which is why it is kept frozen here: it uses snake_case
+ * keys and has no `[run]` section. It is still fully supported so existing
+ * applications keep building.
  */
-export class InvalidBuilderError extends Error {
-    constructor(builder: TomlPrimitive) {
-        super(`Invalid builder: ${builder}`);
-        this.name = "InvalidBuilder";
-    }
-}
-
-export class InvalidDriveFormatError extends Error {
-    constructor(format: TomlPrimitive) {
-        super(`Invalid drive format: ${format}`);
-        this.name = "InvalidDriveFormatError";
-    }
-}
-
-export class InvalidEmptyDriveFormatError extends Error {
-    constructor(format: TomlPrimitive) {
-        super(`Invalid empty drive format: ${format}`);
-        this.name = "InvalidEmptyDriveFormatError";
-    }
-}
-
-export class InvalidStringValueError extends Error {
-    constructor(value: TomlPrimitive) {
-        super(`Invalid string value: ${value}`);
-        this.name = "InvalidStringValueError";
-    }
-}
-
-export class InvalidBooleanValueError extends Error {
-    constructor(value: TomlPrimitive) {
-        super(`Invalid boolean value: ${value}`);
-        this.name = "InvalidBooleanValueError";
-    }
-}
-
-export class InvalidNumberValueError extends Error {
-    constructor(value: TomlPrimitive, key?: string) {
-        super(`Invalid number value: ${value}${key ? ` for key: ${key}` : ""}`);
-        this.name = "InvalidNumberValueError";
-    }
-}
-
-export class InvalidAddressValueError extends Error {
-    constructor(value: TomlPrimitive, key?: string) {
-        super(
-            `Invalid address value: ${value}${key ? ` for key: ${key}` : ""}`,
-        );
-        this.name = "InvalidAddressValueError";
-    }
-}
-
-export class InvalidBytesValueError extends Error {
-    constructor(value: TomlPrimitive) {
-        super(`Invalid bytes value: ${value}`);
-        this.name = "InvalidBytesValueError";
-    }
-}
-
-export class RequiredFieldError extends Error {
-    constructor(key: TomlPrimitive) {
-        super(`Missing required field: ${key}`);
-        this.name = "RequiredFieldError";
-    }
-}
-
-export class InvalidStringArrayError extends Error {
-    constructor() {
-        super("Invalid string array");
-        this.name = "InvalidStringArrayError";
-    }
-}
-
-export class InvalidEnvError extends Error {
-    constructor(value: TomlPrimitive) {
-        super(`Invalid env configuration: ${value}`);
-        this.name = "InvalidEnvError";
-    }
-}
-
-/**
- * Configuration for drives of a Cartesi Machine. A drive may already exist or be built by a builder
- */
-const DEFAULT_FORMAT = "ext2";
-const DEFAULT_RAM = "128Mi";
-export const DEFAULT_SDK_VERSION = "0.12.0-alpha.41";
-export const DEFAULT_SDK_IMAGE = "cartesi/sdk";
-export const PREFERRED_PORT = 6751;
-
-type Builder = "directory" | "docker" | "empty" | "none" | "tar";
-export type DriveFormat = "ext2" | "sqfs";
-
-export type ImageInfo = {
-    cmd: string[];
-    entrypoint: string[];
-    env: string[];
-    workdir: string;
-};
-
-export type DriveResult = ImageInfo | undefined;
-
-export type DirectoryDriveConfig = {
-    builder: "directory";
-    extraSize: number; // default is 0 (no extra size)
-    format: DriveFormat;
-    directory: string; // required
-};
-
-export type DockerDriveConfig = {
-    builder: "docker";
-    buildArgs: string[]; // default is empty array
-    context: string;
-    dockerfile: string;
-    extraSize: number; // default is 0 (no extra size)
-    format: DriveFormat;
-    image?: string; // default is to build an image from a Dockerfile
-    tags: string[]; // default is empty array
-    target?: string; // default is last stage of multi-stage
-};
-
-export type EmptyDriveConfig = {
-    builder: "empty";
-    format: "ext2" | "raw";
-    size: number; // in bytes
-};
-
-export type ExistingDriveConfig = {
-    builder: "none";
-    filename: string; // required
-    format: DriveFormat;
-};
-
-export type TarDriveConfig = {
-    builder: "tar";
-    filename: string; // required
-    format: DriveFormat;
-    extraSize: number; // default is 0 (no extra size)
-};
-
-export type DriveConfig = (
-    | DirectoryDriveConfig
-    | DockerDriveConfig
-    | EmptyDriveConfig
-    | ExistingDriveConfig
-    | TarDriveConfig
-) & {
-    mount?: string | boolean; // default given by cartesi-machine
-    shared?: boolean; // default given by cartesi-machine
-    user?: string; // default given by cartesi-machine
-};
-
-export type MachineConfig = {
-    assertRollingTemplate?: boolean; // default given by cartesi-machine
-    bootargs: string[];
-    entrypoint?: string;
-    env: Record<string, string>; // explicit environment variables injected into cartesi-machine ENV
-    envFile?: string; // path to a .env file with environment variables injected into cartesi-machine ENV
-    maxMCycle?: bigint; // default given by cartesi-machine
-    ramLength: string;
-    ramImage?: string; // default given by cartesi-machine
-    useDockerEnv: boolean; // inject docker image ENV into cartesi-machine ENV
-    useDockerWorkdir: boolean; // inject docker image WORKDIR into cartesi-machine WORKDIR
-    user?: string; // default given by cartesi-machine
-};
-
-/**
- * Configuration for Emergercy-withdrawals that will be passed down to the
- * cartesi-rollups-cli. This is a All or nothing kind of configuration.
- * The properties are kept snake_case to match the expected input in the cartesi-rollups-cli.
- */
-export type WithdrawalConfig = {
-    guardian: Address;
-    log2_leaves_per_account: number;
-    log2_max_num_of_accounts: number;
-    accounts_drive_start_index: number;
-    withdrawal_output_builder: Address;
-};
-
-export type Config = {
-    drives: Record<string, DriveConfig>;
-    machine: MachineConfig;
-    sdk: string;
-    withdrawalConfig?: WithdrawalConfig;
-};
 
 type TomlTable = { [key: string]: TomlPrimitive };
-
-export const defaultRootDriveConfig = (): DriveConfig => ({
-    builder: "docker",
-    buildArgs: [],
-    context: ".",
-    dockerfile: "Dockerfile", // file on current working directory
-    extraSize: 0,
-    format: DEFAULT_FORMAT,
-    tags: [],
-});
-
-export const defaultMachineConfig = (): MachineConfig => ({
-    assertRollingTemplate: undefined,
-    bootargs: [],
-    entrypoint: undefined,
-    env: {},
-    envFile: undefined,
-    maxMCycle: undefined,
-    ramLength: DEFAULT_RAM,
-    useDockerEnv: true,
-    useDockerWorkdir: true,
-    user: undefined,
-});
-
-export const defaultConfig = (): Config => ({
-    drives: { root: defaultRootDriveConfig() },
-    machine: defaultMachineConfig(),
-    sdk: `${DEFAULT_SDK_IMAGE}:${DEFAULT_SDK_VERSION}`,
-    withdrawalConfig: undefined,
-});
 
 const parseBoolean = (value: TomlPrimitive, defaultValue: boolean): boolean => {
     if (value === undefined) {
@@ -378,21 +197,8 @@ const parseOptionalNumber = (value: TomlPrimitive): bigint | undefined => {
     throw new InvalidNumberValueError(value);
 };
 
-const parseBytes = (value: TomlPrimitive, defaultValue: number): number => {
-    if (value === undefined) {
-        return defaultValue;
-    }
-    if (typeof value === "bigint") {
-        return Number(value);
-    }
-    if (typeof value === "number" || typeof value === "string") {
-        const output = bytes.parse(value);
-        if (output !== null) {
-            return output;
-        }
-    }
-    throw new InvalidBytesValueError(value);
-};
+const parseBytes = (value: TomlPrimitive, defaultValue: number): number =>
+    value === undefined ? defaultValue : parseSize(value);
 
 const parseBuilder = (value: TomlPrimitive): Builder => {
     if (value === undefined) {
@@ -470,18 +276,6 @@ const parseMachine = (value: TomlPrimitive): MachineConfig => {
         useDockerWorkdir: parseBoolean(toml.use_docker_workdir, true),
         user: parseOptionalString(toml.user),
     };
-};
-
-export const getDriveFormat = (filename: string): DriveFormat => {
-    const extension = extname(filename);
-    switch (extension) {
-        case ".ext2":
-            return "ext2";
-        case ".sqfs":
-            return "sqfs";
-        default:
-            throw new InvalidDriveFormatError(extension);
-    }
 };
 
 const parseDrive = (drive: TomlPrimitive): DriveConfig => {
@@ -633,6 +427,12 @@ const parseOptionalWithdrawalConfig = (
     return parseWithdrawalConfig(config as TomlTable);
 };
 
+/**
+ * Parse the contents of one or more legacy `cartesi.toml` files, merged in
+ * order, into a resolved application configuration.
+ * @param str contents of the TOML files
+ * @returns resolved application configuration
+ */
 export const parse = (str: string[]): Config => {
     let toml: TomlTable = {};
     for (const s of str) {
@@ -643,6 +443,7 @@ export const parse = (str: string[]): Config => {
         withdrawalConfig: parseOptionalWithdrawalConfig(toml.withdrawal),
         drives: parseDrives(toml.drives),
         machine: parseMachine(toml.machine),
+        run: defaultRunConfig(),
         sdk: parseString(
             toml.sdk,
             `${DEFAULT_SDK_IMAGE}:${DEFAULT_SDK_VERSION}`,

@@ -43,14 +43,26 @@ const program = new Command()
     .addCommand(createStatusCommand());
 
 // Global error handling
-process.on("uncaughtException", (err) => {
-    if (process.env.NODE_ENV === "development") {
+//
+// read through an alias of 'process.env', because the bundler replaces
+// 'process.env.NODE_ENV' with its value at build time, which would make this a
+// constant and always print the stack trace
+const { env } = process;
+
+const reportError = (err: unknown) => {
+    if (env.NODE_ENV === "development") {
         console.error(err);
     } else {
         // in production, only print the error message, not the stack trace
-        console.error(err.message);
+        console.error(err instanceof Error ? err.message : String(err));
     }
     process.exit(1);
-});
+};
+
+process.on("uncaughtException", reportError);
+
+// command actions are asynchronous, and commander does not await them, so an
+// error thrown by one surfaces here rather than as an uncaught exception
+process.on("unhandledRejection", reportError);
 
 program.parse();

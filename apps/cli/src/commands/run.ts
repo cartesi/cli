@@ -7,7 +7,6 @@ import { build } from "../api/build.js";
 import { logs } from "../api/logs.js";
 import { run, type RunResult } from "../api/run.js";
 import { nodeAllowedEnvironmentVariables } from "../compose/node.js";
-import { DEFAULT_SDK_VERSION } from "../config.js";
 import { AVAILABLE_SERVICES } from "../exec/rollups.js";
 import { keySelect } from "../prompts.js";
 
@@ -16,7 +15,7 @@ const commaSeparatedList = (value: string) => value.split(",");
 const shell = async (options: {
     config: string[];
     node: RunResult;
-    verbose: boolean;
+    verbose?: boolean;
 }) => {
     const { config, node, verbose } = options;
     const { projectName } = node;
@@ -81,19 +80,12 @@ const shell = async (options: {
 export const createRunCommand = () => {
     return new Command("run")
         .description("Run a local cartesi node for the application.")
-        .addOption(
-            new Option(
-                "--prt",
-                "deploy application with PRT consensus",
-            ).default(false),
-        )
+        .addOption(new Option("--prt", "deploy application with PRT consensus"))
         .addOption(
             new Option(
                 "--block-time <number>",
-                "interval between blocks (in seconds)",
-            )
-                .argParser(Number)
-                .default(2),
+                "interval between blocks (in seconds) (default: 2)",
+            ).argParser(Number),
         )
         .addOption(
             new Option(
@@ -104,10 +96,8 @@ export const createRunCommand = () => {
         .addOption(
             new Option(
                 "--default-block <string>",
-                "default block to be used when fetching new blocks.",
-            )
-                .choices(["latest", "safe", "pending", "finalized"])
-                .default("latest"),
+                "default block to be used when fetching new blocks. (default: latest)",
+            ).choices(["latest", "safe", "pending", "finalized"]),
         )
         .option("--dry-run", "show the docker compose configuration", false)
         .option(
@@ -131,33 +121,32 @@ export const createRunCommand = () => {
         .addOption(
             new Option(
                 "--epoch-length <number>",
-                "length of an epoch (in blocks)",
-            )
-                .argParser(Number)
-                .default(720),
+                "length of an epoch (in blocks) (default: 720)",
+            ).argParser(Number),
         )
         .option("-p, --port <number>", "port to listen on", Number)
         .addOption(
             new Option(
                 "--claim-staging-period <number>",
-                "claim staging period (in blocks). Number of blocks between a claim being submitted and accepted (Authority/Quorum Only)",
-            )
-                .argParser(Number)
-                .default(0),
+                "claim staging period (in blocks). Number of blocks between a claim being submitted and accepted (Authority/Quorum Only) (default: 0)",
+            ).argParser(Number),
         )
-        .option(
-            "-c, --config <config>",
-            "Path to the configuration file (.toml)",
-            (value, prev) => prev.concat([value]),
-            ["cartesi.toml"],
+        .addOption(
+            new Option(
+                "-c, --config <config>",
+                "path to the configuration file",
+            )
+                .argParser<string[]>((value, prev) => prev.concat([value]))
+                .default(
+                    [] as string[],
+                    "the configuration file of the project",
+                ),
         )
         .addOption(
             new Option(
                 "--runtime-version <version>",
                 "version for Cartesi Rollups Runtime to use",
-            )
-                .default(DEFAULT_SDK_VERSION)
-                .hideHelp(),
+            ).hideHelp(),
         )
         .option(
             "--project-name <string>",
@@ -167,9 +156,8 @@ export const createRunCommand = () => {
             "--services <string>",
             `optional services to start, comma separated list from [${AVAILABLE_SERVICES.join(", ")}]`,
             commaSeparatedList,
-            [],
         )
-        .option("-v, --verbose", "verbose output", false)
+        .option("-v, --verbose", "verbose output")
         .action(async (options) => {
             const {
                 prt,
@@ -201,14 +189,6 @@ export const createRunCommand = () => {
                     JSON.stringify(allowedVarsByService, null, 2),
                 );
                 return;
-            }
-
-            if (defaultBlock !== "finalized") {
-                console.warn(
-                    chalk.yellow(
-                        `WARNING: default block is set to '${defaultBlock}', production configuration will likely use 'finalized'`,
-                    ),
-                );
             }
 
             // if TTY is not attached, run on foreground (not detached)
