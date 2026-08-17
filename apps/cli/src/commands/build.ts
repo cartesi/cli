@@ -10,9 +10,10 @@ import {
     buildDocker,
     buildEmpty,
     buildNone,
+    buildNvram,
     buildTar,
 } from "../builder/index.js";
-import type { Config, DriveConfig, ImageInfo } from "../config.js";
+import type { Config, DriveConfig, ImageInfo, NvramConfig } from "../config.js";
 import { bootMachine } from "../machine.js";
 
 // context for Listr build tasks
@@ -79,6 +80,17 @@ const buildDriveTask = (
     },
 });
 
+const buildNvramTask = (
+    label: string,
+    nvram: NvramConfig,
+): ListrTask<BuildContext> => ({
+    title: `Building nvram ${chalk.cyan(label)}`,
+    task: async (ctx, task) => {
+        await buildNvram(label, nvram, ctx.destination);
+        task.title = `Build nvram ${chalk.cyan(label)}`;
+    },
+});
+
 export const createBuildCommand = () => {
     return new Command("build")
         .description(
@@ -129,23 +141,45 @@ export const createBuildCommand = () => {
                 ([name, drive]) => buildDriveTask(name, drive),
             );
 
-            const builds = new Listr(
-                [
-                    {
-                        title: "Build drives",
-                        task: async (_ctx, task) => {
-                            return task.newListr(driveTasks, {
-                                concurrent: true,
-                                rendererOptions: {
-                                    collapseSubtasks: false,
-                                },
-                                ctx,
-                            });
-                        },
-                    },
-                ],
-                { ctx, renderer: verbose ? "verbose" : "default" },
+            // tasks to build the images backing nvrams, pristine ones need none
+            const nvramTasks = Object.entries(config.nvrams).map(
+                ([label, nvram]) => buildNvramTask(label, nvram),
             );
+
+            const groups: ListrTask<BuildContext>[] = [
+                {
+                    title: "Build drives",
+                    task: async (_ctx, task) => {
+                        return task.newListr(driveTasks, {
+                            concurrent: true,
+                            rendererOptions: {
+                                collapseSubtasks: false,
+                            },
+                            ctx,
+                        });
+                    },
+                },
+            ];
+
+            if (nvramTasks.length > 0) {
+                groups.push({
+                    title: "Build nvrams",
+                    task: async (_ctx, task) => {
+                        return task.newListr(nvramTasks, {
+                            concurrent: true,
+                            rendererOptions: {
+                                collapseSubtasks: false,
+                            },
+                            ctx,
+                        });
+                    },
+                });
+            }
+
+            const builds = new Listr(groups, {
+                ctx,
+                renderer: verbose ? "verbose" : "default",
+            });
             const result = await builds.run();
 
             // if only build drives, quit here
