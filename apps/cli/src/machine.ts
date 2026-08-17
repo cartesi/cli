@@ -1,6 +1,13 @@
 import dotenv from "dotenv";
 import fs from "node:fs";
-import type { Config, DriveConfig, ImageInfo } from "./config.js";
+import {
+    type Config,
+    type DriveConfig,
+    type ImageInfo,
+    type NvramConfig,
+    nvramHasImage,
+    nvramImageFilename,
+} from "./config.js";
 import { cartesiMachine } from "./exec/index.js";
 import type { ExecaOptionsDockerFallback } from "./exec/util.js";
 
@@ -19,6 +26,25 @@ const flashDrive = (label: string, drive: DriveConfig): string => {
     }
     // don't specify start and length
     return `--flash-drive=${vars.join(",")}`;
+};
+
+const nvram = (label: string, config: NvramConfig): string => {
+    const { shared, size, user } = config;
+    const vars = [`label:${label}`];
+    if (size !== undefined) {
+        vars.push(`length:${size}`);
+    }
+    if (nvramHasImage(config)) {
+        vars.push(`data_filename:${nvramImageFilename(label)}`);
+    }
+    if (user) {
+        vars.push(`user:${user}`);
+    }
+    if (shared) {
+        vars.push("shared");
+    }
+    // don't specify start, let cartesi-machine place it
+    return `--nvram=${vars.join(",")}`;
 };
 
 export type BootMachineOptions = {
@@ -105,11 +131,17 @@ export const buildMachineArgs = (
         flashDrive(label, drive),
     );
 
+    // keep the order the labels were declared in, as it affects the machine layout
+    const nvrams = Object.entries(config.nvrams).map(([label, nvramConfig]) =>
+        nvram(label, nvramConfig),
+    );
+
     // command to change working directory if WORKDIR is defined
     const args = [
         ...bootargs,
         ...envs,
         ...flashDrives,
+        ...nvrams,
         `--ram-length=${ramLength}`,
     ];
     if (ramImage) {
