@@ -2,7 +2,7 @@ import { execa } from "execa";
 import fs from "fs-extra";
 import path from "node:path";
 import tmp from "tmp";
-import type { DockerDriveConfig } from "../config.js";
+import type { DockerDriveConfig } from "../config/index.js";
 import { genext2fs, mksquashfs } from "../exec/index.js";
 import type { Reporter } from "../exec/util.js";
 import type { BuildxMetadata } from "../types/docker.js";

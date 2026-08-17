@@ -21,27 +21,52 @@
  */
 export * from "./api/index.js";
 
-// configuration of an application ('cartesi.toml')
+// configuration of an application ('cartesi.config.ts' and friends)
 export {
+    CONFIG_FILES,
     type Config,
+    type ConfigCommand,
+    type ConfigEnv,
     DEFAULT_SDK_IMAGE,
     DEFAULT_SDK_VERSION,
+    type DefaultBlock,
     defaultConfig,
     defaultMachineConfig,
     defaultRootDriveConfig,
+    defaultRunConfig,
+    defineConfig,
     type DirectoryDriveConfig,
     type DockerDriveConfig,
     type DriveConfig,
     type DriveFormat,
     type EmptyDriveConfig,
     type ExistingDriveConfig,
+    findConfigFile,
     type ImageInfo,
+    LEGACY_CONFIG_FILE,
+    loadConfig,
+    type LoadConfigOptions,
+    loadConfigFile,
     type MachineConfig,
+    mergeConfig,
+    normalizeConfig,
     parse as parseConfig,
     PREFERRED_PORT,
+    type RunConfig,
+    type Size,
     type TarDriveConfig,
+    type UserConfig,
+    type UserConfigExport,
+    type UserConfigFn,
+    type UserDirectoryDriveConfig,
+    type UserDockerDriveConfig,
+    type UserDriveConfig,
+    type UserEmptyDriveConfig,
+    type UserExistingDriveConfig,
+    type UserMachineConfig,
+    type UserTarDriveConfig,
     type WithdrawalConfig,
-} from "./config.js";
+} from "./config/index.js";
 
 // runtime environment
 export {

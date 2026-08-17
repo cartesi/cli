@@ -15,7 +15,7 @@ import {
     InvalidStringValueError,
     parse,
     RequiredFieldError,
-} from "../../src/config.js";
+} from "../../src/config/index.js";
 
 const loadDriveConfig = (driveName: string) => {
     const filePath = path.join(

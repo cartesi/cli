@@ -11,7 +11,7 @@ import {
     buildNone,
     buildTar,
 } from "../builder/index.js";
-import type { Config, DriveConfig, ImageInfo } from "../config.js";
+import type { Config, DriveConfig, ImageInfo } from "../config/index.js";
 import { bootMachine } from "../machine.js";
 import {
     type ConfigOptions,
@@ -128,8 +128,8 @@ export const build = async (
     // clean up temp files we create along the process
     tmp.setGracefulCleanup();
 
-    // get application configuration, from a Config object or 'cartesi.toml'
-    const config = resolveConfig(options.config);
+    // get application configuration, written inline or read from a file
+    const config = await resolveConfig(options.config, "build");
 
     // destination directory for image and intermediate files
     const destination = path.resolve(getContextPath());

@@ -31,8 +31,8 @@ export type ShellOptions = ConfigOptions & {
 export const shell = async (options: ShellOptions = {}): Promise<void> => {
     const { command = "/bin/sh", runAsRoot = false } = options;
 
-    // get application configuration, from a Config object or 'cartesi.toml'
-    const config = resolveConfig(options.config);
+    // get application configuration, written inline or read from a file
+    const config = await resolveConfig(options.config, "shell");
 
     // destination directory for image and intermediate files
     const destination = path.resolve(getContextPath());

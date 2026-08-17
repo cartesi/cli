@@ -2,7 +2,10 @@ import { execa } from "execa";
 import fs from "node:fs";
 import path from "node:path";
 import tmp from "tmp";
-import { DEFAULT_SDK_IMAGE, DEFAULT_SDK_VERSION } from "../../src/config.js";
+import {
+    DEFAULT_SDK_IMAGE,
+    DEFAULT_SDK_VERSION,
+} from "../../src/config/index.js";
 
 export const TEST_SDK = `${DEFAULT_SDK_IMAGE}:${DEFAULT_SDK_VERSION}`;
 

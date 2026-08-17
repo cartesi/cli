@@ -9,7 +9,7 @@ import {
 import fs from "fs-extra";
 import path from "node:path";
 import { build } from "../../../src/builder/none.js";
-import type { ExistingDriveConfig } from "../../../src/config.js";
+import type { ExistingDriveConfig } from "../../../src/config/index.js";
 import { setupIntegrationTests } from "../config.js";
 import { cleanupTempDir, createTempDir } from "./tmpdirTest.js";
 

@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
 import fs from "node:fs";
-import type { Config, DriveConfig, ImageInfo } from "./config.js";
+import type { Config, DriveConfig, ImageInfo } from "./config/index.js";
 import { cartesiMachine } from "./exec/index.js";
 import type { ExecaOptionsDockerFallback } from "./exec/util.js";
 
