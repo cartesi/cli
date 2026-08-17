@@ -1,6 +1,6 @@
-// the emulator binding resolves its platform binary at runtime, so it can never
-// be bundled: it is left as an import, resolved from node_modules
-const external = ["@cartesi/machine"];
+// native addons resolve their platform binary at runtime, so they can never be
+// bundled: they are left as imports, resolved from node_modules
+const external = ["@cartesi/machine", "@deroll/genext2fs"];
 
 // build for npm package
 await Bun.build({
@@ -14,9 +14,9 @@ await Bun.build({
 });
 
 // NOTE: the standalone binaries this used to cross-compile (bin/cartesi-*)
-// are gone. A single file executable has no node_modules, and the emulator
-// binding resolves its platform specific .node at runtime, so it cannot be
-// embedded — not even for the host platform. The npm package is the only
-// distribution now, and the homebrew formula has to install it from there.
+// are gone. A single file executable has no node_modules, and the emulator and
+// ext2 bindings resolve their platform specific .node at runtime, so they
+// cannot be embedded — not even for the host platform. The npm package is the
+// only distribution now, and the homebrew formula has to install it from there.
 
 export {};

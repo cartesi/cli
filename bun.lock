@@ -18,8 +18,9 @@
         "cartesi": "./dist/index.js",
       },
       "dependencies": {
-        "@cartesi/machine": "^1.0.0-alpha.0",
+        "@cartesi/machine": "^1.0.0-alpha.2",
         "@commander-js/extra-typings": "^15.0.0",
+        "@deroll/genext2fs": "^0.2.0-alpha.1",
         "@inquirer/confirm": "^6.3.3",
         "@inquirer/core": "^12.0.4",
         "@inquirer/input": "^5.1.7",
@@ -195,6 +196,8 @@
     "@commander-js/extra-typings": ["@commander-js/extra-typings@15.0.0", "", { "peerDependencies": { "commander": "~15.0.0" } }, "sha512-yeJlba62xqmkgELUsn7356MEnzLLu/fw2x4lofFqGnXh6YysRdEs2BaLeLtg1+KU0AXvMeqQvTTp+3hBEBK+EA=="],
 
     "@cspotcode/source-map-support": ["@cspotcode/source-map-support@0.8.1", "", { "dependencies": { "@jridgewell/trace-mapping": "0.3.9" } }, "sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw=="],
+
+    "@deroll/genext2fs": ["@deroll/genext2fs@0.2.0-alpha.1", "", { "dependencies": { "node-addon-api": "^8.9.1", "node-gyp-build": "^4.8.4" } }, "sha512-adpK8lCSdPZE4hDjlE4rzDt2D0a4i1Vl3/edTz0TxtVW307HKDB6yI9oH3AF1kmj+WOrcPIOQZ6LXEn3OWT8hQ=="],
 
     "@esbuild/aix-ppc64": ["@esbuild/aix-ppc64@0.25.12", "", { "os": "aix", "cpu": "ppc64" }, "sha512-Hhmwd6CInZ3dwpuGTF8fJG6yoWmsToE+vYgD4nytZVxcu1ulHpUQRAB1UJ8+N1Am3Mz4+xOByoQoSZf4D+CpkA=="],
 
