@@ -1,0 +1,7 @@
+# example of an nvram the guest writes its output to
+# shared makes the writes land on .cartesi/output.raw, and user lets the entrypoint user write
+
+[nvrams.output]
+size = "4Ki"
+shared = true
+user = "dapp"
