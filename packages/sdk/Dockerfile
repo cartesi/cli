@@ -78,6 +78,22 @@ tar -zx -f /tmp/foundry.tar.gz -C /usr/local/bin
 EOF
 
 ################################################################################
+# devnet anvil state
+# The state dump is produced by the anvil version named in the asset, so
+# FOUNDRY_VERSION must be the same one that provides /usr/local/bin/anvil below.
+FROM base AS devnet-state
+ARG CARTESI_PRT_VERSION
+ARG FOUNDRY_VERSION
+RUN <<EOF
+mkdir -p /opt/devnet
+curl -fsSL https://github.com/cartesi/dave/releases/download/v${CARTESI_PRT_VERSION}/cartesi-rollups-prt-${CARTESI_PRT_VERSION}-anvil-v${FOUNDRY_VERSION}.tar.gz \
+  -o /tmp/prt-anvil.tar.gz
+tar -xzO -f /tmp/prt-anvil.tar.gz state.json > /opt/devnet/anvil_state.json
+rm /tmp/prt-anvil.tar.gz
+echo ${CARTESI_PRT_VERSION} > /opt/devnet/PRT_VERSION
+EOF
+
+################################################################################
 # nitro builder
 FROM builder AS nitro
 ARG NITRO_VERSION
@@ -300,7 +316,6 @@ RUN tar -xJf "/tmp/linux-headers-${CARTESI_LINUX_KERNEL_VERSION}.tar.xz" -C /
 FROM rollups-runtime
 ARG ALTO_VERSION
 ARG ALTO_PACKAGE_VERSION
-ARG CARTESI_DEVNET_VERSION
 ARG CARTESI_MACHINE_EMULATOR_VERSION
 ARG CARTESI_PAYMASTER_VERSION
 ARG CARTESI_PASSKEY_SERVER_VERSION
@@ -353,16 +368,11 @@ EOF
 COPY --from=alto /app/alto/src/pimlico-alto-${ALTO_PACKAGE_VERSION}.tgz /tmp/pimlico-alto.tgz
 RUN <<EOF
 npm install -g \
-    @cartesi/devnet@${CARTESI_DEVNET_VERSION} \
     @cartesi/mock-verifying-paymaster@${CARTESI_PAYMASTER_VERSION} \
     @cartesi/passkey-server@${CARTESI_PASSKEY_SERVER_VERSION} \
     /tmp/pimlico-alto.tgz
 
 rm /tmp/pimlico-alto.tgz
-mkdir -p /usr/share/cartesi
-cp -r "$(npm root -g)/@cartesi/devnet/deployments" /usr/share/cartesi/
-cp "$(npm root -g)/@cartesi/devnet/anvil_state.json" /usr/share/cartesi/
-echo ${CARTESI_DEVNET_VERSION} > /usr/share/cartesi/DEVNET_VERSION
 EOF
 
 ENV LC_ALL=en_US.UTF-8
@@ -375,6 +385,7 @@ COPY devnet /usr/local/bin
 COPY eth_isready /usr/local/bin
 
 COPY entrypoint.sh /usr/local/bin/
+COPY --from=devnet-state /opt/devnet/ /usr/share/cartesi/
 COPY --from=foundry /usr/local/bin/anvil /usr/local/bin/
 COPY --from=foundry /usr/local/bin/cast /usr/local/bin/
 COPY --from=squashfs-tools /usr/local/src/squashfs-tools/mksquashfs /usr/local/bin/
