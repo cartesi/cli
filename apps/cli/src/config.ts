@@ -3,6 +3,9 @@ import { extname } from "node:path";
 import { parse as parseToml, type TomlPrimitive } from "smol-toml";
 import { getAddress, isAddress, isHex, type Address } from "viem";
 
+const NVRAM_ALIGNMENT = 4096; // cartesi-machine requires length % 4Ki == 0
+const MAX_NVRAMS = 8; // guest exposes nvrams as /dev/uio0 to /dev/uio7
+
 /**
  * Typed Errors
  */
@@ -85,6 +88,36 @@ export class InvalidEnvError extends Error {
     }
 }
 
+export class MissingNvramSourceError extends Error {
+    constructor(label: string) {
+        super(`Nvram '${label}' must define either 'size' or 'filename'`);
+        this.name = "MissingNvramSourceError";
+    }
+}
+
+export class InvalidNvramSizeError extends Error {
+    constructor(label: string, size: number) {
+        super(
+            `Invalid size ${size} for nvram '${label}': must be a positive multiple of ${NVRAM_ALIGNMENT}`,
+        );
+        this.name = "InvalidNvramSizeError";
+    }
+}
+
+export class TooManyNvramsError extends Error {
+    constructor(count: number) {
+        super(`Too many nvrams: ${count}, maximum is ${MAX_NVRAMS}`);
+        this.name = "TooManyNvramsError";
+    }
+}
+
+export class DuplicateLabelError extends Error {
+    constructor(label: string) {
+        super(`Label '${label}' is used by both a drive and an nvram`);
+        this.name = "DuplicateLabelError";
+    }
+}
+
 /**
  * Configuration for drives of a Cartesi Machine. A drive may already exist or be built by a builder
  */
@@ -156,6 +189,18 @@ export type DriveConfig = (
     user?: string; // default given by cartesi-machine
 };
 
+/**
+ * Configuration for an NVRAM of a Cartesi Machine. Unlike a flash drive, an nvram is a raw
+ * range of bytes exposed to the guest as a /dev/uio* device, with no filesystem and no mount
+ * point. Either `size` or `filename` must be defined.
+ */
+export type NvramConfig = {
+    filename?: string; // path to an existing raw image with the initial contents
+    size?: number; // in bytes, a positive multiple of 4Ki
+    shared?: boolean; // default given by cartesi-machine
+    user?: string; // default given by cartesi-machine
+};
+
 export type MachineConfig = {
     assertRollingTemplate?: boolean; // default given by cartesi-machine
     bootargs: string[];
@@ -186,6 +231,7 @@ export type WithdrawalConfig = {
 export type Config = {
     drives: Record<string, DriveConfig>;
     machine: MachineConfig;
+    nvrams: Record<string, NvramConfig>;
     sdk: string;
     withdrawalConfig?: WithdrawalConfig;
 };
@@ -218,6 +264,7 @@ export const defaultMachineConfig = (): MachineConfig => ({
 export const defaultConfig = (): Config => ({
     drives: { root: defaultRootDriveConfig() },
     machine: defaultMachineConfig(),
+    nvrams: {},
     sdk: `${DEFAULT_SDK_IMAGE}:${DEFAULT_SDK_VERSION}`,
     withdrawalConfig: undefined,
 });
@@ -393,6 +440,97 @@ const parseBytes = (value: TomlPrimitive, defaultValue: number): number => {
     }
     throw new InvalidBytesValueError(value);
 };
+
+const IEC_MULTIPLIERS: Record<string, number> = {
+    "": 1,
+    b: 1,
+    k: 1024,
+    ki: 1024,
+    kb: 1024,
+    kib: 1024,
+    m: 1024 ** 2,
+    mi: 1024 ** 2,
+    mb: 1024 ** 2,
+    mib: 1024 ** 2,
+    g: 1024 ** 3,
+    gi: 1024 ** 3,
+    gb: 1024 ** 3,
+    gib: 1024 ** 3,
+};
+
+/**
+ * Parses a byte size, accepting both the IEC suffixes used by cartesi-machine ("4Ki", "1MiB")
+ * and the ones understood by the `bytes` package ("4kb", "100Mb"). Not to be confused with
+ * `parseBytes`, which delegates to `bytes.parse` and reads "4Ki" as 4 bytes.
+ */
+const parseNvramSize = (value: TomlPrimitive): number | undefined => {
+    if (value === undefined) {
+        return undefined;
+    }
+    if (typeof value === "bigint") {
+        return Number(value);
+    }
+    if (typeof value === "number") {
+        return value;
+    }
+    if (typeof value === "string") {
+        const match = /^\s*(\d+(?:\.\d+)?)\s*([a-z]*)\s*$/i.exec(value);
+        const multiplier = match
+            ? IEC_MULTIPLIERS[match[2].toLowerCase()]
+            : undefined;
+        if (match && multiplier !== undefined) {
+            return Number(match[1]) * multiplier;
+        }
+    }
+    throw new InvalidBytesValueError(value);
+};
+
+const parseNvram = (label: string, value: TomlPrimitive): NvramConfig => {
+    const toml = isTomlTable(value) ? value : {};
+    const size = parseNvramSize(toml.size);
+    const filename = parseOptionalString(toml.filename);
+
+    if (size === undefined && filename === undefined) {
+        throw new MissingNvramSourceError(label);
+    }
+    if (size !== undefined && (size <= 0 || size % NVRAM_ALIGNMENT !== 0)) {
+        throw new InvalidNvramSizeError(label, size);
+    }
+
+    return {
+        filename,
+        size,
+        shared: parseOptionalBoolean(toml.shared),
+        user: parseOptionalString(toml.user),
+    };
+};
+
+const parseNvrams = (config: TomlPrimitive): Record<string, NvramConfig> => {
+    const entries = Object.entries((config as TomlTable) ?? {});
+    if (entries.length > MAX_NVRAMS) {
+        throw new TooManyNvramsError(entries.length);
+    }
+    return entries.reduce<Record<string, NvramConfig>>(
+        (acc, [label, nvram]) => {
+            acc[label] = parseNvram(label, nvram);
+            return acc;
+        },
+        {},
+    );
+};
+
+/**
+ * Filename, relative to the build destination directory, of the image backing an nvram.
+ */
+export const nvramImageFilename = (label: string): string => `${label}.raw`;
+
+/**
+ * Whether an nvram is backed by an image file. A pristine nvram needs no image, as
+ * cartesi-machine fills its range with zeros. A `shared` one does, as there must be a file for
+ * the guest writes to be persisted to.
+ */
+export const nvramHasImage = (nvram: NvramConfig): boolean =>
+    nvram.filename !== undefined || nvram.shared === true;
 
 const parseBuilder = (value: TomlPrimitive): Builder => {
     if (value === undefined) {
@@ -639,10 +777,21 @@ export const parse = (str: string[]): Config => {
         toml = mergeTomlTables(toml, parseToml(s));
     }
 
+    const drives = parseDrives(toml.drives);
+    const nvrams = parseNvrams(toml.nvrams);
+
+    // drives and nvrams share the DTB /aliases namespace, so labels cannot collide
+    for (const label of Object.keys(nvrams)) {
+        if (drives[label] !== undefined) {
+            throw new DuplicateLabelError(label);
+        }
+    }
+
     const config: Config = {
         withdrawalConfig: parseOptionalWithdrawalConfig(toml.withdrawal),
-        drives: parseDrives(toml.drives),
+        drives,
         machine: parseMachine(toml.machine),
+        nvrams,
         sdk: parseString(
             toml.sdk,
             `${DEFAULT_SDK_IMAGE}:${DEFAULT_SDK_VERSION}`,

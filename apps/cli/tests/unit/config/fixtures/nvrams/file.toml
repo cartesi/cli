@@ -1,0 +1,5 @@
+# example of an nvram whose initial contents come from an existing raw image
+# size is optional here, as it defaults to the size of the file
+
+[nvrams.seed]
+filename = "./seed.raw"
