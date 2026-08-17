@@ -63,7 +63,7 @@ const buildDriveTask = (
                 break;
             }
             case "empty": {
-                await buildEmpty(name, drive, sdk, destination);
+                await buildEmpty(name, drive, destination);
                 break;
             }
             case "tar": {

@@ -6,7 +6,6 @@ import { genext2fs } from "../exec/index.js";
 export const build = async (
     name: string,
     drive: EmptyDriveConfig,
-    sdkImage: string,
     destination: string,
 ): Promise<void> => {
     const filename = `${name}.${drive.format}`;
@@ -16,7 +15,6 @@ export const build = async (
                 output: filename,
                 size: drive.size,
                 cwd: destination,
-                image: sdkImage,
             });
             break;
         }

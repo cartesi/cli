@@ -1,27 +1,11 @@
-import {
-    afterEach,
-    beforeAll,
-    beforeEach,
-    describe,
-    expect,
-    it,
-} from "bun:test";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import fs from "fs-extra";
 import path from "node:path";
 import { build } from "../../../src/builder/empty.js";
 import type { EmptyDriveConfig } from "../../../src/config.js";
-import { setupIntegrationTests, TEST_SDK } from "../config.js";
 import { cleanupTempDir, createTempDir } from "./tmpdirTest.js";
 
-beforeAll(
-    async () => {
-        await setupIntegrationTests();
-    },
-    { timeout: 60000 },
-);
-
 describe("when building with the empty builder", () => {
-    const image = TEST_SDK;
     let destination: string;
 
     beforeEach(async () => {
@@ -38,7 +22,7 @@ describe("when building with the empty builder", () => {
             format: "ext2",
             size: 0,
         };
-        await expect(build("root", drive, image, destination)).rejects.toThrow(
+        await expect(build("root", drive, destination)).rejects.toThrow(
             "too few blocks",
         );
     });
@@ -50,7 +34,7 @@ describe("when building with the empty builder", () => {
             format: "ext2",
             size: 1024 * 1024 * 1, // 1Mb
         };
-        await build("root", drive, image, destination);
+        await build("root", drive, destination);
 
         const filename = path.join(destination, driveName);
         expect(fs.existsSync(filename)).toBeTruthy();
@@ -66,7 +50,7 @@ describe("when building with the empty builder", () => {
             format: "raw",
             size: 1024 * 1024 * 1, // 1Mb
         };
-        await build("root", drive, image, destination);
+        await build("root", drive, destination);
 
         const filename = path.join(destination, driveName);
         expect(fs.existsSync(filename)).toBeTruthy();
