@@ -17,6 +17,7 @@
     "dependencies": {
         "@cartesi/machine": "^1.0.0-alpha.0",
         "@commander-js/extra-typings": "^14.0.0",
+        "@deroll/genext2fs": "^0.2.0-alpha.0",
         "@inquirer/confirm": "^6.0.6",
         "@inquirer/core": "^11.1.3",
         "@inquirer/input": "^5.0.6",
