@@ -3,7 +3,7 @@ import { extname } from "node:path";
 import { parse as parseToml, type TomlPrimitive } from "smol-toml";
 import { getAddress, isAddress, isHex, type Address } from "viem";
 
-const NVRAM_ALIGNMENT = 4096; // cartesi-machine requires length % 4Ki == 0
+export const NVRAM_ALIGNMENT = 4096; // cartesi-machine requires length % 4Ki == 0
 const MAX_NVRAMS = 8; // guest exposes nvrams as /dev/uio0 to /dev/uio7
 
 /**
