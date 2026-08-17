@@ -4,6 +4,7 @@ import * as path from "node:path";
 import {
     defaultConfig,
     defaultMachineConfig,
+    DuplicateLabelError,
     InvalidAddressValueError,
     InvalidBooleanValueError,
     InvalidBuilderError,
@@ -12,21 +13,24 @@ import {
     InvalidEmptyDriveFormatError,
     InvalidEnvError,
     InvalidNumberValueError,
+    InvalidNvramSizeError,
     InvalidStringValueError,
+    MissingNvramSourceError,
     parse,
     RequiredFieldError,
+    TooManyNvramsError,
 } from "../../src/config.js";
 
-const loadDriveConfig = (driveName: string) => {
-    const filePath = path.join(
-        __dirname,
-        "config",
-        "fixtures",
-        "drives",
-        `${driveName}.toml`,
-    );
+const loadFixture = (...segments: string[]) => {
+    const filePath = path.join(__dirname, "config", "fixtures", ...segments);
     return [fs.readFileSync(filePath, "utf-8")];
 };
+
+const loadDriveConfig = (driveName: string) =>
+    loadFixture("drives", `${driveName}.toml`);
+
+const loadNvramConfig = (nvramName: string) =>
+    loadFixture("nvrams", `${nvramName}.toml`);
 
 describe("when parsing only drive config files", () => {
     it("should pass with a basic drive config", () => {
@@ -57,6 +61,17 @@ describe("when parsing only drive config files", () => {
     it("should pass with a tar drive config", () => {
         const basic = loadDriveConfig("rives");
         expect(() => parse(basic)).not.toThrow();
+    });
+});
+
+describe("when parsing only nvram config files", () => {
+    it.each([
+        "pristine",
+        "shared",
+        "file",
+        "multi",
+    ])("should pass with a %s nvram config", (name) => {
+        expect(() => parse(loadNvramConfig(name))).not.toThrow();
     });
 });
 
@@ -517,6 +532,157 @@ shared = true`,
             expect(() =>
                 parse(["[drives.data]\nbuilder = 'empty'\nformat = 42"]),
             ).toThrowError(new InvalidEmptyDriveFormatError(42));
+        });
+    });
+
+    /**
+     * [nvrams]
+     */
+    describe("when parsing [nvrams]", () => {
+        it("should default to no nvrams", () => {
+            expect(parse([""]).nvrams).toEqual({});
+        });
+
+        it("should parse a pristine nvram", () => {
+            expect(parse(['[nvrams.input]\nsize = "4Ki"'])).toEqual({
+                ...defaultConfig(),
+                nvrams: {
+                    input: {
+                        filename: undefined,
+                        size: 4096,
+                        shared: undefined,
+                        user: undefined,
+                    },
+                },
+            });
+        });
+
+        it("should parse an nvram backed by an existing image", () => {
+            expect(parse(['[nvrams.seed]\nfilename = "./seed.raw"'])).toEqual({
+                ...defaultConfig(),
+                nvrams: {
+                    seed: {
+                        filename: "./seed.raw",
+                        size: undefined,
+                        shared: undefined,
+                        user: undefined,
+                    },
+                },
+            });
+        });
+
+        it("should parse a shared nvram", () => {
+            const config = `
+                [nvrams.output]
+                size = "4Ki"
+                shared = true
+                user = "dapp"
+            `;
+            expect(parse([config])).toEqual({
+                ...defaultConfig(),
+                nvrams: {
+                    output: {
+                        filename: undefined,
+                        size: 4096,
+                        shared: true,
+                        user: "dapp",
+                    },
+                },
+            });
+        });
+
+        it("should preserve the order of the nvrams", () => {
+            const config = `
+                [nvrams.output]
+                size = "4Ki"
+
+                [nvrams.input]
+                size = "4Ki"
+            `;
+            expect(Object.keys(parse([config]).nvrams)).toEqual([
+                "output",
+                "input",
+            ]);
+        });
+
+        it.each([
+            ["4096", 4096],
+            ['"4096"', 4096],
+            ['"4Ki"', 4096],
+            ['"4KiB"', 4096],
+            ['"4kb"', 4096],
+            ['"1Mi"', 1048576],
+            ['"1Mb"', 1048576],
+        ])("should parse size %s as %i bytes", (size, expected) => {
+            expect(
+                parse([`[nvrams.input]\nsize = ${size}`]).nvrams.input.size,
+            ).toEqual(expected);
+        });
+
+        it("should fail when neither size nor filename is defined", () => {
+            expect(() => parse(["[nvrams.input]"])).toThrowError(
+                new MissingNvramSourceError("input"),
+            );
+            expect(() => parse(["[nvrams.input]\nshared = true"])).toThrowError(
+                new MissingNvramSourceError("input"),
+            );
+        });
+
+        it("should fail for a size that is not a multiple of 4Ki", () => {
+            expect(() => parse(['[nvrams.input]\nsize = "5Ki"'])).toThrowError(
+                new InvalidNvramSizeError("input", 5120),
+            );
+            expect(() => parse(["[nvrams.input]\nsize = 0"])).toThrowError(
+                new InvalidNvramSizeError("input", 0),
+            );
+        });
+
+        it("should fail for an unparseable size", () => {
+            expect(() => parse(['[nvrams.input]\nsize = "abc"'])).toThrowError(
+                new InvalidBytesValueError("abc"),
+            );
+            expect(() => parse(["[nvrams.input]\nsize = true"])).toThrowError(
+                new InvalidBytesValueError(true),
+            );
+        });
+
+        it("should fail for more than 8 nvrams", () => {
+            const config = Array.from(
+                { length: 9 },
+                (_, i) => `[nvrams.n${i}]\nsize = "4Ki"`,
+            ).join("\n");
+            expect(() => parse([config])).toThrowError(
+                new TooManyNvramsError(9),
+            );
+        });
+
+        it("should fail when a label is used by both a drive and an nvram", () => {
+            const config = `
+                [drives.data]
+                builder = "empty"
+                size = "100Mb"
+
+                [nvrams.data]
+                size = "4Ki"
+            `;
+            expect(() => parse([config])).toThrowError(
+                new DuplicateLabelError("data"),
+            );
+        });
+
+        it("should fail for the root label, which is always a drive", () => {
+            expect(() => parse(['[nvrams.root]\nsize = "4Ki"'])).toThrowError(
+                new DuplicateLabelError("root"),
+            );
+        });
+
+        it("should fail for invalid shared and user values", () => {
+            expect(() =>
+                parse(['[nvrams.input]\nsize = "4Ki"\nshared = 42']),
+            ).toThrowError(new InvalidBooleanValueError(42));
+            expect(() =>
+                parse(['[nvrams.input]\nsize = "4Ki"\nuser = 42']),
+            ).toThrowError(new InvalidStringValueError(42));
         });
     });
 
