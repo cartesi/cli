@@ -9,12 +9,12 @@ target "default" {
     ALTO_VERSION                      = "1.2.7"
     ALTO_PACKAGE_VERSION              = "0.0.20"
     CARTESI_BASE_IMAGE                = "docker.io/library/debian:trixie-20260803@sha256:34cd9e9fd437c0a095ec39cb2e73422c9f30821b0d0848ed74fd0d43bae4d958"
-    CARTESI_DEVNET_VERSION            = "2.0.0-alpha.14"
     CARTESI_IMAGE_KERNEL_VERSION      = "0.21.0"
     CARTESI_LINUX_KERNEL_VERSION      = "6.5.13-ctsi-2-v0.21.0"
     CARTESI_MACHINE_EMULATOR_VERSION  = "0.21.0"
     CARTESI_PASSKEY_SERVER_VERSION    = "1.0.1"
     CARTESI_PAYMASTER_VERSION         = "0.2.0"
+    CARTESI_PRT_VERSION               = "3.0.0-alpha.3"
     CARTESI_ROLLUPS_NODE_VERSION      = "2.0.0-alpha.12"
     FOUNDRY_VERSION                   = "1.4.3"
     NITRO_VERSION                     = "c937fa4fd202074dd250086ebd92de6884968b84" # v0.8.1
