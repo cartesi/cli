@@ -13,6 +13,9 @@
     "files": [
         "/dist"
     ],
+    "dependencies": {
+        "@cartesi/machine": "1.0.0-alpha.2"
+    },
     "devDependencies": {
         "@cartesi/wagmi-plugin": "1.0.0-alpha.7",
         "@commander-js/extra-typings": "^15.0.0",
