@@ -27,12 +27,11 @@ export type BootMachineOptions = {
     store?: string;
 };
 
-export const bootMachine = (
+export const buildMachineArgs = (
     config: Config,
     info: ImageInfo | undefined,
     bootOptions: BootMachineOptions,
-    options?: ExecaOptionsDockerFallback,
-) => {
+): string[] => {
     const { machine } = config;
     const {
         assertRollingTemplate,
@@ -140,8 +139,16 @@ export const bootMachine = (
     args.push("--");
     args.push(entrypoint);
 
-    return cartesiMachine.boot(args, {
+    return args;
+};
+
+export const bootMachine = (
+    config: Config,
+    info: ImageInfo | undefined,
+    bootOptions: BootMachineOptions,
+    options?: ExecaOptionsDockerFallback,
+) =>
+    cartesiMachine.boot(buildMachineArgs(config, info, bootOptions), {
         image: config.sdk,
         ...options,
     });
-};
