@@ -1,5 +1,4 @@
 import { Command } from "@commander-js/extra-typings";
-import { ExecaError } from "execa";
 import fs from "fs-extra";
 import path from "node:path";
 import { getApplicationConfig, getContextPath } from "../base.js";
@@ -39,26 +38,16 @@ export const createShellCommand = () => {
             // run as root if flag is set
             config.machine.user = runAsRoot ? "root" : undefined;
 
-            // boot machine
-            try {
-                await bootMachine(
-                    config,
-                    undefined,
-                    { interactive: true }, // start with interactive mode on
-                    {
-                        cwd: destination,
-                        stdio: "inherit",
-                        tty: true,
-                    },
-                );
-            } catch (error: unknown) {
-                if (error instanceof ExecaError) {
-                    // just continue gracefully
-                    if (error.exitCode === 130) {
-                        return;
-                    }
-                    throw error;
-                }
+            // boot machine, in interactive mode
+            const { exitCode } = await bootMachine(config, undefined, {
+                cwd: destination,
+                interactive: true,
+                reporter: (line) => console.error(line),
+            });
+
+            // 130 is the shell being interrupted, which is not a failure
+            if (exitCode !== 0 && exitCode !== 130) {
+                throw new Error(`Machine stopped with exit code ${exitCode}`);
             }
         });
 };

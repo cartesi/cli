@@ -154,20 +154,30 @@ export const createBuildCommand = () => {
             }
 
             // create machine snapshot
-            await bootMachine(
+            const { exitCode, rootHash } = await bootMachine(
                 config,
                 result.imageInfo,
                 {
-                    finalHash: true,
-                    store: "image",
-                },
-                {
                     cwd: destination,
-                    stdio: "inherit",
+                    finalHash: true,
+                    reporter: (line) => console.error(line),
+                    store: "image",
                 },
             );
 
-            // make snapshot readable by all users, because cartesi-machine sets to 600
+            if (exitCode !== 0) {
+                throw new Error(
+                    exitCode === 2
+                        ? "Machine did not stop at a rollup accept, it is not a valid rolling template"
+                        : `Machine stopped with exit code ${exitCode}`,
+                );
+            }
+
+            if (rootHash) {
+                console.error(`Machine hash: ${chalk.cyan(rootHash)}`);
+            }
+
+            // make snapshot readable by all users, because the emulator sets to 600
             await fs.chmod(path.join(destination, "image"), 0o755);
         });
 };

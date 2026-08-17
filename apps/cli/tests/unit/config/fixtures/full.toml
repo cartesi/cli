@@ -6,7 +6,7 @@
 # entrypoint = "/usr/local/bin/app"
 # final_hash = true
 # max_mcycle = 0
-# ram_image = "/usr/share/cartesi-machine/images/linux.bin" # directory inside SDK image
+# ram_image = "linux.bin" # optional. defaults to a cartesi machine-linux-image release, downloaded and cached on first use
 # ram_length = "128Mi"
 # use_docker_env = true
 # use_docker_workdir = true
