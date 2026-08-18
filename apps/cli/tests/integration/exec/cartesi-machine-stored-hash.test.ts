@@ -31,14 +31,15 @@ afterAll(() => {
 
 describe("cartesi-machine-stored-hash", () => {
     it("should return a computed hash", async () => {
-        const machineHash = await cartesiMachineStoredHash.computeHash(".", {
+        const machineHash = await cartesiMachineStoredHash.computeHash("./", {
             forceDocker: true,
             image: TEST_SDK,
             cwd: machineDir,
         });
 
         expect(machineHash).toBeDefined();
-        expect(isHash(machineHash!)).toBeTrue();
+        // @ts-expect-error - the above assertion ensures that machineHash is not undefined, so this type assertion is safe
+        expect(isHash(machineHash)).toBeTrue();
     });
 
     it("should return undefined for a non-existent machine directory", async () => {
