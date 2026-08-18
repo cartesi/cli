@@ -174,13 +174,19 @@ export const buildMachineArgs = (
     return args;
 };
 
-export const bootMachine = (
+export const bootMachine = async (
     config: Config,
     info: ImageInfo | undefined,
     bootOptions: BootMachineOptions,
     options?: ExecaOptionsDockerFallback,
-) =>
-    cartesiMachine.boot(buildMachineArgs(config, info, bootOptions), {
+) => {
+    // build the args first, so a configuration error is reported without spawning anything
+    const args = buildMachineArgs(config, info, bootOptions);
+
+    await cartesiMachine.assertVersion({ image: config.sdk });
+
+    return cartesiMachine.boot(args, {
         image: config.sdk,
         ...options,
     });
+};
