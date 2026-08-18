@@ -1,4 +1,4 @@
-import { parse, Range, type SemVer } from "semver";
+import { parse, Range, satisfies, type SemVer } from "semver";
 import {
     execaDockerFallback,
     type ExecaOptionsDockerFallback,
@@ -28,5 +28,28 @@ export const version = async (
         return null;
     } catch {
         return null;
+    }
+};
+
+export class UnsupportedVersionError extends Error {
+    constructor(found: SemVer) {
+        super(
+            `cartesi-machine ${found.format()} found, but ${requiredVersion.raw} is required`,
+        );
+        this.name = "UnsupportedVersionError";
+    }
+}
+
+/**
+ * Throws if the cartesi-machine that would be used does not satisfy `requiredVersion`. A version
+ * that cannot be determined is not an error, as `version` also returns null when the binary is
+ * missing or docker is unavailable, and booting reports those on its own.
+ */
+export const assertVersion = async (
+    options?: ExecaOptionsDockerFallback,
+): Promise<void> => {
+    const found = await version(options);
+    if (found !== null && !satisfies(found.format(), requiredVersion)) {
+        throw new UnsupportedVersionError(found);
     }
 };
