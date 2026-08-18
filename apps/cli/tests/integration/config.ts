@@ -42,7 +42,10 @@ export async function ensureDockerImage(image: string): Promise<void> {
  *
  * @returns {Promise<{ appDir: string, machineDir: string, cleanup: () => void }>}
  */
-export async function createTemporaryCartesiApplication(): Promise<{
+export async function createTemporaryCartesiApplication(options?: {
+    /** contents of a cartesi.toml written after create and before build */
+    config?: string;
+}): Promise<{
     appDir: string;
     machineDir: string;
     cleanup: () => void;
@@ -85,6 +88,11 @@ export async function createTemporaryCartesiApplication(): Promise<{
 
         //  Change directory into the created application
         process.chdir(appDir);
+
+        if (options?.config !== undefined) {
+            fs.writeFileSync(path.join(appDir, "cartesi.toml"), options.config);
+            console.log(`✓ Wrote a custom cartesi.toml`);
+        }
 
         console.log(`! Building the temporary Cartesi application...`);
 
