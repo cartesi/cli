@@ -29,7 +29,7 @@ export const computeHash = async (
         );
 
         if (undefined !== stdout) {
-            const hash = `0x${stdout.toString().trim()}`;
+            const hash = stdout.toString().trim();
 
             if (isHash(hash)) {
                 return hash;
