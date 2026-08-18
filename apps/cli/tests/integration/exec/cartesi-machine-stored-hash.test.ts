@@ -16,7 +16,9 @@ let cleanupTempApplication: () => void;
 beforeAll(
     async () => {
         await setupIntegrationTests();
-        const result = await createTemporaryCartesiApplication();
+        const result = await createTemporaryCartesiApplication({
+            config: `sdk = "${TEST_SDK}"`,
+        });
         machineDir = result.machineDir;
         cleanupTempApplication = result.cleanup;
     },
