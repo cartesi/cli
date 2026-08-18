@@ -83,6 +83,10 @@ jobs:
                   username: ${{ secrets.DOCKERHUB_USERNAME }}
                   password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+            - name: Fetch Temporary rollups-node debs
+              run: ./temp/fetch.sh
+              working-directory: packages/sdk
+
             - name: Build and push
               uses: docker/bake-action@d3418bd7d0e9324001bca92fa8ba175ea7e6dc9b # v7.3.0
               if: ${{ !startsWith(github.ref, 'refs/tags/sdk@') }}
