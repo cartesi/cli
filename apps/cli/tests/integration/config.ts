@@ -48,7 +48,10 @@ export async function ensureDockerImage(image: string): Promise<void> {
  *
  * @returns {Promise<{ appDir: string, machineDir: string, cleanup: () => void }>}
  */
-export async function createTemporaryCartesiApplication(): Promise<{
+export async function createTemporaryCartesiApplication(options?: {
+    /** contents of a cartesi.toml written after create and before build */
+    config?: string;
+}): Promise<{
     appDir: string;
     machineDir: string;
     cleanup: () => void;
@@ -88,6 +91,11 @@ export async function createTemporaryCartesiApplication(): Promise<{
         const appDir = path.join(tempDir.name, "temp-app");
 
         console.log(`✓ Temporary Cartesi application created at: ${appDir}`);
+
+        if (options?.config !== undefined) {
+            fs.writeFileSync(path.join(appDir, "cartesi.toml"), options.config);
+            console.log(`✓ Wrote a custom cartesi.toml`);
+        }
 
         // Build with the same image the snapshot readers use. Without this the
         // build falls back to the released SDK while the readers use TEST_SDK,
