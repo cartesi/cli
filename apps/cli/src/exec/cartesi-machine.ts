@@ -1,7 +1,6 @@
 import { parse, Range, type SemVer } from "semver";
 import {
     execaDockerFallback,
-    type DockerFallbackOptions,
     type ExecaOptionsDockerFallback,
 } from "./util.js";
 
@@ -13,14 +12,14 @@ export const boot = (
 ) => execaDockerFallback("cartesi-machine", args, options);
 
 export const version = async (
-    options?: DockerFallbackOptions,
+    options?: ExecaOptionsDockerFallback,
 ): Promise<SemVer | null> => {
-    const { image } = options || {};
     try {
         const { stdout } = await execaDockerFallback(
             "cartesi-machine",
             ["--version-json"],
-            { image },
+            // cwd is interpolated into the docker volume mount, so it must be defined
+            { ...options, cwd: options?.cwd ?? process.cwd() },
         );
         if (typeof stdout === "string") {
             const output = JSON.parse(stdout);
