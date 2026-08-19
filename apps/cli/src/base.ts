@@ -22,11 +22,14 @@ import {
     erc721PortalAddress,
     etherPortalAddress,
     inputBoxAddress,
+    refundOutputBuilderAddress,
     selfHostedApplicationFactoryAddress,
     testFungibleTokenAddress,
     testMultiTokenAddress,
     testNonFungibleTokenAddress,
+    testUsdcAddress,
     testUsdWithdrawalOutputBuilderAddress,
+    usdWithdrawalOutputBuilderFactoryAddress,
 } from "./contracts.js";
 import { cartesiMachineStoredHash } from "./exec";
 import { getApplicationAddress, getForkConfig } from "./exec/rollups.js";
@@ -118,6 +121,7 @@ export const getAddressBook = async (options: {
         TestToken: testFungibleTokenAddress,
         TestNFT: testNonFungibleTokenAddress,
         TestMultiToken: testMultiTokenAddress,
+        TestUsdc: testUsdcAddress,
         TestUsdWithdrawalOutputBuilder: testUsdWithdrawalOutputBuilderAddress,
     };
 
@@ -132,7 +136,10 @@ export const getAddressBook = async (options: {
         ERC721Portal: erc721PortalAddress,
         EtherPortal: etherPortalAddress,
         InputBox: inputBoxAddress,
+        RefundOutputBuilder: refundOutputBuilderAddress,
         SelfHostedApplicationFactory: selfHostedApplicationFactoryAddress,
+        UsdWithdrawalOutputBuilderFactory:
+            usdWithdrawalOutputBuilderFactoryAddress,
     };
 
     // gather all contracts, depending whether is fork or devnet
