@@ -1,11 +1,7 @@
-import hardhatDeploy from "@sunodo/wagmi-plugin-hardhat-deploy";
+import { rollupsContracts } from "@cartesi/wagmi-plugin";
 import { defineConfig } from "@wagmi/cli";
 
 export default defineConfig({
     out: "src/contracts.ts",
-    plugins: [
-        hardhatDeploy({
-            directory: "node_modules/@cartesi/devnet/deployments",
-        }),
-    ],
+    plugins: [rollupsContracts({ prt: true })],
 });
