@@ -103,7 +103,7 @@ jobs:
                       *.cache-to=type=gha,mode=max
                   push: true
 
-            - uses: depot/setup-action@15c09a5f77a0840ad4bce955686522a257853461 # v1.7.1
+            - uses: depot/setup-action@91bc8495a33ebfc504ffc89e5674379ccf23c29c # v1.7.2
             - name: Build and push (depot)
               uses: depot/bake-action@1d58c2668346981089b088b7ef36755b206b20e9 # v1.13.0
               if: ${{ startsWith(github.ref, 'refs/tags/sdk@') }}
