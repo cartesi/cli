@@ -3,6 +3,7 @@
     "private": true,
     "version": "0.12.0-alpha.41",
     "scripts": {
-        "build": "docker buildx bake --load --metadata-file=build.json"
+        "fetch:temp": "./temp/fetch.sh",
+        "build": "bun run fetch:temp && docker buildx bake --load --metadata-file=build.json"
     }
 }

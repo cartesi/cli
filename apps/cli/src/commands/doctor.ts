@@ -3,6 +3,8 @@ import chalk from "chalk";
 import { execa } from "execa";
 import ora, { type Ora } from "ora";
 import semver from "semver";
+import { DEFAULT_SDK_IMAGE, DEFAULT_SDK_VERSION } from "../config.js";
+import { cartesiMachine } from "../exec/index.js";
 
 const MINIMUM_DOCKER_VERSION = "25.0.0"; // Replace with our minimum required Docker version
 const MINIMUM_DOCKER_COMPOSE_VERSION = "2.24.0"; // Replace with our minimum required Docker Compose version
@@ -119,6 +121,30 @@ const checkBuildx = async (progress: Ora): Promise<true | never> => {
     return true;
 };
 
+const checkCartesiMachine = async (progress: Ora): Promise<true | never> => {
+    progress.start("Checking Cartesi Machine version...");
+
+    // doctor does not read cartesi.toml, so check against the default sdk image. the host binary
+    // still takes precedence, which is the install most likely to be out of date
+    const v = await cartesiMachine.version({
+        image: `${DEFAULT_SDK_IMAGE}:${DEFAULT_SDK_VERSION}`,
+    });
+
+    if (v === null) {
+        throw new Error(
+            "Could not determine the Cartesi Machine version. Check that Docker is running.",
+        );
+    }
+    if (!semver.satisfies(v.format(), cartesiMachine.requiredVersion)) {
+        throw new Error(
+            `Unsupported Cartesi Machine version. Required version is ${cartesiMachine.requiredVersion.raw}. Installed version is ${v.format()}.`,
+        );
+    }
+    progress.succeed(`Cartesi Machine ${chalk.cyan(v.format())}`);
+
+    return true;
+};
+
 export const createDoctorCommand = () => {
     return new Command("doctor").action(async () => {
         const progress = ora();
@@ -126,6 +152,7 @@ export const createDoctorCommand = () => {
             await checkDocker(progress);
             await checkCompose(progress);
             await checkBuildx(progress);
+            await checkCartesiMachine(progress);
             progress.succeed("Your system is ready.");
         } catch (e: unknown) {
             progress.fail((e as Error).message);

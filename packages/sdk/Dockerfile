@@ -198,16 +198,18 @@ cartesi-machine --version-json
 EOF
 
 # Install cartesi-rollups-node
-RUN <<EOF
-curl -fsSL https://github.com/cartesi/rollups-node/releases/download/v${CARTESI_ROLLUPS_NODE_VERSION}/cartesi-rollups-node-v${CARTESI_ROLLUPS_NODE_VERSION}_${TARGETARCH}.deb \
-    -o /tmp/cartesi-rollups-node.deb
+# TEMPORARY: install from the .deb fetched into temp/ by temp/fetch.sh, built by
+# https://github.com/cartesi/rollups-node/actions/runs/31189416046 (artifact "artifacts").
+# The published v2.0.0-alpha.12 release carries the same version string but different, includes emulator 0.21.0.
+# The checksums below are also pinned in temp/fetch.sh; update both together.
+RUN --mount=type=bind,source=temp,target=/debs <<EOF
+DEB=/debs/cartesi-rollups-node-v${CARTESI_ROLLUPS_NODE_VERSION}_${TARGETARCH}.deb
 case "${TARGETARCH}" in
-    amd64) echo "b2db03fcab1453238346fe6638b50693a405659fd73fe3ddca5be8d4e950528a /tmp/cartesi-rollups-node.deb" | sha256sum --check ;;
-    arm64) echo "e080a25f19f04b3d2164354c49989dcd72c02af6866623a70816eb08f0d75490 /tmp/cartesi-rollups-node.deb" | sha256sum --check ;;
+    amd64) echo "6ab8bf675e4d2a3bc3e8d14521c2b2fb0ecc291fc26474f4b3c0db6d9e800a7b  ${DEB}" | sha256sum --check ;;
+    arm64) echo "d3c4876d2c4de7578755ad67255cac303ea6e677bd8f182e8df22f1b41d81063  ${DEB}" | sha256sum --check ;;
     *) echo "unsupported architecture: ${TARGETARCH}"; exit 1 ;;
 esac
-apt-get install -y --no-install-recommends /tmp/cartesi-rollups-node.deb
-rm /tmp/cartesi-rollups-node.deb
+apt-get install -y --no-install-recommends "${DEB}"
 mkdir -p /var/lib/cartesi-rollups-node/snapshots
 chmod 755 /var/lib/cartesi-rollups-node/snapshots
 chown cartesi:cartesi /var/lib/cartesi-rollups-node/snapshots
