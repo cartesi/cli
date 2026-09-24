@@ -1,1 +1,4 @@
 build.json
+# Downloaded by fetch.sh — not versioned.
+temp/*.deb
+temp/artifacts.zip
