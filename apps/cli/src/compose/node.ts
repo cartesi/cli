@@ -122,6 +122,11 @@ const service = (options: ServiceOptions): Service => {
             selfHostedApplicationFactoryAddress,
         CARTESI_DATABASE_CONNECTION: `postgres://postgres:${databasePassword}@${databaseHost}:${databasePort}/rollupsdb?sslmode=disable`,
         CARTESI_LOG_LEVEL: logLevel,
+        // PRT signs with its own identity and the node has no default for it,
+        // so the devnet mnemonic has to be supplied explicitly.
+        ...(prt && {
+            CARTESI_PRT_AUTH_MNEMONIC: mnemonic,
+        }),
         CARTESI_SNAPSHOTS_DIR: "/var/lib/cartesi-rollups-node/snapshots",
     };
 
