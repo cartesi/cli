@@ -1,7 +1,7 @@
 import chalk from "chalk";
 import { execa } from "execa";
 import { Listr, type ListrTask } from "listr2";
-import pRetry from "p-retry";
+import pRetry, { AbortError } from "p-retry";
 import {
     type Address,
     type Hash,
@@ -17,7 +17,7 @@ import {
     getContextPath,
     getMachineHash,
     getProjectName,
-    getServiceHealth,
+    getServiceInfo,
 } from "../base.js";
 import anvil from "../compose/anvil.js";
 import { concat } from "../compose/builder.js";
@@ -281,8 +281,18 @@ const serviceMonitorTask = (options: {
         task: async (_ctx, task) => {
             await pRetry(
                 async () => {
-                    const health = await getServiceHealth(options);
-                    if (health !== "healthy") {
+                    const info = await getServiceInfo(options);
+
+                    // An exited container never becomes healthy, so stop
+                    // retrying instead of spending the whole budget on it.
+                    if (info?.State === "exited" || info?.State === "dead") {
+                        throw new AbortError(
+                            errorTitle ??
+                                `Service ${chalk.cyan(service)} exited`,
+                        );
+                    }
+
+                    if (info?.Health !== "healthy") {
                         throw new Error(
                             errorTitle ??
                                 `Service ${chalk.cyan(service)} is not healthy`,
