@@ -190,6 +190,13 @@ type Service = {
 
 export const host = "http://127.0.0.1";
 
+/**
+ * Upper bound for the delay between health checks. Without it the 1.1 growth
+ * factor reaches a 104 minute sleep by the last of the 100 attempts, so a
+ * service that never becomes healthy would hold the command for 19 hours.
+ */
+const SERVICE_HEALTH_MAX_INTERVAL = 5_000;
+
 // services configuration
 const baseServices: Service[] = [
     {
@@ -282,7 +289,12 @@ const serviceMonitorTask = (options: {
                         );
                     }
                 },
-                { retries: 100, minTimeout: 500, factor: 1.1 },
+                {
+                    retries: 100,
+                    minTimeout: 500,
+                    maxTimeout: SERVICE_HEALTH_MAX_INTERVAL,
+                    factor: 1.1,
+                },
             );
             task.title =
                 healthyTitle ?? `Service ${chalk.cyan(service)} is ready`;
