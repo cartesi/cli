@@ -34,6 +34,12 @@ describe("Compose node service", () => {
                 "CARTESI_LOG_LEVEL_PRT",
                 "CARTESI_LOG_LEVEL_VALIDATOR",
                 "CARTESI_JSONRPC_MACHINE_LOG_LEVEL",
+                "CARTESI_PRT_AUTH_KIND",
+                "CARTESI_PRT_AUTH_MNEMONIC",
+                "CARTESI_PRT_AUTH_MNEMONIC_ACCOUNT_INDEX",
+                "CARTESI_PRT_AUTH_MNEMONIC_FILE",
+                "CARTESI_PRT_AUTH_PRIVATE_KEY",
+                "CARTESI_PRT_AUTH_PRIVATE_KEY_FILE",
                 "CARTESI_SNAPSHOTS_DIR",
             ]);
         });

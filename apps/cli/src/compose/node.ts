@@ -50,6 +50,15 @@ export const nodeAllowedEnvironmentVariables = [
     "CARTESI_LOG_LEVEL_PRT",
     "CARTESI_LOG_LEVEL_VALIDATOR",
     "CARTESI_JSONRPC_MACHINE_LOG_LEVEL",
+    // Only the mnemonic and private-key kinds are reachable here: the aws
+    // kind needs AWS_REGION and the SDK credential chain, which are not
+    // CARTESI_-prefixed and so never reach getCartesiEnvironmentVariables.
+    "CARTESI_PRT_AUTH_KIND",
+    "CARTESI_PRT_AUTH_MNEMONIC",
+    "CARTESI_PRT_AUTH_MNEMONIC_ACCOUNT_INDEX",
+    "CARTESI_PRT_AUTH_MNEMONIC_FILE",
+    "CARTESI_PRT_AUTH_PRIVATE_KEY",
+    "CARTESI_PRT_AUTH_PRIVATE_KEY_FILE",
     "CARTESI_SNAPSHOTS_DIR",
 ] as const;
 
