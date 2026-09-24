@@ -2,7 +2,25 @@ import { Command } from "@commander-js/extra-typings";
 import chalk from "chalk";
 import Table from "cli-table3";
 import { getProjectName, getServiceState } from "../base.js";
-import { getDeployments } from "../exec/rollups.js";
+import {
+    type ApplicationStatus,
+    getDeployments,
+    type RollupsDeployment,
+    TERMINAL_APPLICATION_STATUSES,
+} from "../exec/rollups.js";
+
+/**
+ * `OK` is healthy and `FAILED` is recoverable; the remaining statuses are
+ * terminal and the node has stopped processing inputs for the application.
+ */
+const formatStatus = (status: ApplicationStatus) => {
+    if (status === "OK") {
+        return chalk.green(status);
+    }
+    return TERMINAL_APPLICATION_STATUSES.includes(status)
+        ? chalk.red(status)
+        : chalk.yellow(status);
+};
 
 export const createStatusCommand = () => {
     return new Command("status")
@@ -51,13 +69,34 @@ export const createStatusCommand = () => {
                             ...deployments.map((deployment) => [
                                 deployment.templateHash,
                                 deployment.address,
-                                deployment.status,
+                                formatStatus(deployment.status),
                                 deployment.enabled
                                     ? chalk.green("yes")
                                     : chalk.red("no"),
                             ]),
                         );
                         console.log(table.toString());
+
+                        const unhealthy = deployments.filter(
+                            (deployment: RollupsDeployment) =>
+                                deployment.status !== "OK",
+                        );
+
+                        for (const deployment of unhealthy) {
+                            if (deployment.reason) {
+                                console.log(
+                                    `${chalk.cyan(deployment.name)}: ${deployment.reason}`,
+                                );
+                            }
+                        }
+
+                        if (unhealthy.length > 0) {
+                            console.log(
+                                chalk.yellow(
+                                    `run ${chalk.cyan("cartesi logs")} for details`,
+                                ),
+                            );
+                        }
                     }
                 }
             }
