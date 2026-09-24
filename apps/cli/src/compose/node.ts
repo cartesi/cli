@@ -122,6 +122,10 @@ const service = (options: ServiceOptions): Service => {
             selfHostedApplicationFactoryAddress,
         CARTESI_DATABASE_CONNECTION: `postgres://postgres:${databasePassword}@${databaseHost}:${databasePort}/rollupsdb?sslmode=disable`,
         CARTESI_LOG_LEVEL: logLevel,
+        // The node always starts its PRT service, and with claim submission
+        // enabled by default that service needs its own signer. PRT has no
+        // default mnemonic, so the devnet one is supplied explicitly.
+        CARTESI_PRT_AUTH_MNEMONIC: mnemonic,
         CARTESI_SNAPSHOTS_DIR: "/var/lib/cartesi-rollups-node/snapshots",
     };
 
