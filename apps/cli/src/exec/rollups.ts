@@ -31,7 +31,34 @@ import proxy from "../compose/proxy.js";
 import type { WithdrawalConfig } from "../config.js";
 import type { ForkConfig } from "../types/chain.js";
 
-type ApplicationStatus = "OK" | "FAILED" | "DIVERGED" | "CORRUPTED";
+/**
+ * Application status as reported by the node. `OK` is healthy and `FAILED` is a
+ * recoverable failure; every other value is terminal and the node stops
+ * processing inputs for that application, including across restarts.
+ */
+export type ApplicationStatus =
+    | "OK"
+    | "FAILED"
+    | "DIVERGED"
+    | "CORRUPTED"
+    | "GUEST_EXCEPTION"
+    | "MACHINE_HALTED"
+    | "MCYCLE_OVERFLOW"
+    | "UNEXPECTED_YIELD"
+    | "INVALID_OUTPUTS_ROOT";
+
+/**
+ * Statuses in which the node no longer processes inputs for the application.
+ */
+export const TERMINAL_APPLICATION_STATUSES: readonly ApplicationStatus[] = [
+    "DIVERGED",
+    "CORRUPTED",
+    "GUEST_EXCEPTION",
+    "MACHINE_HALTED",
+    "MCYCLE_OVERFLOW",
+    "UNEXPECTED_YIELD",
+    "INVALID_OUTPUTS_ROOT",
+];
 
 export type RollupsDeployment = {
     name: string;
@@ -40,6 +67,8 @@ export type RollupsDeployment = {
     templateHash: Hash;
     epochLength: number;
     status: ApplicationStatus;
+    /** Node-provided diagnostic, present when the status is not `OK`. */
+    reason?: string;
     enabled: boolean;
 };
 
@@ -50,6 +79,7 @@ type CliRollupsDeployment = {
     template_hash: string;
     epoch_length: string;
     status: string;
+    reason?: string | null;
     enabled: boolean;
 };
 
@@ -65,9 +95,17 @@ const parseDeployment = (
     epochLength: hexToNumber(deployment.epoch_length as Hex),
     name: deployment.name,
     status: deployment.status as ApplicationStatus,
+    reason: deployment.reason ?? undefined,
     enabled: deployment.enabled,
     templateHash: deployment.template_hash as Hex,
 });
+
+/**
+ * Parse the JSON `cartesi-rollups-cli app list` writes to stdout. Throws on
+ * malformed input; callers decide what that means.
+ */
+export const parseApplications = (stdout: string): RollupsDeployment[] =>
+    (JSON.parse(stdout) as CliRollupsDeployment[]).map(parseDeployment);
 
 export const getDeployments = async (
     options: ComposeParams,
@@ -83,7 +121,7 @@ export const getDeployments = async (
             "app",
             "list",
         ]);
-        return JSON.parse(stdout).map(parseDeployment);
+        return parseApplications(stdout);
     } catch {
         return [];
     }
