@@ -173,6 +173,9 @@ export const getServiceInfo = async (options: {
         "--project-name",
         projectName,
         "ps",
+        // --all so an exited container is still reported, instead of the
+        // service simply vanishing from the output
+        "--all",
         service,
         "--format",
         "json",
