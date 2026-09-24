@@ -188,7 +188,7 @@ describe("Compose node service", () => {
 
             const env = compose.services?.rollups_node?.environment ?? {};
 
-            expect(Object.keys(env)).toHaveLength(10);
+            expect(Object.keys(env)).toHaveLength(11);
 
             expect(env).toHaveProperty(
                 "CARTESI_AUTH_MNEMONIC",
@@ -224,6 +224,50 @@ describe("Compose node service", () => {
             expect(env).toHaveProperty(
                 "CARTESI_SNAPSHOTS_DIR",
                 "/var/lib/cartesi-rollups-node/snapshots",
+            );
+        });
+
+        it("should set PRT auth even when not running with prt", () => {
+            const compose = buildNodeCompose(baseOptions);
+
+            const env = compose.services?.rollups_node?.environment ?? {};
+
+            // the node starts PRT on every run, so the signer is always needed
+            expect(env).toHaveProperty(
+                "CARTESI_PRT_AUTH_MNEMONIC",
+                "test test test test test test test test test test test junk",
+            );
+        });
+
+        it("should pass the devnet mnemonic as PRT auth when running with prt", () => {
+            const compose = buildNodeCompose({ ...baseOptions, prt: true });
+
+            const env = compose.services?.rollups_node?.environment ?? {};
+
+            // the node defaults CARTESI_PRT_AUTH_KIND to "mnemonic" but has no
+            // default mnemonic, so the PRT service cannot start without this
+            expect(env).toHaveProperty(
+                "CARTESI_PRT_AUTH_MNEMONIC",
+                "test test test test test test test test test test test junk",
+            );
+            expect(env).toHaveProperty(
+                "CARTESI_AUTH_MNEMONIC",
+                "test test test test test test test test test test test junk",
+            );
+        });
+
+        it("should use a custom mnemonic for PRT auth when one is given", () => {
+            const compose = buildNodeCompose({
+                ...baseOptions,
+                prt: true,
+                mnemonic: "custom mnemonic",
+            });
+
+            const env = compose.services?.rollups_node?.environment ?? {};
+
+            expect(env).toHaveProperty(
+                "CARTESI_PRT_AUTH_MNEMONIC",
+                "custom mnemonic",
             );
         });
 
