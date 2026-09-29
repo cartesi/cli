@@ -2,4 +2,4 @@
 "@cartesi/cli": patch
 ---
 
-Generate contracts from the rollups-contracts release instead of `@cartesi/devnet`.
+Generate contracts from the rollups-contracts and dave releases instead of `@cartesi/devnet`.
