@@ -88,6 +88,7 @@ RUN <<EOF
 mkdir -p /opt/devnet
 curl -fsSL https://github.com/cartesi/dave/releases/download/v${CARTESI_PRT_VERSION}/cartesi-rollups-prt-${CARTESI_PRT_VERSION}-anvil-${FOUNDRY_VERSION}.tar.gz \
   -o /tmp/prt-anvil.tar.gz
+echo "7e6b6a402b5e384fd6aa56387726cf4cc08783b6350b1c16a71a2e6ff454e583 /tmp/prt-anvil.tar.gz" | sha256sum --check
 tar -xzO -f /tmp/prt-anvil.tar.gz state.json > /opt/devnet/anvil_state.json
 rm /tmp/prt-anvil.tar.gz
 echo ${CARTESI_PRT_VERSION} > /opt/devnet/PRT_VERSION
