@@ -182,7 +182,7 @@ export const createErc721Command = () => {
                 abi: erc721PortalAbi,
                 account,
                 address: erc721PortalAddress,
-                functionName: "depositERC721Token",
+                functionName: "depositErc721Token",
                 args: [
                     token.address,
                     application,

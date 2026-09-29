@@ -164,7 +164,7 @@ export const createErc20Command = () => {
                 abi: erc20PortalAbi,
                 account,
                 address: erc20PortalAddress,
-                functionName: "depositERC20Tokens",
+                functionName: "depositErc20Tokens",
                 args: [token.address, application, amount, execLayerData],
             });
 
