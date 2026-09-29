@@ -177,6 +177,9 @@ const getContractCheckers = (options: ContractCheckersOptions) => {
                     functionName: "calculateDaveAppAddress",
                     args: [
                         zeroHash,
+                        0n,
+                        zeroAddress,
+                        [],
                         {
                             accountsDriveStartIndex: 0n,
                             guardian: zeroAddress,
