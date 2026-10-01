@@ -10,6 +10,7 @@ import { createDoctorCommand } from "./commands/doctor.js";
 import { createForecloseCommand } from "./commands/foreclose.js";
 import { createHashCommand } from "./commands/hash.js";
 import { createLogsCommand } from "./commands/logs.js";
+import { createRefundCommand } from "./commands/refund.js";
 import { createRunCommand } from "./commands/run.js";
 import { createSendCommand } from "./commands/send.js";
 import { createShellCommand } from "./commands/shell.js";
@@ -39,6 +40,7 @@ const program = new Command()
     .addCommand(createForecloseCommand())
     .addCommand(createLogsCommand())
     .addCommand(createHashCommand())
+    .addCommand(createRefundCommand())
     .addCommand(createRunCommand())
     .addCommand(createSendCommand())
     .addCommand(createShellCommand())
