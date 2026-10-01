@@ -1,5 +1,6 @@
 import chalk from "chalk";
-import { execa } from "execa";
+import { ExecaError, execa } from "execa";
+import { dirname } from "node:path/posix";
 import { Listr, type ListrTask } from "listr2";
 import pRetry, { AbortError } from "p-retry";
 import {
@@ -10,6 +11,8 @@ import {
     getAddress,
     hexToNumber,
     http,
+    isHash,
+    toHex,
 } from "viem";
 import { stringify } from "yaml";
 import {
@@ -710,4 +713,333 @@ export const getAnvilNodeInfo = async (options: { projectName: string }) => {
         "anvil_nodeInfo",
     ]);
     return JSON.parse(stdout);
+};
+
+/**
+ * Path of the machine template inside the rollups node container, as
+ * published by `cartesi run`
+ */
+export const NODE_TEMPLATE_PATH =
+    "/var/lib/cartesi-rollups-node/snapshots/image";
+
+/**
+ * Transaction options shared by the cartesi-rollups-cli commands that send a
+ * transaction. Each one is forwarded only when set.
+ */
+export type TransactionOptions = {
+    json?: boolean;
+    wait?: boolean;
+    waitTimeout?: string;
+    yes?: boolean;
+};
+
+export const transactionArgs = (options: TransactionOptions): string[] => {
+    const { json, wait, waitTimeout, yes } = options;
+    const args: string[] = [];
+    if (yes) {
+        args.push("--yes");
+    }
+    if (json) {
+        args.push("--json");
+    }
+    if (wait === false) {
+        args.push("--no-wait");
+    }
+    if (waitTimeout) {
+        args.push("--wait-timeout", waitTimeout);
+    }
+    return args;
+};
+
+/**
+ * Build the docker arguments to run a command inside the rollups node
+ * container. Without a terminal attached docker cannot allocate a TTY, so it
+ * must be disabled.
+ */
+export const nodeExecArgs = (options: {
+    accountIndex?: number;
+    command: string[];
+    interactive: boolean;
+    projectName: string;
+}): string[] => {
+    const { accountIndex, command, interactive, projectName } = options;
+    const args = ["compose", "--project-name", projectName, "exec"];
+    if (!interactive) {
+        args.push("-T");
+    }
+    if (accountIndex !== undefined) {
+        args.push("-e", `CARTESI_AUTH_MNEMONIC_ACCOUNT_INDEX=${accountIndex}`);
+    }
+    return [...args, "rollups_node", ...command];
+};
+
+/**
+ * Run a command inside the rollups node container with the terminal attached,
+ * so its prompts and output reach the user directly
+ */
+export const runNodeCommand = (options: {
+    accountIndex?: number;
+    command: string[];
+    projectName: string;
+}) =>
+    execa(
+        "docker",
+        nodeExecArgs({ ...options, interactive: !!process.stdin.isTTY }),
+        { stdio: "inherit" },
+    );
+
+/**
+ * Run a command inside the rollups node container and capture its output
+ * @returns stdout of the command
+ */
+export const execNodeCommand = async (options: {
+    command: string[];
+    input?: string;
+    projectName: string;
+}): Promise<string> => {
+    const { input, ...rest } = options;
+    try {
+        const { stdout } = await execa(
+            "docker",
+            nodeExecArgs({ ...rest, interactive: false }),
+            { input },
+        );
+        return stdout;
+    } catch (error: unknown) {
+        if (error instanceof ExecaError) {
+            throw new Error(
+                String(error.stderr ?? "").trim() || error.shortMessage,
+            );
+        }
+        throw error;
+    }
+};
+
+/**
+ * Write content to a fresh temporary file inside the rollups node container,
+ * so the node tools can read it
+ * @returns path of the file inside the container
+ */
+export const writeNodeTempFile = async (options: {
+    content: string;
+    projectName: string;
+}): Promise<string> => {
+    const { content, projectName } = options;
+    const stdout = await execNodeCommand({
+        command: ["sh", "-c", 'f=$(mktemp) && cat > "$f" && echo "$f"'],
+        input: content,
+        projectName,
+    });
+    return stdout.trim();
+};
+
+/**
+ * Remove a file or directory from the rollups node container
+ */
+export const removeNodePath = (options: {
+    path: string;
+    projectName: string;
+}) =>
+    execNodeCommand({
+        command: ["rm", "-rf", options.path],
+        projectName: options.projectName,
+    });
+
+/**
+ * Check whether a path exists inside the rollups node container
+ */
+export const nodePathExists = async (options: {
+    path: string;
+    projectName: string;
+}): Promise<boolean> => {
+    const { exitCode } = await execa(
+        "docker",
+        nodeExecArgs({
+            command: ["test", "-e", options.path],
+            interactive: false,
+            projectName: options.projectName,
+        }),
+        { reject: false },
+    );
+    return exitCode === 0;
+};
+
+/**
+ * Report the failure of a command run with the terminal attached. The command
+ * already printed its error, so only its exit code is propagated.
+ */
+export const handleNodeCommandError = (error: unknown) => {
+    if (error instanceof ExecaError) {
+        process.exitCode = error.exitCode ?? 1;
+        return;
+    }
+    throw error;
+};
+
+/**
+ * Layout of the accounts drive, as configured in the application contract
+ */
+export type AccountsDriveConfig = {
+    accountsDriveStartIndex: bigint;
+    log2LeavesPerAccount: bigint;
+    log2MaxNumOfAccounts: bigint;
+};
+
+export const replayArgs = (options: {
+    application: Address;
+    epochIndex: bigint;
+    store: string;
+}): string[] => [
+    "cartesi-rollups-machine-tool",
+    "replay",
+    "--template",
+    NODE_TEMPLATE_PATH,
+    "--application",
+    options.application,
+    "--to-epoch",
+    options.epochIndex.toString(),
+    "--store",
+    options.store,
+];
+
+export const proveAccountsDriveArgs = (options: {
+    account: Address;
+    driveConfig: AccountsDriveConfig;
+    outDir: string;
+    snapshot: string;
+}): string[] => {
+    const { account, driveConfig, outDir, snapshot } = options;
+    return [
+        "cartesi-rollups-machine-tool",
+        "prove",
+        "accounts-drive",
+        "--snapshot",
+        snapshot,
+        "--accounts-drive-start-index",
+        toHex(driveConfig.accountsDriveStartIndex),
+        "--log2-max-num-of-accounts",
+        toHex(driveConfig.log2MaxNumOfAccounts),
+        "--log2-leaves-per-account",
+        toHex(driveConfig.log2LeavesPerAccount),
+        "--account",
+        account,
+        "--out-drive-root-proof",
+        `${outDir}/drive-root-proof.json`,
+        "--out-withdraw-proof",
+        `${outDir}/withdraw-proof.json`,
+    ];
+};
+
+export type ReplaySummary = {
+    machineRoot: Hash;
+    processedInputs: number;
+    store: string;
+};
+
+export type ProveSummary = {
+    accountIndex: bigint;
+    accountsDriveMerkleRoot: Hash;
+    driveRootProofFile: string;
+    machineRoot: Hash;
+    withdrawProofFile: string;
+};
+
+/**
+ * The machine tool prints a single JSON object as its last line of output
+ */
+const parseSummary = (stdout: string): Record<string, unknown> => {
+    const line = stdout.trim().split("\n").pop() ?? "";
+    const summary = JSON.parse(line);
+    if (typeof summary !== "object" || summary === null) {
+        throw new Error(`Unexpected machine tool output: ${stdout}`);
+    }
+    return summary;
+};
+
+const requireHash = (summary: Record<string, unknown>, key: string): Hash => {
+    const value = summary[key];
+    if (typeof value !== "string" || !isHash(value)) {
+        throw new Error(`Invalid ${key} in machine tool output: ${value}`);
+    }
+    return value;
+};
+
+const requireString = (
+    summary: Record<string, unknown>,
+    key: string,
+): string => {
+    const value = summary[key];
+    if (typeof value !== "string" || value.length === 0) {
+        throw new Error(`Missing ${key} in machine tool output`);
+    }
+    return value;
+};
+
+export const parseReplaySummary = (stdout: string): ReplaySummary => {
+    const summary = parseSummary(stdout);
+    const processedInputs = summary.processed_inputs;
+    if (typeof processedInputs !== "number") {
+        throw new Error("Missing processed_inputs in machine tool output");
+    }
+    return {
+        machineRoot: requireHash(summary, "machine_root"),
+        processedInputs,
+        store: requireString(summary, "store"),
+    };
+};
+
+export const parseProveSummary = (stdout: string): ProveSummary => {
+    const summary = parseSummary(stdout);
+    return {
+        accountIndex: BigInt(requireString(summary, "account_index")),
+        accountsDriveMerkleRoot: requireHash(
+            summary,
+            "accounts_drive_merkle_root",
+        ),
+        driveRootProofFile: requireString(summary, "drive_root_proof_file"),
+        machineRoot: requireHash(summary, "machine_root"),
+        withdrawProofFile: requireString(summary, "withdraw_proof_file"),
+    };
+};
+
+/**
+ * Replay the accepted inputs of an application up to an epoch, storing the
+ * resulting machine inside the rollups node container
+ */
+export const replayMachine = async (options: {
+    application: Address;
+    epochIndex: bigint;
+    projectName: string;
+    store: string;
+}): Promise<ReplaySummary> => {
+    const { projectName, store } = options;
+    await execNodeCommand({
+        command: ["mkdir", "-p", dirname(store)],
+        projectName,
+    });
+    const stdout = await execNodeCommand({
+        command: replayArgs(options),
+        projectName,
+    });
+    return parseReplaySummary(stdout);
+};
+
+/**
+ * Generate the accounts drive root proof and the withdraw proof of an account
+ * from a stored machine inside the rollups node container
+ */
+export const proveAccountsDrive = async (options: {
+    account: Address;
+    driveConfig: AccountsDriveConfig;
+    outDir: string;
+    projectName: string;
+    snapshot: string;
+}): Promise<ProveSummary> => {
+    const { outDir, projectName } = options;
+    await execNodeCommand({ command: ["mkdir", "-p", outDir], projectName });
+    const stdout = await execNodeCommand({
+        command: proveAccountsDriveArgs(options),
+        projectName,
+    });
+    return parseProveSummary(stdout);
 };
