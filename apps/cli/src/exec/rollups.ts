@@ -761,8 +761,10 @@ export const nodeExecArgs = (options: {
     command: string[];
     interactive: boolean;
     projectName: string;
+    workdir?: string;
 }): string[] => {
-    const { accountIndex, command, interactive, projectName } = options;
+    const { accountIndex, command, interactive, projectName, workdir } =
+        options;
     const args = ["compose", "--project-name", projectName, "exec"];
     if (!interactive) {
         args.push("-T");
@@ -770,22 +772,31 @@ export const nodeExecArgs = (options: {
     if (accountIndex !== undefined) {
         args.push("-e", `CARTESI_AUTH_MNEMONIC_ACCOUNT_INDEX=${accountIndex}`);
     }
+    if (workdir) {
+        args.push("--workdir", workdir);
+    }
     return [...args, "rollups_node", ...command];
 };
 
 /**
  * Run a command inside the rollups node container with the terminal attached,
- * so its prompts and output reach the user directly
+ * so its prompts and output reach the user directly. Its output can be sent to
+ * stderr to keep stdout for the output of a later command.
  */
 export const runNodeCommand = (options: {
     accountIndex?: number;
     command: string[];
     projectName: string;
+    stdout?: "stdout" | "stderr";
 }) =>
     execa(
         "docker",
         nodeExecArgs({ ...options, interactive: !!process.stdin.isTTY }),
-        { stdio: "inherit" },
+        {
+            stdin: "inherit",
+            stdout: options.stdout === "stderr" ? 2 : "inherit",
+            stderr: "inherit",
+        },
     );
 
 /**
@@ -796,6 +807,7 @@ export const execNodeCommand = async (options: {
     command: string[];
     input?: string;
     projectName: string;
+    workdir?: string;
 }): Promise<string> => {
     const { input, ...rest } = options;
     try {
@@ -1004,7 +1016,8 @@ export const parseProveSummary = (stdout: string): ProveSummary => {
 
 /**
  * Replay the accepted inputs of an application up to an epoch, storing the
- * resulting machine inside the rollups node container
+ * resulting machine inside the rollups node container. The machine writes the
+ * reports of the inputs to its working directory, which must be writable.
  */
 export const replayMachine = async (options: {
     application: Address;
@@ -1013,13 +1026,12 @@ export const replayMachine = async (options: {
     store: string;
 }): Promise<ReplaySummary> => {
     const { projectName, store } = options;
-    await execNodeCommand({
-        command: ["mkdir", "-p", dirname(store)],
-        projectName,
-    });
+    const workdir = dirname(store);
+    await execNodeCommand({ command: ["mkdir", "-p", workdir], projectName });
     const stdout = await execNodeCommand({
         command: replayArgs(options),
         projectName,
+        workdir,
     });
     return parseReplaySummary(stdout);
 };
@@ -1040,6 +1052,7 @@ export const proveAccountsDrive = async (options: {
     const stdout = await execNodeCommand({
         command: proveAccountsDriveArgs(options),
         projectName,
+        workdir: outDir,
     });
     return parseProveSummary(stdout);
 };

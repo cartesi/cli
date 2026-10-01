@@ -1,11 +1,9 @@
 import {
-    type Application,
     type CartesiPublicClient,
     createCartesiPublicClient,
 } from "@cartesi/client";
 import { InvalidArgumentError } from "@commander-js/extra-typings";
 import chalk from "chalk";
-import pRetry from "p-retry";
 import { type Address, getAddress, http, isAddress } from "viem";
 import { getServiceState } from "./base.js";
 import { getApplicationAddress, getProjectPort } from "./exec/rollups.js";
@@ -22,37 +20,6 @@ export const getNodeClient = async (options: {
     return createCartesiPublicClient({
         transport: http(`http://${host}/rpc`),
     });
-};
-
-/**
- * Wait until the node reports an application state that satisfies the
- * predicate. The node observes chain events with some lag, so a state change
- * caused by a transaction is not visible right after it is mined.
- * @returns the application in the expected state
- */
-export const waitForApplication = async (options: {
-    application: Address;
-    client: CartesiPublicClient;
-    message: string;
-    predicate: (application: Application) => boolean;
-    retries?: number;
-}): Promise<Application> => {
-    const { application, client, message, predicate, retries = 20 } = options;
-    return pRetry(
-        async () => {
-            const app = await client.getApplication({ application });
-            if (!predicate(app)) {
-                throw new Error(message);
-            }
-            return app;
-        },
-        {
-            retries,
-            minTimeout: 500,
-            maxTimeout: 2_000,
-            factor: 1.2,
-        },
-    );
 };
 
 /**
