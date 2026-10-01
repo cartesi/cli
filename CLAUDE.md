@@ -52,7 +52,7 @@ The CLI build pipeline (`apps/cli`): `clean` → `codegen` (wagmi ABI generation
 
 **Key subsystems**:
 
--   **`commands/`** — Each file exports a `create*Command()` function returning a Commander command. Main commands: `build`, `run`, `deploy`, `send`, `deposit`, `create`, `doctor`, `shell`, `clean`, `hash`, `logs`, `status`, `address-book`.
+-   **`commands/`** — Each file exports a `create*Command()` function returning a Commander command. Main commands: `build`, `run`, `deploy`, `send`, `deposit`, `create`, `doctor`, `shell`, `clean`, `hash`, `logs`, `status`, `address-book`, `foreclose`, `refund`, `withdraw`.
 -   **`builder/`** — Drive builder implementations (directory, docker, tar, empty, none). Each builder produces ext2 or SquashFS filesystems for Cartesi Machine drives.
 -   **`compose/`** — Docker Compose service definitions generated as TypeScript objects (anvil, node, bundler, database, paymaster, proxy, explorer, etc.).
 -   **`exec/`** — Wrappers around subprocess execution (cartesi-machine, rollups) using `execa`.
