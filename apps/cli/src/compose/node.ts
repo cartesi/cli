@@ -8,6 +8,12 @@ import {
 import type { ComposeFile, Config, Service } from "../types/compose.js";
 import { DEFAULT_HEALTHCHECK } from "./common.js";
 
+/**
+ * Mnemonic of the devnet test accounts, used by the node to sign transactions
+ */
+export const DEVNET_MNEMONIC =
+    "test test test test test test test test test test test junk";
+
 export type ServiceOptions = {
     cpus?: number;
     databaseHost?: string;
@@ -106,9 +112,7 @@ const service = (options: ServiceOptions): Service => {
     const defaultBlock = options.defaultBlock ?? "latest";
     const imageTag = options.imageTag ?? "latest";
     const logLevel = options.logLevel ?? "info";
-    const mnemonic =
-        options.mnemonic ??
-        "test test test test test test test test test test test junk";
+    const mnemonic = options.mnemonic ?? DEVNET_MNEMONIC;
     const prt = options.prt ?? false;
     const chainId = (options.forkChainId ??
         31337) as keyof typeof daveAppFactoryAddress;
