@@ -15,6 +15,7 @@ import { createRunCommand } from "./commands/run.js";
 import { createSendCommand } from "./commands/send.js";
 import { createShellCommand } from "./commands/shell.js";
 import { createStatusCommand } from "./commands/status.js";
+import { createWithdrawCommand } from "./commands/withdraw.js";
 
 const splash = String.raw`         .
         / \
@@ -44,7 +45,8 @@ const program = new Command()
     .addCommand(createRunCommand())
     .addCommand(createSendCommand())
     .addCommand(createShellCommand())
-    .addCommand(createStatusCommand());
+    .addCommand(createStatusCommand())
+    .addCommand(createWithdrawCommand());
 
 // Global error handling
 process.on("uncaughtException", (err) => {

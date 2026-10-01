@@ -201,6 +201,26 @@ describe("transactionArgs", () => {
 });
 
 describe("nodeExecArgs", () => {
+    it("should run the command in the working directory", () => {
+        expect(
+            nodeExecArgs({
+                command: ["true"],
+                interactive: true,
+                projectName: "dapp",
+                workdir: "/tmp/work",
+            }),
+        ).toEqual([
+            "compose",
+            "--project-name",
+            "dapp",
+            "exec",
+            "--workdir",
+            "/tmp/work",
+            "rollups_node",
+            "true",
+        ]);
+    });
+
     it("should exec the command in the rollups node service", () => {
         expect(
             nodeExecArgs({
