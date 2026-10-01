@@ -18,6 +18,7 @@
         "cartesi": "./dist/index.js",
       },
       "dependencies": {
+        "@cartesi/client": "2.0.0-alpha.38",
         "@commander-js/extra-typings": "^15.0.0",
         "@inquirer/confirm": "^6.3.3",
         "@inquirer/core": "^12.0.4",
@@ -137,9 +138,13 @@
 
     "@cartesi/cli": ["@cartesi/cli@workspace:apps/cli"],
 
+    "@cartesi/client": ["@cartesi/client@2.0.0-alpha.38", "", { "dependencies": { "@cartesi/rpc": "2.0.0-alpha.27", "abitype": "^1.3.0", "p-retry": "^8.0.1" }, "peerDependencies": { "viem": "^2.0.0" } }, "sha512-XtYPLIKDvJClbl8Sb9/Mx2yK4Q7FJD8CPG3Gq2FCdNkgVZ0si7K8LhIFetnukiVIU1KF4aYJEtiIjgLizmnzRQ=="],
+
     "@cartesi/devnet": ["@cartesi/devnet@workspace:packages/devnet"],
 
     "@cartesi/mock-verifying-paymaster": ["@cartesi/mock-verifying-paymaster@workspace:packages/mock-verifying-paymaster"],
+
+    "@cartesi/rpc": ["@cartesi/rpc@2.0.0-alpha.27", "", { "dependencies": { "json-rpc-2.0": "^1.8.0" } }, "sha512-mkZIELszlnulJYZglMuANuMel71uWcENnAl/LnNdpwaU6o8hq0o7f9y3JaBTwwjWOo73s2gOpyhc3cU1Kq/m+w=="],
 
     "@cartesi/sdk": ["@cartesi/sdk@workspace:packages/sdk"],
 
@@ -796,6 +801,8 @@
     "js-yaml": ["js-yaml@4.1.1", "", { "dependencies": { "argparse": "2.0.1" }, "bin": { "js-yaml": "bin/js-yaml.js" } }, "sha512-qQKT4zQxXl8lLwBtHMWwaTcGfFOZviOJet3Oy/xmGk2gZH677CJM9EvtfdSkgWcATZhj/55JZ0rmy3myCT5lsA=="],
 
     "json-parse-better-errors": ["json-parse-better-errors@1.0.2", "", {}, "sha512-mrqyZKfX5EhL7hvqcV6WG1yYjnjeuYDzDhhcAAUrq8Po85NBQBJP+ZDUT75qZQ98IkUoBqdkExkukOU7Ts2wrw=="],
+
+    "json-rpc-2.0": ["json-rpc-2.0@1.8.1", "", {}, "sha512-BmN42JKn6FI36pcMMzHCXQhpKNEfbeqgSIcUYHKnifq0/4Ey6PDinovwUOgajT7NsgUtpWdDXaCWlpI4LHXN3g=="],
 
     "json-schema-ref-resolver": ["json-schema-ref-resolver@1.0.1", "", { "dependencies": { "fast-deep-equal": "^3.1.3" } }, "sha512-EJAj1pgHc1hxF6vo2Z3s69fMjO1INq6eGHXZ8Z6wCQeldCuwxGK9Sxf4/cScGn3FZubCVUehfWtcDM/PLteCQw=="],
 
