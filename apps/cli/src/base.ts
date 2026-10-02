@@ -40,11 +40,34 @@ export const getContextPath = (...paths: string[]): string => {
     return path.join(".cartesi", ...paths);
 };
 
-export const getMachineHash = async (): Promise<Hash | undefined> => {
-    // read hash of the cartesi machine snapshot, if one exists
+/**
+ * SDK image of the project, which built its machine snapshot
+ */
+const getProjectSdk = (): string | undefined => {
+    try {
+        return getApplicationConfig(["cartesi.toml"]).sdk;
+    } catch {
+        // an invalid config is reported by the commands that build with it
+        return undefined;
+    }
+};
+
+/**
+ * Read the hash of the cartesi machine snapshot, if one exists. Without a
+ * local cartesi-machine-stored-hash, it runs in the SDK image the snapshot was
+ * built with, as an emulator of another version may not load it.
+ * @param options sdk image of the project, read from cartesi.toml if not given
+ */
+export const getMachineHash = async (options?: {
+    sdk?: string;
+}): Promise<Hash | undefined> => {
     const imagePath = getContextPath("image");
     if (fs.existsSync(imagePath)) {
-        return await cartesiMachineStoredHash.computeHash(imagePath);
+        const image = options?.sdk ?? getProjectSdk();
+        return await cartesiMachineStoredHash.computeHash(
+            imagePath,
+            image ? { image } : undefined,
+        );
     }
     return undefined;
 };

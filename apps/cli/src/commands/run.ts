@@ -83,6 +83,7 @@ const shell = async (options: {
     projectName: string;
     prt?: boolean;
     salt: number;
+    sdk: string;
     withdrawalConfig?: WithdrawalConfig;
     claimStagingPeriod: number;
 }) => {
@@ -92,6 +93,7 @@ const shell = async (options: {
         log,
         projectName,
         prt,
+        sdk,
         withdrawalConfig,
         claimStagingPeriod,
     } = options;
@@ -174,7 +176,7 @@ const shell = async (options: {
                     await build?.parseAsync([], { from: "user" });
 
                     // redeploy
-                    const hash = await getMachineHash();
+                    const hash = await getMachineHash({ sdk });
                     if (hash) {
                         if (lastDeployment) {
                             await undeploy({ projectName });
@@ -493,7 +495,9 @@ export const createRunCommand = () => {
             // deploy the application
             let deployment: RollupsDeployment | undefined;
             let salt = 0;
-            const hash = await getMachineHash();
+            const hash = await getMachineHash({
+                sdk: applicationConfig.sdk,
+            });
             if (hash) {
                 deployment = await deploy({
                     epochLength,
@@ -544,6 +548,7 @@ export const createRunCommand = () => {
                     projectName,
                     prt,
                     salt,
+                    sdk: applicationConfig.sdk,
                     claimStagingPeriod,
                     withdrawalConfig: applicationConfig?.withdrawalConfig,
                 });
