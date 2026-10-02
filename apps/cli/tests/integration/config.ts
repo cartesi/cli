@@ -10,6 +10,11 @@ export const TEST_SDK =
     process.env.CARTESI_TEST_SDK ??
     `${DEFAULT_SDK_IMAGE}:${DEFAULT_SDK_VERSION}`;
 
+// compose parameterises only the image tag, so this is a tag and not a full
+// reference; CARTESI_TEST_RUNTIME_VERSION selects an unreleased build.
+export const TEST_RUNTIME_VERSION =
+    process.env.CARTESI_TEST_RUNTIME_VERSION ?? DEFAULT_SDK_VERSION;
+
 /**
  * Ensures the required Docker image is available locally.
  * Checks if the image exists, and pulls it if not found.
