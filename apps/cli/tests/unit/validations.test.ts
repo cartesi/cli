@@ -1,4 +1,13 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test";
+import {
+    afterAll,
+    beforeEach,
+    describe,
+    expect,
+    it,
+    mock,
+    spyOn,
+} from "bun:test";
+import * as viem from "viem";
 import { celo, sepolia } from "viem/chains";
 import {
     daveAppFactoryAddress,
@@ -18,18 +27,22 @@ const mockGetBlockNumber = mock().mockResolvedValue(12345n);
 const mockGetCode = mock().mockResolvedValue("0x1234");
 const mockReadContract = mock().mockResolvedValue("some-result");
 
-mock.module("viem", () => {
-    return {
-        createPublicClient: () => ({
+// a spy instead of a module mock, as a module mock is not undone and would
+// replace viem for the test files that run after this one
+const createPublicClientSpy = spyOn(
+    viem,
+    "createPublicClient",
+).mockImplementation(
+    () =>
+        ({
             getBlockNumber: mockGetBlockNumber,
             getCode: mockGetCode,
             readContract: mockReadContract,
-        }),
-        http: () => "mock-http-transport",
-        zeroAddress: "0x0000000000000000000000000000000000000000",
-        zeroHash:
-            "0x0000000000000000000000000000000000000000000000000000000000000000",
-    };
+        }) as never,
+);
+
+afterAll(() => {
+    createPublicClientSpy.mockRestore();
 });
 
 describe("validations", () => {
