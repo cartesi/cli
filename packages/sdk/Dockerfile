@@ -154,6 +154,23 @@ telegraf --version
 EOF
 
 ################################################################################
+# install sling-node
+FROM base AS sling-node
+ARG CARTESI_PRT_VERSION
+ARG TARGETARCH
+WORKDIR /tmp
+RUN <<EOF
+curl -fsSL https://github.com/cartesi/dave/releases/download/v${CARTESI_PRT_VERSION}/cartesi-rollups-prt-${CARTESI_PRT_VERSION}-node-${TARGETARCH}.tar.gz \
+    -o ./sling-node.tar.gz;
+case "${TARGETARCH}" in
+    amd64) echo "a69beb8a96aad4eb0e7be1ac492bc6e3e312cbc105456403b14d2889c8364f68 /tmp/sling-node.tar.gz" | sha256sum --check ;;
+    arm64) echo "c19e932f6b4ac1039af8b0fac2355268397e31cae6302809cad50221d9058cba /tmp/sling-node.tar.gz" | sha256sum --check ;;
+    *) echo "unsupported architecture: ${TARGETARCH}"; exit 1 ;;
+esac
+tar -xvzf /tmp/sling-node.tar.gz -C /usr/local/bin
+EOF
+
+################################################################################
 # cartesi rollups-runtime target
 FROM base AS rollups-runtime
 ARG CARTESI_MACHINE_EMULATOR_VERSION
@@ -333,6 +350,7 @@ apt-get update
 apt-get install -y --no-install-recommends \
     jq \
     libarchive-tools \
+    libgomp1 \
     liblzo2-2 \
     libslirp0 \
     locales \
@@ -392,6 +410,7 @@ COPY --from=foundry /usr/local/bin/cast /usr/local/bin/
 COPY --from=squashfs-tools /usr/local/src/squashfs-tools/mksquashfs /usr/local/bin/
 COPY --from=kernel-image --chmod=644 /usr/share/cartesi-machine/images/linux.bin /usr/share/cartesi-machine/images/linux.bin
 COPY --from=kernel-headers /include/linux /include/linux
+COPY --from=sling-node --chmod=755 /usr/local/bin/cartesi-rollups-prt-node /usr/local/bin/cartesi-rollups-prt-node
 
 WORKDIR /mnt
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
