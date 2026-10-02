@@ -3,6 +3,7 @@ import { writeFileSync } from "node:fs";
 import path from "node:path";
 import tmp from "tmp";
 import { isHash } from "viem";
+import { getMachineHash } from "../../../src/base";
 import { cartesiMachineStoredHash } from "../../../src/exec";
 import {
     createTemporaryCartesiApplication,
@@ -10,6 +11,7 @@ import {
     TEST_SDK,
 } from "../config";
 
+let appDir: string;
 let machineDir: string;
 let cleanupTempApplication: () => void;
 
@@ -17,6 +19,7 @@ beforeAll(
     async () => {
         await setupIntegrationTests();
         const result = await createTemporaryCartesiApplication();
+        appDir = result.appDir;
         machineDir = result.machineDir;
         cleanupTempApplication = result.cleanup;
     },
@@ -39,6 +42,25 @@ describe("cartesi-machine-stored-hash", () => {
 
         expect(machineHash).toBeDefined();
         expect(isHash(machineHash!)).toBeTrue();
+    });
+
+    it("should read the project snapshot with the project sdk image", async () => {
+        // the temporary application pins sdk = TEST_SDK, which may differ from
+        // the default SDK whose emulator cannot load the snapshot
+        const expected = await cartesiMachineStoredHash.computeHash(".", {
+            forceDocker: true,
+            image: TEST_SDK,
+            cwd: machineDir,
+        });
+        expect(isHash(expected ?? "")).toBeTrue();
+
+        const cwd = process.cwd();
+        try {
+            process.chdir(appDir);
+            expect(await getMachineHash()).toBe(expected);
+        } finally {
+            process.chdir(cwd);
+        }
     });
 
     it("should return undefined for a non-existent machine directory", async () => {
