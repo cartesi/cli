@@ -36,8 +36,9 @@ jobs:
 
             # Minimum required version for npm publish with OIDC Support
             # https://docs.npmjs.com/trusted-publishers
+            # Pinned to a major: npm 12 changed `npm info --json` output, which broke `changeset publish` < 2.31.1
             - run: |
-                  sudo npm install -g npm@latest
+                  sudo npm install -g npm@12
                   npm --version
 
             - name: Install Foundry
