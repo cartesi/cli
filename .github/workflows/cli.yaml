@@ -4,6 +4,7 @@ on:
         paths:
             - ".github/workflows/cli.yaml"
             - "apps/cli/**"
+            - "packages/sdk/**"
             - "packages/tsconfig/**"
 concurrency:
     group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
