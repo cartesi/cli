@@ -4,7 +4,11 @@ import path from "node:path";
 import tmp from "tmp";
 import { DEFAULT_SDK_IMAGE, DEFAULT_SDK_VERSION } from "../../src/config.js";
 
-export const TEST_SDK = `${DEFAULT_SDK_IMAGE}:${DEFAULT_SDK_VERSION}`;
+// CARTESI_TEST_SDK lets CI and local runs point the suite at an unreleased
+// SDK image, which is how changes are verified against the matching node.
+export const TEST_SDK =
+    process.env.CARTESI_TEST_SDK ??
+    `${DEFAULT_SDK_IMAGE}:${DEFAULT_SDK_VERSION}`;
 
 /**
  * Ensures the required Docker image is available locally.
