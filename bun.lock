@@ -13,7 +13,7 @@
     },
     "apps/cli": {
       "name": "@cartesi/cli",
-      "version": "2.0.0-alpha.35",
+      "version": "2.0.0-alpha.36",
       "bin": {
         "cartesi": "./dist/index.js",
       },
@@ -45,7 +45,7 @@
         "yaml": "^2.8.2",
       },
       "devDependencies": {
-        "@cartesi/devnet": "2.0.0-alpha.14",
+        "@cartesi/devnet": "2.0.0-alpha.15",
         "@sunodo/wagmi-plugin-hardhat-deploy": "^0.4.0",
         "@types/bun": "^1.3.6",
         "@types/bytes": "^3.1.5",
@@ -67,7 +67,7 @@
     },
     "packages/devnet": {
       "name": "@cartesi/devnet",
-      "version": "2.0.0-alpha.14",
+      "version": "2.0.0-alpha.15",
       "devDependencies": {
         "@types/bun": "^1.3.9",
         "@types/fs-extra": "^11.0.4",
@@ -107,7 +107,7 @@
     },
     "packages/sdk": {
       "name": "@cartesi/sdk",
-      "version": "0.12.0-alpha.41",
+      "version": "0.12.0-alpha.42",
     },
     "packages/tsconfig": {
       "name": "tsconfig",
@@ -1167,7 +1167,7 @@
 
     "zod-validation-error": ["zod-validation-error@3.5.4", "", { "peerDependencies": { "zod": "^3.24.4" } }, "sha512-+hEiRIiPobgyuFlEojnqjJnhFvg4r/i3cqgcm67eehZf/WBaK3g6cD02YU9mtdVxZjv8CzCA9n/Rhrs3yAAvAw=="],
 
-    "@cartesi/cli/@cartesi/devnet": ["@cartesi/devnet@2.0.0-alpha.14", "", {}, "sha512-BPcFh1NBauZlpoL6HedBL88xvi5D+PweAUlxKSxNEiBCE8sJDx8TaTiwKtnSH27l6r4NuuZTeClgWBOq8e+Taw=="],
+    "@cartesi/cli/@cartesi/devnet": ["@cartesi/devnet@2.0.0-alpha.15", "", {}, "sha512-OqZFKiGa391g++K43lXX/apwUJam1FUwI8LF6Dm4Y/41HR8MAZTbkYvxf/6iACT2eEgWP++tPPgfE/nQ1DhsdA=="],
 
     "@cartesi/mock-verifying-paymaster/viem": ["viem@2.18.4", "", { "dependencies": { "@adraffy/ens-normalize": "1.10.0", "@noble/curves": "1.4.0", "@noble/hashes": "1.4.0", "@scure/bip32": "1.4.0", "@scure/bip39": "1.3.0", "abitype": "1.0.5", "isows": "1.0.4", "webauthn-p256": "0.0.5", "ws": "8.17.1" }, "peerDependencies": { "typescript": ">=5.0.4" }, "optionalPeers": ["typescript"] }, "sha512-JGdN+PgBnZMbm7fc9o0SfHvL0CKyfrlhBUtaz27V+PeHO43Kgc9Zd4WyIbM8Brafq4TvVcnriRFW/FVGOzwEJw=="],
 
