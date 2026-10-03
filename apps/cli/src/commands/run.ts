@@ -360,7 +360,7 @@ export const createRunCommand = () => {
         .addOption(
             new Option(
                 "--claim-staging-period <number>",
-                "claim staging period (in blocks). Number of blocks between a claim being submitted and accepted (Authority/Quorum Only)",
+                "claim staging period (in blocks). Number of blocks between a claim being submitted and accepted",
             )
                 .argParser(Number)
                 .default(0),
