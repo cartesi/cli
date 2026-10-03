@@ -1,5 +1,15 @@
 # sdk
 
+## 0.12.0-alpha.42
+
+### Patch Changes
+
+- f10ea6f: Bump cartesi-base-image debian:trixie to latest version.
+- 170deac: Bump anvil and foundry to 1.5.1, and the cartesi-rollups-prt release providing the anvil state to 3.0.0-alpha.5.
+- 78d8f91: Bump cartesi-rollups-node to 2.0.0-alpha.13, which requires machine-emulator 0.21.0.
+- cc4a981: Bump image-kernel to 0.21.0, linux-kernel to 6.5.13-ctsi-2-v0.21.0 and machine-emulator to 0.21.0. Add machine-emulator dependency lua-lpeg
+- 1fa0162: Drop the @cartesi/devnet dependency from the image. The anvil state dump is now downloaded directly from the cartesi/dave release selected by CARTESI_PRT_VERSION, so the image no longer ships /usr/share/cartesi/deployments nor DEVNET_VERSION. A PRT_VERSION file is written instead.
+
 ## 0.12.0-alpha.41
 
 ### Patch Changes

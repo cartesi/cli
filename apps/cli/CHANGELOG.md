@@ -1,5 +1,23 @@
 # Changelog
 
+## 2.0.0-alpha.36
+
+### Minor Changes
+
+- 5625142: feat: support `env` and `env_file` in the `[machine]` section of `cartesi.toml`
+
+  Environment variables can now be injected into the Cartesi Machine build
+  without relying solely on the Dockerfile `ENV`. Define an `env` table with
+  inline key/value pairs and/or point `env_file` at a `.env` file. Precedence,
+  from lowest to highest, is: Docker image `ENV` (when `use_docker_env` is
+  enabled), `env_file`, then the `env` table.
+
+- 3415ff8: allow `address-book` to print a single contract's address when given its name (useful for shell scripting instead of `--json` + `jq`)
+
+### Patch Changes
+
+- 69d59d7: Print logs of the build process when passing --verbose to the build command. It also uses the buildx-metadata generated to recover the image-id not relying on the stdout regardless of the value passed to the --progress flag.
+
 ## 2.0.0-alpha.35
 
 ### Patch Changes
