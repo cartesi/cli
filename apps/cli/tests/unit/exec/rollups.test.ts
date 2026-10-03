@@ -1,5 +1,8 @@
 import { describe, expect, it } from "bun:test";
-import { parseApplications } from "../../../src/exec/rollups";
+import {
+    buildDeployApplicationArgs,
+    parseApplications,
+} from "../../../src/exec/rollups";
 
 /** A single entry as `cartesi-rollups-cli app list` prints it. */
 const appListEntry = (overrides: Record<string, unknown> = {}) => ({
@@ -113,5 +116,57 @@ describe("parseApplications", () => {
     // which is how an unreachable node surfaces to callers.
     it("should throw when the output is not valid json", () => {
         expect(() => parseApplications("not json")).toThrow();
+    });
+});
+
+describe("buildDeployApplicationArgs", () => {
+    const base = {
+        claimStagingPeriod: 720,
+        epochLength: 10,
+        name: "echo",
+        projectName: "cartesi",
+        snapshotPath: ".cartesi/image",
+    };
+
+    it("should pass the claim staging period without prt", () => {
+        const args = buildDeployApplicationArgs(base);
+
+        expect(args).toContain("--claim-staging-period");
+        expect(args[args.indexOf("--claim-staging-period") + 1]).toBe("720");
+        expect(args).not.toContain("--prt");
+    });
+
+    // the node takes --claim-staging-period on the whole deploy command, so a
+    // value passed alongside --prt must not be dropped
+    it("should pass the claim staging period with prt", () => {
+        const args = buildDeployApplicationArgs({ ...base, prt: true });
+
+        expect(args).toContain("--prt");
+        expect(args).toContain("--claim-staging-period");
+        expect(args[args.indexOf("--claim-staging-period") + 1]).toBe("720");
+    });
+
+    it("should use the epoch length when no consensus is given", () => {
+        const args = buildDeployApplicationArgs(base);
+
+        expect(args).toContain("--epoch-length");
+        expect(args).not.toContain("--consensus");
+    });
+
+    it("should use the consensus instead of the epoch length when given", () => {
+        const args = buildDeployApplicationArgs({
+            ...base,
+            consensus: "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd",
+        });
+
+        expect(args).toContain("--consensus");
+        expect(args).not.toContain("--epoch-length");
+    });
+
+    it("should start with the name and snapshot path and end with --json", () => {
+        const args = buildDeployApplicationArgs(base);
+
+        expect(args.slice(0, 2)).toEqual(["echo", ".cartesi/image"]);
+        expect(args.at(-1)).toBe("--json");
     });
 });
