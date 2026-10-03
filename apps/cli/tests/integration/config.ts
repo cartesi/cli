@@ -84,6 +84,14 @@ export async function createTemporaryCartesiApplication(): Promise<{
 
         console.log(`✓ Temporary Cartesi application created at: ${appDir}`);
 
+        // Build with the same image the snapshot readers use. Without this the
+        // build falls back to the released SDK while the readers use TEST_SDK,
+        // and a snapshot written by one emulator is rejected by the other.
+        fs.appendFileSync(
+            path.join(appDir, "cartesi.toml"),
+            `\nsdk = "${TEST_SDK}"\n`,
+        );
+
         //  Change directory into the created application
         process.chdir(appDir);
 
