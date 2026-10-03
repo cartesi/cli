@@ -29,8 +29,12 @@ export type ServiceOptions = {
  * A number of environment variables are rule out to avoid confusion e.g. CORS, FEATURE Enablement, etc.
  */
 export const nodeAllowedEnvironmentVariables = [
+    "CARTESI_AUTH_KIND",
     "CARTESI_AUTH_MNEMONIC",
     "CARTESI_AUTH_MNEMONIC_ACCOUNT_INDEX",
+    "CARTESI_AUTH_MNEMONIC_FILE",
+    "CARTESI_AUTH_PRIVATE_KEY",
+    "CARTESI_AUTH_PRIVATE_KEY_FILE",
     "CARTESI_BLOCKCHAIN_DEFAULT_BLOCK",
     "CARTESI_BLOCKCHAIN_HTTP_AUTHORIZATION",
     "CARTESI_BLOCKCHAIN_HTTP_ENDPOINT",

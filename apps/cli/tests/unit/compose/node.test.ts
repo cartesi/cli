@@ -13,8 +13,12 @@ describe("Compose node service", () => {
     describe("Node allowed environment variables", () => {
         it("should match the exact fixed list of allowed variable names", () => {
             expect(nodeAllowedEnvironmentVariables).toEqual([
+                "CARTESI_AUTH_KIND",
                 "CARTESI_AUTH_MNEMONIC",
                 "CARTESI_AUTH_MNEMONIC_ACCOUNT_INDEX",
+                "CARTESI_AUTH_MNEMONIC_FILE",
+                "CARTESI_AUTH_PRIVATE_KEY",
+                "CARTESI_AUTH_PRIVATE_KEY_FILE",
                 "CARTESI_BLOCKCHAIN_DEFAULT_BLOCK",
                 "CARTESI_BLOCKCHAIN_HTTP_AUTHORIZATION",
                 "CARTESI_BLOCKCHAIN_HTTP_ENDPOINT",
@@ -60,6 +64,23 @@ describe("Compose node service", () => {
                 SOME_OTHER_VAR: "value",
             });
             expect(result).toEqual({});
+        });
+
+        it("should pass the claimer auth variables through and drop the kms key id", () => {
+            const result = getNodeAllowedVariables({
+                CARTESI_AUTH_KIND: "private_key",
+                CARTESI_AUTH_PRIVATE_KEY: "0xkey",
+                CARTESI_PRT_AUTH_AWS_KMS_KEY_ID: "alias/signer",
+            });
+
+            expect(result).toStrictEqual({
+                CARTESI_AUTH_KIND: "private_key",
+                CARTESI_AUTH_PRIVATE_KEY: "0xkey",
+            });
+            // the aws kind cannot be configured through CARTESI_ variables
+            expect(result).not.toHaveProperty(
+                "CARTESI_PRT_AUTH_AWS_KMS_KEY_ID",
+            );
         });
 
         it("should return only allowed variables from the input", () => {
