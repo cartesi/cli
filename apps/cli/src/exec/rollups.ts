@@ -542,7 +542,7 @@ export const deployAuthority = async (options: {
  * @param options
  * @returns address of the application
  */
-export const deployApplication = async (options: {
+export type DeployApplicationOptions = {
     consensus?: Address;
     epochLength: number;
     name: string;
@@ -552,12 +552,19 @@ export const deployApplication = async (options: {
     snapshotPath: string;
     withdrawalConfig?: WithdrawalConfig;
     claimStagingPeriod: number;
-}): Promise<RollupsDeployment> => {
+};
+
+/**
+ * Assemble the `cartesi-rollups-cli deploy application` arguments.
+ * Kept separate from the call so it can be tested without a node.
+ */
+export const buildDeployApplicationArgs = (
+    options: DeployApplicationOptions,
+): string[] => {
     const {
         consensus,
         epochLength,
         name,
-        projectName,
         prt,
         salt,
         snapshotPath,
@@ -565,7 +572,6 @@ export const deployApplication = async (options: {
         claimStagingPeriod,
     } = options;
 
-    // app deploy args
     const deployArgs = [name, snapshotPath];
 
     if (consensus) {
@@ -580,13 +586,10 @@ export const deployApplication = async (options: {
 
     if (prt) {
         deployArgs.push("--prt");
-    } else {
-        // Claim staging period (Authority/Quorum only)
-        deployArgs.push(
-            "--claim-staging-period",
-            claimStagingPeriod.toString(),
-        );
     }
+
+    // the node takes this on the whole deploy command, PRT included
+    deployArgs.push("--claim-staging-period", claimStagingPeriod.toString());
 
     if (withdrawalConfig) {
         deployArgs.push(
@@ -596,6 +599,15 @@ export const deployApplication = async (options: {
     }
 
     deployArgs.push("--json");
+
+    return deployArgs;
+};
+
+export const deployApplication = async (
+    options: DeployApplicationOptions,
+): Promise<RollupsDeployment> => {
+    const { projectName } = options;
+    const deployArgs = buildDeployApplicationArgs(options);
 
     // deploy application
     const { stdout } = await execa("docker", [
