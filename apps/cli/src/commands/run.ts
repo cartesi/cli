@@ -3,7 +3,7 @@ import {
     type CommandUnknownOpts,
     Option,
 } from "@commander-js/extra-typings";
-import { ExitPromptError } from "@inquirer/core";
+import { AbortPromptError, ExitPromptError } from "@inquirer/core";
 import chalk from "chalk";
 import { ExecaError } from "execa";
 import getPort, { portNumbers } from "get-port";
@@ -31,9 +31,11 @@ import {
     deployApplication,
     host,
     removeApplication,
+    getDeployments,
     type RollupsDeployment,
     startEnvironment,
     stopEnvironment,
+    TERMINAL_APPLICATION_STATUSES,
     waitHealthyEnvironment,
 } from "../exec/rollups.js";
 import { keySelect } from "../prompts.js";
@@ -41,6 +43,37 @@ import type { ForkConfig } from "../types/chain.js";
 import { assertForkConfig } from "../validations.js";
 
 const commaSeparatedList = (value: string) => value.split(",");
+
+/** How often the interactive shell re-reads the application status. */
+const STATUS_POLL_INTERVAL = 5_000;
+
+/**
+ * Report an application that is no longer in the `OK` state. The node stops
+ * processing inputs on a terminal status while still accepting them on-chain,
+ * so without this the application goes quiet with no indication why.
+ */
+const reportApplicationStatus = (deployment: RollupsDeployment) => {
+    const terminal = TERMINAL_APPLICATION_STATUSES.includes(deployment.status);
+    const paint = terminal ? chalk.red : chalk.yellow;
+
+    console.warn(
+        paint(
+            terminal
+                ? `application ${deployment.name} is ${deployment.status} and stopped processing inputs`
+                : `application ${deployment.name} is ${deployment.status}`,
+        ),
+    );
+
+    if (deployment.reason) {
+        console.warn(paint(`reason: ${deployment.reason}`));
+    }
+
+    console.warn(
+        chalk.yellow(
+            `run ${chalk.cyan("cartesi logs")} for details, or rebuild to deploy a new application`,
+        ),
+    );
+};
 
 const shell = async (options: {
     build?: CommandUnknownOpts;
@@ -50,6 +83,7 @@ const shell = async (options: {
     projectName: string;
     prt?: boolean;
     salt: number;
+    sdk: string;
     withdrawalConfig?: WithdrawalConfig;
     claimStagingPeriod: number;
 }) => {
@@ -59,14 +93,53 @@ const shell = async (options: {
         log,
         projectName,
         prt,
+        sdk,
         withdrawalConfig,
         claimStagingPeriod,
     } = options;
 
     let lastDeployment = options.deployment;
     let salt = options.salt;
+    let lastStatus = lastDeployment?.status;
+    let pendingReport: RollupsDeployment | undefined;
+
+    /**
+     * Re-read the deployed application and remember it when its status changed.
+     * The prompt owns the terminal while it is open, so nothing is printed from
+     * here -- the caller aborts the prompt and reports once it has closed.
+     */
+    const pollStatus = async (abort: () => void) => {
+        const address = lastDeployment?.address;
+        if (!address) {
+            return;
+        }
+
+        const deployments = await getDeployments({ projectName });
+        const deployment = deployments.find((d) => d.address === address);
+        if (!deployment || deployment.status === lastStatus) {
+            return;
+        }
+
+        lastStatus = deployment.status;
+        if (deployment.status !== "OK") {
+            pendingReport = deployment;
+            abort();
+        }
+    };
 
     while (true) {
+        if (pendingReport) {
+            reportApplicationStatus(pendingReport);
+            pendingReport = undefined;
+        }
+
+        const controller = new AbortController();
+        const watcher = setInterval(() => {
+            pollStatus(() => controller.abort()).catch(() => {
+                // a transient docker failure should not interrupt the session
+            });
+        }, STATUS_POLL_INTERVAL);
+
         try {
             const option = await keySelect(
                 {
@@ -76,7 +149,7 @@ const shell = async (options: {
                         { name: "Quit", value: "q" },
                     ] as const,
                 },
-                {},
+                { signal: controller.signal },
             );
             switch (option) {
                 case "l": {
@@ -103,7 +176,7 @@ const shell = async (options: {
                     await build?.parseAsync([], { from: "user" });
 
                     // redeploy
-                    const hash = await getMachineHash();
+                    const hash = await getMachineHash({ sdk });
                     if (hash) {
                         if (lastDeployment) {
                             await undeploy({ projectName });
@@ -118,6 +191,8 @@ const shell = async (options: {
                             withdrawalConfig,
                             claimStagingPeriod,
                         });
+                        lastStatus = lastDeployment?.status;
+                        pendingReport = undefined;
                     }
 
                     break;
@@ -127,11 +202,17 @@ const shell = async (options: {
                 }
             }
         } catch (error: unknown) {
+            if (error instanceof AbortPromptError) {
+                // the status changed while the prompt was open; report and re-prompt
+                continue;
+            }
             if (error instanceof ExitPromptError) {
                 // gracefully exit
                 return;
             }
             throw error;
+        } finally {
+            clearInterval(watcher);
         }
     }
 };
@@ -281,7 +362,7 @@ export const createRunCommand = () => {
         .addOption(
             new Option(
                 "--claim-staging-period <number>",
-                "claim staging period (in blocks). Number of blocks between a claim being submitted and accepted (Authority/Quorum Only)",
+                "claim staging period (in blocks). Number of blocks between a claim being submitted and accepted",
             )
                 .argParser(Number)
                 .default(0),
@@ -414,7 +495,9 @@ export const createRunCommand = () => {
             // deploy the application
             let deployment: RollupsDeployment | undefined;
             let salt = 0;
-            const hash = await getMachineHash();
+            const hash = await getMachineHash({
+                sdk: applicationConfig.sdk,
+            });
             if (hash) {
                 deployment = await deploy({
                     epochLength,
@@ -465,6 +548,7 @@ export const createRunCommand = () => {
                     projectName,
                     prt,
                     salt,
+                    sdk: applicationConfig.sdk,
                     claimStagingPeriod,
                     withdrawalConfig: applicationConfig?.withdrawalConfig,
                 });

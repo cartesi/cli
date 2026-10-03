@@ -146,7 +146,7 @@ export const createErc1155SingleCommand = () => {
                 abi: erc1155SinglePortalAbi,
                 account,
                 address: erc1155SinglePortalAddress,
-                functionName: "depositSingleERC1155Token",
+                functionName: "depositSingleErc1155Token",
                 args: [
                     token.address,
                     application,
@@ -311,7 +311,7 @@ export const createErc1155BatchCommand = () => {
                 abi: erc1155BatchPortalAbi,
                 account,
                 address: erc1155BatchPortalAddress,
-                functionName: "depositBatchERC1155Token",
+                functionName: "depositBatchErc1155Token",
                 args: [
                     token.address,
                     application,

@@ -13,8 +13,12 @@ describe("Compose node service", () => {
     describe("Node allowed environment variables", () => {
         it("should match the exact fixed list of allowed variable names", () => {
             expect(nodeAllowedEnvironmentVariables).toEqual([
+                "CARTESI_AUTH_KIND",
                 "CARTESI_AUTH_MNEMONIC",
                 "CARTESI_AUTH_MNEMONIC_ACCOUNT_INDEX",
+                "CARTESI_AUTH_MNEMONIC_FILE",
+                "CARTESI_AUTH_PRIVATE_KEY",
+                "CARTESI_AUTH_PRIVATE_KEY_FILE",
                 "CARTESI_BLOCKCHAIN_DEFAULT_BLOCK",
                 "CARTESI_BLOCKCHAIN_HTTP_AUTHORIZATION",
                 "CARTESI_BLOCKCHAIN_HTTP_ENDPOINT",
@@ -34,6 +38,12 @@ describe("Compose node service", () => {
                 "CARTESI_LOG_LEVEL_PRT",
                 "CARTESI_LOG_LEVEL_VALIDATOR",
                 "CARTESI_JSONRPC_MACHINE_LOG_LEVEL",
+                "CARTESI_PRT_AUTH_KIND",
+                "CARTESI_PRT_AUTH_MNEMONIC",
+                "CARTESI_PRT_AUTH_MNEMONIC_ACCOUNT_INDEX",
+                "CARTESI_PRT_AUTH_MNEMONIC_FILE",
+                "CARTESI_PRT_AUTH_PRIVATE_KEY",
+                "CARTESI_PRT_AUTH_PRIVATE_KEY_FILE",
                 "CARTESI_SNAPSHOTS_DIR",
             ]);
         });
@@ -54,6 +64,23 @@ describe("Compose node service", () => {
                 SOME_OTHER_VAR: "value",
             });
             expect(result).toEqual({});
+        });
+
+        it("should pass the claimer auth variables through and drop the kms key id", () => {
+            const result = getNodeAllowedVariables({
+                CARTESI_AUTH_KIND: "private_key",
+                CARTESI_AUTH_PRIVATE_KEY: "0xkey",
+                CARTESI_PRT_AUTH_AWS_KMS_KEY_ID: "alias/signer",
+            });
+
+            expect(result).toStrictEqual({
+                CARTESI_AUTH_KIND: "private_key",
+                CARTESI_AUTH_PRIVATE_KEY: "0xkey",
+            });
+            // the aws kind cannot be configured through CARTESI_ variables
+            expect(result).not.toHaveProperty(
+                "CARTESI_PRT_AUTH_AWS_KMS_KEY_ID",
+            );
         });
 
         it("should return only allowed variables from the input", () => {
@@ -188,7 +215,7 @@ describe("Compose node service", () => {
 
             const env = compose.services?.rollups_node?.environment ?? {};
 
-            expect(Object.keys(env)).toHaveLength(10);
+            expect(Object.keys(env)).toHaveLength(11);
 
             expect(env).toHaveProperty(
                 "CARTESI_AUTH_MNEMONIC",
@@ -224,6 +251,50 @@ describe("Compose node service", () => {
             expect(env).toHaveProperty(
                 "CARTESI_SNAPSHOTS_DIR",
                 "/var/lib/cartesi-rollups-node/snapshots",
+            );
+        });
+
+        it("should set PRT auth even when not running with prt", () => {
+            const compose = buildNodeCompose(baseOptions);
+
+            const env = compose.services?.rollups_node?.environment ?? {};
+
+            // the node starts PRT on every run, so the signer is always needed
+            expect(env).toHaveProperty(
+                "CARTESI_PRT_AUTH_MNEMONIC",
+                "test test test test test test test test test test test junk",
+            );
+        });
+
+        it("should pass the devnet mnemonic as PRT auth when running with prt", () => {
+            const compose = buildNodeCompose({ ...baseOptions, prt: true });
+
+            const env = compose.services?.rollups_node?.environment ?? {};
+
+            // the node defaults CARTESI_PRT_AUTH_KIND to "mnemonic" but has no
+            // default mnemonic, so the PRT service cannot start without this
+            expect(env).toHaveProperty(
+                "CARTESI_PRT_AUTH_MNEMONIC",
+                "test test test test test test test test test test test junk",
+            );
+            expect(env).toHaveProperty(
+                "CARTESI_AUTH_MNEMONIC",
+                "test test test test test test test test test test test junk",
+            );
+        });
+
+        it("should use a custom mnemonic for PRT auth when one is given", () => {
+            const compose = buildNodeCompose({
+                ...baseOptions,
+                prt: true,
+                mnemonic: "custom mnemonic",
+            });
+
+            const env = compose.services?.rollups_node?.environment ?? {};
+
+            expect(env).toHaveProperty(
+                "CARTESI_PRT_AUTH_MNEMONIC",
+                "custom mnemonic",
             );
         });
 

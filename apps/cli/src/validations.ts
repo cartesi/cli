@@ -69,7 +69,7 @@ const getContractCheckers = (options: ContractCheckersOptions) => {
                 return {
                     address: this.getAddress(),
                     abi: etherPortalConfig.abi,
-                    functionName: "getInputBox",
+                    functionName: "version",
                     args: [],
                     blockNumber: options.blockNumber,
                 };
@@ -87,7 +87,7 @@ const getContractCheckers = (options: ContractCheckersOptions) => {
                 return {
                     address: this.getAddress(),
                     abi: erc20PortalConfig.abi,
-                    functionName: "getInputBox",
+                    functionName: "version",
                     args: [],
                     blockNumber: options.blockNumber,
                 };
@@ -105,7 +105,7 @@ const getContractCheckers = (options: ContractCheckersOptions) => {
                 return {
                     address: this.getAddress(),
                     abi: erc721PortalConfig.abi,
-                    functionName: "getInputBox",
+                    functionName: "version",
                     args: [],
                     blockNumber: options.blockNumber,
                 };
@@ -123,7 +123,7 @@ const getContractCheckers = (options: ContractCheckersOptions) => {
                 return {
                     address: this.getAddress(),
                     abi: erc1155SinglePortalConfig.abi,
-                    functionName: "getInputBox",
+                    functionName: "version",
                     args: [],
                     blockNumber: options.blockNumber,
                 };
@@ -141,7 +141,7 @@ const getContractCheckers = (options: ContractCheckersOptions) => {
                 return {
                     address: this.getAddress(),
                     abi: erc1155BatchPortalConfig.abi,
-                    functionName: "getInputBox",
+                    functionName: "version",
                     args: [],
                     blockNumber: options.blockNumber,
                 };
@@ -177,6 +177,9 @@ const getContractCheckers = (options: ContractCheckersOptions) => {
                     functionName: "calculateDaveAppAddress",
                     args: [
                         zeroHash,
+                        0n,
+                        zeroAddress,
+                        [],
                         {
                             accountsDriveStartIndex: 0n,
                             guardian: zeroAddress,

@@ -22,11 +22,14 @@ import {
     erc721PortalAddress,
     etherPortalAddress,
     inputBoxAddress,
+    refundOutputBuilderAddress,
     selfHostedApplicationFactoryAddress,
     testFungibleTokenAddress,
     testMultiTokenAddress,
     testNonFungibleTokenAddress,
+    testUsdcAddress,
     testUsdWithdrawalOutputBuilderAddress,
+    usdWithdrawalOutputBuilderFactoryAddress,
 } from "./contracts.js";
 import { cartesiMachineStoredHash } from "./exec";
 import { getApplicationAddress, getForkConfig } from "./exec/rollups.js";
@@ -37,11 +40,34 @@ export const getContextPath = (...paths: string[]): string => {
     return path.join(".cartesi", ...paths);
 };
 
-export const getMachineHash = async (): Promise<Hash | undefined> => {
-    // read hash of the cartesi machine snapshot, if one exists
+/**
+ * SDK image of the project, which built its machine snapshot
+ */
+const getProjectSdk = (): string | undefined => {
+    try {
+        return getApplicationConfig(["cartesi.toml"]).sdk;
+    } catch {
+        // an invalid config is reported by the commands that build with it
+        return undefined;
+    }
+};
+
+/**
+ * Read the hash of the cartesi machine snapshot, if one exists. Without a
+ * local cartesi-machine-stored-hash, it runs in the SDK image the snapshot was
+ * built with, as an emulator of another version may not load it.
+ * @param options sdk image of the project, read from cartesi.toml if not given
+ */
+export const getMachineHash = async (options?: {
+    sdk?: string;
+}): Promise<Hash | undefined> => {
     const imagePath = getContextPath("image");
     if (fs.existsSync(imagePath)) {
-        return await cartesiMachineStoredHash.computeHash(imagePath);
+        const image = options?.sdk ?? getProjectSdk();
+        return await cartesiMachineStoredHash.computeHash(
+            imagePath,
+            image ? { image } : undefined,
+        );
     }
     return undefined;
 };
@@ -118,6 +144,7 @@ export const getAddressBook = async (options: {
         TestToken: testFungibleTokenAddress,
         TestNFT: testNonFungibleTokenAddress,
         TestMultiToken: testMultiTokenAddress,
+        TestUsdc: testUsdcAddress,
         TestUsdWithdrawalOutputBuilder: testUsdWithdrawalOutputBuilderAddress,
     };
 
@@ -132,7 +159,10 @@ export const getAddressBook = async (options: {
         ERC721Portal: erc721PortalAddress,
         EtherPortal: etherPortalAddress,
         InputBox: inputBoxAddress,
+        RefundOutputBuilder: refundOutputBuilderAddress,
         SelfHostedApplicationFactory: selfHostedApplicationFactoryAddress,
+        UsdWithdrawalOutputBuilderFactory:
+            usdWithdrawalOutputBuilderFactoryAddress,
     };
 
     // gather all contracts, depending whether is fork or devnet
@@ -166,6 +196,9 @@ export const getServiceInfo = async (options: {
         "--project-name",
         projectName,
         "ps",
+        // --all so an exited container is still reported, instead of the
+        // service simply vanishing from the output
+        "--all",
         service,
         "--format",
         "json",

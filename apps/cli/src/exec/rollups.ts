@@ -1,7 +1,7 @@
 import chalk from "chalk";
 import { execa } from "execa";
 import { Listr, type ListrTask } from "listr2";
-import pRetry from "p-retry";
+import pRetry, { AbortError } from "p-retry";
 import {
     type Address,
     type Hash,
@@ -17,7 +17,7 @@ import {
     getContextPath,
     getMachineHash,
     getProjectName,
-    getServiceHealth,
+    getServiceInfo,
 } from "../base.js";
 import anvil from "../compose/anvil.js";
 import { concat } from "../compose/builder.js";
@@ -31,7 +31,34 @@ import proxy from "../compose/proxy.js";
 import type { WithdrawalConfig } from "../config.js";
 import type { ForkConfig } from "../types/chain.js";
 
-type ApplicationStatus = "OK" | "FAILED" | "DIVERGED" | "CORRUPTED";
+/**
+ * Application status as reported by the node. `OK` is healthy and `FAILED` is a
+ * recoverable failure; every other value is terminal and the node stops
+ * processing inputs for that application, including across restarts.
+ */
+export type ApplicationStatus =
+    | "OK"
+    | "FAILED"
+    | "DIVERGED"
+    | "CORRUPTED"
+    | "GUEST_EXCEPTION"
+    | "MACHINE_HALTED"
+    | "MCYCLE_OVERFLOW"
+    | "UNEXPECTED_YIELD"
+    | "INVALID_OUTPUTS_ROOT";
+
+/**
+ * Statuses in which the node no longer processes inputs for the application.
+ */
+export const TERMINAL_APPLICATION_STATUSES: readonly ApplicationStatus[] = [
+    "DIVERGED",
+    "CORRUPTED",
+    "GUEST_EXCEPTION",
+    "MACHINE_HALTED",
+    "MCYCLE_OVERFLOW",
+    "UNEXPECTED_YIELD",
+    "INVALID_OUTPUTS_ROOT",
+];
 
 export type RollupsDeployment = {
     name: string;
@@ -40,6 +67,8 @@ export type RollupsDeployment = {
     templateHash: Hash;
     epochLength: number;
     status: ApplicationStatus;
+    /** Node-provided diagnostic, present when the status is not `OK`. */
+    reason?: string;
     enabled: boolean;
 };
 
@@ -50,6 +79,7 @@ type CliRollupsDeployment = {
     template_hash: string;
     epoch_length: string;
     status: string;
+    reason?: string | null;
     enabled: boolean;
 };
 
@@ -65,9 +95,17 @@ const parseDeployment = (
     epochLength: hexToNumber(deployment.epoch_length as Hex),
     name: deployment.name,
     status: deployment.status as ApplicationStatus,
+    reason: deployment.reason ?? undefined,
     enabled: deployment.enabled,
     templateHash: deployment.template_hash as Hex,
 });
+
+/**
+ * Parse the JSON `cartesi-rollups-cli app list` writes to stdout. Throws on
+ * malformed input; callers decide what that means.
+ */
+export const parseApplications = (stdout: string): RollupsDeployment[] =>
+    (JSON.parse(stdout) as CliRollupsDeployment[]).map(parseDeployment);
 
 export const getDeployments = async (
     options: ComposeParams,
@@ -83,7 +121,7 @@ export const getDeployments = async (
             "app",
             "list",
         ]);
-        return JSON.parse(stdout).map(parseDeployment);
+        return parseApplications(stdout);
     } catch {
         return [];
     }
@@ -151,6 +189,13 @@ type Service = {
 };
 
 export const host = "http://127.0.0.1";
+
+/**
+ * Upper bound for the delay between health checks. Without it the 1.1 growth
+ * factor reaches a 104 minute sleep by the last of the 100 attempts, so a
+ * service that never becomes healthy would hold the command for 19 hours.
+ */
+const SERVICE_HEALTH_MAX_INTERVAL = 5_000;
 
 // services configuration
 const baseServices: Service[] = [
@@ -236,15 +281,30 @@ const serviceMonitorTask = (options: {
         task: async (_ctx, task) => {
             await pRetry(
                 async () => {
-                    const health = await getServiceHealth(options);
-                    if (health !== "healthy") {
+                    const info = await getServiceInfo(options);
+
+                    // An exited container never becomes healthy, so stop
+                    // retrying instead of spending the whole budget on it.
+                    if (info?.State === "exited" || info?.State === "dead") {
+                        throw new AbortError(
+                            errorTitle ??
+                                `Service ${chalk.cyan(service)} exited`,
+                        );
+                    }
+
+                    if (info?.Health !== "healthy") {
                         throw new Error(
                             errorTitle ??
                                 `Service ${chalk.cyan(service)} is not healthy`,
                         );
                     }
                 },
-                { retries: 100, minTimeout: 500, factor: 1.1 },
+                {
+                    retries: 100,
+                    minTimeout: 500,
+                    maxTimeout: SERVICE_HEALTH_MAX_INTERVAL,
+                    factor: 1.1,
+                },
             );
             task.title =
                 healthyTitle ?? `Service ${chalk.cyan(service)} is ready`;
@@ -482,7 +542,7 @@ export const deployAuthority = async (options: {
  * @param options
  * @returns address of the application
  */
-export const deployApplication = async (options: {
+export type DeployApplicationOptions = {
     consensus?: Address;
     epochLength: number;
     name: string;
@@ -492,12 +552,19 @@ export const deployApplication = async (options: {
     snapshotPath: string;
     withdrawalConfig?: WithdrawalConfig;
     claimStagingPeriod: number;
-}): Promise<RollupsDeployment> => {
+};
+
+/**
+ * Assemble the `cartesi-rollups-cli deploy application` arguments.
+ * Kept separate from the call so it can be tested without a node.
+ */
+export const buildDeployApplicationArgs = (
+    options: DeployApplicationOptions,
+): string[] => {
     const {
         consensus,
         epochLength,
         name,
-        projectName,
         prt,
         salt,
         snapshotPath,
@@ -505,7 +572,6 @@ export const deployApplication = async (options: {
         claimStagingPeriod,
     } = options;
 
-    // app deploy args
     const deployArgs = [name, snapshotPath];
 
     if (consensus) {
@@ -520,13 +586,10 @@ export const deployApplication = async (options: {
 
     if (prt) {
         deployArgs.push("--prt");
-    } else {
-        // Claim staging period (Authority/Quorum only)
-        deployArgs.push(
-            "--claim-staging-period",
-            claimStagingPeriod.toString(),
-        );
     }
+
+    // the node takes this on the whole deploy command, PRT included
+    deployArgs.push("--claim-staging-period", claimStagingPeriod.toString());
 
     if (withdrawalConfig) {
         deployArgs.push(
@@ -536,6 +599,15 @@ export const deployApplication = async (options: {
     }
 
     deployArgs.push("--json");
+
+    return deployArgs;
+};
+
+export const deployApplication = async (
+    options: DeployApplicationOptions,
+): Promise<RollupsDeployment> => {
+    const { projectName } = options;
+    const deployArgs = buildDeployApplicationArgs(options);
 
     // deploy application
     const { stdout } = await execa("docker", [

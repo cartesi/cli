@@ -29,8 +29,12 @@ export type ServiceOptions = {
  * A number of environment variables are rule out to avoid confusion e.g. CORS, FEATURE Enablement, etc.
  */
 export const nodeAllowedEnvironmentVariables = [
+    "CARTESI_AUTH_KIND",
     "CARTESI_AUTH_MNEMONIC",
     "CARTESI_AUTH_MNEMONIC_ACCOUNT_INDEX",
+    "CARTESI_AUTH_MNEMONIC_FILE",
+    "CARTESI_AUTH_PRIVATE_KEY",
+    "CARTESI_AUTH_PRIVATE_KEY_FILE",
     "CARTESI_BLOCKCHAIN_DEFAULT_BLOCK",
     "CARTESI_BLOCKCHAIN_HTTP_AUTHORIZATION",
     "CARTESI_BLOCKCHAIN_HTTP_ENDPOINT",
@@ -50,6 +54,15 @@ export const nodeAllowedEnvironmentVariables = [
     "CARTESI_LOG_LEVEL_PRT",
     "CARTESI_LOG_LEVEL_VALIDATOR",
     "CARTESI_JSONRPC_MACHINE_LOG_LEVEL",
+    // Only the mnemonic and private-key kinds are reachable here: the aws
+    // kind needs AWS_REGION and the SDK credential chain, which are not
+    // CARTESI_-prefixed and so never reach getCartesiEnvironmentVariables.
+    "CARTESI_PRT_AUTH_KIND",
+    "CARTESI_PRT_AUTH_MNEMONIC",
+    "CARTESI_PRT_AUTH_MNEMONIC_ACCOUNT_INDEX",
+    "CARTESI_PRT_AUTH_MNEMONIC_FILE",
+    "CARTESI_PRT_AUTH_PRIVATE_KEY",
+    "CARTESI_PRT_AUTH_PRIVATE_KEY_FILE",
     "CARTESI_SNAPSHOTS_DIR",
 ] as const;
 
@@ -122,6 +135,10 @@ const service = (options: ServiceOptions): Service => {
             selfHostedApplicationFactoryAddress,
         CARTESI_DATABASE_CONNECTION: `postgres://postgres:${databasePassword}@${databaseHost}:${databasePort}/rollupsdb?sslmode=disable`,
         CARTESI_LOG_LEVEL: logLevel,
+        // The node always starts its PRT service, and with claim submission
+        // enabled by default that service needs its own signer. PRT has no
+        // default mnemonic, so the devnet one is supplied explicitly.
+        CARTESI_PRT_AUTH_MNEMONIC: mnemonic,
         CARTESI_SNAPSHOTS_DIR: "/var/lib/cartesi-rollups-node/snapshots",
     };
 

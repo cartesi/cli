@@ -29,7 +29,10 @@ export const computeHash = async (
         );
 
         if (undefined !== stdout) {
-            const hash = `0x${stdout.toString().trim()}`;
+            // cartesi-machine-stored-hash prints a bare digest up to emulator
+            // 0.20 and a 0x-prefixed one from 0.21 on.
+            const digest = stdout.toString().trim();
+            const hash = digest.startsWith("0x") ? digest : `0x${digest}`;
 
             if (isHash(hash)) {
                 return hash;

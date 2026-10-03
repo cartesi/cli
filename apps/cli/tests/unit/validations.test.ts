@@ -102,36 +102,42 @@ describe("validations", () => {
             expect(mockReadContract).toHaveBeenCalledWith(
                 expect.objectContaining({
                     address: inputBoxConfig.address,
+                    functionName: "getDeploymentBlockNumber",
                 }),
             );
 
             expect(mockReadContract).toHaveBeenCalledWith(
                 expect.objectContaining({
                     address: etherPortalConfig.address,
+                    functionName: "version",
                 }),
             );
 
             expect(mockReadContract).toHaveBeenCalledWith(
                 expect.objectContaining({
                     address: erc20PortalConfig.address,
+                    functionName: "version",
                 }),
             );
 
             expect(mockReadContract).toHaveBeenCalledWith(
                 expect.objectContaining({
                     address: erc721PortalConfig.address,
+                    functionName: "version",
                 }),
             );
 
             expect(mockReadContract).toHaveBeenCalledWith(
                 expect.objectContaining({
                     address: erc1155SinglePortalConfig.address,
+                    functionName: "version",
                 }),
             );
 
             expect(mockReadContract).toHaveBeenCalledWith(
                 expect.objectContaining({
                     address: erc1155BatchPortalConfig.address,
+                    functionName: "version",
                 }),
             );
 
@@ -272,6 +278,7 @@ describe("validations", () => {
             expect(mockReadContract).toHaveBeenCalledWith(
                 expect.objectContaining({
                     address: daveAppFactoryAddress[sepolia.id],
+                    functionName: "calculateDaveAppAddress",
                 }),
             );
         });
