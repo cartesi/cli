@@ -4,7 +4,10 @@ import path from "node:path";
 import tmp from "tmp";
 import { DEFAULT_SDK_IMAGE, DEFAULT_SDK_VERSION } from "../../src/config.js";
 
-export const TEST_SDK = `${DEFAULT_SDK_IMAGE}:${DEFAULT_SDK_VERSION}`;
+// CARTESI_TEST_SDK points the suite at another image, e.g. one baked from packages/sdk
+export const TEST_SDK =
+    process.env.CARTESI_TEST_SDK ??
+    `${DEFAULT_SDK_IMAGE}:${DEFAULT_SDK_VERSION}`;
 
 /**
  * Ensures the required Docker image is available locally.
@@ -39,7 +42,10 @@ export async function ensureDockerImage(image: string): Promise<void> {
  *
  * @returns {Promise<{ appDir: string, machineDir: string, cleanup: () => void }>}
  */
-export async function createTemporaryCartesiApplication(): Promise<{
+export async function createTemporaryCartesiApplication(options?: {
+    /** contents of a cartesi.toml written after create and before build */
+    config?: string;
+}): Promise<{
     appDir: string;
     machineDir: string;
     cleanup: () => void;
@@ -82,6 +88,11 @@ export async function createTemporaryCartesiApplication(): Promise<{
 
         //  Change directory into the created application
         process.chdir(appDir);
+
+        if (options?.config !== undefined) {
+            fs.writeFileSync(path.join(appDir, "cartesi.toml"), options.config);
+            console.log(`✓ Wrote a custom cartesi.toml`);
+        }
 
         console.log(`! Building the temporary Cartesi application...`);
 
