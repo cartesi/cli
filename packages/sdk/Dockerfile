@@ -237,6 +237,7 @@ COPY --from=nitro /usr/local/src/nitro /usr/local/bin/
 COPY --from=nitro /usr/local/src/nitroctl /usr/local/bin/
 COPY --from=tini /usr/local/bin/tini /usr/local/bin/
 COPY --from=telegraf /usr/local/bin/telegraf /usr/local/bin/
+COPY --from=sling-node --chmod=755 /usr/local/bin/cartesi-rollups-prt-node /usr/local/bin/cartesi-rollups-prt-node
 COPY skel/ /
 RUN <<EOF
 mkdir -p /run/nitro
@@ -315,8 +316,8 @@ ARG CARTESI_IMAGE_KERNEL_VERSION
 ARG CARTESI_LINUX_KERNEL_VERSION
 
 ADD --checksum=sha256:5c900060da2db2bfa84cd39cd9cd722988c83c42225f3cac55f2d3157e48f32f \
-    https://github.com/cartesi/image-kernel/releases/download/v${CARTESI_IMAGE_KERNEL_VERSION}/linux-${CARTESI_LINUX_KERNEL_VERSION}.bin \
-    /usr/share/cartesi-machine/images/linux.bin
+  https://github.com/cartesi/image-kernel/releases/download/v${CARTESI_IMAGE_KERNEL_VERSION}/linux-${CARTESI_LINUX_KERNEL_VERSION}.bin \
+  /usr/share/cartesi-machine/images/linux.bin
 
 ################################################################################
 # linux headers stage
@@ -325,8 +326,8 @@ ARG CARTESI_IMAGE_KERNEL_VERSION
 ARG CARTESI_LINUX_KERNEL_VERSION
 
 ADD --checksum=sha256:e3f140a8632fcfb18218e7aea32a7d002124d3dce5ba8121ae061ab7f40a6cf4 \
-    https://github.com/cartesi/image-kernel/releases/download/v${CARTESI_IMAGE_KERNEL_VERSION}/linux-headers-${CARTESI_LINUX_KERNEL_VERSION}.tar.xz \
-    /tmp/linux-headers-${CARTESI_LINUX_KERNEL_VERSION}.tar.xz
+  https://github.com/cartesi/image-kernel/releases/download/v${CARTESI_IMAGE_KERNEL_VERSION}/linux-headers-${CARTESI_LINUX_KERNEL_VERSION}.tar.xz \
+  /tmp/linux-headers-${CARTESI_LINUX_KERNEL_VERSION}.tar.xz
 RUN tar -xJf "/tmp/linux-headers-${CARTESI_LINUX_KERNEL_VERSION}.tar.xz" -C /
 
 ################################################################################
@@ -410,7 +411,6 @@ COPY --from=foundry /usr/local/bin/cast /usr/local/bin/
 COPY --from=squashfs-tools /usr/local/src/squashfs-tools/mksquashfs /usr/local/bin/
 COPY --from=kernel-image --chmod=644 /usr/share/cartesi-machine/images/linux.bin /usr/share/cartesi-machine/images/linux.bin
 COPY --from=kernel-headers /include/linux /include/linux
-COPY --from=sling-node --chmod=755 /usr/local/bin/cartesi-rollups-prt-node /usr/local/bin/cartesi-rollups-prt-node
 
 WORKDIR /mnt
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
