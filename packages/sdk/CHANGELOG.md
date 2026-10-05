@@ -1,5 +1,11 @@
 # sdk
 
+## 0.12.0-alpha.44
+
+### Patch Changes
+
+- f7f9937: fix: copy cartesi-rollups-prt-node to runtime stage
+
 ## 0.12.0-alpha.43
 
 ### Minor Changes

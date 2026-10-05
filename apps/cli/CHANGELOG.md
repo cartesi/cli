@@ -1,5 +1,25 @@
 # Changelog
 
+## 2.0.0-alpha.37
+
+### Patch Changes
+
+- adabfce: Pass `--claim-staging-period` to the node for every consensus type. It was dropped when deploying with `--prt`, so a value given alongside that flag was silently ignored.
+- 8e2b61b: Add `TestUsdc` to the devnet address book, and `RefundOutputBuilder` and `UsdWithdrawalOutputBuilderFactory` to the common one.
+- ac36819: Read the machine snapshot hash with the project's SDK image. Without a local `cartesi-machine-stored-hash`, `cartesi run`, `cartesi hash` and the commands that look up the deployed application read the snapshot in the default SDK image, whose emulator may not load a snapshot built by the `sdk` configured in `cartesi.toml`.
+- cd0053e: Fix `cartesi deposit` for ERC-20, ERC-721 and ERC-1155 against the renamed portal functions.
+- 13459ca: Warn in `cartesi run` when the application stops being healthy, reporting the node's reason instead of letting it go quiet while inputs keep being accepted on-chain.
+- c6b1018: Allow the node's six `CARTESI_AUTH_*` claimer variables to be overridden from the host environment, matching the PRT set. Without `CARTESI_AUTH_KIND` only plain-mnemonic signing was reachable.
+- 096c71a: Colour the application status in `cartesi status`, distinguishing the recoverable `FAILED` state from the terminal ones, and print the node's reason beneath the table.
+- 110ff22: Stop waiting for a service whose container has exited, so a crash loop reports immediately instead of retrying until the timeout.
+- d662ae4: Recognize the four terminal application states the node reports (`GUEST_EXCEPTION`, `MACHINE_HALTED`, `MCYCLE_OVERFLOW`, `UNEXPECTED_YIELD`) and surface the node's `reason` diagnostic alongside them.
+- 37271db: Bump the default SDK to `0.12.0-alpha.43`, which carries cartesi-machine 0.21 and rollups-node 2.0.0-alpha.13.
+- adaf328: Bound the wait for services to become healthy. The backoff had no upper limit, so a service that never started held `cartesi run` for up to 19 hours instead of failing.
+- 5376fe9: Fix fork validation against rollups-contracts 3.0.0-alpha.10 and dave 3.0.0-alpha.5.
+- 4fa55ad: Pass the devnet mnemonic to the node as `CARTESI_PRT_AUTH_MNEMONIC`. The node starts its PRT service on every run and, with claim submission enabled by default, that service requires its own signer, for which PRT has no default.
+- caff871: Generate contracts from the rollups-contracts and dave releases instead of `@cartesi/devnet`.
+- 25a4e65: Allow the node's six `CARTESI_PRT_AUTH_*` variables to be overridden from the host environment.
+
 ## 2.0.0-alpha.36
 
 ### Minor Changes
