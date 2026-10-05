@@ -1,0 +1,46 @@
+name: cli-binaries
+on:
+    workflow_call:
+        inputs:
+            tag:
+                description: CLI release tag to build binaries for, e.g. @cartesi/cli@2.0.0-alpha.36
+                type: string
+                required: true
+permissions:
+    contents: write
+jobs:
+    upload:
+        name: Upload CLI binaries
+        runs-on: ubuntu-latest
+        steps:
+            # Build from the release tag, not the pushed commit, so the binaries
+            # match the version published on npm.
+            - name: Checkout
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  ref: refs/tags/${{ inputs.tag }}
+
+            - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+            - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+
+            # The CLI build depends on @cartesi/devnet, which needs forge/anvil
+            - name: Install Foundry
+              uses: foundry-rs/foundry-toolchain@908c540300062bd5a7e473851cdb4282204cee09 # v1.9.1
+              with:
+                  version: v1.4.3
+
+            - name: Install Dependencies
+              run: bun install --frozen-lockfile
+
+            - name: Build
+              run: bun run build --filter @cartesi/cli
+
+            - name: Upload binaries to the GitHub release
+              run: |
+                  for f in cartesi-*; do tar -czf "$f.tar.gz" "$f"; done
+                  # --clobber replaces assets left by a partial upload
+                  gh release upload "$TAG" cartesi-*.tar.gz --clobber
+              working-directory: ./apps/cli/bin
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  TAG: ${{ inputs.tag }}
