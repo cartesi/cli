@@ -65,14 +65,12 @@ describe("when parsing only drive config files", () => {
 });
 
 describe("when parsing only nvram config files", () => {
-    it.each([
-        "pristine",
-        "shared",
-        "file",
-        "multi",
-    ])("should pass with a %s nvram config", (name) => {
-        expect(() => parse(loadNvramConfig(name))).not.toThrow();
-    });
+    it.each(["pristine", "shared", "file", "multi"])(
+        "should pass with a %s nvram config",
+        (name) => {
+            expect(() => parse(loadNvramConfig(name))).not.toThrow();
+        },
+    );
 });
 
 describe("when parsing a cartesi.toml config", () => {
