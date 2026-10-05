@@ -13,14 +13,12 @@ describe("requiredVersion", () => {
         expect(satisfies(version, requiredVersion)).toBeTruthy();
     });
 
-    it.each([
-        "0.20.0",
-        "0.20.9",
-        "0.22.0",
-        "1.0.0",
-    ])("should reject %s", (version) => {
-        expect(satisfies(version, requiredVersion)).toBeFalsy();
-    });
+    it.each(["0.20.0", "0.20.9", "0.22.0", "1.0.0"])(
+        "should reject %s",
+        (version) => {
+            expect(satisfies(version, requiredVersion)).toBeFalsy();
+        },
+    );
 });
 
 describe("assertSupported", () => {

@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { writeFileSync } from "node:fs";
 import path from "node:path";
 import tmp from "tmp";
-import { isHash } from "viem";
+import { isHash, type Hash } from "viem";
 import { getMachineHash } from "../../../src/base";
 import { cartesiMachineStoredHash } from "../../../src/exec";
 import {
@@ -41,7 +41,7 @@ describe("cartesi-machine-stored-hash", () => {
         });
 
         expect(machineHash).toBeDefined();
-        expect(isHash(machineHash!)).toBeTrue();
+        expect(isHash(machineHash as Hash)).toBeTrue();
     });
 
     it("should read the project snapshot with the project sdk image", async () => {
