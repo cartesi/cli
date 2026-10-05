@@ -238,6 +238,7 @@ COPY --from=nitro /usr/local/src/nitroctl /usr/local/bin/
 COPY --from=tini /usr/local/bin/tini /usr/local/bin/
 COPY --from=telegraf /usr/local/bin/telegraf /usr/local/bin/
 COPY --from=sling-node --chmod=755 /usr/local/bin/cartesi-rollups-prt-node /usr/local/bin/cartesi-rollups-prt-node
+
 COPY skel/ /
 RUN <<EOF
 mkdir -p /run/nitro
