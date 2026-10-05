@@ -16,9 +16,6 @@ jobs:
     release:
         name: Release
         runs-on: ubuntu-latest
-        outputs:
-            published: ${{ steps.changeset.outputs.published }}
-            publishedPackages: ${{ steps.changeset.outputs.publishedPackages }}
         steps:
             - name: Checkout Repo
               uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -70,20 +67,72 @@ jobs:
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-            - name: Release CLI binaries
-              if: ${{ steps.changeset.outputs.published == 'true' && contains(fromJSON(steps.changeset.outputs.publishedPackages).*.name, '@cartesi/cli') }}
+    artifacts:
+        name: Check release artifacts
+        needs: release
+        # Also run when `release` failed: publish can fail after tags were pushed,
+        # and the tags plus registry state are what decide here.
+        if: ${{ !cancelled() }}
+        runs-on: ubuntu-latest
+        outputs:
+            sdk_tag: ${{ steps.sdk.outputs.tag }}
+            cli_tag: ${{ steps.cli.outputs.tag }}
+        steps:
+            - name: Checkout Repo
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+            - name: Find missing SDK images
+              id: sdk
               run: |
-                  for f in cartesi-*; do tar -czf "$f.tar.gz" "$f"; done
-                  VERSION=$(jq -r '.[] | select(.name=="@cartesi/cli") | .version' <<< '${{ steps.changeset.outputs.publishedPackages }}')
+                  VERSION=$(jq -r .version packages/sdk/package.json)
+                  TAG="@cartesi/sdk@${VERSION}"
+                  # Only a tagged version has been released
+                  if ! git ls-remote --exit-code --tags origin "refs/tags/${TAG}" > /dev/null; then
+                      echo "${TAG} is not tagged, nothing to publish"
+                      exit 0
+                  fi
+                  for image in sdk rollups-runtime rollups-database; do
+                      for registry in docker.io ghcr.io; do
+                          if ! docker buildx imagetools inspect "${registry}/cartesi/${image}:${VERSION}" > /dev/null 2>&1; then
+                              echo "Missing ${registry}/cartesi/${image}:${VERSION}"
+                              echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+                              exit 0
+                          fi
+                      done
+                  done
+                  echo "All images for ${TAG} are published"
+
+            - name: Find missing CLI binaries
+              id: cli
+              run: |
+                  VERSION=$(jq -r .version apps/cli/package.json)
                   TAG="@cartesi/cli@${VERSION}"
-                  gh release upload "$TAG" cartesi-*.tar.gz
-              working-directory: ./apps/cli/bin
+                  # Count only the CLI tarballs, so another uploaded file can't hide a missing binary
+                  if ! ASSETS=$(gh release view "${TAG}" --json assets --jq '[.assets[] | select(.name | startswith("cartesi-") and endswith(".tar.gz"))] | length' 2>/dev/null); then
+                      echo "::warning::No GitHub release for ${TAG}, skipping CLI binaries"
+                      exit 0
+                  fi
+                  # One tarball per compile target in apps/cli/build.ts
+                  if [ "${ASSETS}" -lt 4 ]; then
+                      echo "${TAG} has ${ASSETS}/4 binaries"
+                      echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+                  fi
               env:
                   GH_TOKEN: ${{ github.token }}
 
     build_sdk:
         name: Build SDK
-        needs: release
-        if: ${{ needs.release.outputs.published == 'true' && contains(fromJSON(needs.release.outputs.publishedPackages).*.name, '@cartesi/sdk') }}
+        needs: artifacts
+        if: ${{ needs.artifacts.outputs.sdk_tag != '' }}
         uses: ./.github/workflows/sdk.yaml
+        with:
+            ref: refs/tags/${{ needs.artifacts.outputs.sdk_tag }}
         secrets: inherit
+
+    cli_binaries:
+        name: CLI binaries
+        needs: artifacts
+        if: ${{ needs.artifacts.outputs.cli_tag != '' }}
+        uses: ./.github/workflows/cli-binaries.yaml
+        with:
+            tag: ${{ needs.artifacts.outputs.cli_tag }}
