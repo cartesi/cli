@@ -1,5 +1,15 @@
 # sdk
 
+## 0.12.0-alpha.43
+
+### Minor Changes
+
+- 5c6dcb3: add cartesi-rollups-prt-node binary
+
+### Patch Changes
+
+- 2902936: bump baseimage to debian:trixie-20260918
+
 ## 0.12.0-alpha.42
 
 ### Patch Changes
