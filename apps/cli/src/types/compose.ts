@@ -764,7 +764,7 @@ export interface Secret {
 
 export interface Config {
     /** Custom name for the config */
-    name: string;
+    name?: string;
 
     /** Inline content */
     content?: string;

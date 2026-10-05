@@ -1310,28 +1310,28 @@ describe("compose builder", () => {
             const file1: ComposeFile = {
                 models: {
                     llm1: {
-                        image: "model-image-1",
-                        backend: "backend1",
+                        model: "ai/model-1",
+                        context_size: 4096,
                     },
                 },
             };
             const file2: ComposeFile = {
                 models: {
                     llm2: {
-                        image: "model-image-2",
-                        backend: "backend2",
+                        model: "ai/model-2",
+                        context_size: 8192,
                     },
                 },
             };
             const result = concat([file1, file2]);
             expect(result.models).toEqual({
                 llm1: {
-                    image: "model-image-1",
-                    backend: "backend1",
+                    model: "ai/model-1",
+                    context_size: 4096,
                 },
                 llm2: {
-                    image: "model-image-2",
-                    backend: "backend2",
+                    model: "ai/model-2",
+                    context_size: 8192,
                 },
             });
         });
@@ -1340,22 +1340,25 @@ describe("compose builder", () => {
             const file1: ComposeFile = {
                 models: {
                     llm1: {
-                        image: "model-image-1",
-                        backend: "backend1",
+                        model: "ai/model-1",
+                        context_size: 4096,
+                        runtime_flags: ["--verbose"],
                     },
                 },
             };
             const file2: ComposeFile = {
                 models: {
                     llm1: {
-                        backend: "backend2",
+                        model: "ai/model-1",
+                        context_size: 8192,
                     },
                 },
             };
             const result = concat([file1, file2]);
             expect(result.models?.llm1).toEqual({
-                image: "model-image-1",
-                backend: "backend2",
+                model: "ai/model-1",
+                context_size: 8192,
+                runtime_flags: ["--verbose"],
             });
         });
 
