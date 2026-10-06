@@ -1,9 +1,9 @@
 import type { CartesiPublicClient } from "@cartesi/client";
-import { Command, InvalidArgumentError } from "@commander-js/extra-typings";
+import { Command } from "@commander-js/extra-typings";
 import chalk from "chalk";
 import fs from "fs-extra";
 import { type Address, type Hex, isHex } from "viem";
-import { getProjectName } from "../base.js";
+import { getProjectName, parseInputIndex } from "../base.js";
 import {
     handleNodeCommandError,
     removeNodePath,
@@ -16,16 +16,6 @@ import {
     addRecoveryOptions,
     resolveNodeApplication,
 } from "../node.js";
-
-/**
- * Commander parser of an input index, in decimal or 0x-prefixed hexadecimal
- */
-export const parseInputIndex = (value: string): bigint => {
-    if (!/^(0x[0-9a-fA-F]+|[0-9]+)$/.test(value)) {
-        throw new InvalidArgumentError("Not a valid input index.");
-    }
-    return BigInt(value);
-};
 
 /**
  * Get the complete InputAdded.input bytes of the deposit to refund, from a

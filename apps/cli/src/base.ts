@@ -241,3 +241,24 @@ export const parseHash = (value: string): Hash => {
     }
     return zeroHash;
 };
+
+/**
+ * Commander parser of a mnemonic account index
+ */
+export const parseAccountIndex = (value: string): number => {
+    const index = Number(value);
+    if (!Number.isSafeInteger(index) || index < 0) {
+        throw new InvalidArgumentError("Not a valid account index.");
+    }
+    return index;
+};
+
+/**
+ * Commander parser of an input index, in decimal or 0x-prefixed hexadecimal
+ */
+export const parseInputIndex = (value: string): bigint => {
+    if (!/^(0x[0-9a-fA-F]+|[0-9]+)$/.test(value)) {
+        throw new InvalidArgumentError("Not a valid input index.");
+    }
+    return BigInt(value);
+};
