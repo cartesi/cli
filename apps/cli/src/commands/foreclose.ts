@@ -1,4 +1,4 @@
-import { Command, Option } from "@commander-js/extra-typings";
+import { Command } from "@commander-js/extra-typings";
 import chalk from "chalk";
 import {
     type Address,
@@ -22,7 +22,7 @@ import {
 } from "../exec/node-container.js";
 import {
     getNodeClient,
-    parseAccountIndex,
+    addRecoveryOptions,
     resolveNodeApplication,
 } from "../node.js";
 import { findMnemonicAccountIndex } from "../wallet.js";
@@ -164,78 +164,59 @@ export const resolveForecloseSigner = (options: {
 };
 
 export const createForecloseCommand = () => {
-    return new Command("foreclose")
-        .description(
-            "Forecloses the application, so users can withdraw their funds",
-        )
-        .addHelpText(
-            "after",
-            `
+    return addRecoveryOptions(
+        new Command("foreclose")
+            .description(
+                "Forecloses the application, so users can withdraw their funds",
+            )
+            .addHelpText(
+                "after",
+                `
 Signs as the application guardian. By default it uses the rollups node signer, looking up the guardian in its mnemonic.
 For a guardian outside it, set the signer for this command only:
   CARTESI_AUTH_MNEMONIC="<mnemonic>" cartesi foreclose
   CARTESI_AUTH_PRIVATE_KEY=<0x-private-key> cartesi foreclose
 Set CARTESI_AUTH_KIND to mnemonic or private_key when both are set.`,
-        )
-        .configureHelp({ showGlobalOptions: true })
-        .option("--application <address>", "application address")
-        .option(
-            "--project-name <string>",
-            "name of project (used by docker compose and cartesi-rollups-node)",
-        )
-        .addOption(
-            new Option(
-                "--account-index <index>",
-                "index of the guardian in the mnemonic (default: looked up from the application guardian; ignored for private-key signers)",
-            ).argParser(parseAccountIndex),
-        )
-        .option("-y, --yes", "skip the confirmation prompt")
-        .option("--json", "print the result as JSON")
-        .option(
-            "--no-wait",
-            "return after broadcast without waiting for the receipt",
-        )
-        .option(
-            "--wait-timeout <duration>",
-            "maximum time to wait for the receipt (e.g. 30s, 5m)",
-        )
-        .action(async (options) => {
-            const projectName = getProjectName(options);
-            const application = await resolveNodeApplication({
-                application: options.application,
+            )
+            .configureHelp({ showGlobalOptions: true }),
+        "index of the guardian in the mnemonic (default: looked up from the application guardian; ignored for private-key signers)",
+    ).action(async (options) => {
+        const projectName = getProjectName(options);
+        const application = await resolveNodeApplication({
+            application: options.application,
+            projectName,
+        });
+
+        const client = await getNodeClient({ projectName });
+        const { withdrawalConfig } = await client.getApplication({
+            application,
+        });
+        // the node signer is only needed without a signer for the command
+        const host = getHostSigner();
+        const { accountIndex, env, warning } = resolveForecloseSigner({
+            accountIndex: options.accountIndex,
+            guardian: withdrawalConfig.guardian,
+            host,
+            node: host ? undefined : await getNodeSigner({ projectName }),
+        });
+        if (warning) {
+            console.warn(chalk.yellow(warning));
+        }
+
+        try {
+            await runNodeCommand({
+                accountIndex,
+                command: [
+                    "cartesi-rollups-cli",
+                    "foreclose",
+                    application,
+                    ...transactionArgs(options),
+                ],
+                env,
                 projectName,
             });
-
-            const client = await getNodeClient({ projectName });
-            const { withdrawalConfig } = await client.getApplication({
-                application,
-            });
-            // the node signer is only needed without a signer for the command
-            const host = getHostSigner();
-            const { accountIndex, env, warning } = resolveForecloseSigner({
-                accountIndex: options.accountIndex,
-                guardian: withdrawalConfig.guardian,
-                host,
-                node: host ? undefined : await getNodeSigner({ projectName }),
-            });
-            if (warning) {
-                console.warn(chalk.yellow(warning));
-            }
-
-            try {
-                await runNodeCommand({
-                    accountIndex,
-                    command: [
-                        "cartesi-rollups-cli",
-                        "foreclose",
-                        application,
-                        ...transactionArgs(options),
-                    ],
-                    env,
-                    projectName,
-                });
-            } catch (error: unknown) {
-                handleNodeCommandError(error);
-            }
-        });
+        } catch (error: unknown) {
+            handleNodeCommandError(error);
+        }
+    });
 };
