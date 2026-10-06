@@ -1,10 +1,16 @@
 import { describe, expect, it } from "bun:test";
+import { execa } from "execa";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { toHex } from "viem";
 import {
     buildDeployApplicationArgs,
+    NODE_SIGNER_SCRIPT,
     NODE_TEMPLATE_PATH,
     nodeExecArgs,
     parseApplications,
+    parseNodeSigner,
     parseProveSummary,
     parseReplaySummary,
     proveAccountsDriveArgs,
@@ -201,6 +207,32 @@ describe("transactionArgs", () => {
 });
 
 describe("nodeExecArgs", () => {
+    it("should forward environment variables by name only", () => {
+        const args = nodeExecArgs({
+            command: ["true"],
+            env: {
+                CARTESI_AUTH_KIND: "mnemonic",
+                CARTESI_AUTH_MNEMONIC: "a b c",
+            },
+            interactive: false,
+            projectName: "dapp",
+        });
+        expect(args).toEqual([
+            "compose",
+            "--project-name",
+            "dapp",
+            "exec",
+            "-T",
+            "-e",
+            "CARTESI_AUTH_KIND",
+            "-e",
+            "CARTESI_AUTH_MNEMONIC",
+            "rollups_node",
+            "true",
+        ]);
+        expect(args.join(" ")).not.toContain("a b c");
+    });
+
     it("should run the command in the working directory", () => {
         expect(
             nodeExecArgs({
@@ -407,5 +439,86 @@ describe("parseProveSummary", () => {
                 JSON.stringify({ ...summary, withdraw_proof_file: undefined }),
             ),
         ).toThrow("withdraw_proof_file");
+    });
+});
+
+describe("parseNodeSigner", () => {
+    it("should parse a mnemonic signer", () => {
+        expect(parseNodeSigner("mnemonic\ntest test junk\n")).toEqual({
+            kind: "mnemonic",
+            mnemonic: "test test junk",
+        });
+    });
+
+    it("should parse a mnemonic file signer as a mnemonic", () => {
+        expect(parseNodeSigner("mnemonic_file\ntest test junk")).toEqual({
+            kind: "mnemonic",
+            mnemonic: "test test junk",
+        });
+    });
+
+    it("should parse private key signers without their key", () => {
+        expect(parseNodeSigner("private_key\n")).toEqual({
+            kind: "private_key",
+        });
+        expect(parseNodeSigner("private_key_file\n")).toEqual({
+            kind: "private_key",
+        });
+    });
+
+    it("should reject a mnemonic signer without a mnemonic", () => {
+        expect(() => parseNodeSigner("mnemonic\n")).toThrow("no mnemonic");
+    });
+
+    it("should reject unsupported signer kinds", () => {
+        expect(() => parseNodeSigner("aws\n")).toThrow("aws");
+        expect(() => parseNodeSigner("ledger\n")).toThrow("ledger");
+    });
+});
+
+describe("NODE_SIGNER_SCRIPT", () => {
+    const run = async (env: Record<string, string>) =>
+        parseNodeSigner(
+            (
+                await execa("sh", ["-c", NODE_SIGNER_SCRIPT], {
+                    env,
+                    extendEnv: false,
+                })
+            ).stdout,
+        );
+
+    it("should default to an inline mnemonic", async () => {
+        expect(await run({ CARTESI_AUTH_MNEMONIC: "a b c" })).toEqual({
+            kind: "mnemonic",
+            mnemonic: "a b c",
+        });
+    });
+
+    it("should read the mnemonic file", async () => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), "signer-"));
+        const file = path.join(dir, "mnemonic");
+        fs.writeFileSync(file, "x y z\n");
+        try {
+            expect(
+                await run({
+                    CARTESI_AUTH_KIND: "mnemonic_file",
+                    CARTESI_AUTH_MNEMONIC_FILE: file,
+                }),
+            ).toEqual({ kind: "mnemonic", mnemonic: "x y z" });
+        } finally {
+            fs.rmSync(dir, { recursive: true });
+        }
+    });
+
+    it("should never print a private key", async () => {
+        const { stdout } = await execa("sh", ["-c", NODE_SIGNER_SCRIPT], {
+            env: {
+                CARTESI_AUTH_KIND: "private_key",
+                CARTESI_AUTH_PRIVATE_KEY: "0xsecret",
+            },
+            extendEnv: false,
+        });
+        expect(stdout).not.toContain("0xsecret");
+        expect(parseNodeSigner(stdout)).toEqual({ kind: "private_key" });
     });
 });
