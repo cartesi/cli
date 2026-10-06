@@ -9,7 +9,13 @@ import {
     type OptionValues,
 } from "@commander-js/extra-typings";
 import chalk from "chalk";
-import { type Address, getAddress, http, isAddress } from "viem";
+import {
+    type Address,
+    createPublicClient,
+    getAddress,
+    http,
+    isAddress,
+} from "viem";
 import { getServiceState } from "./base.js";
 import { getApplicationAddress, getProjectPort } from "./exec/rollups.js";
 
@@ -28,13 +34,22 @@ export const getNodeClient = async (options: {
 };
 
 /**
+ * Create a read-only client for the anvil of the local environment
+ * @param options projectName
+ */
+export const getAnvilClient = async (options: { projectName: string }) => {
+    const host = await getProjectPort(options);
+    return createPublicClient({ transport: http(`http://${host}/anvil`) });
+};
+
+/**
  * Resolve the application a command acts on, making sure the local
  * environment is running
  * @returns address of the given application, or of the one deployed for the current machine
  */
 export const resolveNodeApplication = async (options: {
     application?: string;
-    lookup?: {
+    io?: {
         getApplicationAddress: typeof getApplicationAddress;
         getServiceState: typeof getServiceState;
     };
@@ -42,11 +57,11 @@ export const resolveNodeApplication = async (options: {
 }): Promise<Address> => {
     const {
         application,
-        lookup = { getApplicationAddress, getServiceState },
+        io = { getApplicationAddress, getServiceState },
         projectName,
     } = options;
 
-    const state = await lookup.getServiceState({
+    const state = await io.getServiceState({
         projectName,
         service: "rollups_node",
     });
@@ -63,7 +78,7 @@ export const resolveNodeApplication = async (options: {
         return getAddress(application);
     }
 
-    const address = await lookup.getApplicationAddress({ projectName });
+    const address = await io.getApplicationAddress({ projectName });
     if (!address) {
         throw new Error(
             `No application deployed for the current machine, use ${chalk.cyan("--application")}`,

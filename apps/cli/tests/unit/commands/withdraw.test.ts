@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { type Hash, toHex, zeroHash } from "viem";
 import {
     generateAccountProofs,
+    proofStorePath,
     replayLastFinalizedEpoch,
     replayStorePath,
     type WithdrawIo,
@@ -67,6 +68,14 @@ const recordingIo = (options: {
     return { calls, io };
 };
 
+describe("store paths", () => {
+    it("should key the proofs by application and account", () => {
+        expect(proofStorePath(application, account)).toBe(
+            `/tmp/cartesi-withdraw/${application}/${account}`,
+        );
+    });
+});
+
 describe("replayStorePath", () => {
     it("should key the snapshot by application and epoch", () => {
         expect(replayStorePath(application, 7n)).toBe(
@@ -102,7 +111,7 @@ describe("replayLastFinalizedEpoch", () => {
                 io,
                 projectName: "dapp",
             }),
-        ).toEqual({ machineHash: root, store });
+        ).toEqual({ store });
         expect(calls).toEqual([`exists ${store}`]);
     });
 
@@ -116,7 +125,7 @@ describe("replayLastFinalizedEpoch", () => {
                 io,
                 projectName: "dapp",
             }),
-        ).toEqual({ machineHash: root, store });
+        ).toEqual({ store });
         expect(calls).toEqual([
             `exists ${store}`,
             `rm ${store}.tmp`,
@@ -155,7 +164,7 @@ describe("replayLastFinalizedEpoch", () => {
                 projectName: "dapp",
                 retry: fastRetry,
             }),
-        ).toEqual({ machineHash: root, store });
+        ).toEqual({ store });
         expect(calls).toContain("replay 1");
     });
 
@@ -190,7 +199,7 @@ describe("generateAccountProofs", () => {
             application,
             driveConfig,
             io,
-            machineHash: root,
+            finalizedMachineRoot: root,
             projectName: "dapp",
             store,
         });
@@ -206,7 +215,7 @@ describe("generateAccountProofs", () => {
                 application,
                 driveConfig,
                 io,
-                machineHash: root,
+                finalizedMachineRoot: root,
                 projectName: "dapp",
                 store,
             }),

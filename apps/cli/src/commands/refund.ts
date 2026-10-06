@@ -33,12 +33,11 @@ export const parseInputIndex = (value: string): bigint => {
  */
 export const getInputData = async (options: {
     application: Address;
-    client?: Pick<CartesiPublicClient, "getInput">;
+    client: Pick<CartesiPublicClient, "getInput">;
     inputFile?: string;
     inputIndex: bigint;
-    projectName: string;
 }): Promise<Hex> => {
-    const { application, inputFile, inputIndex, projectName } = options;
+    const { application, client, inputFile, inputIndex } = options;
 
     if (inputFile) {
         const data = (await fs.readFile(inputFile, "utf-8")).trim();
@@ -50,7 +49,6 @@ export const getInputData = async (options: {
         return data;
     }
 
-    const client = options.client ?? (await getNodeClient({ projectName }));
     try {
         const input = await client.getInput({ application, inputIndex });
         return input.rawData;
@@ -88,9 +86,9 @@ export const createRefundCommand = () => {
 
         const data = await getInputData({
             application,
+            client: await getNodeClient({ projectName }),
             inputFile: options.inputFile,
             inputIndex,
-            projectName,
         });
 
         // the node tool reads the input bytes from a file in its container
