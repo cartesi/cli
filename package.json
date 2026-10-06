@@ -8,12 +8,12 @@
         "clean": "turbo run clean",
         "dev": "turbo run dev --parallel",
         "lint": "biome ci",
-        "publish-packages": "bun changeset publish && git push --follow-tags",
+        "publish-packages": "changeset publish",
         "test": "turbo test"
     },
     "devDependencies": {
         "@biomejs/biome": "^2.5.15",
-        "@changesets/cli": "^2.31.1",
+        "@changesets/cli": "^3.0.3",
         "@types/bun": "^1.4.2",
         "turbo": "^2.11.7"
     },
