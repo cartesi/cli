@@ -29,11 +29,19 @@ export const getNodeClient = async (options: {
  */
 export const resolveNodeApplication = async (options: {
     application?: string;
+    lookup?: {
+        getApplicationAddress: typeof getApplicationAddress;
+        getServiceState: typeof getServiceState;
+    };
     projectName: string;
 }): Promise<Address> => {
-    const { application, projectName } = options;
+    const {
+        application,
+        lookup = { getApplicationAddress, getServiceState },
+        projectName,
+    } = options;
 
-    const state = await getServiceState({
+    const state = await lookup.getServiceState({
         projectName,
         service: "rollups_node",
     });
@@ -50,7 +58,7 @@ export const resolveNodeApplication = async (options: {
         return getAddress(application);
     }
 
-    const address = await getApplicationAddress({ projectName });
+    const address = await lookup.getApplicationAddress({ projectName });
     if (!address) {
         throw new Error(
             `No application deployed for the current machine, use ${chalk.cyan("--application")}`,

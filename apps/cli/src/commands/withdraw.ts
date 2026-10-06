@@ -3,7 +3,7 @@ import { Command, Option } from "@commander-js/extra-typings";
 import chalk from "chalk";
 import fs from "fs-extra";
 import ora from "ora";
-import pRetry from "p-retry";
+import pRetry, { type Options as RetryOptions } from "p-retry";
 import { type Address, type Hash, zeroHash } from "viem";
 import { getProjectName, parseAddress } from "../base.js";
 import {
@@ -11,6 +11,7 @@ import {
     iOutputsMerkleRootValidatorAbi,
 } from "../contracts.js";
 import {
+    type AccountsDriveConfig,
     execNodeCommand,
     handleNodeCommandError,
     nodePathExists,
@@ -35,6 +36,43 @@ import { connect } from "../wallet.js";
  * proofs are kept, so further withdrawals of the same application reuse them
  */
 const WORK_DIR = "/tmp/cartesi-withdraw";
+
+/**
+ * Path of the machine replayed up to an epoch. Keyed by application and epoch,
+ * so a redeploy or another epoch never reuses a snapshot.
+ */
+export const replayStorePath = (application: Address, epochIndex: bigint) =>
+    `${WORK_DIR}/${application}/epoch-${epochIndex}`;
+
+/**
+ * Operations on the rollups node container used to replay and prove, so tests
+ * can run the steps without one
+ */
+export type WithdrawIo = {
+    execNodeCommand: typeof execNodeCommand;
+    nodePathExists: typeof nodePathExists;
+    proveAccountsDrive: typeof proveAccountsDrive;
+    removeNodePath: typeof removeNodePath;
+    replayMachine: typeof replayMachine;
+};
+
+const defaultIo: WithdrawIo = {
+    execNodeCommand,
+    nodePathExists,
+    proveAccountsDrive,
+    removeNodePath,
+    replayMachine,
+};
+
+/**
+ * How long to wait for the node to process the last finalized epoch
+ */
+const FINALIZED_EPOCH_RETRY: RetryOptions = {
+    retries: 15,
+    minTimeout: 1_000,
+    maxTimeout: 2_000,
+    factor: 1.2,
+};
 
 /**
  * Read the foreclosure state of the application from the chain. The node
@@ -85,32 +123,30 @@ const isSameHash = (a: Hash, b: Hash) => a.toLowerCase() === b.toLowerCase();
  */
 const waitForFinalizedEpoch = async (options: {
     application: Address;
-    client: CartesiPublicClient;
+    client: Pick<CartesiPublicClient, "getEpoch" | "getLastAcceptedEpochIndex">;
     finalizedMachineRoot: Hash;
+    retry: RetryOptions;
 }): Promise<bigint> => {
-    const { application, client, finalizedMachineRoot } = options;
+    const { application, client, finalizedMachineRoot, retry } = options;
     let last: { epochIndex?: bigint; machineHash?: Hash | null } = {};
     try {
-        return await pRetry(
-            async () => {
-                const epochIndex = await client.getLastAcceptedEpochIndex({
-                    application,
-                });
-                const { machineHash } = await client.getEpoch({
-                    application,
-                    epochIndex,
-                });
-                last = { epochIndex, machineHash };
-                if (
-                    !machineHash ||
-                    !isSameHash(machineHash, finalizedMachineRoot)
-                ) {
-                    throw new Error("node is behind the chain");
-                }
-                return epochIndex;
-            },
-            { retries: 15, minTimeout: 1_000, maxTimeout: 2_000, factor: 1.2 },
-        );
+        return await pRetry(async () => {
+            const epochIndex = await client.getLastAcceptedEpochIndex({
+                application,
+            });
+            const { machineHash } = await client.getEpoch({
+                application,
+                epochIndex,
+            });
+            last = { epochIndex, machineHash };
+            if (
+                !machineHash ||
+                !isSameHash(machineHash, finalizedMachineRoot)
+            ) {
+                throw new Error("node is behind the chain");
+            }
+            return epochIndex;
+        }, retry);
     } catch {
         throw new Error(
             `The node hasn't processed the last finalized epoch yet (node epoch ${last.epochIndex ?? "none"} root ${last.machineHash ?? "none"}, chain root ${finalizedMachineRoot}); try again shortly`,
@@ -124,13 +160,22 @@ const waitForFinalizedEpoch = async (options: {
  * the replayed machine never changes.
  * @returns path of the replayed machine inside the rollups node container
  */
-const replayLastFinalizedEpoch = async (options: {
+export const replayLastFinalizedEpoch = async (options: {
     application: Address;
-    client: CartesiPublicClient;
+    client: Pick<CartesiPublicClient, "getEpoch" | "getLastAcceptedEpochIndex">;
     finalizedMachineRoot: Hash;
+    io?: WithdrawIo;
     projectName: string;
+    retry?: RetryOptions;
 }): Promise<{ machineHash: Hash; store: string }> => {
-    const { application, client, finalizedMachineRoot, projectName } = options;
+    const {
+        application,
+        client,
+        finalizedMachineRoot,
+        io = defaultIo,
+        projectName,
+        retry = FINALIZED_EPOCH_RETRY,
+    } = options;
     const machineHash = finalizedMachineRoot;
 
     if (isSameHash(finalizedMachineRoot, zeroHash)) {
@@ -144,14 +189,15 @@ const replayLastFinalizedEpoch = async (options: {
             application,
             client,
             finalizedMachineRoot,
+            retry,
         });
     } catch (error: unknown) {
         progress.fail();
         throw error;
     }
 
-    const store = `${WORK_DIR}/${application}/epoch-${epochIndex}`;
-    if (await nodePathExists({ path: store, projectName })) {
+    const store = replayStorePath(application, epochIndex);
+    if (await io.nodePathExists({ path: store, projectName })) {
         progress.succeed(
             `Using the machine replayed up to epoch ${chalk.cyan(epochIndex)}`,
         );
@@ -162,8 +208,8 @@ const replayLastFinalizedEpoch = async (options: {
     const tmp = `${store}.tmp`;
     progress.text = `Replaying the inputs up to epoch ${chalk.cyan(epochIndex)}, this may take a while...`;
     try {
-        await removeNodePath({ path: tmp, projectName });
-        const replay = await replayMachine({
+        await io.removeNodePath({ path: tmp, projectName });
+        const replay = await io.replayMachine({
             application,
             epochIndex,
             projectName,
@@ -174,16 +220,69 @@ const replayLastFinalizedEpoch = async (options: {
                 `Replayed machine root ${replay.machineRoot} does not match the machine hash ${machineHash} of epoch ${epochIndex}`,
             );
         }
-        await execNodeCommand({ command: ["mv", tmp, store], projectName });
+        await io.execNodeCommand({ command: ["mv", tmp, store], projectName });
         progress.succeed(
             `Replayed ${chalk.cyan(replay.processedInputs)} inputs up to epoch ${chalk.cyan(epochIndex)}`,
         );
     } catch (error: unknown) {
         progress.fail("Failed to replay the application");
-        await removeNodePath({ path: tmp, projectName });
+        await io.removeNodePath({ path: tmp, projectName });
         throw error;
     }
     return { machineHash, store };
+};
+
+/**
+ * Generate the accounts drive proofs of an account from the replayed machine,
+ * checking they prove the finalized machine root
+ * @returns the paths of the proofs inside the rollups node container
+ */
+export const generateAccountProofs = async (options: {
+    account: Address;
+    application: Address;
+    driveConfig: AccountsDriveConfig;
+    io?: WithdrawIo;
+    machineHash: Hash;
+    projectName: string;
+    store: string;
+}) => {
+    const {
+        account,
+        application,
+        driveConfig,
+        io = defaultIo,
+        machineHash,
+        projectName,
+        store,
+    } = options;
+    const progress = ora(
+        `Generating the proofs of ${chalk.cyan(account)}...`,
+    ).start();
+    const proof = await io
+        .proveAccountsDrive({
+            account,
+            driveConfig,
+            outDir: `${WORK_DIR}/${application}/${account}`,
+            projectName,
+            snapshot: store,
+        })
+        .catch((error: unknown) => {
+            progress.fail(`Failed to generate the proofs of ${account}`);
+            throw error;
+        });
+    if (!isSameHash(proof.machineRoot, machineHash)) {
+        progress.fail();
+        // a cached snapshot that doesn't prove the finalized root would fail
+        // every retry, so drop it and let the next run replay
+        await io.removeNodePath({ path: store, projectName });
+        throw new Error(
+            `Proof machine root ${proof.machineRoot} does not match the finalized machine root ${machineHash}. Removed the cached snapshot; run the command again to replay it`,
+        );
+    }
+    progress.succeed(
+        `Generated the proofs of ${chalk.cyan(account)} (account index ${chalk.cyan(proof.accountIndex)})`,
+    );
+    return proof;
 };
 
 /**
@@ -222,31 +321,14 @@ const proveAccount = async (options: {
         projectName,
     });
 
-    const progress = ora(
-        `Generating the proofs of ${chalk.cyan(account)}...`,
-    ).start();
-    const proof = await proveAccountsDrive({
+    const proof = await generateAccountProofs({
         account,
+        application,
         driveConfig: withdrawalConfig,
-        outDir: `${WORK_DIR}/${application}/${account}`,
+        machineHash,
         projectName,
-        snapshot: store,
-    }).catch((error: unknown) => {
-        progress.fail(`Failed to generate the proofs of ${account}`);
-        throw error;
+        store,
     });
-    if (!isSameHash(proof.machineRoot, machineHash)) {
-        progress.fail();
-        // a cached snapshot that doesn't prove the finalized root would fail
-        // every retry, so drop it and let the next run replay
-        await removeNodePath({ path: store, projectName });
-        throw new Error(
-            `Proof machine root ${proof.machineRoot} does not match the finalized machine root ${machineHash}. Removed the cached snapshot; run the command again to replay it`,
-        );
-    }
-    progress.succeed(
-        `Generated the proofs of ${chalk.cyan(account)} (account index ${chalk.cyan(proof.accountIndex)})`,
-    );
 
     if (!driveRootProven) {
         // the withdrawal depends on it, so always wait for the receipt, and

@@ -1,3 +1,4 @@
+import type { CartesiPublicClient } from "@cartesi/client";
 import {
     Command,
     InvalidArgumentError,
@@ -23,7 +24,7 @@ import {
 /**
  * Commander parser of an input index, in decimal or 0x-prefixed hexadecimal
  */
-const parseInputIndex = (value: string): bigint => {
+export const parseInputIndex = (value: string): bigint => {
     if (!/^(0x[0-9a-fA-F]+|[0-9]+)$/.test(value)) {
         throw new InvalidArgumentError("Not a valid input index.");
     }
@@ -34,8 +35,9 @@ const parseInputIndex = (value: string): bigint => {
  * Get the complete InputAdded.input bytes of the deposit to refund, from a
  * file or from the node
  */
-const getInputData = async (options: {
+export const getInputData = async (options: {
     application: Address;
+    client?: Pick<CartesiPublicClient, "getInput">;
     inputFile?: string;
     inputIndex: bigint;
     projectName: string;
@@ -52,7 +54,7 @@ const getInputData = async (options: {
         return data;
     }
 
-    const client = await getNodeClient({ projectName });
+    const client = options.client ?? (await getNodeClient({ projectName }));
     try {
         const input = await client.getInput({ application, inputIndex });
         return input.rawData;
