@@ -1,21 +1,14 @@
 import { Command } from "@commander-js/extra-typings";
 import chalk from "chalk";
-import {
-    type Address,
-    type Hex,
-    isAddressEqual,
-    isHex,
-    zeroAddress,
-} from "viem";
+import { type Address, isAddressEqual, zeroAddress } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
+import { getCartesiEnvironmentVariables, getProjectName } from "../base.js";
 import {
-    type CartesiEnvironmentVariables,
-    getCartesiEnvironmentVariables,
-    getProjectName,
-} from "../base.js";
-import {
+    getHostSigner,
     getNodeSigner,
     handleNodeCommandError,
+    type HostSigner,
+    hostSignerEnv,
     type NodeSigner,
     runNodeCommand,
     transactionArgs,
@@ -26,61 +19,6 @@ import {
     resolveNodeApplication,
 } from "../node.js";
 import { findMnemonicAccountIndex } from "../wallet.js";
-
-/**
- * Signer given for a single foreclose, in the environment of the shell that
- * runs it, so the guardian can be an account the node doesn't sign with
- */
-export type HostSigner =
-    | { kind: "mnemonic"; mnemonic: string }
-    | { kind: "private_key"; privateKey: Hex };
-
-/**
- * Read the per-command signer from the CARTESI_AUTH_* environment variables
- * of the host, following cartesi-rollups-cli: CARTESI_AUTH_KIND picks the
- * kind, otherwise the variable that is set does
- * @returns the signer, or undefined when none is set
- */
-export const getHostSigner = (
-    env: CartesiEnvironmentVariables = getCartesiEnvironmentVariables(),
-): HostSigner | undefined => {
-    const {
-        CARTESI_AUTH_KIND: kind,
-        CARTESI_AUTH_MNEMONIC: mnemonic,
-        CARTESI_AUTH_PRIVATE_KEY: privateKey,
-    } = env;
-
-    if (!kind && !mnemonic && !privateKey) {
-        return undefined;
-    }
-    if (!kind && mnemonic && privateKey) {
-        throw new Error(
-            "Both CARTESI_AUTH_MNEMONIC and CARTESI_AUTH_PRIVATE_KEY are set, set CARTESI_AUTH_KIND to mnemonic or private_key to choose",
-        );
-    }
-
-    const resolvedKind = kind ?? (mnemonic ? "mnemonic" : "private_key");
-    switch (resolvedKind) {
-        case "mnemonic":
-            if (!mnemonic) {
-                throw new Error(
-                    "CARTESI_AUTH_KIND is mnemonic, but CARTESI_AUTH_MNEMONIC is not set",
-                );
-            }
-            return { kind: "mnemonic", mnemonic };
-        case "private_key":
-            if (!privateKey || !isHex(privateKey)) {
-                throw new Error(
-                    "CARTESI_AUTH_KIND is private_key, but CARTESI_AUTH_PRIVATE_KEY is not a 0x-prefixed private key",
-                );
-            }
-            return { kind: "private_key", privateKey };
-        default:
-            throw new Error(
-                `CARTESI_AUTH_KIND ${resolvedKind} isn't supported to foreclose, use mnemonic or private_key`,
-            );
-    }
-};
 
 /**
  * Work out how to sign as the guardian, the only account allowed to
@@ -108,6 +46,8 @@ export const resolveForecloseSigner = (options: {
         );
     }
 
+    // the signer given for the command is passed down to cartesi-rollups-cli
+    const env = host ? hostSignerEnv(host) : undefined;
     const ignoredIndex =
         accountIndex === undefined
             ? {}
@@ -123,13 +63,7 @@ export const resolveForecloseSigner = (options: {
                 `The private key's address ${address} isn't the guardian ${guardian}`,
             );
         }
-        return {
-            ...ignoredIndex,
-            env: {
-                CARTESI_AUTH_KIND: "private_key",
-                CARTESI_AUTH_PRIVATE_KEY: host.privateKey,
-            },
-        };
+        return { ...ignoredIndex, env };
     }
 
     // the node's private key is never read, so it can't be checked here
@@ -141,12 +75,6 @@ export const resolveForecloseSigner = (options: {
         return ignoredIndex;
     }
 
-    const env = host
-        ? {
-              CARTESI_AUTH_KIND: "mnemonic",
-              CARTESI_AUTH_MNEMONIC: host.mnemonic,
-          }
-        : undefined;
     if (accountIndex !== undefined) {
         return { accountIndex, env };
     }
@@ -192,7 +120,7 @@ Set CARTESI_AUTH_KIND to mnemonic or private_key when both are set.`,
             application,
         });
         // the node signer is only needed without a signer for the command
-        const host = getHostSigner();
+        const host = getHostSigner(getCartesiEnvironmentVariables());
         const { accountIndex, env, warning } = resolveForecloseSigner({
             accountIndex: options.accountIndex,
             guardian: withdrawalConfig.guardian,

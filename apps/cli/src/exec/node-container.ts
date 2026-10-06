@@ -1,4 +1,6 @@
 import { ExecaError, execa } from "execa";
+import { type Hex, isHex } from "viem";
+import type { CartesiEnvironmentVariables } from "../base.js";
 
 /**
  * Transaction options shared by the cartesi-rollups-cli commands that send a
@@ -245,3 +247,72 @@ export const getNodeSigner = async (options: {
     });
     return parseNodeSigner(stdout);
 };
+
+/**
+ * Signer given for a single command, in the environment of the shell that
+ * runs it, so it can sign as an account the node doesn't sign with
+ */
+export type HostSigner =
+    | { kind: "mnemonic"; mnemonic: string }
+    | { kind: "private_key"; privateKey: Hex };
+
+/**
+ * Read the per-command signer from the CARTESI_AUTH_* environment variables
+ * of the host, following cartesi-rollups-cli: CARTESI_AUTH_KIND picks the
+ * kind, otherwise the variable that is set does
+ * @returns the signer, or undefined when none is set
+ */
+export const getHostSigner = (
+    env: CartesiEnvironmentVariables,
+): HostSigner | undefined => {
+    const {
+        CARTESI_AUTH_KIND: kind,
+        CARTESI_AUTH_MNEMONIC: mnemonic,
+        CARTESI_AUTH_PRIVATE_KEY: privateKey,
+    } = env;
+
+    if (!kind && !mnemonic && !privateKey) {
+        return undefined;
+    }
+    if (!kind && mnemonic && privateKey) {
+        throw new Error(
+            "Both CARTESI_AUTH_MNEMONIC and CARTESI_AUTH_PRIVATE_KEY are set, set CARTESI_AUTH_KIND to mnemonic or private_key to choose",
+        );
+    }
+
+    const resolvedKind = kind ?? (mnemonic ? "mnemonic" : "private_key");
+    switch (resolvedKind) {
+        case "mnemonic":
+            if (!mnemonic) {
+                throw new Error(
+                    "CARTESI_AUTH_KIND is mnemonic, but CARTESI_AUTH_MNEMONIC is not set",
+                );
+            }
+            return { kind: "mnemonic", mnemonic };
+        case "private_key":
+            if (!privateKey || !isHex(privateKey)) {
+                throw new Error(
+                    "CARTESI_AUTH_KIND is private_key, but CARTESI_AUTH_PRIVATE_KEY is not a 0x-prefixed private key",
+                );
+            }
+            return { kind: "private_key", privateKey };
+        default:
+            throw new Error(
+                `CARTESI_AUTH_KIND ${resolvedKind} isn't supported for a single command, use mnemonic or private_key`,
+            );
+    }
+};
+
+/**
+ * Environment that makes cartesi-rollups-cli sign with the given signer
+ */
+export const hostSignerEnv = (signer: HostSigner): Record<string, string> =>
+    signer.kind === "private_key"
+        ? {
+              CARTESI_AUTH_KIND: "private_key",
+              CARTESI_AUTH_PRIVATE_KEY: signer.privateKey,
+          }
+        : {
+              CARTESI_AUTH_KIND: "mnemonic",
+              CARTESI_AUTH_MNEMONIC: signer.mnemonic,
+          };

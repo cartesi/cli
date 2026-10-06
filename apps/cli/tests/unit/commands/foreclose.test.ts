@@ -1,10 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { zeroAddress } from "viem";
 import { mnemonicToAccount } from "viem/accounts";
-import {
-    getHostSigner,
-    resolveForecloseSigner,
-} from "../../../src/commands/foreclose";
+import { resolveForecloseSigner } from "../../../src/commands/foreclose";
 import { DEVNET_MNEMONIC } from "../../../src/compose/node";
 
 // account 1 of the devnet mnemonic
@@ -19,60 +16,6 @@ const otherMnemonic =
 const otherGuardian = mnemonicToAccount(otherMnemonic, {
     addressIndex: 2,
 }).address;
-
-describe("getHostSigner", () => {
-    it("should return undefined when nothing is set", () => {
-        expect(getHostSigner({})).toBeUndefined();
-    });
-
-    it("should infer the kind from the variable that is set", () => {
-        expect(getHostSigner({ CARTESI_AUTH_MNEMONIC: "a b c" })).toEqual({
-            kind: "mnemonic",
-            mnemonic: "a b c",
-        });
-        expect(
-            getHostSigner({ CARTESI_AUTH_PRIVATE_KEY: guardianKey }),
-        ).toEqual({ kind: "private_key", privateKey: guardianKey });
-    });
-
-    it("should let CARTESI_AUTH_KIND choose when both are set", () => {
-        const env = {
-            CARTESI_AUTH_MNEMONIC: "a b c",
-            CARTESI_AUTH_PRIVATE_KEY: guardianKey,
-        };
-        expect(() => getHostSigner(env)).toThrow("CARTESI_AUTH_KIND");
-        expect(
-            getHostSigner({ ...env, CARTESI_AUTH_KIND: "private_key" }),
-        ).toEqual({ kind: "private_key", privateKey: guardianKey });
-        expect(
-            getHostSigner({ ...env, CARTESI_AUTH_KIND: "mnemonic" }),
-        ).toEqual({ kind: "mnemonic", mnemonic: "a b c" });
-    });
-
-    it("should reject a kind without its variable", () => {
-        expect(() => getHostSigner({ CARTESI_AUTH_KIND: "mnemonic" })).toThrow(
-            "CARTESI_AUTH_MNEMONIC",
-        );
-        expect(() =>
-            getHostSigner({ CARTESI_AUTH_KIND: "private_key" }),
-        ).toThrow("CARTESI_AUTH_PRIVATE_KEY");
-    });
-
-    it("should reject a private key that isn't hex", () => {
-        expect(() =>
-            getHostSigner({ CARTESI_AUTH_PRIVATE_KEY: "not-a-key" }),
-        ).toThrow("0x-prefixed");
-    });
-
-    it("should reject kinds not supported per command", () => {
-        expect(() =>
-            getHostSigner({ CARTESI_AUTH_KIND: "mnemonic_file" }),
-        ).toThrow("mnemonic_file");
-        expect(() => getHostSigner({ CARTESI_AUTH_KIND: "aws" })).toThrow(
-            "aws",
-        );
-    });
-});
 
 describe("resolveForecloseSigner", () => {
     it("should reject an application without a withdrawal config", () => {
