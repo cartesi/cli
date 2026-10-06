@@ -40,10 +40,18 @@ export const nodeExecArgs = (options: {
     env?: Record<string, string>;
     interactive: boolean;
     projectName: string;
+    service?: string;
     workdir?: string;
 }): string[] => {
-    const { accountIndex, command, env, interactive, projectName, workdir } =
-        options;
+    const {
+        accountIndex,
+        command,
+        env,
+        interactive,
+        projectName,
+        service = "rollups_node",
+        workdir,
+    } = options;
     const args = ["compose", "--project-name", projectName, "exec"];
     if (!interactive) {
         args.push("-T");
@@ -59,7 +67,7 @@ export const nodeExecArgs = (options: {
     if (workdir) {
         args.push("--workdir", workdir);
     }
-    return [...args, "rollups_node", ...command];
+    return [...args, service, ...command];
 };
 
 /**
@@ -93,6 +101,7 @@ export const execNodeCommand = async (options: {
     command: string[];
     input?: string;
     projectName: string;
+    service?: string;
     workdir?: string;
 }): Promise<string> => {
     const { input, ...rest } = options;
