@@ -413,7 +413,7 @@ export const createWithdrawCommand = () => {
                 if (proofFile) {
                     if (!driveRootProven) {
                         throw new Error(
-                            `The accounts drive root of ${application} is not proven yet, use ${chalk.cyan("--account")} so it can be proven`,
+                            `The accounts drive root of ${application} isn't proven yet. ${chalk.cyan("--proof-file")} only carries the account proof; run ${chalk.cyan("cartesi withdraw --account <address>")} once so the CLI proves the drive root, then ${chalk.cyan("--proof-file")} will work`,
                         );
                     }
                     tmpProofFile = await writeNodeTempFile({
