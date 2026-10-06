@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
-import { parseAccountIndex, resolveNodeApplication } from "../../src/node";
+import { parseAccountIndex } from "../../src/base";
+import { resolveNodeApplication } from "../../src/node";
 
 describe("parseAccountIndex", () => {
     it("should parse a non-negative integer", () => {

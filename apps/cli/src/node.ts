@@ -4,7 +4,6 @@ import {
 } from "@cartesi/client";
 import {
     type Command,
-    InvalidArgumentError,
     Option,
     type OptionValues,
 } from "@commander-js/extra-typings";
@@ -16,7 +15,7 @@ import {
     http,
     isAddress,
 } from "viem";
-import { getServiceState } from "./base.js";
+import { getServiceState, parseAccountIndex } from "./base.js";
 import { getApplicationAddress, getProjectPort } from "./exec/rollups.js";
 
 /**
@@ -85,17 +84,6 @@ export const resolveNodeApplication = async (options: {
         );
     }
     return address;
-};
-
-/**
- * Commander parser of a mnemonic account index
- */
-export const parseAccountIndex = (value: string): number => {
-    const index = Number(value);
-    if (!Number.isSafeInteger(index) || index < 0) {
-        throw new InvalidArgumentError("Not a valid account index.");
-    }
-    return index;
 };
 
 /**
