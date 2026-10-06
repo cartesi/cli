@@ -3,9 +3,13 @@ import { Command, Option } from "@commander-js/extra-typings";
 import chalk from "chalk";
 import fs from "fs-extra";
 import ora from "ora";
-import type { Address, Hash } from "viem";
+import pRetry from "p-retry";
+import { type Address, type Hash, zeroHash } from "viem";
 import { getProjectName, parseAddress } from "../base.js";
-import { iApplicationAbi } from "../contracts.js";
+import {
+    iApplicationAbi,
+    iOutputsMerkleRootValidatorAbi,
+} from "../contracts.js";
 import {
     execNodeCommand,
     handleNodeCommandError,
@@ -35,7 +39,8 @@ const WORK_DIR = "/tmp/cartesi-withdraw";
 /**
  * Read the foreclosure state of the application from the chain. The node
  * observes it some blocks later, which is too late for a withdrawal that
- * follows another one.
+ * follows another one. The last finalized machine root is the one the proofs
+ * are checked against on chain.
  */
 const readForeclosureState = async (options: {
     application: Address;
@@ -43,7 +48,7 @@ const readForeclosureState = async (options: {
 }) => {
     const { application, projectName } = options;
     const client = await connect({ projectName });
-    const [foreclosed, [driveRootProven]] = await Promise.all([
+    const [foreclosed, [driveRootProven], validator] = await Promise.all([
         client.readContract({
             abi: iApplicationAbi,
             address: application,
@@ -54,11 +59,64 @@ const readForeclosureState = async (options: {
             address: application,
             functionName: "getAccountsDriveMerkleRoot",
         }),
+        client.readContract({
+            abi: iApplicationAbi,
+            address: application,
+            functionName: "getOutputsMerkleRootValidator",
+        }),
     ]);
-    return { driveRootProven, foreclosed };
+    const finalizedMachineRoot = await client.readContract({
+        abi: iOutputsMerkleRootValidatorAbi,
+        address: validator,
+        args: [application],
+        functionName: "getLastFinalizedMachineMerkleRoot",
+    });
+    return { driveRootProven, finalizedMachineRoot, foreclosed };
 };
 
 const isSameHash = (a: Hash, b: Hash) => a.toLowerCase() === b.toLowerCase();
+
+/**
+ * Find the epoch the node has with the machine root finalized on chain. The
+ * node records accepted epochs some blocks after the chain, so it may still
+ * report an older one; nothing is finalized after the foreclosure, so it
+ * catches up.
+ * @returns the index of the epoch
+ */
+const waitForFinalizedEpoch = async (options: {
+    application: Address;
+    client: CartesiPublicClient;
+    finalizedMachineRoot: Hash;
+}): Promise<bigint> => {
+    const { application, client, finalizedMachineRoot } = options;
+    let last: { epochIndex?: bigint; machineHash?: Hash | null } = {};
+    try {
+        return await pRetry(
+            async () => {
+                const epochIndex = await client.getLastAcceptedEpochIndex({
+                    application,
+                });
+                const { machineHash } = await client.getEpoch({
+                    application,
+                    epochIndex,
+                });
+                last = { epochIndex, machineHash };
+                if (
+                    !machineHash ||
+                    !isSameHash(machineHash, finalizedMachineRoot)
+                ) {
+                    throw new Error("node is behind the chain");
+                }
+                return epochIndex;
+            },
+            { retries: 15, minTimeout: 1_000, maxTimeout: 2_000, factor: 1.2 },
+        );
+    } catch {
+        throw new Error(
+            `The node hasn't processed the last finalized epoch yet (node epoch ${last.epochIndex ?? "none"} root ${last.machineHash ?? "none"}, chain root ${finalizedMachineRoot}); try again shortly`,
+        );
+    }
+};
 
 /**
  * Replay the application up to its last finalized epoch, unless a previous
@@ -69,22 +127,27 @@ const isSameHash = (a: Hash, b: Hash) => a.toLowerCase() === b.toLowerCase();
 const replayLastFinalizedEpoch = async (options: {
     application: Address;
     client: CartesiPublicClient;
+    finalizedMachineRoot: Hash;
     projectName: string;
 }): Promise<{ machineHash: Hash; store: string }> => {
-    const { application, client, projectName } = options;
-    const progress = ora("Looking up the last finalized epoch...").start();
+    const { application, client, finalizedMachineRoot, projectName } = options;
+    const machineHash = finalizedMachineRoot;
 
+    if (isSameHash(finalizedMachineRoot, zeroHash)) {
+        throw new Error("No finalized epoch, there are no funds to withdraw");
+    }
+
+    const progress = ora("Looking up the last finalized epoch...").start();
     let epochIndex: bigint;
     try {
-        epochIndex = await client.getLastAcceptedEpochIndex({ application });
+        epochIndex = await waitForFinalizedEpoch({
+            application,
+            client,
+            finalizedMachineRoot,
+        });
     } catch (error: unknown) {
-        progress.fail("No finalized epoch, there are no funds to withdraw");
-        throw error;
-    }
-    const { machineHash } = await client.getEpoch({ application, epochIndex });
-    if (!machineHash) {
         progress.fail();
-        throw new Error(`Epoch ${epochIndex} has no machine hash`);
+        throw error;
     }
 
     const store = `${WORK_DIR}/${application}/epoch-${epochIndex}`;
@@ -134,6 +197,7 @@ const proveAccount = async (options: {
     application: Address;
     client: CartesiPublicClient;
     driveRootProven: boolean;
+    finalizedMachineRoot: Hash;
     projectName: string;
     tx: TransactionOptions;
 }): Promise<string> => {
@@ -143,6 +207,7 @@ const proveAccount = async (options: {
         application,
         client,
         driveRootProven,
+        finalizedMachineRoot,
         projectName,
         tx,
     } = options;
@@ -153,6 +218,7 @@ const proveAccount = async (options: {
     const { machineHash, store } = await replayLastFinalizedEpoch({
         application,
         client,
+        finalizedMachineRoot,
         projectName,
     });
 
@@ -171,8 +237,11 @@ const proveAccount = async (options: {
     });
     if (!isSameHash(proof.machineRoot, machineHash)) {
         progress.fail();
+        // a cached snapshot that doesn't prove the finalized root would fail
+        // every retry, so drop it and let the next run replay
+        await removeNodePath({ path: store, projectName });
         throw new Error(
-            `Proof machine root ${proof.machineRoot} does not match the finalized machine hash ${machineHash}`,
+            `Proof machine root ${proof.machineRoot} does not match the finalized machine root ${machineHash}. Removed the cached snapshot; run the command again to replay it`,
         );
     }
     progress.succeed(
@@ -248,10 +317,8 @@ export const createWithdrawCommand = () => {
             });
             const client = await getNodeClient({ projectName });
 
-            const { driveRootProven, foreclosed } = await readForeclosureState({
-                application,
-                projectName,
-            });
+            const { driveRootProven, finalizedMachineRoot, foreclosed } =
+                await readForeclosureState({ application, projectName });
             if (!foreclosed) {
                 throw new Error(
                     `Application ${chalk.cyan(application)} is not foreclosed, use ${chalk.cyan("cartesi foreclose")} first`,
@@ -284,6 +351,7 @@ export const createWithdrawCommand = () => {
                         application,
                         client,
                         driveRootProven,
+                        finalizedMachineRoot,
                         projectName,
                         tx: options,
                     });
