@@ -7,9 +7,8 @@ import {
     replayStorePath,
     type WithdrawIo,
 } from "../../../src/commands/withdraw";
+import { account, application } from "../fixtures";
 
-const application = "0x1234567890abcdef1234567890abcdef12345678";
-const account = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
 const root = toHex(1, { size: 32 });
 const otherRoot = toHex(2, { size: 32 });
 const fastRetry = { retries: 2, minTimeout: 1, maxTimeout: 1 };

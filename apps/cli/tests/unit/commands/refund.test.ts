@@ -4,8 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { parseInputIndex } from "../../../src/base";
 import { getInputData } from "../../../src/commands/refund";
-
-const application = "0x1234567890abcdef1234567890abcdef12345678";
+import { application } from "../fixtures";
 
 describe("parseInputIndex", () => {
     it("should parse decimal and 0x-prefixed hexadecimal indexes", () => {
