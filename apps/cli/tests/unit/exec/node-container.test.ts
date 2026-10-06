@@ -4,6 +4,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import {
+    getHostSigner,
+    hostSignerEnv,
     NODE_SIGNER_SCRIPT,
     nodeExecArgs,
     parseNodeSigner,
@@ -235,5 +237,76 @@ describe("NODE_SIGNER_SCRIPT", () => {
         });
         expect(stdout).not.toContain("0xsecret");
         expect(parseNodeSigner(stdout)).toEqual({ kind: "private_key" });
+    });
+});
+
+// a well known anvil private key
+const guardianKey =
+    "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d";
+
+describe("getHostSigner", () => {
+    it("should return undefined when nothing is set", () => {
+        expect(getHostSigner({})).toBeUndefined();
+    });
+
+    it("should infer the kind from the variable that is set", () => {
+        expect(getHostSigner({ CARTESI_AUTH_MNEMONIC: "a b c" })).toEqual({
+            kind: "mnemonic",
+            mnemonic: "a b c",
+        });
+        expect(
+            getHostSigner({ CARTESI_AUTH_PRIVATE_KEY: guardianKey }),
+        ).toEqual({ kind: "private_key", privateKey: guardianKey });
+    });
+
+    it("should let CARTESI_AUTH_KIND choose when both are set", () => {
+        const env = {
+            CARTESI_AUTH_MNEMONIC: "a b c",
+            CARTESI_AUTH_PRIVATE_KEY: guardianKey,
+        };
+        expect(() => getHostSigner(env)).toThrow("CARTESI_AUTH_KIND");
+        expect(
+            getHostSigner({ ...env, CARTESI_AUTH_KIND: "private_key" }),
+        ).toEqual({ kind: "private_key", privateKey: guardianKey });
+        expect(
+            getHostSigner({ ...env, CARTESI_AUTH_KIND: "mnemonic" }),
+        ).toEqual({ kind: "mnemonic", mnemonic: "a b c" });
+    });
+
+    it("should reject a kind without its variable", () => {
+        expect(() => getHostSigner({ CARTESI_AUTH_KIND: "mnemonic" })).toThrow(
+            "CARTESI_AUTH_MNEMONIC",
+        );
+        expect(() =>
+            getHostSigner({ CARTESI_AUTH_KIND: "private_key" }),
+        ).toThrow("CARTESI_AUTH_PRIVATE_KEY");
+    });
+
+    it("should reject a private key that isn't hex", () => {
+        expect(() =>
+            getHostSigner({ CARTESI_AUTH_PRIVATE_KEY: "not-a-key" }),
+        ).toThrow("0x-prefixed");
+    });
+
+    it("should reject kinds not supported per command", () => {
+        expect(() =>
+            getHostSigner({ CARTESI_AUTH_KIND: "mnemonic_file" }),
+        ).toThrow("mnemonic_file");
+        expect(() => getHostSigner({ CARTESI_AUTH_KIND: "aws" })).toThrow(
+            "aws",
+        );
+    });
+
+    it("should build the environment for each signer kind", () => {
+        expect(hostSignerEnv({ kind: "mnemonic", mnemonic: "a b c" })).toEqual({
+            CARTESI_AUTH_KIND: "mnemonic",
+            CARTESI_AUTH_MNEMONIC: "a b c",
+        });
+        expect(
+            hostSignerEnv({ kind: "private_key", privateKey: guardianKey }),
+        ).toEqual({
+            CARTESI_AUTH_KIND: "private_key",
+            CARTESI_AUTH_PRIVATE_KEY: guardianKey,
+        });
     });
 });
