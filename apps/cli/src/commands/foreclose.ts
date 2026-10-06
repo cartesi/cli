@@ -19,7 +19,7 @@ import {
     type NodeSigner,
     runNodeCommand,
     transactionArgs,
-} from "../exec/rollups.js";
+} from "../exec/node-container.js";
 import {
     getNodeClient,
     parseAccountIndex,

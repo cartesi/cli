@@ -24,12 +24,12 @@ import {
 } from "../../../src/contracts";
 import { replayStorePath } from "../../../src/commands/withdraw";
 import {
-    execNodeCommand,
     getDeployments,
     getProjectPort,
-    proveAccountsDrive,
     stopEnvironment,
 } from "../../../src/exec/rollups";
+import { execNodeCommand } from "../../../src/exec/node-container";
+import { proveAccountsDrive } from "../../../src/exec/cartesi-rollups-machine-tool";
 import { cartesi } from "../../../src/wallet";
 import { TEST_RUNTIME_VERSION, TEST_SDK } from "../config";
 

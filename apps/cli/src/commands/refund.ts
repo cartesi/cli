@@ -14,7 +14,7 @@ import {
     runNodeCommand,
     transactionArgs,
     writeNodeTempFile,
-} from "../exec/rollups.js";
+} from "../exec/node-container.js";
 import {
     getNodeClient,
     parseAccountIndex,

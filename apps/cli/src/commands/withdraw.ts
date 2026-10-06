@@ -11,18 +11,20 @@ import {
     iOutputsMerkleRootValidatorAbi,
 } from "../contracts.js";
 import {
-    type AccountsDriveConfig,
     execNodeCommand,
     handleNodeCommandError,
     nodePathExists,
-    proveAccountsDrive,
     removeNodePath,
-    replayMachine,
     runNodeCommand,
     type TransactionOptions,
     transactionArgs,
     writeNodeTempFile,
-} from "../exec/rollups.js";
+} from "../exec/node-container.js";
+import {
+    type AccountsDriveConfig,
+    proveAccountsDrive,
+    replayMachine,
+} from "../exec/cartesi-rollups-machine-tool.js";
 import {
     getNodeClient,
     parseAccountIndex,
