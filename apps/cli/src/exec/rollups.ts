@@ -376,7 +376,7 @@ export const startEnvironment = async (options: {
     if (services.includes("explorer")) {
         files.push(
             explorer({
-                imageTag: "2.0.0-alpha.3",
+                imageTag: "2.0.0-alpha.4",
                 port,
             }),
         );
