@@ -49,7 +49,6 @@ describe("getInputData", () => {
                 client: unusedClient,
                 inputFile: file("valid.hex", "  0xdeadbeef\n"),
                 inputIndex: 2n,
-                projectName: "dapp",
             }),
         ).toBe("0xdeadbeef");
     });
@@ -62,7 +61,6 @@ describe("getInputData", () => {
                     client: unusedClient,
                     inputFile: file("invalid.hex", content),
                     inputIndex: 2n,
-                    projectName: "dapp",
                 }),
             ).rejects.toThrow("must contain the 0x-prefixed hexadecimal");
         }
@@ -77,7 +75,6 @@ describe("getInputData", () => {
                 application,
                 client: client as never,
                 inputIndex: 2n,
-                projectName: "dapp",
             }),
         ).toBe("0xcafe");
     });
@@ -93,7 +90,6 @@ describe("getInputData", () => {
                 application,
                 client: client as never,
                 inputIndex: 99n,
-                projectName: "dapp",
             }),
         ).rejects.toThrow(/Input 99 not found in the node, use .*--input-file/);
     });

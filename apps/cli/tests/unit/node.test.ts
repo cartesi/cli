@@ -16,7 +16,7 @@ describe("parseAccountIndex", () => {
 
 describe("resolveNodeApplication", () => {
     const deployed = "0x1234567890abcdef1234567890abcdef12345678";
-    const lookup = (state: string | undefined, address?: string) => ({
+    const io = (state: string | undefined, address?: string) => ({
         getApplicationAddress: async () => address as never,
         getServiceState: async () => state,
     });
@@ -24,7 +24,7 @@ describe("resolveNodeApplication", () => {
     it("should tell to start the environment when the node isn't running", async () => {
         await expect(
             resolveNodeApplication({
-                lookup: lookup("exited", deployed),
+                io: io("exited", deployed),
                 projectName: "dapp",
             }),
         ).rejects.toThrow(/is not running, use .*cartesi run/);
@@ -34,7 +34,7 @@ describe("resolveNodeApplication", () => {
         expect(
             await resolveNodeApplication({
                 application: "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd",
-                lookup: lookup("running", deployed),
+                io: io("running", deployed),
                 projectName: "dapp",
             }),
         ).toBe("0xABcdEFABcdEFabcdEfAbCdefabcdeFABcDEFabCD");
@@ -44,7 +44,7 @@ describe("resolveNodeApplication", () => {
         await expect(
             resolveNodeApplication({
                 application: "0x123",
-                lookup: lookup("running", deployed),
+                io: io("running", deployed),
                 projectName: "dapp",
             }),
         ).rejects.toThrow("Invalid application address 0x123");
@@ -53,7 +53,7 @@ describe("resolveNodeApplication", () => {
     it("should use the application deployed for the current machine", async () => {
         expect(
             await resolveNodeApplication({
-                lookup: lookup("running", deployed),
+                io: io("running", deployed),
                 projectName: "dapp",
             }),
         ).toBe(deployed);
@@ -62,7 +62,7 @@ describe("resolveNodeApplication", () => {
     it("should tell to pass --application when none is deployed", async () => {
         await expect(
             resolveNodeApplication({
-                lookup: lookup("running"),
+                io: io("running"),
                 projectName: "dapp",
             }),
         ).rejects.toThrow(/No application deployed .*--application/);

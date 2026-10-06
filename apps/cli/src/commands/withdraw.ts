@@ -26,12 +26,12 @@ import {
     replayMachine,
 } from "../exec/cartesi-rollups-machine-tool.js";
 import {
-    getNodeClient,
     addRecoveryOptions,
+    getAnvilClient,
+    getNodeClient,
     resolveNodeApplication,
 } from "../node.js";
 import { addressInput } from "../prompts.js";
-import { connect } from "../wallet.js";
 
 /**
  * Directory inside the rollups node container where replayed machines and
@@ -45,6 +45,12 @@ const WORK_DIR = "/tmp/cartesi-withdraw";
  */
 export const replayStorePath = (application: Address, epochIndex: bigint) =>
     `${WORK_DIR}/${application}/epoch-${epochIndex}`;
+
+/**
+ * Directory of the proofs generated for an account of an application
+ */
+export const proofStorePath = (application: Address, account: Address) =>
+    `${WORK_DIR}/${application}/${account}`;
 
 /**
  * Operations on the rollups node container used to replay and prove, so tests
@@ -87,7 +93,7 @@ const readForeclosureState = async (options: {
     projectName: string;
 }) => {
     const { application, projectName } = options;
-    const client = await connect({ projectName });
+    const client = await getAnvilClient({ projectName });
     const [foreclosed, [driveRootProven], validator] = await Promise.all([
         client.readContract({
             abi: iApplicationAbi,
@@ -169,7 +175,7 @@ export const replayLastFinalizedEpoch = async (options: {
     io?: WithdrawIo;
     projectName: string;
     retry?: RetryOptions;
-}): Promise<{ machineHash: Hash; store: string }> => {
+}): Promise<{ store: string }> => {
     const {
         application,
         client,
@@ -178,8 +184,6 @@ export const replayLastFinalizedEpoch = async (options: {
         projectName,
         retry = FINALIZED_EPOCH_RETRY,
     } = options;
-    const machineHash = finalizedMachineRoot;
-
     if (isSameHash(finalizedMachineRoot, zeroHash)) {
         throw new Error("No finalized epoch, there are no funds to withdraw");
     }
@@ -203,7 +207,7 @@ export const replayLastFinalizedEpoch = async (options: {
         progress.succeed(
             `Using the machine replayed up to epoch ${chalk.cyan(epochIndex)}`,
         );
-        return { machineHash, store };
+        return { store };
     }
 
     // replay into a temporary path, so an interrupted replay is never reused
@@ -217,9 +221,9 @@ export const replayLastFinalizedEpoch = async (options: {
             projectName,
             store: tmp,
         });
-        if (!isSameHash(replay.machineRoot, machineHash)) {
+        if (!isSameHash(replay.machineRoot, finalizedMachineRoot)) {
             throw new Error(
-                `Replayed machine root ${replay.machineRoot} does not match the machine hash ${machineHash} of epoch ${epochIndex}`,
+                `Replayed machine root ${replay.machineRoot} does not match the finalized machine root ${finalizedMachineRoot} of epoch ${epochIndex}`,
             );
         }
         await io.execNodeCommand({ command: ["mv", tmp, store], projectName });
@@ -231,7 +235,7 @@ export const replayLastFinalizedEpoch = async (options: {
         await io.removeNodePath({ path: tmp, projectName });
         throw error;
     }
-    return { machineHash, store };
+    return { store };
 };
 
 /**
@@ -244,7 +248,7 @@ export const generateAccountProofs = async (options: {
     application: Address;
     driveConfig: AccountsDriveConfig;
     io?: WithdrawIo;
-    machineHash: Hash;
+    finalizedMachineRoot: Hash;
     projectName: string;
     store: string;
 }) => {
@@ -252,8 +256,8 @@ export const generateAccountProofs = async (options: {
         account,
         application,
         driveConfig,
+        finalizedMachineRoot,
         io = defaultIo,
-        machineHash,
         projectName,
         store,
     } = options;
@@ -264,7 +268,7 @@ export const generateAccountProofs = async (options: {
         .proveAccountsDrive({
             account,
             driveConfig,
-            outDir: `${WORK_DIR}/${application}/${account}`,
+            outDir: proofStorePath(application, account),
             projectName,
             snapshot: store,
         })
@@ -272,13 +276,13 @@ export const generateAccountProofs = async (options: {
             progress.fail(`Failed to generate the proofs of ${account}`);
             throw error;
         });
-    if (!isSameHash(proof.machineRoot, machineHash)) {
+    if (!isSameHash(proof.machineRoot, finalizedMachineRoot)) {
         progress.fail();
         // a cached snapshot that doesn't prove the finalized root would fail
         // every retry, so drop it and let the next run replay
         await io.removeNodePath({ path: store, projectName });
         throw new Error(
-            `Proof machine root ${proof.machineRoot} does not match the finalized machine root ${machineHash}. Removed the cached snapshot; run the command again to replay it`,
+            `Proof machine root ${proof.machineRoot} does not match the finalized machine root ${finalizedMachineRoot}. Removed the cached snapshot; run the command again to replay it`,
         );
     }
     progress.succeed(
@@ -316,7 +320,7 @@ const proveAccount = async (options: {
         application,
     });
 
-    const { machineHash, store } = await replayLastFinalizedEpoch({
+    const { store } = await replayLastFinalizedEpoch({
         application,
         client,
         finalizedMachineRoot,
@@ -327,7 +331,7 @@ const proveAccount = async (options: {
         account,
         application,
         driveConfig: withdrawalConfig,
-        machineHash,
+        finalizedMachineRoot,
         projectName,
         store,
     });
