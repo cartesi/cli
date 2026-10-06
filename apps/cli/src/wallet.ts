@@ -10,8 +10,7 @@ import {
 } from "viem";
 import { mnemonicToAccount } from "viem/accounts";
 import { anvil } from "viem/chains";
-import { getCartesiEnvironmentVariables, getProjectName } from "./base.js";
-import { DEVNET_MNEMONIC } from "./compose/node.js";
+import { getProjectName } from "./base.js";
 import { PREFERRED_PORT } from "./config.js";
 import { getProjectPort } from "./exec/rollups.js";
 
@@ -59,13 +58,6 @@ export const connect = async (options: {
         .extend(walletActions);
     return client;
 };
-
-/**
- * Mnemonic the rollups node signs with: the one passed down from the host
- * environment, or the devnet one
- */
-export const getNodeMnemonic = (): string =>
-    getCartesiEnvironmentVariables().CARTESI_AUTH_MNEMONIC ?? DEVNET_MNEMONIC;
 
 /**
  * Find the index of the account derived from a mnemonic that has the given

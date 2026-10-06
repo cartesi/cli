@@ -759,15 +759,21 @@ export const transactionArgs = (options: TransactionOptions): string[] => {
 export const nodeExecArgs = (options: {
     accountIndex?: number;
     command: string[];
+    env?: Record<string, string>;
     interactive: boolean;
     projectName: string;
     workdir?: string;
 }): string[] => {
-    const { accountIndex, command, interactive, projectName, workdir } =
+    const { accountIndex, command, env, interactive, projectName, workdir } =
         options;
     const args = ["compose", "--project-name", projectName, "exec"];
     if (!interactive) {
         args.push("-T");
+    }
+    // only the names: docker takes the values from its own environment, so
+    // secrets never show up in the process arguments
+    for (const name of Object.keys(env ?? {})) {
+        args.push("-e", name);
     }
     if (accountIndex !== undefined) {
         args.push("-e", `CARTESI_AUTH_MNEMONIC_ACCOUNT_INDEX=${accountIndex}`);
@@ -786,6 +792,7 @@ export const nodeExecArgs = (options: {
 export const runNodeCommand = (options: {
     accountIndex?: number;
     command: string[];
+    env?: Record<string, string>;
     projectName: string;
     stdout?: "stdout" | "stderr";
 }) =>
@@ -793,6 +800,7 @@ export const runNodeCommand = (options: {
         "docker",
         nodeExecArgs({ ...options, interactive: !!process.stdin.isTTY }),
         {
+            env: options.env,
             stdin: "inherit",
             stdout: options.stdout === "stderr" ? 2 : "inherit",
             stderr: "inherit",
@@ -886,6 +894,69 @@ export const handleNodeCommandError = (error: unknown) => {
         return;
     }
     throw error;
+};
+
+/**
+ * Signer the rollups node container is configured with. Private keys are never
+ * read out of the container, only their kind.
+ */
+export type NodeSigner =
+    | { kind: "mnemonic"; mnemonic: string }
+    | { kind: "private_key" };
+
+/**
+ * Print the signer kind and, for mnemonic signers, the mnemonic itself, the
+ * same way cartesi-rollups-cli resolves them: an inline mnemonic takes
+ * precedence over the one in CARTESI_AUTH_MNEMONIC_FILE.
+ */
+export const NODE_SIGNER_SCRIPT = `kind="\${CARTESI_AUTH_KIND:-mnemonic}"
+printf '%s\\n' "$kind"
+case "$kind" in
+mnemonic|mnemonic_file)
+    if [ -n "$CARTESI_AUTH_MNEMONIC" ]; then
+        printf '%s\\n' "$CARTESI_AUTH_MNEMONIC"
+    elif [ -n "$CARTESI_AUTH_MNEMONIC_FILE" ]; then
+        cat "$CARTESI_AUTH_MNEMONIC_FILE"
+    fi
+    ;;
+esac`;
+
+/**
+ * Parse the output of the node signer script
+ */
+export const parseNodeSigner = (stdout: string): NodeSigner => {
+    const [kind = "", ...rest] = stdout.trim().split("\n");
+    switch (kind.trim()) {
+        case "mnemonic":
+        case "mnemonic_file": {
+            const mnemonic = rest.join(" ").trim();
+            if (!mnemonic) {
+                throw new Error("The rollups node has no mnemonic configured");
+            }
+            return { kind: "mnemonic", mnemonic };
+        }
+        case "private_key":
+        case "private_key_file":
+            return { kind: "private_key" };
+        default:
+            throw new Error(
+                `Signer kind ${kind.trim()} of the rollups node isn't supported by the CLI`,
+            );
+    }
+};
+
+/**
+ * Read the signer the rollups node container is configured with, which is
+ * the one cartesi-rollups-cli signs with unless a command overrides it
+ */
+export const getNodeSigner = async (options: {
+    projectName: string;
+}): Promise<NodeSigner> => {
+    const stdout = await execNodeCommand({
+        command: ["sh", "-c", NODE_SIGNER_SCRIPT],
+        projectName: options.projectName,
+    });
+    return parseNodeSigner(stdout);
 };
 
 /**
