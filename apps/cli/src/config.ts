@@ -9,44 +9,56 @@ const MAX_NVRAMS = 8; // guest exposes nvrams as /dev/uio0 to /dev/uio7
 /**
  * Typed Errors
  */
+
+// smol-toml creates tables with a null prototype, which can't be coerced to a
+// string by template literals, so format objects (tables, arrays) as JSON.
+const formatValue = (value: TomlPrimitive): string =>
+    typeof value === "object" && value !== null && !(value instanceof Date)
+        ? JSON.stringify(value, (_, v) =>
+              typeof v === "bigint" ? v.toString() : v,
+          )
+        : String(value);
+
 export class InvalidBuilderError extends Error {
     constructor(builder: TomlPrimitive) {
-        super(`Invalid builder: ${builder}`);
+        super(`Invalid builder: ${formatValue(builder)}`);
         this.name = "InvalidBuilder";
     }
 }
 
 export class InvalidDriveFormatError extends Error {
     constructor(format: TomlPrimitive) {
-        super(`Invalid drive format: ${format}`);
+        super(`Invalid drive format: ${formatValue(format)}`);
         this.name = "InvalidDriveFormatError";
     }
 }
 
 export class InvalidEmptyDriveFormatError extends Error {
     constructor(format: TomlPrimitive) {
-        super(`Invalid empty drive format: ${format}`);
+        super(`Invalid empty drive format: ${formatValue(format)}`);
         this.name = "InvalidEmptyDriveFormatError";
     }
 }
 
 export class InvalidStringValueError extends Error {
     constructor(value: TomlPrimitive) {
-        super(`Invalid string value: ${value}`);
+        super(`Invalid string value: ${formatValue(value)}`);
         this.name = "InvalidStringValueError";
     }
 }
 
 export class InvalidBooleanValueError extends Error {
     constructor(value: TomlPrimitive) {
-        super(`Invalid boolean value: ${value}`);
+        super(`Invalid boolean value: ${formatValue(value)}`);
         this.name = "InvalidBooleanValueError";
     }
 }
 
 export class InvalidNumberValueError extends Error {
     constructor(value: TomlPrimitive, key?: string) {
-        super(`Invalid number value: ${value}${key ? ` for key: ${key}` : ""}`);
+        super(
+            `Invalid number value: ${formatValue(value)}${key ? ` for key: ${key}` : ""}`,
+        );
         this.name = "InvalidNumberValueError";
     }
 }
@@ -54,7 +66,7 @@ export class InvalidNumberValueError extends Error {
 export class InvalidAddressValueError extends Error {
     constructor(value: TomlPrimitive, key?: string) {
         super(
-            `Invalid address value: ${value}${key ? ` for key: ${key}` : ""}`,
+            `Invalid address value: ${formatValue(value)}${key ? ` for key: ${key}` : ""}`,
         );
         this.name = "InvalidAddressValueError";
     }
@@ -62,14 +74,14 @@ export class InvalidAddressValueError extends Error {
 
 export class InvalidBytesValueError extends Error {
     constructor(value: TomlPrimitive) {
-        super(`Invalid bytes value: ${value}`);
+        super(`Invalid bytes value: ${formatValue(value)}`);
         this.name = "InvalidBytesValueError";
     }
 }
 
 export class RequiredFieldError extends Error {
     constructor(key: TomlPrimitive) {
-        super(`Missing required field: ${key}`);
+        super(`Missing required field: ${formatValue(key)}`);
         this.name = "RequiredFieldError";
     }
 }
@@ -83,7 +95,7 @@ export class InvalidStringArrayError extends Error {
 
 export class InvalidEnvError extends Error {
     constructor(value: TomlPrimitive) {
-        super(`Invalid env configuration: ${value}`);
+        super(`Invalid env configuration: ${formatValue(value)}`);
         this.name = "InvalidEnvError";
     }
 }
