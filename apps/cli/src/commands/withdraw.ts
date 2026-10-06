@@ -27,7 +27,7 @@ import {
 } from "../exec/cartesi-rollups-machine-tool.js";
 import {
     getNodeClient,
-    parseAccountIndex,
+    addRecoveryOptions,
     resolveNodeApplication,
 } from "../node.js";
 import { addressInput } from "../prompts.js";
@@ -354,111 +354,92 @@ const proveAccount = async (options: {
 };
 
 export const createWithdrawCommand = () => {
-    return new Command("withdraw")
-        .description(
-            "Withdraws the funds of an account from a foreclosed application",
-        )
-        .configureHelp({ showGlobalOptions: true })
-        .addOption(
-            new Option(
-                "--account <address>",
-                "account to withdraw the funds of",
-            ).argParser(parseAddress),
-        )
-        .addOption(
-            new Option(
-                "--proof-file <path>",
-                "withdraw proof generated elsewhere, instead of generating it",
-            ).conflicts("account"),
-        )
-        .option("--application <address>", "application address")
-        .option(
-            "--project-name <string>",
-            "name of project (used by docker compose and cartesi-rollups-node)",
-        )
-        .addOption(
-            new Option(
-                "--account-index <index>",
-                "index of the account in the node mnemonic paying for gas",
-            ).argParser(parseAccountIndex),
-        )
-        .option("-y, --yes", "skip the confirmation prompt")
-        .option("--json", "print the result as JSON")
-        .option(
-            "--no-wait",
-            "return after broadcast without waiting for the receipt",
-        )
-        .option(
-            "--wait-timeout <duration>",
-            "maximum time to wait for the receipt (e.g. 30s, 5m)",
-        )
-        .action(async (options) => {
-            const { accountIndex, proofFile } = options;
-            const projectName = getProjectName(options);
-            const application = await resolveNodeApplication({
-                application: options.application,
-                projectName,
-            });
-            const client = await getNodeClient({ projectName });
+    return addRecoveryOptions(
+        new Command("withdraw")
+            .description(
+                "Withdraws the funds of an account from a foreclosed application",
+            )
+            .configureHelp({ showGlobalOptions: true })
+            .addOption(
+                new Option(
+                    "--account <address>",
+                    "account to withdraw the funds of",
+                ).argParser(parseAddress),
+            )
+            .addOption(
+                new Option(
+                    "--proof-file <path>",
+                    "withdraw proof generated elsewhere, instead of generating it",
+                ).conflicts("account"),
+            ),
+        "index of the account in the node mnemonic paying for gas",
+    ).action(async (options) => {
+        const { accountIndex, proofFile } = options;
+        const projectName = getProjectName(options);
+        const application = await resolveNodeApplication({
+            application: options.application,
+            projectName,
+        });
+        const client = await getNodeClient({ projectName });
 
-            const { driveRootProven, finalizedMachineRoot, foreclosed } =
-                await readForeclosureState({ application, projectName });
-            if (!foreclosed) {
-                throw new Error(
-                    `Application ${chalk.cyan(application)} is not foreclosed, use ${chalk.cyan("cartesi foreclose")} first`,
-                );
-            }
+        const { driveRootProven, finalizedMachineRoot, foreclosed } =
+            await readForeclosureState({ application, projectName });
+        if (!foreclosed) {
+            throw new Error(
+                `Application ${chalk.cyan(application)} is not foreclosed, use ${chalk.cyan("cartesi foreclose")} first`,
+            );
+        }
 
-            let withdrawProofFile: string;
-            let tmpProofFile: string | undefined;
-            try {
-                if (proofFile) {
-                    if (!driveRootProven) {
-                        throw new Error(
-                            `The accounts drive root of ${application} isn't proven yet. ${chalk.cyan("--proof-file")} only carries the account proof; run ${chalk.cyan("cartesi withdraw --account <address>")} once so the CLI proves the drive root, then ${chalk.cyan("--proof-file")} will work`,
-                        );
-                    }
-                    tmpProofFile = await writeNodeTempFile({
-                        content: await fs.readFile(proofFile, "utf-8"),
-                        projectName,
-                    });
-                    withdrawProofFile = tmpProofFile;
-                } else {
-                    const account =
-                        options.account ??
-                        (await addressInput({
-                            message: "Account to withdraw the funds of",
-                        }));
-                    withdrawProofFile = await proveAccount({
-                        account,
-                        accountIndex,
-                        application,
-                        client,
-                        driveRootProven,
-                        finalizedMachineRoot,
-                        projectName,
-                        tx: options,
-                    });
+        let withdrawProofFile: string;
+        let tmpProofFile: string | undefined;
+        try {
+            if (proofFile) {
+                if (!driveRootProven) {
+                    throw new Error(
+                        `The accounts drive root of ${application} isn't proven yet. ${chalk.cyan("--proof-file")} only carries the account proof; run ${chalk.cyan("cartesi withdraw --account <address>")} once so the CLI proves the drive root, then ${chalk.cyan("--proof-file")} will work`,
+                    );
                 }
-
-                await runNodeCommand({
-                    accountIndex,
-                    command: [
-                        "cartesi-rollups-cli",
-                        "withdraw",
-                        application,
-                        "--proof-file",
-                        withdrawProofFile,
-                        ...transactionArgs(options),
-                    ],
+                tmpProofFile = await writeNodeTempFile({
+                    content: await fs.readFile(proofFile, "utf-8"),
                     projectName,
                 });
-            } catch (error: unknown) {
-                handleNodeCommandError(error);
-            } finally {
-                if (tmpProofFile) {
-                    await removeNodePath({ path: tmpProofFile, projectName });
-                }
+                withdrawProofFile = tmpProofFile;
+            } else {
+                const account =
+                    options.account ??
+                    (await addressInput({
+                        message: "Account to withdraw the funds of",
+                    }));
+                withdrawProofFile = await proveAccount({
+                    account,
+                    accountIndex,
+                    application,
+                    client,
+                    driveRootProven,
+                    finalizedMachineRoot,
+                    projectName,
+                    tx: options,
+                });
             }
-        });
+
+            await runNodeCommand({
+                accountIndex,
+                command: [
+                    "cartesi-rollups-cli",
+                    "withdraw",
+                    application,
+                    "--proof-file",
+                    withdrawProofFile,
+                    ...transactionArgs(options),
+                ],
+                projectName,
+            });
+        } catch (error: unknown) {
+            handleNodeCommandError(error);
+        } finally {
+            if (tmpProofFile) {
+                await removeNodePath({ path: tmpProofFile, projectName });
+            }
+        }
+    });
 };

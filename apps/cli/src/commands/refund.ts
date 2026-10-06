@@ -1,9 +1,5 @@
 import type { CartesiPublicClient } from "@cartesi/client";
-import {
-    Command,
-    InvalidArgumentError,
-    Option,
-} from "@commander-js/extra-typings";
+import { Command, InvalidArgumentError } from "@commander-js/extra-typings";
 import chalk from "chalk";
 import fs from "fs-extra";
 import { type Address, type Hex, isHex } from "viem";
@@ -17,7 +13,7 @@ import {
 } from "../exec/node-container.js";
 import {
     getNodeClient,
-    parseAccountIndex,
+    addRecoveryOptions,
     resolveNodeApplication,
 } from "../node.js";
 
@@ -67,78 +63,59 @@ export const getInputData = async (options: {
 };
 
 export const createRefundCommand = () => {
-    return new Command("refund")
-        .description(
-            "Refunds a deposit that was not finalized before the application was foreclosed",
-        )
-        .configureHelp({ showGlobalOptions: true })
-        .argument(
-            "<input-index>",
-            "index of the deposit input",
-            parseInputIndex,
-        )
-        .option("--application <address>", "application address")
-        .option(
-            "--project-name <string>",
-            "name of project (used by docker compose and cartesi-rollups-node)",
-        )
-        .option(
-            "--input-file <path>",
-            "file with the 0x-prefixed InputAdded.input bytes (default: read from the node)",
-        )
-        .addOption(
-            new Option(
-                "--account-index <index>",
-                "index of the account in the node mnemonic paying for gas",
-            ).argParser(parseAccountIndex),
-        )
-        .option("-y, --yes", "skip the confirmation prompt")
-        .option("--json", "print the result as JSON")
-        .option(
-            "--no-wait",
-            "return after broadcast without waiting for the receipt",
-        )
-        .option(
-            "--wait-timeout <duration>",
-            "maximum time to wait for the receipt (e.g. 30s, 5m)",
-        )
-        .action(async (inputIndex, options) => {
-            const projectName = getProjectName(options);
-            const application = await resolveNodeApplication({
-                application: options.application,
-                projectName,
-            });
-
-            const data = await getInputData({
-                application,
-                inputFile: options.inputFile,
-                inputIndex,
-                projectName,
-            });
-
-            // the node tool reads the input bytes from a file in its container
-            const path = await writeNodeTempFile({
-                content: `${data}\n`,
-                projectName,
-            });
-            try {
-                await runNodeCommand({
-                    accountIndex: options.accountIndex,
-                    command: [
-                        "cartesi-rollups-cli",
-                        "refund",
-                        application,
-                        inputIndex.toString(),
-                        "--input-file",
-                        path,
-                        ...transactionArgs(options),
-                    ],
-                    projectName,
-                });
-            } catch (error: unknown) {
-                handleNodeCommandError(error);
-            } finally {
-                await removeNodePath({ path, projectName });
-            }
+    return addRecoveryOptions(
+        new Command("refund")
+            .description(
+                "Refunds a deposit that was not finalized before the application was foreclosed",
+            )
+            .configureHelp({ showGlobalOptions: true })
+            .argument(
+                "<input-index>",
+                "index of the deposit input",
+                parseInputIndex,
+            )
+            .option(
+                "--input-file <path>",
+                "file with the 0x-prefixed InputAdded.input bytes (default: read from the node)",
+            ),
+        "index of the account in the node mnemonic paying for gas",
+    ).action(async (inputIndex, options) => {
+        const projectName = getProjectName(options);
+        const application = await resolveNodeApplication({
+            application: options.application,
+            projectName,
         });
+
+        const data = await getInputData({
+            application,
+            inputFile: options.inputFile,
+            inputIndex,
+            projectName,
+        });
+
+        // the node tool reads the input bytes from a file in its container
+        const path = await writeNodeTempFile({
+            content: `${data}\n`,
+            projectName,
+        });
+        try {
+            await runNodeCommand({
+                accountIndex: options.accountIndex,
+                command: [
+                    "cartesi-rollups-cli",
+                    "refund",
+                    application,
+                    inputIndex.toString(),
+                    "--input-file",
+                    path,
+                    ...transactionArgs(options),
+                ],
+                projectName,
+            });
+        } catch (error: unknown) {
+            handleNodeCommandError(error);
+        } finally {
+            await removeNodePath({ path, projectName });
+        }
+    });
 };
