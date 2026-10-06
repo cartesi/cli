@@ -30,6 +30,7 @@ import paymaster from "../compose/paymaster.js";
 import proxy from "../compose/proxy.js";
 import type { WithdrawalConfig } from "../config.js";
 import type { ForkConfig } from "../types/chain.js";
+import { execNodeCommand } from "./node-container.js";
 
 /**
  * Application status as reported by the node. `OK` is healthy and `FAILED` is a
@@ -111,16 +112,10 @@ export const getDeployments = async (
     options: ComposeParams,
 ): Promise<RollupsDeployment[]> => {
     try {
-        const { stdout } = await execa("docker", [
-            "compose",
-            "--project-name",
-            options.projectName,
-            "exec",
-            "rollups_node",
-            "cartesi-rollups-cli",
-            "app",
-            "list",
-        ]);
+        const stdout = await execNodeCommand({
+            command: ["cartesi-rollups-cli", "app", "list"],
+            projectName: options.projectName,
+        });
         return parseApplications(stdout);
     } catch {
         return [];
@@ -520,19 +515,17 @@ export const deployAuthority = async (options: {
     const { epochLength, projectName } = options;
 
     // deploy application
-    const { stdout } = await execa("docker", [
-        "compose",
-        "--project-name",
+    const stdout = await execNodeCommand({
+        command: [
+            "cartesi-rollups-cli",
+            "deploy",
+            "authority",
+            "--epoch-length",
+            epochLength.toString(),
+            "--json",
+        ],
         projectName,
-        "exec",
-        "rollups_node",
-        "cartesi-rollups-cli",
-        "deploy",
-        "authority",
-        "--epoch-length",
-        epochLength.toString(),
-        "--json",
-    ]);
+    });
 
     return getAddress(JSON.parse(stdout).address);
 };
@@ -610,17 +603,15 @@ export const deployApplication = async (
     const deployArgs = buildDeployApplicationArgs(options);
 
     // deploy application
-    const { stdout } = await execa("docker", [
-        "compose",
-        "--project-name",
+    const stdout = await execNodeCommand({
+        command: [
+            "cartesi-rollups-cli",
+            "deploy",
+            "application",
+            ...deployArgs,
+        ],
         projectName,
-        "exec",
-        "rollups_node",
-        "cartesi-rollups-cli",
-        "deploy",
-        "application",
-        ...deployArgs,
-    ]);
+    });
 
     const deployment = stdout ? parseDeployment(JSON.parse(stdout)) : undefined;
     if (deployment) {
@@ -642,18 +633,16 @@ export const removeApplication = async (options: {
     const { application, force, projectName } = options;
 
     // disable application first so we can remove it
-    await execa("docker", [
-        "compose",
-        "--project-name",
+    await execNodeCommand({
+        command: [
+            "cartesi-rollups-cli",
+            "app",
+            "status",
+            application,
+            "disabled",
+        ],
         projectName,
-        "exec",
-        "rollups_node",
-        "cartesi-rollups-cli",
-        "app",
-        "status",
-        application,
-        "disabled",
-    ]);
+    });
 
     const removeArgs = [application];
 
@@ -661,17 +650,10 @@ export const removeApplication = async (options: {
         removeArgs.push("--yes");
     }
 
-    return execa("docker", [
-        "compose",
-        "--project-name",
+    return execNodeCommand({
+        command: ["cartesi-rollups-cli", "app", "remove", ...removeArgs],
         projectName,
-        "exec",
-        "rollups_node",
-        "cartesi-rollups-cli",
-        "app",
-        "remove",
-        ...removeArgs,
-    ]);
+    });
 };
 
 /**
@@ -699,15 +681,10 @@ export const getProjectPort = async (options: { projectName: string }) => {
  */
 export const getAnvilNodeInfo = async (options: { projectName: string }) => {
     const { projectName } = options;
-    const { stdout } = await execa("docker", [
-        "compose",
-        "--project-name",
+    const stdout = await execNodeCommand({
+        command: ["cast", "rpc", "anvil_nodeInfo"],
         projectName,
-        "exec",
-        "anvil",
-        "cast",
-        "rpc",
-        "anvil_nodeInfo",
-    ]);
+        service: "anvil",
+    });
     return JSON.parse(stdout);
 };

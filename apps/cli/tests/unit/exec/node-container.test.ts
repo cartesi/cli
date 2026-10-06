@@ -32,6 +32,27 @@ describe("transactionArgs", () => {
 });
 
 describe("nodeExecArgs", () => {
+    it("should exec in another service when given", () => {
+        expect(
+            nodeExecArgs({
+                command: ["cast", "rpc", "anvil_nodeInfo"],
+                interactive: false,
+                projectName: "dapp",
+                service: "anvil",
+            }),
+        ).toEqual([
+            "compose",
+            "--project-name",
+            "dapp",
+            "exec",
+            "-T",
+            "anvil",
+            "cast",
+            "rpc",
+            "anvil_nodeInfo",
+        ]);
+    });
+
     it("should forward environment variables by name only", () => {
         const args = nodeExecArgs({
             command: ["true"],
