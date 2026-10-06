@@ -7,9 +7,8 @@ import {
     proveAccountsDriveArgs,
     replayArgs,
 } from "../../../src/exec/cartesi-rollups-machine-tool";
+import { account, application } from "../fixtures";
 
-const application = "0x1234567890abcdef1234567890abcdef12345678";
-const account = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
 const hash = (n: number) => toHex(n, { size: 32 });
 
 describe("replayArgs", () => {
