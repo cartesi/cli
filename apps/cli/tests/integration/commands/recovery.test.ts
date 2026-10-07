@@ -1,4 +1,3 @@
-import { createCartesiPublicClient } from "@cartesi/client";
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { type ResultPromise, execa } from "execa";
 import fs from "fs-extra";
@@ -25,6 +24,9 @@ import {
 import { replayStorePath } from "../../../src/commands/withdraw";
 import {
     getDeployments,
+    getLastAcceptedEpoch,
+    getNodeInput,
+    getNodeWithdrawalConfig,
     getProjectPort,
     stopEnvironment,
 } from "../../../src/exec/rollups";
@@ -94,7 +96,6 @@ describe("fund recovery", () => {
     let run: ResultPromise | undefined;
     let application: Address;
     let anvil: Awaited<ReturnType<typeof createAnvilClient>>;
-    let node: ReturnType<typeof createCartesiPublicClient>;
 
     const cli = (args: string[], env?: Record<string, string>) =>
         execa("node", [cliPath, ...args, "--project-name", projectName], {
@@ -253,10 +254,6 @@ withdrawal_output_builder = "${testUsdWithdrawalOutputBuilderAddress}"
         console.log(`✓ Application deployed at ${application}`);
 
         anvil = await createAnvilClient();
-        const host = await getProjectPort({ projectName });
-        node = createCartesiPublicClient({
-            transport: http(`http://${host}/rpc`),
-        });
     }, TIMEOUT);
 
     afterAll(async () => {
@@ -275,17 +272,26 @@ withdrawal_output_builder = "${testUsdWithdrawalOutputBuilderAddress}"
             // close the first epoch and wait for its claim to be accepted
             await anvil.mine({ blocks: EPOCH_LENGTH });
             console.log("! Waiting for epoch 0 to be accepted...");
-            const epochIndex = await waitFor(() =>
-                node.getLastAcceptedEpochIndex({ application }),
-            );
-            expect(epochIndex).toBe(0n);
+            const epoch = await waitFor(async () => {
+                const accepted = await getLastAcceptedEpoch({
+                    application,
+                    projectName,
+                });
+                if (!accepted) {
+                    throw new Error("no accepted epoch yet");
+                }
+                return accepted;
+            });
+            expect(epoch.index).toBe(0n);
             console.log("✓ Epoch 0 accepted");
             expect(await usdcBalance(alice)).toBe(0n);
 
             // these stay in the open epoch, never finalized
             await deposit(carol, amounts.carol);
             await deposit(dave, amounts.dave);
-            await waitFor(() => node.getInput({ application, inputIndex: 4n }));
+            await waitFor(() =>
+                getNodeInput({ application, inputIndex: 4n, projectName }),
+            );
         },
         TIMEOUT,
     );
@@ -377,9 +383,10 @@ withdrawal_output_builder = "${testUsdWithdrawalOutputBuilderAddress}"
         it(
             "should refund with the input bytes from a file",
             async () => {
-                const { rawData } = await node.getInput({
+                const rawData = await getNodeInput({
                     application,
                     inputIndex: 4n,
+                    projectName,
                 });
                 const inputFile = path.join(appDir, "dave-input.hex");
                 await fs.writeFile(inputFile, rawData);
@@ -464,12 +471,13 @@ withdrawal_output_builder = "${testUsdWithdrawalOutputBuilderAddress}"
             async () => {
                 // generate erin's proof from the cached replay, as an outside
                 // tool would, and withdraw through the file path
-                const { withdrawalConfig } = await node.getApplication({
+                const driveConfig = await getNodeWithdrawalConfig({
                     application,
+                    projectName,
                 });
                 const proof = await proveAccountsDrive({
                     account: erin,
-                    driveConfig: withdrawalConfig,
+                    driveConfig,
                     outDir: `/tmp/recovery-test/${erin}`,
                     projectName,
                     snapshot: replayStorePath(application, 0n),

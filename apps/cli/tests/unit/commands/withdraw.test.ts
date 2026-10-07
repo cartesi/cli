@@ -13,29 +13,27 @@ const root = toHex(1, { size: 32 });
 const otherRoot = toHex(2, { size: 32 });
 const fastRetry = { retries: 2, minTimeout: 1, maxTimeout: 1 };
 
-/** Node client answering with the given (epoch index, machine hash) in turn */
-const nodeClient = (...epochs: [bigint, Hash | null][]) => {
-    let call = 0;
-    return {
-        getLastAcceptedEpochIndex: async () =>
-            epochs[Math.min(call++, epochs.length - 1)][0],
-        getEpoch: async ({ epochIndex }: { epochIndex: bigint }) => ({
-            machineHash: epochs.find(([index]) => index === epochIndex)?.[1],
-        }),
-    } as never;
-};
-
-/** I/O that records its calls, with the given cache state and results */
+/**
+ * I/O that records its calls, with the given cache state and results. The
+ * node reports the given (epoch index, machine hash) as last accepted in turn.
+ */
 const recordingIo = (options: {
     cached?: boolean;
+    epochs?: [bigint, Hash][];
     proofRoot?: Hash;
     replayRoot?: Hash;
 }) => {
     const calls: string[] = [];
+    const epochs = options.epochs ?? [];
+    let epochCall = 0;
     const io: WithdrawIo = {
         execNodeCommand: async ({ command }) => {
             calls.push(command.join(" "));
             return "";
+        },
+        getLastAcceptedEpoch: async () => {
+            const epoch = epochs[Math.min(epochCall++, epochs.length - 1)];
+            return epoch && { index: epoch[0], machineHash: epoch[1] };
         },
         nodePathExists: async ({ path }) => {
             calls.push(`exists ${path}`);
@@ -91,7 +89,6 @@ describe("replayLastFinalizedEpoch", () => {
         await expect(
             replayLastFinalizedEpoch({
                 application,
-                client: nodeClient(),
                 finalizedMachineRoot: zeroHash,
                 io,
                 projectName: "dapp",
@@ -101,11 +98,13 @@ describe("replayLastFinalizedEpoch", () => {
     });
 
     it("should reuse a cached snapshot", async () => {
-        const { calls, io } = recordingIo({ cached: true });
+        const { calls, io } = recordingIo({
+            cached: true,
+            epochs: [[1n, root]],
+        });
         expect(
             await replayLastFinalizedEpoch({
                 application,
-                client: nodeClient([1n, root]),
                 finalizedMachineRoot: root,
                 io,
                 projectName: "dapp",
@@ -115,11 +114,10 @@ describe("replayLastFinalizedEpoch", () => {
     });
 
     it("should replay into a temporary path and move it into the cache", async () => {
-        const { calls, io } = recordingIo({});
+        const { calls, io } = recordingIo({ epochs: [[1n, root]] });
         expect(
             await replayLastFinalizedEpoch({
                 application,
-                client: nodeClient([1n, root]),
                 finalizedMachineRoot: root,
                 io,
                 projectName: "dapp",
@@ -134,11 +132,13 @@ describe("replayLastFinalizedEpoch", () => {
     });
 
     it("should not cache a replay whose root isn't the finalized one", async () => {
-        const { calls, io } = recordingIo({ replayRoot: otherRoot });
+        const { calls, io } = recordingIo({
+            epochs: [[1n, root]],
+            replayRoot: otherRoot,
+        });
         await expect(
             replayLastFinalizedEpoch({
                 application,
-                client: nodeClient([1n, root]),
                 finalizedMachineRoot: root,
                 io,
                 projectName: "dapp",
@@ -153,11 +153,15 @@ describe("replayLastFinalizedEpoch", () => {
     });
 
     it("should wait for the node to reach the finalized epoch", async () => {
-        const { calls, io } = recordingIo({});
+        const { calls, io } = recordingIo({
+            epochs: [
+                [0n, otherRoot],
+                [1n, root],
+            ],
+        });
         expect(
             await replayLastFinalizedEpoch({
                 application,
-                client: nodeClient([0n, otherRoot], [1n, root]),
                 finalizedMachineRoot: root,
                 io,
                 projectName: "dapp",
@@ -168,11 +172,10 @@ describe("replayLastFinalizedEpoch", () => {
     });
 
     it("should stop when the node never reaches the finalized epoch", async () => {
-        const { calls, io } = recordingIo({});
+        const { calls, io } = recordingIo({ epochs: [[0n, otherRoot]] });
         await expect(
             replayLastFinalizedEpoch({
                 application,
-                client: nodeClient([0n, otherRoot]),
                 finalizedMachineRoot: root,
                 io,
                 projectName: "dapp",

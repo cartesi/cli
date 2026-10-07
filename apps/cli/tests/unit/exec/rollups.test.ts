@@ -2,6 +2,8 @@ import { describe, expect, it } from "bun:test";
 import {
     buildDeployApplicationArgs,
     parseApplications,
+    parseLastAcceptedEpoch,
+    parseNodeInput,
 } from "../../../src/exec/rollups";
 
 /** A single entry as `cartesi-rollups-cli app list` prints it. */
@@ -108,6 +110,38 @@ describe("parseApplications", () => {
         expect(deployments[1].status).toBe("MACHINE_HALTED");
     });
 
+    it("should decode the withdrawal config the node registered", () => {
+        const [deployment] = parseApplications(
+            stdout([
+                appListEntry({
+                    withdrawal_config: {
+                        guardian: "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+                        log2_leaves_per_account: "0x0",
+                        log2_max_num_of_accounts: "0x11",
+                        accounts_drive_start_index: "0x240",
+                        withdrawal_output_builder:
+                            "0xb4d253c7a110241561b3ed6d632846df7d4e9af7",
+                    },
+                }),
+            ]),
+        );
+
+        expect(deployment.withdrawalConfig).toEqual({
+            accountsDriveStartIndex: 0x240n,
+            guardian: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            log2LeavesPerAccount: 0n,
+            log2MaxNumOfAccounts: 17n,
+            withdrawalOutputBuilder:
+                "0xB4D253c7a110241561B3eD6d632846dF7d4e9Af7",
+        });
+    });
+
+    it("should leave the withdrawal config undefined when the node omits it", () => {
+        const [deployment] = parseApplications(stdout([appListEntry()]));
+
+        expect(deployment.withdrawalConfig).toBeUndefined();
+    });
+
     it("should return no deployments when none are registered", () => {
         expect(parseApplications(stdout([]))).toEqual([]);
     });
@@ -116,6 +150,52 @@ describe("parseApplications", () => {
     // which is how an unreachable node surfaces to callers.
     it("should throw when the output is not valid json", () => {
         expect(() => parseApplications("not json")).toThrow();
+    });
+});
+
+describe("parseNodeInput", () => {
+    it("should return the input bytes of `read inputs`", () => {
+        const stdout = JSON.stringify({
+            data: { index: "0x4", raw_data: "0x415bf363cafe", status: "NONE" },
+        });
+
+        expect(parseNodeInput(stdout)).toBe("0x415bf363cafe");
+    });
+});
+
+describe("parseLastAcceptedEpoch", () => {
+    const machineHash =
+        "0xc3595fc3b48b90fcf15cf935bcb92c24ae0d984e35221643776e079319eda1ba";
+    const stdout = (data: unknown[]) =>
+        JSON.stringify({
+            data,
+            pagination: { limit: 1, offset: 0, total_count: data.length },
+        });
+
+    it("should return the index and machine hash of the listed epoch", () => {
+        expect(
+            parseLastAcceptedEpoch(
+                stdout([
+                    {
+                        index: "0x1",
+                        machine_hash: machineHash,
+                        status: "CLAIM_ACCEPTED",
+                    },
+                ]),
+            ),
+        ).toEqual({ index: 1n, machineHash });
+    });
+
+    it("should return undefined when no epoch was accepted", () => {
+        expect(parseLastAcceptedEpoch(stdout([]))).toBeUndefined();
+    });
+
+    it("should leave the machine hash undefined when the node has none", () => {
+        expect(
+            parseLastAcceptedEpoch(
+                stdout([{ index: "0x0", machine_hash: null }]),
+            ),
+        ).toEqual({ index: 0n, machineHash: undefined });
     });
 });
 

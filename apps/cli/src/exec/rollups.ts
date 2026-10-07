@@ -8,8 +8,10 @@ import {
     type Hex,
     createPublicClient,
     getAddress,
+    hexToBigInt,
     hexToNumber,
     http,
+    isAddressEqual,
 } from "viem";
 import { stringify } from "yaml";
 import {
@@ -30,6 +32,7 @@ import paymaster from "../compose/paymaster.js";
 import proxy from "../compose/proxy.js";
 import type { WithdrawalConfig } from "../config.js";
 import type { ForkConfig } from "../types/chain.js";
+import type { AccountsDriveConfig } from "./cartesi-rollups-machine-tool.js";
 import { execNodeCommand } from "./node-container.js";
 
 /**
@@ -61,6 +64,14 @@ export const TERMINAL_APPLICATION_STATUSES: readonly ApplicationStatus[] = [
     "INVALID_OUTPUTS_ROOT",
 ];
 
+/**
+ * Withdrawal config of an application, as registered in the node
+ */
+export type NodeWithdrawalConfig = AccountsDriveConfig & {
+    guardian: Address;
+    withdrawalOutputBuilder: Address;
+};
+
 export type RollupsDeployment = {
     name: string;
     address: Address;
@@ -71,6 +82,15 @@ export type RollupsDeployment = {
     /** Node-provided diagnostic, present when the status is not `OK`. */
     reason?: string;
     enabled: boolean;
+    withdrawalConfig?: NodeWithdrawalConfig;
+};
+
+type CliWithdrawalConfig = {
+    guardian: string;
+    log2_leaves_per_account: string;
+    log2_max_num_of_accounts: string;
+    accounts_drive_start_index: string;
+    withdrawal_output_builder: string;
 };
 
 type CliRollupsDeployment = {
@@ -82,11 +102,24 @@ type CliRollupsDeployment = {
     status: string;
     reason?: string | null;
     enabled: boolean;
+    withdrawal_config?: CliWithdrawalConfig | null;
 };
 
 type ComposeParams = {
     projectName: string;
 };
+
+const parseWithdrawalConfig = (
+    config: CliWithdrawalConfig,
+): NodeWithdrawalConfig => ({
+    accountsDriveStartIndex: hexToBigInt(
+        config.accounts_drive_start_index as Hex,
+    ),
+    guardian: getAddress(config.guardian),
+    log2LeavesPerAccount: hexToBigInt(config.log2_leaves_per_account as Hex),
+    log2MaxNumOfAccounts: hexToBigInt(config.log2_max_num_of_accounts as Hex),
+    withdrawalOutputBuilder: getAddress(config.withdrawal_output_builder),
+});
 
 const parseDeployment = (
     deployment: CliRollupsDeployment,
@@ -99,6 +132,9 @@ const parseDeployment = (
     reason: deployment.reason ?? undefined,
     enabled: deployment.enabled,
     templateHash: deployment.template_hash as Hex,
+    withdrawalConfig: deployment.withdrawal_config
+        ? parseWithdrawalConfig(deployment.withdrawal_config)
+        : undefined,
 });
 
 /**
@@ -120,6 +156,114 @@ export const getDeployments = async (
     } catch {
         return [];
     }
+};
+
+/**
+ * Read the withdrawal config of an application registered in the node
+ */
+export const getNodeWithdrawalConfig = async (options: {
+    application: Address;
+    projectName: string;
+}): Promise<NodeWithdrawalConfig> => {
+    const { application, projectName } = options;
+    const stdout = await execNodeCommand({
+        command: ["cartesi-rollups-cli", "app", "list"],
+        projectName,
+    });
+    const deployment = parseApplications(stdout).find((deployment) =>
+        isAddressEqual(deployment.address, application),
+    );
+    if (!deployment) {
+        throw new Error(
+            `Application ${application} isn't registered in the node`,
+        );
+    }
+    if (!deployment.withdrawalConfig) {
+        throw new Error(
+            `The node has no withdrawal config for application ${application}`,
+        );
+    }
+    return deployment.withdrawalConfig;
+};
+
+/**
+ * Parse the JSON `cartesi-rollups-cli read inputs <application> <index>`
+ * writes to stdout
+ * @returns the input bytes, as emitted in InputAdded.input
+ */
+export const parseNodeInput = (stdout: string): Hex =>
+    (JSON.parse(stdout) as { data: { raw_data: Hex } }).data.raw_data;
+
+/**
+ * Read the bytes of an input from the node database
+ */
+export const getNodeInput = async (options: {
+    application: Address;
+    inputIndex: bigint;
+    projectName: string;
+}): Promise<Hex> => {
+    const { application, inputIndex, projectName } = options;
+    const stdout = await execNodeCommand({
+        command: [
+            "cartesi-rollups-cli",
+            "read",
+            "inputs",
+            application,
+            inputIndex.toString(),
+        ],
+        projectName,
+    });
+    return parseNodeInput(stdout);
+};
+
+export type NodeEpoch = {
+    index: bigint;
+    machineHash?: Hash;
+};
+
+/**
+ * Parse the JSON `cartesi-rollups-cli read epochs` writes to stdout for a
+ * single epoch listed
+ * @returns the epoch, or undefined if none is listed
+ */
+export const parseLastAcceptedEpoch = (
+    stdout: string,
+): NodeEpoch | undefined => {
+    const { data } = JSON.parse(stdout) as {
+        data: { index: Hex; machine_hash: Hash | null }[];
+    };
+    const [epoch] = data;
+    return epoch
+        ? {
+              index: hexToBigInt(epoch.index),
+              machineHash: epoch.machine_hash ?? undefined,
+          }
+        : undefined;
+};
+
+/**
+ * Read the last epoch of an application whose claim the node saw accepted
+ */
+export const getLastAcceptedEpoch = async (options: {
+    application: Address;
+    projectName: string;
+}): Promise<NodeEpoch | undefined> => {
+    const { application, projectName } = options;
+    const stdout = await execNodeCommand({
+        command: [
+            "cartesi-rollups-cli",
+            "read",
+            "epochs",
+            application,
+            "--status",
+            "CLAIM_ACCEPTED",
+            "--descending",
+            "--limit",
+            "1",
+        ],
+        projectName,
+    });
+    return parseLastAcceptedEpoch(stdout);
 };
 
 export const getApplicationDeployment = async (

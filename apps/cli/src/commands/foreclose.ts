@@ -13,11 +13,8 @@ import {
     runNodeCommand,
     transactionArgs,
 } from "../exec/node-container.js";
-import {
-    getNodeClient,
-    addRecoveryOptions,
-    resolveNodeApplication,
-} from "../node.js";
+import { getNodeWithdrawalConfig } from "../exec/rollups.js";
+import { addRecoveryOptions, resolveNodeApplication } from "../node.js";
 import { findMnemonicAccountIndex } from "../wallet.js";
 
 /**
@@ -115,15 +112,15 @@ Set CARTESI_AUTH_KIND to mnemonic or private_key when both are set.`,
             projectName,
         });
 
-        const client = await getNodeClient({ projectName });
-        const { withdrawalConfig } = await client.getApplication({
+        const { guardian } = await getNodeWithdrawalConfig({
             application,
+            projectName,
         });
         // the node signer is only needed without a signer for the command
         const host = getHostSigner(getCartesiEnvironmentVariables());
         const { accountIndex, env, warning } = resolveForecloseSigner({
             accountIndex: options.accountIndex,
-            guardian: withdrawalConfig.guardian,
+            guardian,
             host,
             node: host ? undefined : await getNodeSigner({ projectName }),
         });
