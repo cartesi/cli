@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import getPort, { portNumbers } from "get-port";
+import path from "node:path";
 import { satisfies } from "semver";
 import { createPublicClient, http, numberToHex } from "viem";
 import { getApplicationConfig } from "../../src/base.js";
@@ -99,7 +100,8 @@ describe.skipIf(!supported)(
                 config,
                 undefined,
                 {},
-                { cwd: ".cartesi" },
+                // absolute, as without a local cartesi-machine it is mounted into docker
+                { cwd: path.join(app.appDir, ".cartesi") },
             );
             expect(stdout as string).toContain("/dev/uio1");
         });
