@@ -1,5 +1,31 @@
 # Changelog
 
+## 2.0.0-alpha.38
+
+### Minor Changes
+
+- 106a182: Add the `foreclose`, `refund` and `withdraw` commands to recover funds from a foreclosed application in the local environment. They run `cartesi-rollups-cli` and `cartesi-rollups-machine-tool` inside the rollups node container.
+
+  - `cartesi foreclose` forecloses the application, signing as the guardian of its withdrawal config. By default it signs with the node's signer and finds the guardian among the first 20 accounts of its mnemonic, or uses `--account-index`. A guardian outside the node's signer is set for that one command with `CARTESI_AUTH_MNEMONIC` or `CARTESI_AUTH_PRIVATE_KEY` (and `CARTESI_AUTH_KIND` when both are set).
+  - `cartesi refund <input-index>` refunds a deposit that was not finalized before the foreclosure. The input bytes are read from the node, or from `--input-file`.
+  - `cartesi withdraw --account <address>` withdraws the finalized balance of an account. It replays the application up to its last finalized epoch, generates the accounts drive proofs, proves the accounts drive root once, and withdraws. `--proof-file` withdraws with a proof generated elsewhere, once the accounts drive root is proven.
+
+  All three accept `--yes`, `--json`, `--no-wait` and `--wait-timeout`, which are forwarded to `cartesi-rollups-cli`.
+
+  The replay re-runs every accepted input of the application, so it takes longer the more inputs a long-running application has processed. It stores a snapshot about the size of the machine RAM in the node container's `/tmp`, so it is bounded by the memory and disk available to the container (see `cartesi run --memory`). The snapshot is reused by further withdrawals of the same application, and is lost when the environment is recreated.
+
+### Patch Changes
+
+- 149f839: Bump rollups-explorer to version 2.0.0-alpha.4
+- c9878d6: Fix the cartesi-machine version check ignoring its `forceDocker` option, which made it report the version of the host binary instead of the one inside the SDK image.
+- 4a16187: Bump CLI default sdk to 0.12.0.alpha.44
+- f48d0a3: `build` and `shell` now check the cartesi-machine version before booting and stop with an explicit message when it is unsupported, instead of surfacing the emulator's `unrecognized option` traceback.
+- 242e45c: fix portal naming in address-book
+- bb31cfe: Add support for `nvrams` in `cartesi.toml`. An nvram is a raw range of bytes the guest reaches through a `/dev/uio*` device, with no filesystem and no mount point, so writes are visible to the emulator without a page cache in between. Declare one with `[nvrams.<label>]` and either `size`, for a range filled with zeros, or `filename`, pointing at an existing raw image whose size defines the range. Add `shared` so guest writes are persisted to the image, and `user` so the unprivileged entrypoint user can write to it. Up to 8 nvrams are supported, their labels cannot collide with drive labels, and sizes must be a multiple of 4Ki.
+- 717a859: bump dependencies
+- 481cc2f: Set the minimum cartesi-machine version to 0.21.0. The `nvrams` configuration depends on its `--nvram` option, so a host install of an earlier version will no longer work.
+- fdd6d93: `doctor` now reports the cartesi-machine version and fails when it does not satisfy the version required by the CLI.
+
 ## 2.0.0-alpha.37
 
 ### Patch Changes
