@@ -15,8 +15,10 @@ import {
     http,
     numberToHex,
 } from "viem";
+import fs from "node:fs";
 import {
     getApplicationConfig,
+    getContextPath,
     getMachineHash,
     getProjectName,
 } from "../base.js";
@@ -41,6 +43,7 @@ import {
 import { keySelect } from "../prompts.js";
 import type { ForkConfig } from "../types/chain.js";
 import { assertForkConfig } from "../validations.js";
+import { getWithdrawalConfig } from "../withdrawal.js";
 
 const commaSeparatedList = (value: string) => value.split(",");
 
@@ -84,7 +87,7 @@ const shell = async (options: {
     prt?: boolean;
     salt: number;
     sdk: string;
-    withdrawalConfig?: WithdrawalConfig;
+    resolveWithdrawalConfig: () => WithdrawalConfig | undefined;
     claimStagingPeriod: number;
 }) => {
     const {
@@ -94,7 +97,7 @@ const shell = async (options: {
         projectName,
         prt,
         sdk,
-        withdrawalConfig,
+        resolveWithdrawalConfig,
         claimStagingPeriod,
     } = options;
 
@@ -188,7 +191,8 @@ const shell = async (options: {
                             projectName,
                             prt,
                             salt: numberToHex(salt++, { size: 32 }),
-                            withdrawalConfig,
+                            // the accounts drive may have moved with the rebuild
+                            withdrawalConfig: resolveWithdrawalConfig(),
                             claimStagingPeriod,
                         });
                         lastStatus = lastDeployment?.status;
@@ -434,7 +438,7 @@ export const createRunCommand = () => {
             // project name explicitly defined or the current directory name
             const projectName = getProjectName(options);
 
-            // get application configuration (e.g. use withdrawal config if present)
+            // get application configuration (e.g. sdk and accounts drive)
             const applicationConfig = getApplicationConfig(configFiles);
 
             // resolve port number, using the first free port in a range, unless explicitly set
@@ -449,6 +453,18 @@ export const createRunCommand = () => {
 
             if (forkConfig) {
                 await assertForkConfig(forkConfig, { includePRT: prt });
+            }
+
+            // emergency withdrawal configuration, derived from the accounts drive of the built machine
+            const imagePath = getContextPath("image");
+            const resolveWithdrawalConfig = () =>
+                getWithdrawalConfig(applicationConfig, imagePath, {
+                    fork: forkConfig !== undefined,
+                });
+
+            // fail before starting the environment if the configuration can't be derived
+            if (fs.existsSync(imagePath)) {
+                resolveWithdrawalConfig();
             }
 
             // if TTY is not attached, run on foreground (not detached)
@@ -506,7 +522,7 @@ export const createRunCommand = () => {
                     prt,
                     salt: numberToHex(salt++, { size: 32 }),
                     claimStagingPeriod,
-                    withdrawalConfig: applicationConfig?.withdrawalConfig,
+                    withdrawalConfig: resolveWithdrawalConfig(),
                 });
             } else {
                 console.warn(
@@ -550,7 +566,7 @@ export const createRunCommand = () => {
                     salt,
                     sdk: applicationConfig.sdk,
                     claimStagingPeriod,
-                    withdrawalConfig: applicationConfig?.withdrawalConfig,
+                    resolveWithdrawalConfig,
                 });
                 await shutdown();
             } else {

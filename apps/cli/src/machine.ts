@@ -12,11 +12,14 @@ import { cartesiMachine } from "./exec/index.js";
 import type { ExecaOptionsDockerFallback } from "./exec/util.js";
 
 const flashDrive = (label: string, drive: DriveConfig): string => {
-    const { format, mount, shared, user } = drive;
+    const { accountsDrive, format, mount, shared, user } = drive;
     const filename = `${label}.${format}`;
     const vars = [`label:${label}`, `data_filename:${filename}`];
     if (mount !== undefined) {
         vars.push(`mount:${mount}`);
+    } else if (accountsDrive) {
+        // the accounts drive is raw, cartesi-machine would try to mount it as it is backed by a file
+        vars.push("mount:false");
     }
     if (user) {
         vars.push(`user:${user}`);

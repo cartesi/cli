@@ -66,9 +66,15 @@
 # filename = "./seed.raw" # existing raw image. it is copied into .cartesi/, never written to
 # size = "4Ki" # optional. when given it must match the size of the file exactly
 
-# [withdrawal.config]
-# guardian = "0x1111111111111111111111111111111111111111" 
-# log2_leaves_per_account = 0
-# log2_max_num_of_accounts = 20
-# accounts_drive_start_index = 33554432
-# withdrawal_output_builder = "0x2222222222222222222222222222222222222222"
+# emergency withdrawal is enabled by marking a raw drive or an nvram as the accounts drive.
+# its start index and number of accounts are derived from the built machine.
+
+# [nvrams.state]
+# size = "384Mi"
+# accounts_drive = true # at most one drive or nvram. a drive must have builder = "empty" and format = "raw"
+# accounts_drive_size = "4Mi" # optional. accounts only in the beginning of the drive, the rest is free for other state. default is the whole drive, whose size must then be a power of two
+
+# [withdrawal] # optional overrides, requires an accounts drive
+# guardian = "0x1111111111111111111111111111111111111111" # default is devnet account 0
+# log2_leaves_per_account = 0 # default is 0, one 32-byte leaf per account
+# withdrawal_output_builder = "0x2222222222222222222222222222222222222222" # default is the devnet TestUsdWithdrawalOutputBuilder
