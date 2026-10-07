@@ -13,13 +13,9 @@ import {
 
 await ensureDockerImage(TEST_SDK);
 
-// --nvram only exists from cartesi-machine 0.21.0. gating on the version rather than on
-// CARTESI_TEST_SDK means this starts running on its own once DEFAULT_SDK_VERSION points at an
-// image that supports it.
-const found = await cartesiMachine.version({
-    image: TEST_SDK,
-    forceDocker: true,
-});
+// nvrams only exist from emulator 0.21.0. the bindings link against the emulator, so this is
+// the version compiled into the CLI rather than one probed from an install.
+const found = cartesiMachine.version();
 
 const supported =
     found !== null && satisfies(found.format(), cartesiMachine.requiredVersion);
@@ -60,15 +56,11 @@ describe.skipIf(!supported)("when booting a machine with nvrams", () => {
         ]);
         config.machine.entrypoint = command;
 
-        // no interactive option, as -it needs a tty the test runner does not have
-        const { stdout } = await bootMachine(
-            config,
-            undefined,
-            {},
-            {
-                cwd: context,
-            },
-        );
+        // no interactive option, as a virtio console needs a tty the test runner does not have
+        const { stdout } = await bootMachine(config, undefined, {
+            captureOutput: true,
+            cwd: context,
+        });
         return stdout as string;
     };
 

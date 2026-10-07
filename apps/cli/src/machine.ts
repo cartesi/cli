@@ -1,82 +1,224 @@
+import type {
+    MachineConfig as EmulatorMachineConfig,
+    MachineRuntimeConfig,
+    MemoryRangeConfig,
+} from "@cartesi/machine";
 import dotenv from "dotenv";
 import fs from "node:fs";
-import {
-    type Config,
-    type DriveConfig,
-    type ImageInfo,
-    type NvramConfig,
-    nvramHasImage,
-    nvramImageFilename,
-} from "./config.js";
+import path from "node:path";
+import type { Config, DriveConfig, ImageInfo, NvramConfig } from "./config.js";
+import { nvramHasImage, nvramImageFilename } from "./config.js";
 import { cartesiMachine } from "./exec/index.js";
-import type { ExecaOptionsDockerFallback } from "./exec/util.js";
+import type { Reporter } from "./exec/util.js";
+import { getRamImage } from "./images.js";
 
-const flashDrive = (label: string, drive: DriveConfig): string => {
-    const { format, mount, shared, user } = drive;
-    const filename = `${label}.${format}`;
-    const vars = [`label:${label}`, `data_filename:${filename}`];
-    if (mount !== undefined) {
-        vars.push(`mount:${mount}`);
+export class InvalidMemorySizeError extends Error {
+    constructor(value: string) {
+        super(`Invalid memory size: ${value}`);
+        this.name = "InvalidMemorySizeError";
     }
-    if (user) {
-        vars.push(`user:${user}`);
+}
+
+export class InvalidEnvNameError extends Error {
+    constructor(name: string) {
+        super(`Invalid environment variable name: ${name}`);
+        this.name = "InvalidEnvNameError";
     }
-    if (shared) {
-        vars.push("shared");
-    }
-    // don't specify start and length
-    return `--flash-drive=${vars.join(",")}`;
+}
+
+const SHIFTS: Record<string, bigint> = {
+    Ki: 10n,
+    Mi: 20n,
+    Gi: 30n,
+    Ti: 40n,
 };
 
-const nvram = (label: string, config: NvramConfig): string => {
-    const { shared, size, user } = config;
-    const vars = [`label:${label}`];
-    if (size !== undefined) {
-        vars.push(`length:${size}`);
+/**
+ * Parses a memory size the way the cartesi-machine CLI does: a decimal or
+ * 0x-prefixed hexadecimal integer, optionally followed by a Ki/Mi/Gi/Ti
+ * suffix or a `<< n` shift.
+ */
+export const parseMemorySize = (value: string): bigint => {
+    const match = value.trim().match(/^(0[xX][0-9a-fA-F]+|[0-9]+)\s*(.*)$/);
+    if (!match) {
+        throw new InvalidMemorySizeError(value);
     }
-    if (nvramHasImage(config)) {
-        vars.push(`data_filename:${nvramImageFilename(label)}`);
+    const [, literal, suffix] = match;
+    const size = BigInt(
+        literal.toLowerCase().startsWith("0x")
+            ? literal.toLowerCase()
+            : literal.replace(/^0+(?=[0-9])/, ""),
+    );
+
+    const rest = suffix.trim();
+    let shift = 0n;
+    if (rest !== "") {
+        const shiftMatch = rest.match(/^<<\s*([0-9]+)$/);
+        if (rest in SHIFTS) {
+            shift = SHIFTS[rest];
+        } else if (shiftMatch) {
+            shift = BigInt(shiftMatch[1]);
+        } else {
+            throw new InvalidMemorySizeError(value);
+        }
     }
-    if (user) {
-        vars.push(`user:${user}`);
+
+    if (size === 0n) {
+        return 0n;
     }
-    if (shared) {
-        vars.push("shared");
+    if (shift >= 64n || size >> (64n - shift) !== 0n) {
+        throw new InvalidMemorySizeError(value);
     }
-    // don't specify start, let cartesi-machine place it
-    return `--nvram=${vars.join(",")}`;
+    return size << shift;
 };
 
-export type BootMachineOptions = {
-    finalHash?: boolean;
-    interactive?: boolean;
-    store?: string;
+/**
+ * Splash the cartesi-machine CLI prints from init on boot. Every backslash is
+ * doubled so `echo` emits the art verbatim.
+ */
+const SPLASH = String.raw`echo "
+         .
+        / \\
+      /    \\
+\\---/---\\  /----\\
+ \\       X       \\
+  \\----/  \\---/---\\
+       \\    / CARTESI
+        \\ /   MACHINE
+         '
+"
+`;
+
+/**
+ * Mount point of a drive, following the cartesi-machine defaults: a drive
+ * backed by a file is mounted at /mnt/<label> unless told otherwise.
+ */
+const mountPoint = (
+    label: string,
+    mount: string | boolean | undefined,
+): string | false => {
+    if (mount === undefined || mount === true) {
+        return `/mnt/${label}`;
+    }
+    if (mount === false) {
+        return false;
+    }
+    return mount;
 };
 
-export const buildMachineArgs = (
-    config: Config,
+/**
+ * Flash drives of the machine, root first so it lands on /dev/pmem0, which is
+ * what the default bootargs mount as the root filesystem.
+ */
+const flashDrives = (
+    drives: Record<string, DriveConfig>,
+    cwd: string,
+): { label: string; drive: DriveConfig; config: MemoryRangeConfig }[] => {
+    const labels = [
+        ...(drives.root ? ["root"] : []),
+        ...Object.keys(drives).filter((label) => label !== "root"),
+    ];
+    return labels.map((label) => {
+        const drive = drives[label];
+        return {
+            label,
+            drive,
+            config: {
+                label,
+                length: -1, // derived from the backing file
+                backing_store: {
+                    data_filename: path.resolve(
+                        cwd,
+                        `${label}.${drive.format}`,
+                    ),
+                    shared: drive.shared ?? false,
+                },
+            },
+        };
+    });
+};
+
+/**
+ * Commands init runs to mount the non-root drives and hand them to their user.
+ */
+const drivesInit = (
+    drives: { label: string; drive: DriveConfig }[],
+): string => {
+    let init = "";
+    for (const { label, drive } of drives) {
+        if (label === "root") {
+            // the kernel already mounted it as the root filesystem
+            continue;
+        }
+        const mount = mountPoint(label, drive.mount);
+        if (!mount && !drive.user) {
+            continue;
+        }
+        init += `dev=$(flashdrive ${label})\n`;
+        if (mount) {
+            init += `busybox mkdir -p "${mount}" && busybox mount "$dev" "${mount}"\n`;
+        }
+        if (drive.user) {
+            init += `busybox chown ${drive.user}: "${mount || "$dev"}"\n`;
+        }
+    }
+    return init;
+};
+
+/**
+ * NVRAMs of the machine, in the order their labels were declared, as that
+ * decides the /dev/uio* device each one gets in the guest.
+ */
+const nvrams = (
+    configs: Record<string, NvramConfig>,
+    cwd: string,
+): { label: string; nvram: NvramConfig; config: MemoryRangeConfig }[] =>
+    Object.entries(configs).map(([label, nvram]) => {
+        const range: MemoryRangeConfig = {
+            label,
+            // a pristine nvram is sized by its config, one backed by an image
+            // without a size is derived from the file
+            length: nvram.size ?? -1,
+        };
+        if (nvramHasImage(nvram)) {
+            range.backing_store = {
+                data_filename: path.resolve(cwd, nvramImageFilename(label)),
+                shared: nvram.shared ?? false,
+            };
+        }
+        return { label, nvram, config: range };
+    });
+
+/**
+ * Commands init runs to make each nvram device writable and hand it to its
+ * user. An nvram carries no filesystem, so there is nothing to mount.
+ */
+const nvramsInit = (
+    entries: { label: string; nvram: NvramConfig }[],
+): string => {
+    let init = "";
+    for (const { label, nvram } of entries) {
+        init += `dev=$(nvram ${label})\n`;
+        init += 'busybox chmod 0664 "$dev"\n';
+        if (nvram.user) {
+            init += `busybox chown ${nvram.user}: "$dev"\n`;
+        }
+    }
+    return init;
+};
+
+/**
+ * Environment variables injected into the machine, by increasing precedence:
+ * docker image ENV, env_file, then the env object of the configuration.
+ */
+const environment = (
+    machine: Config["machine"],
     info: ImageInfo | undefined,
-    bootOptions: BootMachineOptions,
-): string[] => {
-    const { machine } = config;
-    const {
-        assertRollingTemplate,
-        env: envConfig,
-        envFile,
-        maxMCycle,
-        ramLength,
-        ramImage,
-        useDockerEnv,
-        useDockerWorkdir,
-        user,
-    } = machine;
-
-    // environment variables injected into the cartesi-machine ENV, by
-    // increasing precedence: docker image ENV, env_file, then the env object
+): Record<string, string> => {
     const envMap: Record<string, string> = {};
 
     // environment variables of docker image
-    if (useDockerEnv) {
+    if (machine.useDockerEnv) {
         for (const variable of info?.env ?? []) {
             const [key, value = ""] = variable.split("=");
             envMap[key] = value;
@@ -84,33 +226,65 @@ export const buildMachineArgs = (
     }
 
     // environment variables from an .env file
-    if (envFile) {
-        Object.assign(envMap, dotenv.parse(fs.readFileSync(envFile)));
+    if (machine.envFile) {
+        Object.assign(envMap, dotenv.parse(fs.readFileSync(machine.envFile)));
     }
 
     // environment variables explicitly defined in the config
-    Object.assign(envMap, envConfig);
+    Object.assign(envMap, machine.env);
 
-    const envs = Object.entries(envMap).map(
-        ([key, value]) => `--env=${key}="${value}"`,
-    );
+    return envMap;
+};
+
+export type BootMachineOptions = {
+    /** collect the guest console output instead of letting it through */
+    captureOutput?: boolean;
+    /** directory holding the drive images, and the machine snapshot */
+    cwd?: string;
+    finalHash?: boolean;
+    interactive?: boolean;
+    reporter?: Reporter;
+    /** directory to store the machine snapshot into, relative to cwd */
+    store?: string;
+};
+
+export type MachineConfigOptions = {
+    /** directory the drive images live in */
+    cwd?: string;
+    interactive?: boolean;
+    /** path to the Linux kernel image the machine boots */
+    ramImage: string;
+};
+
+/**
+ * Translates the application configuration into the configuration of a Cartesi
+ * machine, the same way the cartesi-machine CLI translates its command line.
+ */
+export const buildMachineConfig = (
+    config: Config,
+    info: ImageInfo | undefined,
+    options: MachineConfigOptions,
+): {
+    config: EmulatorMachineConfig;
+    runtimeConfig: MachineRuntimeConfig | undefined;
+} => {
+    const { machine } = config;
+    const { ramLength, useDockerWorkdir, user } = machine;
+    const { interactive, ramImage } = options;
+    const cwd = path.resolve(options.cwd ?? process.cwd());
 
     // check if we need a rootfstype boot arg
+    const extraBootargs: string[] = [];
     const root = config.drives.root;
     if (root?.format === "sqfs") {
-        const definedRootfsType = config.machine.bootargs.find((arg) =>
+        const definedRootfsType = machine.bootargs.find((arg) =>
             arg.startsWith("rootfstype="),
         );
         // not checking here if user intentionally defined wrong type
         if (!definedRootfsType) {
-            config.machine.bootargs.push("rootfstype=squashfs");
+            extraBootargs.push("rootfstype=squashfs");
         }
     }
-
-    // bootargs from config string array
-    const bootargs = machine.bootargs.map(
-        (arg) => `--append-bootargs="${arg}"`,
-    );
 
     // entrypoint from config or image info (Docker ENTRYPOINT + CMD)
     let entrypoint: string | undefined;
@@ -127,66 +301,102 @@ export const buildMachineArgs = (
         );
     }
 
-    const flashDrives = Object.entries(config.drives).map(([label, drive]) =>
-        flashDrive(label, drive),
-    );
+    // an interactive machine talks to the terminal through a VirtIO console,
+    // which makes it unreproducible
+    let bootargs = cartesiMachine.defaultConfig().dtb?.bootargs ?? "";
+    if (interactive) {
+        bootargs = bootargs.replace("console=hvc0", "console=hvc1");
+    }
+    bootargs = [bootargs, ...machine.bootargs, ...extraBootargs].join(" ");
 
-    // keep the order the labels were declared in, as it affects the machine layout
-    const nvrams = Object.entries(config.nvrams).map(([label, nvramConfig]) =>
-        nvram(label, nvramConfig),
-    );
+    const drives = flashDrives(config.drives, cwd);
+    const memories = nvrams(config.nvrams, cwd);
 
-    // command to change working directory if WORKDIR is defined
-    const args = [
-        ...bootargs,
-        ...envs,
-        ...flashDrives,
-        ...nvrams,
-        `--ram-length=${ramLength}`,
-    ];
-    if (ramImage) {
-        args.push(`--ram-image=${ramImage}`);
+    // init runs the splash, mounts the drives, sets the nvram permissions, and
+    // then sets up the environment the entrypoint is executed in
+    let init = SPLASH + drivesInit(drives) + nvramsInit(memories);
+
+    for (const [key, value] of Object.entries(environment(machine, info))) {
+        if (!/^[0-9a-zA-Z_]+$/.test(key)) {
+            throw new InvalidEnvNameError(key);
+        }
+        init += `export ${key}="${value}"\n`;
     }
-    if (assertRollingTemplate) {
-        args.push("--assert-rolling-template");
-    }
-    if (bootOptions.finalHash) {
-        args.push("--final-hash");
-    }
+
     if (useDockerWorkdir && info?.workdir) {
-        args.push(`--workdir="${info.workdir}"`);
+        init += `WORKDIR="${info.workdir}"\n`;
     }
-    if (bootOptions.interactive) {
-        args.push("-it");
-    }
-    if (maxMCycle) {
-        args.push(`--max-mcycle=${maxMCycle.toString()}`);
-    }
-    if (bootOptions.store) {
-        args.push(`--store=${bootOptions.store}`);
-    }
-    if (user) {
-        args.push(`--user=${user}`);
-    }
-    args.push("--");
-    args.push(entrypoint);
 
-    return args;
+    if (interactive) {
+        // sync the guest date with the host, and expose the terminal features
+        // of the host to the virtual terminal
+        init += `busybox date -s @${Math.floor(Date.now() / 1000) + 1} >> /dev/null\n`;
+        const { TERM, LANG } = process.env;
+        if (TERM) {
+            init += `export TERM=${TERM}\n`;
+        }
+        if (LANG?.includes("utf8")) {
+            init += "export LANG=C.utf8\n";
+        }
+    }
+
+    if (user) {
+        init += `USER=${user}\n`;
+    }
+
+    const emulatorConfig: EmulatorMachineConfig = {
+        processor: { registers: { iunrep: interactive ? 1 : 0 } },
+        ram: {
+            length: Number(parseMemorySize(ramLength)),
+            backing_store: { data_filename: path.resolve(ramImage) },
+        },
+        dtb: { bootargs, entrypoint, init },
+        flash_drive: drives.map(({ config: driveConfig }) => driveConfig),
+        nvram: memories.map(({ config: nvramConfig }) => nvramConfig),
+    };
+
+    let runtimeConfig: MachineRuntimeConfig | undefined;
+    if (interactive) {
+        emulatorConfig.virtio = [{ type: "console" }];
+        runtimeConfig = {
+            console: {
+                input_source: "from_stdin",
+                output_flush_mode: "every_char",
+            },
+        };
+    }
+
+    return { config: emulatorConfig, runtimeConfig };
 };
 
 export const bootMachine = async (
     config: Config,
     info: ImageInfo | undefined,
     bootOptions: BootMachineOptions,
-    options?: ExecaOptionsDockerFallback,
-) => {
-    // build the args first, so a configuration error is reported without spawning anything
-    const args = buildMachineArgs(config, info, bootOptions);
+): Promise<cartesiMachine.RunResult> => {
+    const { assertRollingTemplate, maxMCycle, ramImage } = config.machine;
+    const { cwd, interactive, reporter } = bootOptions;
 
-    await cartesiMachine.assertVersion({ image: config.sdk });
+    // cheapest check first: the emulator the bindings linked against
+    cartesiMachine.assertVersion();
 
-    return cartesiMachine.boot(args, {
-        image: config.sdk,
-        ...options,
+    const { config: emulatorConfig, runtimeConfig } = buildMachineConfig(
+        config,
+        info,
+        {
+            cwd,
+            interactive,
+            ramImage: ramImage ?? (await getRamImage(reporter)),
+        },
+    );
+
+    return cartesiMachine.run(emulatorConfig, runtimeConfig, {
+        assertRollingTemplate,
+        captureOutput: bootOptions.captureOutput,
+        finalHash: bootOptions.finalHash,
+        maxMCycle,
+        store: bootOptions.store
+            ? path.resolve(cwd ?? process.cwd(), bootOptions.store)
+            : undefined,
     });
 };

@@ -18,6 +18,7 @@
         "cartesi": "./dist/index.js",
       },
       "dependencies": {
+        "@cartesi/machine": "^1.0.0-alpha.0",
         "@commander-js/extra-typings": "^15.0.0",
         "@inquirer/confirm": "^6.3.3",
         "@inquirer/core": "^12.0.4",
@@ -138,6 +139,16 @@
     "@cartesi/cli": ["@cartesi/cli@workspace:apps/cli"],
 
     "@cartesi/devnet": ["@cartesi/devnet@workspace:packages/devnet"],
+
+    "@cartesi/machine": ["@cartesi/machine@1.0.0-alpha.2", "", { "dependencies": { "node-addon-api": "^8.9.2", "node-gyp-build": "^4.8.4" }, "optionalDependencies": { "@cartesi/machine-darwin-arm64": "1.0.0-alpha.2", "@cartesi/machine-darwin-x64": "1.0.0-alpha.2", "@cartesi/machine-linux-arm64": "1.0.0-alpha.2", "@cartesi/machine-linux-x64": "1.0.0-alpha.2" } }, "sha512-5MxABwmm3OkTeqSOaSJui8nIrHSaa5KdjvYwLeOwbX7HufHxwr6yu+Q5M+GFuwgeqUZLjJ1imi2XBD8y/6Mzvg=="],
+
+    "@cartesi/machine-darwin-arm64": ["@cartesi/machine-darwin-arm64@1.0.0-alpha.2", "", { "os": "darwin", "cpu": "arm64" }, "sha512-L4vaMzjDy7miH4QsnEetKoae/SQ9+hUr/UQqIY8mJVGGhxq9+mfev648M8L7+Ker4fWPX1AzLQo1w3+cZUrEMA=="],
+
+    "@cartesi/machine-darwin-x64": ["@cartesi/machine-darwin-x64@1.0.0-alpha.2", "", { "os": "darwin", "cpu": "x64" }, "sha512-UuxFVKi/yX7O9kvAXzWX+JSvut9zUXVrYE2Mwf3wMJvue6VqmkAFrYBzHGgpsMdgMG4KSWR4uLSKnLfOYOvWZQ=="],
+
+    "@cartesi/machine-linux-arm64": ["@cartesi/machine-linux-arm64@1.0.0-alpha.2", "", { "os": "linux", "cpu": "arm64" }, "sha512-Uk5DJs6Ds74vgFOEi6F+k6e14X5/VClnanhwbwTRIjyvTX1kxIbTMl+LuGyAbX0lEIu7xN07hsTgsEa69Ae69g=="],
+
+    "@cartesi/machine-linux-x64": ["@cartesi/machine-linux-x64@1.0.0-alpha.2", "", { "os": "linux", "cpu": "x64" }, "sha512-njj6sFudiLIyX17GIFxU3o+uMZa+kfhL7VD06hJDi4cd55MPP0ifmGuNsax4l0omsR1zoMdN2XCzLA7o+d1McQ=="],
 
     "@cartesi/mock-verifying-paymaster": ["@cartesi/mock-verifying-paymaster@workspace:packages/mock-verifying-paymaster"],
 
@@ -868,6 +879,10 @@
     "nanospinner": ["nanospinner@1.2.2", "", { "dependencies": { "picocolors": "^1.1.1" } }, "sha512-Zt/AmG6qRU3e+WnzGGLuMCEAO/dAu45stNbHY223tUxldaDAeE+FxSPsd9Q+j+paejmm0ZbrNVs5Sraqy3dRxA=="],
 
     "nice-try": ["nice-try@1.0.5", "", {}, "sha512-1nh45deeb5olNY7eX82BkPO7SSxR5SSYJiPTrTdFUVYwAl8CKMA5N9PjTYkHiRjisVcxcQ1HXdLhx2qxxJzLNQ=="],
+
+    "node-addon-api": ["node-addon-api@8.9.2", "", {}, "sha512-VijLXbi3UACN69I0JVXJsX4tjACjNoQDgv2gTF6sx2wWEi8tkSg2eX8p5gSIFi8z2+DL3oHmY6OyKce38SDolg=="],
+
+    "node-gyp-build": ["node-gyp-build@4.8.4", "", { "bin": { "node-gyp-build": "bin.js", "node-gyp-build-optional": "optional.js", "node-gyp-build-test": "build-test.js" } }, "sha512-LA4ZjwlnUblHVgq0oBF3Jl/6h/Nvs5fzBLwdEF4nuxnFdsfajde4WfxtJr3CaiH+F6ewcIB/q4jQ4UzPyid+CQ=="],
 
     "normalize-package-data": ["normalize-package-data@2.5.0", "", { "dependencies": { "hosted-git-info": "^2.1.4", "resolve": "^1.10.0", "semver": "2 || 3 || 4 || 5", "validate-npm-package-license": "^3.0.1" } }, "sha512-/5CMN3T0R4XTj4DcGaexo+roZSdSFW/0AOOTROrjxzCG1wrWXEsGbRKevjlIL+ZDE4sZlJr5ED4YW0yqmkK+eA=="],
 
