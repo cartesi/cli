@@ -314,6 +314,7 @@ const serviceMonitorTask = (options: {
 };
 
 export const startEnvironment = async (options: {
+    anvilArgs?: string[];
     blockTime: number;
     cpus?: number;
     defaultBlock: "latest" | "safe" | "pending" | "finalized";
@@ -343,6 +344,7 @@ export const startEnvironment = async (options: {
         services,
         verbose,
     } = options;
+    const anvilArgs = options.anvilArgs ?? [];
 
     // setup the environment variable used in docker compose
     const env: NodeJS.ProcessEnv = {
@@ -360,6 +362,7 @@ export const startEnvironment = async (options: {
     const files = [
         anvil({
             blockTime,
+            extraArgs: anvilArgs,
             forkConfig,
             imageTag: runtimeVersion,
         }),
