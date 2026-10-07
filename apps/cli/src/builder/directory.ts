@@ -27,7 +27,6 @@ export const build = async (
                     input: name,
                     output: filename,
                     cwd: destination,
-                    image: sdkImage,
                     reporter,
                 });
                 break;
