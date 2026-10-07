@@ -1,8 +1,4 @@
 import {
-    type CartesiPublicClient,
-    createCartesiPublicClient,
-} from "@cartesi/client";
-import {
     type Command,
     Option,
     type OptionValues,
@@ -17,20 +13,6 @@ import {
 } from "viem";
 import { getServiceState, parseAccountIndex } from "./base.js";
 import { getApplicationAddress, getProjectPort } from "./exec/rollups.js";
-
-/**
- * Create a client for the JSON-RPC API of the local rollups node
- * @param options projectName
- * @returns client exposing the cartesi_* methods
- */
-export const getNodeClient = async (options: {
-    projectName: string;
-}): Promise<CartesiPublicClient> => {
-    const host = await getProjectPort(options);
-    return createCartesiPublicClient({
-        transport: http(`http://${host}/rpc`),
-    });
-};
 
 /**
  * Create a read-only client for the anvil of the local environment

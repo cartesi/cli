@@ -1,4 +1,3 @@
-import type { CartesiPublicClient } from "@cartesi/client";
 import { Command } from "@commander-js/extra-typings";
 import chalk from "chalk";
 import fs from "fs-extra";
@@ -11,11 +10,8 @@ import {
     transactionArgs,
     writeNodeTempFile,
 } from "../exec/node-container.js";
-import {
-    getNodeClient,
-    addRecoveryOptions,
-    resolveNodeApplication,
-} from "../node.js";
+import { getNodeInput } from "../exec/rollups.js";
+import { addRecoveryOptions, resolveNodeApplication } from "../node.js";
 
 /**
  * Get the complete InputAdded.input bytes of the deposit to refund, from a
@@ -23,11 +19,18 @@ import {
  */
 export const getInputData = async (options: {
     application: Address;
-    client: Pick<CartesiPublicClient, "getInput">;
     inputFile?: string;
     inputIndex: bigint;
+    io?: { getNodeInput: typeof getNodeInput };
+    projectName: string;
 }): Promise<Hex> => {
-    const { application, client, inputFile, inputIndex } = options;
+    const {
+        application,
+        inputFile,
+        inputIndex,
+        io = { getNodeInput },
+        projectName,
+    } = options;
 
     if (inputFile) {
         const data = (await fs.readFile(inputFile, "utf-8")).trim();
@@ -40,8 +43,7 @@ export const getInputData = async (options: {
     }
 
     try {
-        const input = await client.getInput({ application, inputIndex });
-        return input.rawData;
+        return await io.getNodeInput({ application, inputIndex, projectName });
     } catch (error: unknown) {
         throw new Error(
             `Input ${inputIndex} not found in the node, use ${chalk.cyan("--input-file")} with the InputAdded.input bytes`,
@@ -76,9 +78,9 @@ export const createRefundCommand = () => {
 
         const data = await getInputData({
             application,
-            client: await getNodeClient({ projectName }),
             inputFile: options.inputFile,
             inputIndex,
+            projectName,
         });
 
         // the node tool reads the input bytes from a file in its container

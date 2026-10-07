@@ -28,8 +28,8 @@ describe("getInputData", () => {
         fs.writeFileSync(filePath, content);
         return filePath;
     };
-    const unusedClient = {
-        getInput: () => {
+    const unusedNode = {
+        getNodeInput: () => {
             throw new Error("the node must not be queried");
         },
     };
@@ -46,9 +46,10 @@ describe("getInputData", () => {
         expect(
             await getInputData({
                 application,
-                client: unusedClient,
                 inputFile: file("valid.hex", "  0xdeadbeef\n"),
                 inputIndex: 2n,
+                io: unusedNode,
+                projectName: "dapp",
             }),
         ).toBe("0xdeadbeef");
     });
@@ -58,38 +59,38 @@ describe("getInputData", () => {
             await expect(
                 getInputData({
                     application,
-                    client: unusedClient,
                     inputFile: file("invalid.hex", content),
                     inputIndex: 2n,
+                    io: unusedNode,
+                    projectName: "dapp",
                 }),
             ).rejects.toThrow("must contain the 0x-prefixed hexadecimal");
         }
     });
 
     it("should read the input from the node", async () => {
-        const client = {
-            getInput: async () => ({ rawData: "0xcafe" as const }),
-        };
         expect(
             await getInputData({
                 application,
-                client: client as never,
                 inputIndex: 2n,
+                io: { getNodeInput: async () => "0xcafe" },
+                projectName: "dapp",
             }),
         ).toBe("0xcafe");
     });
 
     it("should point to --input-file when the node doesn't have the input", async () => {
-        const client = {
-            getInput: async () => {
+        const io = {
+            getNodeInput: async () => {
                 throw new Error("not found");
             },
         };
         await expect(
             getInputData({
                 application,
-                client: client as never,
                 inputIndex: 99n,
+                io,
+                projectName: "dapp",
             }),
         ).rejects.toThrow(/Input 99 not found in the node, use .*--input-file/);
     });

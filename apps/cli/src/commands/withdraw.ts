@@ -1,4 +1,3 @@
-import type { CartesiPublicClient } from "@cartesi/client";
 import { Command, Option } from "@commander-js/extra-typings";
 import chalk from "chalk";
 import fs from "fs-extra";
@@ -26,9 +25,12 @@ import {
     replayMachine,
 } from "../exec/cartesi-rollups-machine-tool.js";
 import {
+    getLastAcceptedEpoch,
+    getNodeWithdrawalConfig,
+} from "../exec/rollups.js";
+import {
     addRecoveryOptions,
     getAnvilClient,
-    getNodeClient,
     resolveNodeApplication,
 } from "../node.js";
 import { addressInput } from "../prompts.js";
@@ -58,6 +60,7 @@ export const proofStorePath = (application: Address, account: Address) =>
  */
 export type WithdrawIo = {
     execNodeCommand: typeof execNodeCommand;
+    getLastAcceptedEpoch: typeof getLastAcceptedEpoch;
     nodePathExists: typeof nodePathExists;
     proveAccountsDrive: typeof proveAccountsDrive;
     removeNodePath: typeof removeNodePath;
@@ -66,6 +69,7 @@ export type WithdrawIo = {
 
 const defaultIo: WithdrawIo = {
     execNodeCommand,
+    getLastAcceptedEpoch,
     nodePathExists,
     proveAccountsDrive,
     removeNodePath,
@@ -131,33 +135,32 @@ const isSameHash = (a: Hash, b: Hash) => a.toLowerCase() === b.toLowerCase();
  */
 const waitForFinalizedEpoch = async (options: {
     application: Address;
-    client: Pick<CartesiPublicClient, "getEpoch" | "getLastAcceptedEpochIndex">;
     finalizedMachineRoot: Hash;
+    io: WithdrawIo;
+    projectName: string;
     retry: RetryOptions;
 }): Promise<bigint> => {
-    const { application, client, finalizedMachineRoot, retry } = options;
-    let last: { epochIndex?: bigint; machineHash?: Hash | null } = {};
+    const { application, finalizedMachineRoot, io, projectName, retry } =
+        options;
+    let last: { index?: bigint; machineHash?: Hash } = {};
     try {
         return await pRetry(async () => {
-            const epochIndex = await client.getLastAcceptedEpochIndex({
+            const epoch = await io.getLastAcceptedEpoch({
                 application,
+                projectName,
             });
-            const { machineHash } = await client.getEpoch({
-                application,
-                epochIndex,
-            });
-            last = { epochIndex, machineHash };
+            last = epoch ?? {};
             if (
-                !machineHash ||
-                !isSameHash(machineHash, finalizedMachineRoot)
+                !epoch?.machineHash ||
+                !isSameHash(epoch.machineHash, finalizedMachineRoot)
             ) {
                 throw new Error("node is behind the chain");
             }
-            return epochIndex;
+            return epoch.index;
         }, retry);
     } catch {
         throw new Error(
-            `The node hasn't processed the last finalized epoch yet (node epoch ${last.epochIndex ?? "none"} root ${last.machineHash ?? "none"}, chain root ${finalizedMachineRoot}); try again shortly`,
+            `The node hasn't processed the last finalized epoch yet (node epoch ${last.index ?? "none"} root ${last.machineHash ?? "none"}, chain root ${finalizedMachineRoot}); try again shortly`,
         );
     }
 };
@@ -170,7 +173,6 @@ const waitForFinalizedEpoch = async (options: {
  */
 export const replayLastFinalizedEpoch = async (options: {
     application: Address;
-    client: Pick<CartesiPublicClient, "getEpoch" | "getLastAcceptedEpochIndex">;
     finalizedMachineRoot: Hash;
     io?: WithdrawIo;
     projectName: string;
@@ -178,7 +180,6 @@ export const replayLastFinalizedEpoch = async (options: {
 }): Promise<{ store: string }> => {
     const {
         application,
-        client,
         finalizedMachineRoot,
         io = defaultIo,
         projectName,
@@ -193,8 +194,9 @@ export const replayLastFinalizedEpoch = async (options: {
     try {
         epochIndex = await waitForFinalizedEpoch({
             application,
-            client,
             finalizedMachineRoot,
+            io,
+            projectName,
             retry,
         });
     } catch (error: unknown) {
@@ -300,7 +302,6 @@ const proveAccount = async (options: {
     account: Address;
     accountIndex?: number;
     application: Address;
-    client: CartesiPublicClient;
     driveRootProven: boolean;
     finalizedMachineRoot: Hash;
     projectName: string;
@@ -310,19 +311,18 @@ const proveAccount = async (options: {
         account,
         accountIndex,
         application,
-        client,
         driveRootProven,
         finalizedMachineRoot,
         projectName,
         tx,
     } = options;
-    const { withdrawalConfig } = await client.getApplication({
+    const driveConfig = await getNodeWithdrawalConfig({
         application,
+        projectName,
     });
 
     const { store } = await replayLastFinalizedEpoch({
         application,
-        client,
         finalizedMachineRoot,
         projectName,
     });
@@ -330,7 +330,7 @@ const proveAccount = async (options: {
     const proof = await generateAccountProofs({
         account,
         application,
-        driveConfig: withdrawalConfig,
+        driveConfig,
         finalizedMachineRoot,
         projectName,
         store,
@@ -384,8 +384,6 @@ export const createWithdrawCommand = () => {
             application: options.application,
             projectName,
         });
-        const client = await getNodeClient({ projectName });
-
         const { driveRootProven, finalizedMachineRoot, foreclosed } =
             await readForeclosureState({ application, projectName });
         if (!foreclosed) {
@@ -418,7 +416,6 @@ export const createWithdrawCommand = () => {
                     account,
                     accountIndex,
                     application,
-                    client,
                     driveRootProven,
                     finalizedMachineRoot,
                     projectName,
