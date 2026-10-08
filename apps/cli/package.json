@@ -9,7 +9,6 @@
     "type": "module",
     "homepage": "https://github.com/cartesi/cli",
     "license": "Apache-2.0",
-    "exports": "./dist/index.js",
     "repository": "cartesi/cli",
     "files": [
         "/dist"
@@ -64,6 +63,5 @@
     "engines": {
         "node": ">=24.0.0"
     },
-    "bugs": "https://github.com/cartesi/cli/issues",
-    "types": "dist/index.d.ts"
+    "bugs": "https://github.com/cartesi/cli/issues"
 }
