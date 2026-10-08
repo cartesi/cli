@@ -67,7 +67,7 @@ jobs:
                   publish-script: bun run publish-packages
 
             - name: Release CLI binaries
-              if: ${{ steps.changeset.outputs.published == 'true' && contains(fromJSON(steps.changeset.outputs.published-packages).*.name, '@cartesi/cli') }}
+              if: ${{ !cancelled() && steps.changeset.outputs.published == 'true' && contains(fromJSON(steps.changeset.outputs.published-packages).*.name, '@cartesi/cli') }}
               run: |
                   for f in cartesi-*; do tar -czf "$f.tar.gz" "$f"; done
                   VERSION=$(jq -r '.[] | select(.name=="@cartesi/cli") | .version' <<< '${{ steps.changeset.outputs.published-packages }}')
@@ -80,6 +80,6 @@ jobs:
     build_sdk:
         name: Build SDK
         needs: release
-        if: ${{ needs.release.outputs.published == 'true' && contains(fromJSON(needs.release.outputs.publishedPackages).*.name, '@cartesi/sdk') }}
+        if: ${{ !cancelled() && needs.release.outputs.published == 'true' && contains(fromJSON(needs.release.outputs.publishedPackages).*.name, '@cartesi/sdk') }}
         uses: ./.github/workflows/sdk.yaml
         secrets: inherit
