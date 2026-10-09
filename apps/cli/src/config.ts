@@ -188,24 +188,34 @@ export type TarDriveConfig = {
     extraSize: number; // default is 0 (no extra size)
 };
 
+/**
+ * Marks the drive or nvram that holds the accounts of emergency withdrawal, whose layout is
+ * derived from the built machine.
+ */
+type AccountsDriveMarker = {
+    accountsDrive?: boolean; // holds the accounts of emergency withdrawal
+    accountsDriveSize?: number; // accounts only in this many bytes at the beginning, default is all of it
+};
+
 export type DriveConfig = (
     | DirectoryDriveConfig
     | DockerDriveConfig
     | EmptyDriveConfig
     | ExistingDriveConfig
     | TarDriveConfig
-) & {
-    mount?: string | boolean; // default given by cartesi-machine
-    shared?: boolean; // default given by cartesi-machine
-    user?: string; // default given by cartesi-machine
-};
+) &
+    AccountsDriveMarker & {
+        mount?: string | boolean; // default given by cartesi-machine
+        shared?: boolean; // default given by cartesi-machine
+        user?: string; // default given by cartesi-machine
+    };
 
 /**
  * Configuration for an NVRAM of a Cartesi Machine. Unlike a flash drive, an nvram is a raw
  * range of bytes exposed to the guest as a /dev/uio* device, with no filesystem and no mount
  * point. Either `size` or `filename` must be defined.
  */
-export type NvramConfig = {
+export type NvramConfig = AccountsDriveMarker & {
     filename?: string; // path to an existing raw image with the initial contents
     size?: number; // in bytes, a positive multiple of 4Ki
     shared?: boolean; // default given by cartesi-machine
@@ -245,6 +255,30 @@ export type Config = {
     nvrams: Record<string, NvramConfig>;
     sdk: string;
     withdrawalConfig?: WithdrawalConfig;
+};
+
+/**
+ * The drive or nvram marked with `accounts_drive = true`.
+ */
+export type AccountsDrive = {
+    kind: "flash_drive" | "nvram"; // section of the stored machine config that holds it
+    label: string;
+};
+
+export const getAccountsDrive = (config: Config): AccountsDrive | undefined => {
+    const drive = Object.entries(config.drives).find(
+        ([, drive]) => drive.accountsDrive,
+    );
+    if (drive) {
+        return { kind: "flash_drive", label: drive[0] };
+    }
+    const nvram = Object.entries(config.nvrams).find(
+        ([, nvram]) => nvram.accountsDrive,
+    );
+    if (nvram) {
+        return { kind: "nvram", label: nvram[0] };
+    }
+    return undefined;
 };
 
 type TomlTable = { [key: string]: TomlPrimitive };
@@ -522,6 +556,18 @@ const parseSize = (value: TomlPrimitive): number | undefined => {
 const parseBytes = (value: TomlPrimitive, defaultValue: number): number =>
     parseSize(value) ?? defaultValue;
 
+/**
+ * Parses the keys that mark a drive or nvram as the accounts drive, leaving them out when unset.
+ */
+const parseAccountsDriveMarker = (toml: TomlTable): AccountsDriveMarker => {
+    const accountsDrive = parseOptionalBoolean(toml.accounts_drive);
+    const accountsDriveSize = parseSize(toml.accounts_drive_size);
+    return {
+        ...(accountsDrive !== undefined && { accountsDrive }),
+        ...(accountsDriveSize !== undefined && { accountsDriveSize }),
+    };
+};
+
 const parseNvram = (label: string, value: TomlPrimitive): NvramConfig => {
     const toml = isTomlTable(value) ? value : {};
     const size = parseSize(toml.size);
@@ -535,6 +581,7 @@ const parseNvram = (label: string, value: TomlPrimitive): NvramConfig => {
     }
 
     return {
+        ...parseAccountsDriveMarker(toml),
         filename,
         size,
         shared: parseOptionalBoolean(toml.shared),
@@ -660,6 +707,11 @@ export const getDriveFormat = (filename: string): DriveFormat => {
 };
 
 const parseDrive = (drive: TomlPrimitive): DriveConfig => {
+    const toml = drive as TomlTable;
+    return { ...parseBuilderDrive(toml), ...parseAccountsDriveMarker(toml) };
+};
+
+const parseBuilderDrive = (drive: TomlPrimitive): DriveConfig => {
     const builder = parseBuilder((drive as TomlTable).builder);
     switch (builder) {
         case "directory": {
