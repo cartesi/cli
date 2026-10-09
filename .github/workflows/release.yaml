@@ -44,11 +44,6 @@ jobs:
                   sudo npm install -g npm@12
                   npm --version
 
-            - name: Install Foundry
-              uses: foundry-rs/foundry-toolchain@908c540300062bd5a7e473851cdb4282204cee09 # v1.9.1
-              with:
-                  version: v1.4.3
-
             - name: Install Dependencies
               run: bun install --frozen-lockfile
 
