@@ -567,6 +567,47 @@ shared = true`,
                 parse(["[drives.data]\nbuilder = 'empty'\nformat = 42"]),
             ).toThrowError(new InvalidEmptyDriveFormatError(42));
         });
+
+        // drive sizes read the same as nvram sizes
+        it.each([
+            ["4096", 4096],
+            ['"4096"', 4096],
+            ['"4Ki"', 4096],
+            ['"4Mi"', 4194304],
+            ['"4MiB"', 4194304],
+            ['"4MB"', 4194304],
+            ['"100Mb"', 104857600],
+            ['"1Ti"', 2 ** 40],
+            ['"1TB"', 2 ** 40],
+            ['"1Pi"', 2 ** 50],
+            ['"1PB"', 2 ** 50],
+        ])("should parse drive size %s as %i bytes", (size, expected) => {
+            const config = parse([
+                `[drives.data]\nbuilder = "empty"\nsize = ${size}`,
+                `[drives.root]\nextra_size = ${size}`,
+            ]);
+            expect(config.drives.data).toMatchObject({ size: expected });
+            expect(config.drives.root).toMatchObject({ extraSize: expected });
+        });
+
+        it("should fail for an unparseable drive size", () => {
+            expect(() =>
+                parse(['[drives.data]\nbuilder = "empty"\nsize = "4XB"']),
+            ).toThrowError(new InvalidBytesValueError("4XB"));
+        });
+
+        // sizes are numbers, which can't hold every integer beyond 2^53 bytes (8 PiB)
+        it.each([
+            ['"9PB"', "9PB"],
+            ["9007199254740993", 9007199254740993n],
+        ])(
+            "should fail for a drive size beyond 2^53 bytes: %s",
+            (size, parsed) => {
+                expect(() =>
+                    parse([`[drives.data]\nbuilder = "empty"\nsize = ${size}`]),
+                ).toThrowError(new InvalidBytesValueError(parsed));
+            },
+        );
     });
 
     /**
@@ -647,6 +688,8 @@ shared = true`,
             ['"4kb"', 4096],
             ['"1Mi"', 1048576],
             ['"1Mb"', 1048576],
+            ['"1Ti"', 2 ** 40],
+            ['"1PB"', 2 ** 50],
         ])("should parse size %s as %i bytes", (size, expected) => {
             expect(
                 parse([`[nvrams.input]\nsize = ${size}`]).nvrams.input.size,
