@@ -7,6 +7,7 @@ import { AbortPromptError, ExitPromptError } from "@inquirer/core";
 import chalk from "chalk";
 import { ExecaError } from "execa";
 import getPort, { portNumbers } from "get-port";
+import fs from "node:fs";
 import ora from "ora";
 import {
     type Address,
@@ -17,6 +18,7 @@ import {
 } from "viem";
 import {
     getApplicationConfig,
+    getContextPath,
     getMachineHash,
     getProjectName,
 } from "../base.js";
@@ -41,6 +43,7 @@ import {
 import { keySelect } from "../prompts.js";
 import type { ForkConfig } from "../types/chain.js";
 import { assertForkConfig } from "../validations.js";
+import { getWithdrawalConfig } from "../withdrawal.js";
 
 const commaSeparatedList = (value: string) => value.split(",");
 
@@ -84,7 +87,7 @@ const shell = async (options: {
     prt?: boolean;
     salt: number;
     sdk: string;
-    withdrawalConfig?: WithdrawalConfig;
+    resolveWithdrawalConfig: () => WithdrawalConfig | undefined;
     claimStagingPeriod: number;
 }) => {
     const {
@@ -94,7 +97,7 @@ const shell = async (options: {
         projectName,
         prt,
         sdk,
-        withdrawalConfig,
+        resolveWithdrawalConfig,
         claimStagingPeriod,
     } = options;
 
@@ -178,6 +181,9 @@ const shell = async (options: {
                     // redeploy
                     const hash = await getMachineHash({ sdk });
                     if (hash) {
+                        // the accounts drive may have moved with the rebuild,
+                        // resolved before undeploying in case it is now invalid
+                        const withdrawalConfig = resolveWithdrawalConfig();
                         if (lastDeployment) {
                             await undeploy({ projectName });
                         }
@@ -451,6 +457,23 @@ export const createRunCommand = () => {
                 await assertForkConfig(forkConfig, { includePRT: prt });
             }
 
+            // emergency withdrawal configuration, derived from the accounts drive of the built
+            // machine. The configuration is read again, as a rebuild may have changed it.
+            const imagePath = getContextPath("image");
+            const resolveWithdrawalConfig = () =>
+                getWithdrawalConfig(
+                    getApplicationConfig(configFiles),
+                    imagePath,
+                    {
+                        fork: forkConfig !== undefined,
+                    },
+                );
+
+            // fail before starting the environment if it can't be derived
+            const withdrawalConfig = fs.existsSync(imagePath)
+                ? resolveWithdrawalConfig()
+                : undefined;
+
             // if TTY is not attached, run on foreground (not detached)
             const detach = process.stdin.isTTY;
 
@@ -506,7 +529,7 @@ export const createRunCommand = () => {
                     prt,
                     salt: numberToHex(salt++, { size: 32 }),
                     claimStagingPeriod,
-                    withdrawalConfig: applicationConfig?.withdrawalConfig,
+                    withdrawalConfig,
                 });
             } else {
                 console.warn(
@@ -550,7 +573,7 @@ export const createRunCommand = () => {
                     salt,
                     sdk: applicationConfig.sdk,
                     claimStagingPeriod,
-                    withdrawalConfig: applicationConfig?.withdrawalConfig,
+                    resolveWithdrawalConfig,
                 });
                 await shutdown();
             } else {

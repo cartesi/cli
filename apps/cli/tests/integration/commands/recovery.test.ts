@@ -76,11 +76,13 @@ const count = (text: string, part: string) => text.split(part).length - 1;
  * Layout of the accounts drive in the built machine: its size in log2 of the
  * number of 32-byte accounts, and its start as a multiple of its size
  */
-const accountsDriveLayout = async (appDir: string, driveIndex: number) => {
+const accountsDriveLayout = async (appDir: string, label: string) => {
     const { config } = await fs.readJson(
         path.join(appDir, ".cartesi", "image", "config.json"),
     );
-    const { start, length } = config.flash_drive[driveIndex];
+    const { start, length } = config.flash_drive.find(
+        (drive: { label: string }) => drive.label === label,
+    );
     const log2Length = Math.log2(length);
     expect(Number.isInteger(log2Length)).toBe(true);
     expect(start % length).toBe(0);
@@ -177,9 +179,7 @@ describe("fund recovery", () => {
         cleanup = dir.removeCallback;
         appDir = path.join(dir.name, "erc20-withdrawal");
         await fs.copy(fixture, appDir);
-        await fs.writeFile(
-            path.join(appDir, "cartesi.toml"),
-            `sdk = "${TEST_SDK}"
+        const config = `sdk = "${TEST_SDK}"
 
 [machine.env]
 TRUSTED_ERC20_PORTAL = "${erc20PortalAddress}"
@@ -191,6 +191,13 @@ format = "raw"
 size = "4MB"
 mount = false
 user = "dapp"
+accounts_drive = true
+`;
+        await fs.writeFile(
+            path.join(appDir, "cartesi.toml"),
+            `${config}
+[withdrawal.config]
+guardian = "${guardian}"
 `,
         );
 
@@ -203,11 +210,12 @@ user = "dapp"
         expect(build.exitCode, build.all).toBe(0);
         console.log("✓ Built the erc20-withdrawal application");
 
-        // the accounts drive follows the root drive
-        const layout = await accountsDriveLayout(appDir, 1);
-        await fs.appendFile(
+        // spell out the whole config as before the CLI derived the layout,
+        // which the CLI checks against the layout it derives on run
+        const layout = await accountsDriveLayout(appDir, "accounts");
+        await fs.writeFile(
             path.join(appDir, "cartesi.toml"),
-            `
+            `${config}
 [withdrawal.config]
 guardian = "${guardian}"
 log2_leaves_per_account = 0
