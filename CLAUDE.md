@@ -18,7 +18,6 @@ Cartesi CLI — a tool for creating, building, running, and deploying [Cartesi](
 |---------|------|---------|
 | `@cartesi/cli` | `apps/cli/` | Main CLI application (Commander.js) |
 | `@cartesi/sdk` | `packages/sdk/` | Docker image with build tools (emulator, genext2fs, kernel) |
-| `@cartesi/devnet` | `packages/devnet/` | Local devnet — Foundry contracts + Anvil state |
 | `@cartesi/mock-verifying-paymaster` | `packages/mock-verifying-paymaster/` | ERC-4337 paymaster (Fastify server) |
 | `tsconfig` | `packages/tsconfig/` | Shared TypeScript configs |
 
@@ -35,9 +34,6 @@ bun run build --filter @cartesi/cli  # Build CLI only
 bun test apps/cli/                   # Run all CLI tests
 bun test apps/cli/tests/unit/        # Run unit tests only
 bun test apps/cli/tests/unit/config.test.ts  # Run a single test
-
-# Devnet (requires Foundry/Anvil installed)
-bun run build --filter @cartesi/devnet
 ```
 
 The CLI build pipeline (`apps/cli`): `clean` → `codegen` (wagmi ABI generation) → `compile` (Bun bundler → `dist/`). It also produces native binaries for darwin-arm64, darwin-x64, linux-arm64, linux-x64 in `apps/cli/bin/`.
@@ -61,10 +57,6 @@ The CLI build pipeline (`apps/cli`): `clean` → `codegen` (wagmi ABI generation
 -   **`wallet.ts`** — Wallet utilities using `viem` for Ethereum interaction.
 
 **Patterns**: Uses Listr2 for multi-step task runners with progress indicators. Interactive prompts via `@inquirer`. All blockchain interaction through `viem`.
-
-### Devnet (`packages/devnet/`)
-
-Foundry-based Solidity contracts with Forge build system. Deployment artifacts (ABI JSON + addresses) in `deployments/`. Anvil state snapshot in `anvil_state.json`.
 
 ## Versioning
 
