@@ -129,6 +129,29 @@ export class DuplicateLabelError extends Error {
     }
 }
 
+export class MultipleAccountsDrivesError extends Error {
+    constructor(labels: string[]) {
+        super(
+            `Only one drive or nvram can be the accounts drive, but ${labels.map((label) => `'${label}'`).join(", ")} are marked with accounts_drive = true`,
+        );
+        this.name = "MultipleAccountsDrivesError";
+    }
+}
+
+export class InvalidAccountsDriveError extends Error {
+    constructor(label: string, reason: string) {
+        super(`Invalid accounts drive '${label}': ${reason}`);
+        this.name = "InvalidAccountsDriveError";
+    }
+}
+
+export class InvalidWithdrawalConfigError extends Error {
+    constructor(reason: string) {
+        super(`Invalid [withdrawal.config]: ${reason}`);
+        this.name = "InvalidWithdrawalConfigError";
+    }
+}
+
 /**
  * Configuration for drives of a Cartesi Machine. A drive may already exist or be built by a builder
  */
@@ -249,13 +272,22 @@ export type WithdrawalConfig = {
     withdrawal_output_builder: Address;
 };
 
+/**
+ * The optional [withdrawal.config] section of an application with an accounts drive. Every key
+ * is optional: the accounts drive layout is derived from the built machine, and checked against
+ * the keys given, and the addresses default to devnet values.
+ */
+export type WithdrawalSettings = Partial<WithdrawalConfig>;
+
 export type Config = {
     drives: Record<string, DriveConfig>;
     machine: MachineConfig;
     nvrams: Record<string, NvramConfig>;
     sdk: string;
-    withdrawalConfig?: WithdrawalConfig;
+    withdrawalConfig?: WithdrawalSettings;
 };
+
+export const LOG2_LEAF_SIZE = 5; // accounts are made of 32-byte leaves
 
 /**
  * The drive or nvram marked with `accounts_drive = true`.
@@ -263,22 +295,102 @@ export type Config = {
 export type AccountsDrive = {
     kind: "flash_drive" | "nvram"; // section of the stored machine config that holds it
     label: string;
+    config: DriveConfig | NvramConfig; // its entry in cartesi.toml
 };
 
-export const getAccountsDrive = (config: Config): AccountsDrive | undefined => {
-    const drive = Object.entries(config.drives).find(
-        ([, drive]) => drive.accountsDrive,
-    );
-    if (drive) {
-        return { kind: "flash_drive", label: drive[0] };
+/**
+ * Every drive and nvram marked with `accounts_drive = true`. Parsing rejects more than one,
+ * and lists them all to say which.
+ */
+const getMarkedDrives = (config: Config): AccountsDrive[] =>
+    [
+        ...Object.entries(config.drives).map(([label, drive]) => ({
+            kind: "flash_drive" as const,
+            label,
+            config: drive,
+        })),
+        ...Object.entries(config.nvrams).map(([label, nvram]) => ({
+            kind: "nvram" as const,
+            label,
+            config: nvram,
+        })),
+    ].filter((drive) => drive.config.accountsDrive);
+
+export const getAccountsDrive = (config: Config): AccountsDrive | undefined =>
+    getMarkedDrives(config)[0];
+
+/**
+ * Formats a number of bytes as a size cartesi.toml accepts, e.g. "4Mi".
+ */
+const formatSize = (bytes: bigint): string => {
+    for (const [unit, multiplier] of [
+        ["Gi", 1n << 30n],
+        ["Mi", 1n << 20n],
+        ["Ki", 1n << 10n],
+    ] as const) {
+        if (bytes >= multiplier && bytes % multiplier === 0n) {
+            return `${bytes / multiplier}${unit}`;
+        }
     }
-    const nvram = Object.entries(config.nvrams).find(
-        ([, nvram]) => nvram.accountsDrive,
-    );
-    if (nvram) {
-        return { kind: "nvram", label: nvram[0] };
+    return bytes.toString();
+};
+
+const nextPowerOfTwo = (value: bigint): bigint =>
+    1n << BigInt((value - 1n).toString(2).length);
+
+/**
+ * Checks the accounts drive can be divided into accounts. The accounts drive is either all of
+ * the drive or nvram marked with `accounts_drive = true`, or its first `accounts_drive_size`
+ * bytes, the rest being free for other application state.
+ * @param driveLength length of the whole drive, if known
+ * @returns the length of the accounts drive and its log2, if known
+ */
+export const assertAccountsDriveLength = (
+    config: Config,
+    accountsDrive: AccountsDrive,
+    driveLength?: bigint,
+): { length: bigint; log2Length: number } | undefined => {
+    const { label } = accountsDrive;
+    const accountsDriveSize =
+        accountsDrive.config.accountsDriveSize === undefined
+            ? undefined
+            : BigInt(accountsDrive.config.accountsDriveSize);
+    const log2LeavesPerAccount =
+        config.withdrawalConfig?.log2_leaves_per_account ?? 0;
+    const length = accountsDriveSize ?? driveLength;
+    if (length === undefined) {
+        return undefined;
     }
-    return undefined;
+
+    if (length <= 0n || (length & (length - 1n)) !== 0n) {
+        const suggestion =
+            length > 0n ? `, use "${formatSize(nextPowerOfTwo(length))}"` : "";
+        throw new InvalidAccountsDriveError(
+            label,
+            accountsDriveSize !== undefined
+                ? `accounts_drive_size ${length} is not a power of two${suggestion}`
+                : `size ${length} is not a power of two${suggestion}, or set accounts_drive_size to keep the accounts at the beginning of a larger drive`,
+        );
+    }
+    const log2Length = length.toString(2).length - 1;
+    const log2AccountSize = LOG2_LEAF_SIZE + log2LeavesPerAccount;
+    if (log2Length < log2AccountSize) {
+        throw new InvalidAccountsDriveError(
+            label,
+            `size ${length} is smaller than one account of ${1n << BigInt(log2AccountSize)} bytes`,
+        );
+    }
+    if (
+        accountsDriveSize !== undefined &&
+        driveLength !== undefined &&
+        accountsDriveSize > driveLength
+    ) {
+        throw new InvalidAccountsDriveError(
+            label,
+            `accounts_drive_size ${accountsDriveSize} is larger than the drive itself (${driveLength} bytes)`,
+        );
+    }
+    return { length, log2Length };
 };
 
 type TomlTable = { [key: string]: TomlPrimitive };
@@ -817,47 +929,138 @@ const parseDrives = (config: TomlPrimitive): Record<string, DriveConfig> => {
     return drives;
 };
 
-const parseWithdrawalConfig = (config: TomlTable): WithdrawalConfig => {
+const parseLog2 = (value: TomlPrimitive, key: string): number => {
+    const log2 = parseRequiredNumber(value, key);
+    if (!Number.isInteger(log2) || log2 < 0) {
+        throw new InvalidNumberValueError(value, key);
+    }
+    return log2;
+};
+
+const WITHDRAWAL_CONFIG_KEYS = [
+    "guardian",
+    "log2_leaves_per_account",
+    "log2_max_num_of_accounts",
+    "accounts_drive_start_index",
+    "withdrawal_output_builder",
+];
+
+const parseWithdrawalConfig = (config: TomlTable): WithdrawalSettings => {
+    for (const key of Object.keys(config)) {
+        if (!WITHDRAWAL_CONFIG_KEYS.includes(key)) {
+            throw new InvalidWithdrawalConfigError(
+                `unknown key '${key}', expected one of ${WITHDRAWAL_CONFIG_KEYS.join(", ")}`,
+            );
+        }
+    }
+
+    const optional = <T>(
+        key: string,
+        parser: (value: TomlPrimitive, key: string) => T,
+    ): T | undefined =>
+        config[key] === undefined ? undefined : parser(config[key], key);
+
     return {
-        guardian: parseRequiredAddress(config.guardian, "guardian"),
-        log2_leaves_per_account: parseRequiredNumber(
-            config.log2_leaves_per_account,
-            "log2_leaves_per_account",
-        ),
-        log2_max_num_of_accounts: parseRequiredNumber(
-            config.log2_max_num_of_accounts,
+        guardian: optional("guardian", parseRequiredAddress),
+        log2_leaves_per_account: optional("log2_leaves_per_account", parseLog2),
+        log2_max_num_of_accounts: optional(
             "log2_max_num_of_accounts",
+            parseLog2,
         ),
-        accounts_drive_start_index: parseRequiredBigInt(
-            config.accounts_drive_start_index,
+        accounts_drive_start_index: optional(
             "accounts_drive_start_index",
+            parseRequiredBigInt,
         ),
-        withdrawal_output_builder: parseRequiredAddress(
-            config.withdrawal_output_builder,
+        withdrawal_output_builder: optional(
             "withdrawal_output_builder",
+            parseRequiredAddress,
         ),
     };
 };
 
+/**
+ * Parses [withdrawal.config], which only applies to an application with an accounts drive.
+ */
 const parseOptionalWithdrawalConfig = (
     withdrawal: TomlPrimitive,
-): WithdrawalConfig | undefined => {
+): WithdrawalSettings | undefined => {
     if (withdrawal === undefined) {
         return undefined;
     }
 
     const config = (withdrawal as TomlTable).config;
-
-    const isNotDefined =
-        config === undefined ||
-        config === null ||
-        Object.keys(config).length === 0;
-
-    if (isNotDefined) {
+    if (config === undefined) {
         return undefined;
     }
+    if (!isTomlTable(config)) {
+        throw new InvalidWithdrawalConfigError(
+            `expected a table, got ${formatValue(config)}`,
+        );
+    }
 
-    return parseWithdrawalConfig(config as TomlTable);
+    return parseWithdrawalConfig(config);
+};
+
+/**
+ * Checks what can be known about the accounts drive before the machine is built. Its placement
+ * is only known after, see `resolveAccountsDriveLayout`.
+ */
+const assertAccountsDrive = (config: Config) => {
+    const marked = getMarkedDrives(config);
+    if (marked.length > 1) {
+        throw new MultipleAccountsDrivesError(marked.map(({ label }) => label));
+    }
+
+    for (const [label, drive] of [
+        ...Object.entries(config.drives),
+        ...Object.entries(config.nvrams),
+    ]) {
+        if (drive.accountsDriveSize !== undefined && !drive.accountsDrive) {
+            throw new InvalidAccountsDriveError(
+                label,
+                "accounts_drive_size requires accounts_drive = true",
+            );
+        }
+    }
+
+    const [accountsDrive] = marked;
+    if (!accountsDrive) {
+        if (config.withdrawalConfig) {
+            throw new InvalidWithdrawalConfigError(
+                "emergency withdrawal needs an accounts drive, mark a raw drive or an nvram with accounts_drive = true",
+            );
+        }
+        return;
+    }
+
+    const { label } = accountsDrive;
+
+    let size: number | undefined;
+    if (accountsDrive.kind === "flash_drive") {
+        const drive = config.drives[label];
+        if (drive.builder !== "empty" || drive.format !== "raw") {
+            throw new InvalidAccountsDriveError(
+                label,
+                `it must not have a filesystem, use builder = "empty" and format = "raw", or declare it under [nvrams.${label}]`,
+            );
+        }
+        if (drive.mount !== undefined && drive.mount !== false) {
+            throw new InvalidAccountsDriveError(
+                label,
+                "it can't be mounted, remove 'mount' or set it to false",
+            );
+        }
+        size = drive.size;
+    } else {
+        // the size of an nvram backed by an existing image is only known once built
+        size = config.nvrams[label].size;
+    }
+
+    assertAccountsDriveLength(
+        config,
+        accountsDrive,
+        size === undefined ? undefined : BigInt(size),
+    );
 };
 
 export const parse = (str: string[]): Config => {
@@ -890,6 +1093,8 @@ export const parse = (str: string[]): Config => {
             `${DEFAULT_SDK_IMAGE}:${DEFAULT_SDK_VERSION}`,
         ),
     };
+
+    assertAccountsDrive(config);
 
     return config;
 };
