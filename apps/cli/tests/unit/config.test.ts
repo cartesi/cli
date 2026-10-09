@@ -5,6 +5,7 @@ import {
     defaultConfig,
     defaultMachineConfig,
     DuplicateLabelError,
+    getAccountsDrive,
     InvalidAddressValueError,
     InvalidBooleanValueError,
     InvalidBuilderError,
@@ -760,6 +761,62 @@ shared = true`,
             expect(() =>
                 parse(['[nvrams.input]\nsize = "4Ki"\nuser = 42']),
             ).toThrowError(new InvalidStringValueError(42));
+        });
+    });
+
+    /**
+     * accounts_drive
+     */
+    describe("when parsing the accounts drive marker", () => {
+        it("should find a marked raw drive", () => {
+            const config = parse([
+                `
+                [drives.accounts]
+                builder = "empty"
+                format = "raw"
+                size = "4Mi"
+                accounts_drive = true
+                `,
+            ]);
+            expect(config.drives.accounts).toMatchObject({
+                accountsDrive: true,
+            });
+            expect(getAccountsDrive(config)).toEqual({
+                kind: "flash_drive",
+                label: "accounts",
+            });
+        });
+
+        it("should find a marked nvram with the accounts at its beginning", () => {
+            const config = parse([
+                `
+                [nvrams.state]
+                size = "12Mi"
+                accounts_drive = true
+                accounts_drive_size = "4Mi"
+                `,
+            ]);
+            expect(config.nvrams.state).toMatchObject({
+                accountsDrive: true,
+                accountsDriveSize: 4 * 1024 * 1024,
+            });
+            expect(getAccountsDrive(config)).toEqual({
+                kind: "nvram",
+                label: "state",
+            });
+        });
+
+        it("should leave the marker out of unmarked drives and nvrams", () => {
+            const config = parse(['[nvrams.input]\nsize = "4Ki"']);
+            expect(config.drives.root).not.toHaveProperty("accountsDrive");
+            expect(config.nvrams.input).not.toHaveProperty("accountsDrive");
+            expect(getAccountsDrive(config)).toBeUndefined();
+        });
+
+        it("should fail for an invalid marker", () => {
+            expect(() =>
+                parse(['[nvrams.input]\nsize = "4Ki"\naccounts_drive = 1']),
+            ).toThrowError(new InvalidBooleanValueError(1));
         });
     });
 
