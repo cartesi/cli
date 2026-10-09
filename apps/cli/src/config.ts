@@ -236,7 +236,7 @@ export type WithdrawalConfig = {
     guardian: Address;
     log2_leaves_per_account: number;
     log2_max_num_of_accounts: number;
-    accounts_drive_start_index: number;
+    accounts_drive_start_index: bigint; // a uint64 in the node, beyond the safe range of a number
     withdrawal_output_builder: Address;
 };
 
@@ -383,6 +383,34 @@ const parseRequiredNumber = (value: TomlPrimitive, key: string): number => {
         typeof value === "string" && isHex(value) ? parseInt(value, 16) : null;
 
     if (val !== null && !Number.isNaN(val)) {
+        return val;
+    }
+
+    throw new InvalidNumberValueError(value, key);
+};
+
+/**
+ * Parses a non-negative integer without losing precision, from a TOML integer or a decimal or
+ * hex string.
+ */
+const parseRequiredBigInt = (value: TomlPrimitive, key: string): bigint => {
+    if (value === undefined) {
+        throw new RequiredFieldError(key);
+    }
+
+    let val: bigint | undefined;
+    if (typeof value === "bigint") {
+        val = value;
+    } else if (typeof value === "number" && Number.isInteger(value)) {
+        val = BigInt(value);
+    } else if (
+        typeof value === "string" &&
+        /^(0x[0-9a-f]+|\d+)$/i.test(value)
+    ) {
+        val = BigInt(value);
+    }
+
+    if (val !== undefined && val >= 0n) {
         return val;
     }
 
@@ -751,7 +779,7 @@ const parseWithdrawalConfig = (config: TomlTable): WithdrawalConfig => {
             config.log2_max_num_of_accounts,
             "log2_max_num_of_accounts",
         ),
-        accounts_drive_start_index: parseRequiredNumber(
+        accounts_drive_start_index: parseRequiredBigInt(
             config.accounts_drive_start_index,
             "accounts_drive_start_index",
         ),
@@ -786,7 +814,11 @@ const parseOptionalWithdrawalConfig = (
 export const parse = (str: string[]): Config => {
     let toml: TomlTable = {};
     for (const s of str) {
-        toml = mergeTomlTables(toml, parseToml(s));
+        // integers beyond the safe range of a number come as bigint, instead of failing
+        toml = mergeTomlTables(
+            toml,
+            parseToml(s, { integersAsBigInt: "asNeeded" }),
+        );
     }
 
     const drives = parseDrives(toml.drives);

@@ -692,6 +692,19 @@ export type DeployApplicationOptions = {
 };
 
 /**
+ * Serialise the withdrawal config for `--withdrawal-config`. JSON.stringify can't encode a
+ * bigint, and the node decodes the start index as a uint64 number, so bigints are written as
+ * bare number literals to keep every digit.
+ */
+export const stringifyWithdrawalConfig = (config: WithdrawalConfig): string => {
+    const fields = Object.entries(config).map(
+        ([key, value]) =>
+            `${JSON.stringify(key)}:${typeof value === "bigint" ? value.toString() : JSON.stringify(value)}`,
+    );
+    return `{${fields.join(",")}}`;
+};
+
+/**
  * Assemble the `cartesi-rollups-cli deploy application` arguments.
  * Kept separate from the call so it can be tested without a node.
  */
@@ -731,7 +744,7 @@ export const buildDeployApplicationArgs = (
     if (withdrawalConfig) {
         deployArgs.push(
             "--withdrawal-config",
-            JSON.stringify(withdrawalConfig),
+            stringifyWithdrawalConfig(withdrawalConfig),
         );
     }
 

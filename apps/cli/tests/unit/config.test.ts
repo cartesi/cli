@@ -249,7 +249,7 @@ shared = true`,
                     guardian: "0x1111111111111111111111111111111111111111",
                     log2_leaves_per_account: 0,
                     log2_max_num_of_accounts: 20,
-                    accounts_drive_start_index: 33554432,
+                    accounts_drive_start_index: 33554432n,
                     withdrawal_output_builder:
                         "0x2222222222222222222222222222222222222222",
                 },
@@ -271,7 +271,7 @@ shared = true`,
                     guardian: "0x1111111111111111111111111111111111111111",
                     log2_leaves_per_account: 0,
                     log2_max_num_of_accounts: 20,
-                    accounts_drive_start_index: 33554432,
+                    accounts_drive_start_index: 33554432n,
                     withdrawal_output_builder:
                         "0x2222222222222222222222222222222222222222",
                 },
@@ -294,11 +294,47 @@ shared = true`,
                     guardian: "0x1111111111111111111111111111111111111111",
                     log2_leaves_per_account: 0,
                     log2_max_num_of_accounts: 20,
-                    accounts_drive_start_index: 33554432,
+                    accounts_drive_start_index: 33554432n,
                     withdrawal_output_builder:
                         "0x2222222222222222222222222222222222222222",
                 },
             });
+        });
+
+        it.each([
+            ["a bare integer", "9007199254740993"],
+            ["a quoted decimal", '"9007199254740993"'],
+            ["a quoted hex", '"0x20000000000001"'],
+        ])(
+            "should keep every digit of an accounts_drive_start_index beyond 2^53 given as %s",
+            (_, value) => {
+                const config = `
+                [withdrawal.config]
+                guardian = "0x1111111111111111111111111111111111111111"
+                log2_leaves_per_account = 0
+                log2_max_num_of_accounts = 0
+                accounts_drive_start_index = ${value}
+                withdrawal_output_builder = "0x2222222222222222222222222222222222222222"
+            `;
+                expect(
+                    parse([config]).withdrawalConfig
+                        ?.accounts_drive_start_index,
+                ).toBe(2n ** 53n + 1n);
+            },
+        );
+
+        it("should fail when accounts_drive_start_index is negative", () => {
+            const config = `
+                [withdrawal.config]
+                guardian = "0x1111111111111111111111111111111111111111"
+                log2_leaves_per_account = 0
+                log2_max_num_of_accounts = 20
+                accounts_drive_start_index = -1
+                withdrawal_output_builder = "0x2222222222222222222222222222222222222222"
+            `;
+            expect(() => parse([config])).toThrowError(
+                new InvalidNumberValueError(-1, "accounts_drive_start_index"),
+            );
         });
 
         it("should return undefined when [withdrawal.config] is not defined", () => {
