@@ -12,6 +12,9 @@ const argsOf = (toml: string) =>
 const nvramArgs = (toml: string) =>
     argsOf(toml).filter((arg) => arg.startsWith("--nvram="));
 
+const flashDriveArg = (toml: string, label: string) =>
+    argsOf(toml).find((arg) => arg.startsWith(`--flash-drive=label:${label},`));
+
 describe("buildMachineArgs", () => {
     it("should not emit any --nvram when none is configured", () => {
         expect(nvramArgs("")).toEqual([]);
@@ -74,5 +77,33 @@ describe("buildMachineArgs", () => {
             "--nvram=label:output,length:4096",
             "--nvram=label:input,length:4096",
         ]);
+    });
+
+    it("should not mount the accounts drive", () => {
+        const toml = `
+            [drives.accounts]
+            builder = "empty"
+            format = "raw"
+            size = "4MB"
+            accounts_drive = true
+        `;
+        expect(flashDriveArg(toml, "accounts")).toBe(
+            "--flash-drive=label:accounts,data_filename:accounts.raw,mount:false",
+        );
+    });
+
+    it("should keep an explicit mount of the accounts drive", () => {
+        const toml = `
+            [drives.accounts]
+            builder = "empty"
+            format = "raw"
+            size = "4MB"
+            mount = false
+            user = "dapp"
+            accounts_drive = true
+        `;
+        expect(flashDriveArg(toml, "accounts")).toBe(
+            "--flash-drive=label:accounts,data_filename:accounts.raw,mount:false,user:dapp",
+        );
     });
 });
