@@ -249,4 +249,23 @@ describe("buildDeployApplicationArgs", () => {
         expect(args.slice(0, 2)).toEqual(["echo", ".cartesi/image"]);
         expect(args.at(-1)).toBe("--json");
     });
+
+    // the node decodes the start index as a uint64, which a number can't hold exactly
+    it("should pass a start index beyond 2^53 without losing precision", () => {
+        const args = buildDeployApplicationArgs({
+            ...base,
+            withdrawalConfig: {
+                guardian: "0x1111111111111111111111111111111111111111",
+                log2_leaves_per_account: 0,
+                log2_max_num_of_accounts: 0,
+                accounts_drive_start_index: 2n ** 53n + 1n,
+                withdrawal_output_builder:
+                    "0x2222222222222222222222222222222222222222",
+            },
+        });
+
+        expect(args[args.indexOf("--withdrawal-config") + 1]).toBe(
+            '{"guardian":"0x1111111111111111111111111111111111111111","log2_leaves_per_account":0,"log2_max_num_of_accounts":0,"accounts_drive_start_index":9007199254740993,"withdrawal_output_builder":"0x2222222222222222222222222222222222222222"}',
+        );
+    });
 });
