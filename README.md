@@ -14,14 +14,9 @@ Cartesi CLI is a tool to help creating [Cartesi](http://cartesi.io) applications
 - `cli`: a CLI tool for development, deployment and management of applications, available at `brew install cartesi/tap/cartesi`;
 - `sdk`: Docker image to help with Cartesi build and execution;
 - `contracts`: smart contracts for application deployment;
-- `devnet`: local deployment of Cartesi contracts and token test contracts;
 - `tsconfig`: `tsconfig.json`s used throughout the monorepo
 
 Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
-
-## Dependencies
-
-This repo build uses Anvil commands. To install Anvil, you need to follow the instructions [here](https://book.getfoundry.sh/getting-started/installation#using-foundryup)
 
 ## Build
 
