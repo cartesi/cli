@@ -13,8 +13,9 @@ accounts_drive = true
 # guardian = "0x1111111111111111111111111111111111111111"
 # withdrawal_output_builder = "0x2222222222222222222222222222222222222222"
 
-# defaults to 0, one 32-byte leaf per account
-# log2_leaves_per_account = 0
+# size of each account in bytes, a power of two of at least 32. defaults to 32,
+# which is what the devnet withdrawal output builder expects
+# account_size = 32
 
 # derived from the built machine, and checked against it when given
 # log2_max_num_of_accounts = 17
