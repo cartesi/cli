@@ -5,6 +5,8 @@ import {
     defaultConfig,
     defaultMachineConfig,
     DuplicateLabelError,
+    getAccountsDrive,
+    InvalidAccountsDriveError,
     InvalidAddressValueError,
     InvalidBooleanValueError,
     InvalidBuilderError,
@@ -15,7 +17,9 @@ import {
     InvalidNumberValueError,
     InvalidNvramSizeError,
     InvalidStringValueError,
+    InvalidWithdrawalConfigError,
     MissingNvramSourceError,
+    MultipleAccountsDrivesError,
     parse,
     RequiredFieldError,
     TooManyNvramsError,
@@ -234,237 +238,366 @@ shared = true`,
      * [withdrawal]
      */
     describe("when parsing [withdrawal.config]", () => {
-        it("should parse a valid withdrawal config", () => {
+        const accountsDrive = `
+            [drives.accounts]
+            builder = "empty"
+            format = "raw"
+            size = "4MB"
+            accounts_drive = true
+        `;
+        const withdrawal = (config: string) =>
+            parse([accountsDrive, config]).withdrawalConfig;
+
+        it("should parse a complete withdrawal config", () => {
             const config = `
                 [withdrawal.config]
-                guardian = "0x1111111111111111111111111111111111111111" 
+                guardian = "0x1111111111111111111111111111111111111111"
                 log2_leaves_per_account = 0
                 log2_max_num_of_accounts = 20
                 accounts_drive_start_index = 33554432
                 withdrawal_output_builder = "0x2222222222222222222222222222222222222222"
             `;
-            expect(parse([config])).toEqual({
-                ...defaultConfig(),
-                withdrawalConfig: {
-                    guardian: "0x1111111111111111111111111111111111111111",
-                    log2_leaves_per_account: 0,
-                    log2_max_num_of_accounts: 20,
-                    accounts_drive_start_index: 33554432,
-                    withdrawal_output_builder:
-                        "0x2222222222222222222222222222222222222222",
-                },
+            expect(withdrawal(config)).toEqual({
+                guardian: "0x1111111111111111111111111111111111111111",
+                log2_leaves_per_account: 0,
+                log2_max_num_of_accounts: 20,
+                accounts_drive_start_index: 33554432n,
+                withdrawal_output_builder:
+                    "0x2222222222222222222222222222222222222222",
             });
         });
 
-        it("should parse a valid withdrawal config that uses hex instead of decimal for numbers", () => {
+        it("should parse a withdrawal config that uses hex instead of decimal for numbers", () => {
             const config = `
                 [withdrawal.config]
-                guardian = "0x1111111111111111111111111111111111111111" 
                 log2_leaves_per_account = 0x0
                 log2_max_num_of_accounts = 0x14
                 accounts_drive_start_index = 0x2000000
-                withdrawal_output_builder = "0x2222222222222222222222222222222222222222"
             `;
-            expect(parse([config])).toEqual({
-                ...defaultConfig(),
-                withdrawalConfig: {
-                    guardian: "0x1111111111111111111111111111111111111111",
-                    log2_leaves_per_account: 0,
-                    log2_max_num_of_accounts: 20,
-                    accounts_drive_start_index: 33554432,
-                    withdrawal_output_builder:
-                        "0x2222222222222222222222222222222222222222",
-                },
+            expect(withdrawal(config)).toEqual({
+                log2_leaves_per_account: 0,
+                log2_max_num_of_accounts: 20,
+                accounts_drive_start_index: 33554432n,
             });
         });
 
-        it("should parse a valid withdrawal config even when using quoted hex for the numbers", () => {
+        it("should parse a withdrawal config even when using quoted hex for the numbers", () => {
             const config = `
                 [withdrawal.config]
-                guardian = "0x1111111111111111111111111111111111111111" 
                 log2_leaves_per_account = "0x0"
                 log2_max_num_of_accounts = "0x14"
                 accounts_drive_start_index = "0x2000000"
+            `;
+            expect(withdrawal(config)).toEqual({
+                log2_leaves_per_account: 0,
+                log2_max_num_of_accounts: 20,
+                accounts_drive_start_index: 33554432n,
+            });
+        });
+
+        it.each([
+            ["a bare integer", "9007199254740993"],
+            ["a quoted decimal", '"9007199254740993"'],
+            ["a quoted hex", '"0x20000000000001"'],
+        ])(
+            "should keep every digit of an accounts_drive_start_index beyond 2^53 given as %s",
+            (_, value) => {
+                const config = `
+                [withdrawal.config]
+                accounts_drive_start_index = ${value}
+            `;
+                expect(withdrawal(config)?.accounts_drive_start_index).toBe(
+                    2n ** 53n + 1n,
+                );
+            },
+        );
+
+        it("should accept an empty section", () => {
+            expect(withdrawal("[withdrawal.config]")).toEqual({});
+        });
+
+        it("should keep only the addresses when the layout is left to be derived", () => {
+            const config = `
+                [withdrawal.config]
+                guardian = "0x1111111111111111111111111111111111111111"
                 withdrawal_output_builder = "0x2222222222222222222222222222222222222222"
             `;
-
-            expect(parse([config])).toEqual({
-                ...defaultConfig(),
-                withdrawalConfig: {
-                    guardian: "0x1111111111111111111111111111111111111111",
-                    log2_leaves_per_account: 0,
-                    log2_max_num_of_accounts: 20,
-                    accounts_drive_start_index: 33554432,
-                    withdrawal_output_builder:
-                        "0x2222222222222222222222222222222222222222",
-                },
+            expect(withdrawal(config)).toEqual({
+                guardian: "0x1111111111111111111111111111111111111111",
+                withdrawal_output_builder:
+                    "0x2222222222222222222222222222222222222222",
             });
         });
 
         it("should return undefined when [withdrawal.config] is not defined", () => {
-            const config = ``;
-            expect(parse([config])).toEqual({
+            expect(parse([""])).toEqual({
                 ...defaultConfig(),
                 withdrawalConfig: undefined,
             });
         });
 
-        it("should return undefined when [withdrawal.config] is empty", () => {
-            const config = `
-                [withdrawal.config]
-            `;
+        it("should fail for an unknown key", () => {
+            expect(() =>
+                withdrawal("[withdrawal.config]\nguardain = '0x1'"),
+            ).toThrowError(
+                new InvalidWithdrawalConfigError(
+                    "unknown key 'guardain', expected one of guardian, account_size, log2_leaves_per_account, log2_max_num_of_accounts, accounts_drive_start_index, withdrawal_output_builder",
+                ),
+            );
+        });
 
-            expect(parse([config])).toEqual({
-                ...defaultConfig(),
-                withdrawalConfig: undefined,
+        it.each([
+            ["64", 64],
+            ['"64"', 64],
+            ['"1Ki"', 1024],
+        ])("should parse account_size %s as %i bytes", (value, expected) => {
+            expect(
+                withdrawal(`[withdrawal.config]\naccount_size = ${value}`),
+            ).toEqual({ account_size: expected });
+        });
+
+        it.each([
+            ["48", 48],
+            ["16", 16],
+            ['"1.5Ki"', "1.5Ki"],
+        ])("should fail for an account_size of %s", (value, parsed) => {
+            expect(() =>
+                withdrawal(`[withdrawal.config]\naccount_size = ${value}`),
+            ).toThrowError(
+                new InvalidWithdrawalConfigError(
+                    `account_size ${parsed} must be a power of two of at least 32 bytes, such as 32 or 64`,
+                ),
+            );
+        });
+
+        it("should accept account_size and log2_leaves_per_account that agree", () => {
+            expect(
+                withdrawal(`
+                    [withdrawal.config]
+                    account_size = 64
+                    log2_leaves_per_account = 1
+                `),
+            ).toEqual({ account_size: 64, log2_leaves_per_account: 1 });
+        });
+
+        it("should fail for account_size and log2_leaves_per_account that disagree", () => {
+            expect(() =>
+                withdrawal(`
+                    [withdrawal.config]
+                    account_size = 64
+                    log2_leaves_per_account = 0
+                `),
+            ).toThrowError(
+                new InvalidWithdrawalConfigError(
+                    "account_size 64 and log2_leaves_per_account 0 give different account sizes, keep only account_size",
+                ),
+            );
+        });
+
+        it("should fail when the section is not a table", () => {
+            expect(() => withdrawal("[withdrawal]\nconfig = 42")).toThrowError(
+                new InvalidWithdrawalConfigError("expected a table, got 42"),
+            );
+        });
+
+        it.each([
+            ["guardian", '"invalid_address"', InvalidAddressValueError],
+            [
+                "withdrawal_output_builder",
+                '"invalid_address"',
+                InvalidAddressValueError,
+            ],
+        ])(
+            "should fail when %s is not a valid address",
+            (key, value, error) => {
+                expect(() =>
+                    withdrawal(`[withdrawal.config]\n${key} = ${value}`),
+                ).toThrowError(new error("invalid_address", key));
+            },
+        );
+
+        it.each([
+            ["log2_leaves_per_account", '"not_a_number"', "not_a_number"],
+            ["log2_leaves_per_account", "-1", -1],
+            ["log2_leaves_per_account", "1.5", 1.5],
+            ["log2_max_num_of_accounts", '"not_a_number"', "not_a_number"],
+            ["accounts_drive_start_index", '"not_a_number"', "not_a_number"],
+            ["accounts_drive_start_index", "-1", -1],
+        ])("should fail when %s is %s", (key, value, parsed) => {
+            expect(() =>
+                withdrawal(`[withdrawal.config]\n${key} = ${value}`),
+            ).toThrowError(new InvalidNumberValueError(parsed, key));
+        });
+    });
+
+    /**
+     * accounts drive validation, before the machine is built
+     */
+    describe("when checking the accounts drive", () => {
+        const check = (config: string) => () => parse([config]);
+
+        it("should fail when [withdrawal.config] has no accounts drive", () => {
+            expect(() => parse(["[withdrawal.config]"])).toThrowError(
+                new InvalidWithdrawalConfigError(
+                    "emergency withdrawal needs an accounts drive, mark a raw drive or an nvram with accounts_drive = true",
+                ),
+            );
+        });
+
+        it("should turn emergency withdrawal on with only a marked drive", () => {
+            const config = parse([
+                '[nvrams.accounts]\nsize = "4Mi"\naccounts_drive = true',
+            ]);
+            expect(getAccountsDrive(config)).toMatchObject({
+                kind: "nvram",
+                label: "accounts",
             });
+            expect(config.withdrawalConfig).toBeUndefined();
         });
 
-        it("should fail when missing guardian field", () => {
-            const config = `
-                [withdrawal.config]
-                log2_leaves_per_account = 0
-                log2_max_num_of_accounts = 20
-                accounts_drive_start_index = 33554432
-                withdrawal_output_builder = "0x2222222222222222222222222222222222222222"
-            `;
-            expect(() => parse([config])).toThrowError(
-                new RequiredFieldError("guardian"),
-            );
+        it("should fail when more than one drive is marked", () => {
+            expect(
+                check(`
+                    [drives.a]
+                    builder = "empty"
+                    format = "raw"
+                    size = "4MB"
+                    accounts_drive = true
+
+                    [nvrams.b]
+                    size = "4Mi"
+                    accounts_drive = true
+                `),
+            ).toThrowError(new MultipleAccountsDrivesError(["a", "b"]));
         });
 
-        it("should fail when missing withdrawal_output_builder field", () => {
-            const config = `
-                [withdrawal.config]
-                guardian = "0x1111111111111111111111111111111111111111" 
-                log2_leaves_per_account = 0
-                log2_max_num_of_accounts = 20
-                accounts_drive_start_index = 33554432
-            `;
-            expect(() => parse([config])).toThrowError(
-                new RequiredFieldError("withdrawal_output_builder"),
-            );
-        });
-
-        it("should fail when missing log2_leaves_per_account field", () => {
-            const config = `
-                [withdrawal.config]
-                guardian = "0x1111111111111111111111111111111111111111" 
-                log2_max_num_of_accounts = 20
-                accounts_drive_start_index = 33554432
-                withdrawal_output_builder = "0x2222222222222222222222222222222222222222"
-            `;
-            expect(() => parse([config])).toThrowError(
-                new RequiredFieldError("log2_leaves_per_account"),
-            );
-        });
-
-        it("should fail when missing log2_max_num_of_accounts field", () => {
-            const config = `
-                [withdrawal.config]
-                guardian = "0x1111111111111111111111111111111111111111" 
-                log2_leaves_per_account = 0
-                accounts_drive_start_index = 33554432
-                withdrawal_output_builder = "0x2222222222222222222222222222222222222222222"
-            `;
-            expect(() => parse([config])).toThrowError(
-                new RequiredFieldError("log2_max_num_of_accounts"),
-            );
-        });
-
-        it("should fail when missing accounts_drive_start_index field", () => {
-            const config = `
-                [withdrawal.config]
-                guardian = "0x1111111111111111111111111111111111111111" 
-                log2_leaves_per_account = 0
-                log2_max_num_of_accounts = 20
-                withdrawal_output_builder = "0x2222222222222222222222222222222222222222"
-            `;
-            expect(() => parse([config])).toThrowError(
-                new RequiredFieldError("accounts_drive_start_index"),
-            );
-        });
-
-        it("should fail when guardian is not a valid address", () => {
-            const config = `
-                [withdrawal.config]
-                guardian = "invalid_address" 
-                log2_leaves_per_account = 0
-                log2_max_num_of_accounts = 20
-                accounts_drive_start_index = 33554432
-                withdrawal_output_builder = "0x2222222222222222222222222222222222222222"
-            `;
-            expect(() => parse([config])).toThrowError(
-                new InvalidAddressValueError("invalid_address", "guardian"),
-            );
-        });
-
-        it("should fail when withdrawal_output_builder is not a valid address", () => {
-            const config = `
-                [withdrawal.config]
-                guardian = "0x1111111111111111111111111111111111111111" 
-                log2_leaves_per_account = 0
-                log2_max_num_of_accounts = 20
-                accounts_drive_start_index = 33554432
-                withdrawal_output_builder = "invalid_address"
-            `;
-            expect(() => parse([config])).toThrowError(
-                new InvalidAddressValueError(
-                    "invalid_address",
-                    "withdrawal_output_builder",
+        it("should fail for accounts_drive_size on an unmarked drive", () => {
+            expect(
+                check(`
+                    [nvrams.state]
+                    size = "8Mi"
+                    accounts_drive_size = "4Mi"
+                `),
+            ).toThrowError(
+                new InvalidAccountsDriveError(
+                    "state",
+                    "accounts_drive_size requires accounts_drive = true",
                 ),
             );
         });
 
-        it("should fail when log2_leaves_per_account is not a number", () => {
-            const config = `
-                [withdrawal.config]
-                guardian = "0x1111111111111111111111111111111111111111" 
-                log2_leaves_per_account = "not_a_number"
-                log2_max_num_of_accounts = 20
-                accounts_drive_start_index = 33554432
-                withdrawal_output_builder = "0x2222222222222222222222222222222222222222"
-            `;
-            expect(() => parse([config])).toThrowError(
-                new InvalidNumberValueError(
-                    "not_a_number",
-                    "log2_leaves_per_account",
+        it.each([
+            ['builder = "empty"\nformat = "ext2"\nsize = "4MB"'],
+            ['builder = "docker"'],
+        ])("should fail for a drive with a filesystem: %s", (drive) => {
+            expect(
+                check(`[drives.accounts]\n${drive}\naccounts_drive = true`),
+            ).toThrowError(
+                new InvalidAccountsDriveError(
+                    "accounts",
+                    'it must not have a filesystem, use builder = "empty" and format = "raw", or declare it under [nvrams.accounts]',
                 ),
             );
         });
 
-        it("should fail when log2_max_num_of_accounts is not a number", () => {
-            const config = `
-                [withdrawal.config]
-                guardian = "0x1111111111111111111111111111111111111111" 
-                log2_leaves_per_account = 0
-                log2_max_num_of_accounts = "not_a_number"
-                accounts_drive_start_index = 33554432
-                withdrawal_output_builder = "0x2222222222222222222222222222222222222222"
-            `;
-            expect(() => parse([config])).toThrowError(
-                new InvalidNumberValueError(
-                    "not_a_number",
-                    "log2_max_num_of_accounts",
+        it("should fail for a mounted drive", () => {
+            expect(
+                check(`
+                    [drives.accounts]
+                    builder = "empty"
+                    format = "raw"
+                    size = "4MB"
+                    mount = "/mnt/accounts"
+                    accounts_drive = true
+                `),
+            ).toThrowError(
+                new InvalidAccountsDriveError(
+                    "accounts",
+                    "it can't be mounted, remove 'mount' or set it to false",
                 ),
             );
         });
 
-        it("should fail when accounts_drive_start_index is not a number", () => {
-            const config = `
-                [withdrawal.config]
-                guardian = "0x1111111111111111111111111111111111111111" 
-                log2_leaves_per_account = 0
-                log2_max_num_of_accounts = 20
-                accounts_drive_start_index = "not_a_number"
-                withdrawal_output_builder = "0x2222222222222222222222222222222222222222"
-            `;
-            expect(() => parse([config])).toThrowError(
-                new InvalidNumberValueError(
-                    "not_a_number",
-                    "accounts_drive_start_index",
+        it("should suggest the next power of two for the size", () => {
+            expect(
+                check('[nvrams.accounts]\nsize = "3Mi"\naccounts_drive = true'),
+            ).toThrowError(
+                new InvalidAccountsDriveError(
+                    "accounts",
+                    'size 3145728 is not a power of two, use "4Mi", or set accounts_drive_size to keep the accounts at the beginning of a larger drive',
                 ),
             );
+        });
+
+        it("should accept a size that is not a power of two with accounts_drive_size", () => {
+            expect(
+                check(`
+                    [nvrams.state]
+                    size = "12Mi"
+                    accounts_drive = true
+                    accounts_drive_size = "4Mi"
+                `),
+            ).not.toThrow();
+        });
+
+        it("should fail for an accounts_drive_size that is not a power of two", () => {
+            expect(
+                check(`
+                    [nvrams.state]
+                    size = "12Mi"
+                    accounts_drive = true
+                    accounts_drive_size = "3Mi"
+                `),
+            ).toThrowError(
+                new InvalidAccountsDriveError(
+                    "state",
+                    'accounts_drive_size 3145728 is not a power of two, use "4Mi"',
+                ),
+            );
+        });
+
+        it("should fail for an accounts_drive_size larger than the drive", () => {
+            expect(
+                check(`
+                    [nvrams.state]
+                    size = "4Mi"
+                    accounts_drive = true
+                    accounts_drive_size = "8Mi"
+                `),
+            ).toThrowError(
+                new InvalidAccountsDriveError(
+                    "state",
+                    "accounts_drive_size 8388608 is larger than the drive itself (4194304 bytes)",
+                ),
+            );
+        });
+
+        it("should fail for a drive smaller than one account", () => {
+            expect(() =>
+                parse([
+                    `
+                    [nvrams.accounts]
+                    size = "4Ki"
+                    accounts_drive = true
+
+                    [withdrawal.config]
+                    log2_leaves_per_account = 8
+                    `,
+                ]),
+            ).toThrowError(
+                new InvalidAccountsDriveError(
+                    "accounts",
+                    "size 4096 is smaller than one account of 8192 bytes",
+                ),
+            );
+        });
+
+        it("should leave the size of an nvram backed by an image to the build", () => {
+            expect(
+                check(
+                    '[nvrams.accounts]\nfilename = "./accounts.raw"\naccounts_drive = true',
+                ),
+            ).not.toThrow();
         });
     });
 
@@ -531,6 +664,47 @@ shared = true`,
                 parse(["[drives.data]\nbuilder = 'empty'\nformat = 42"]),
             ).toThrowError(new InvalidEmptyDriveFormatError(42));
         });
+
+        // drive sizes read the same as nvram sizes
+        it.each([
+            ["4096", 4096],
+            ['"4096"', 4096],
+            ['"4Ki"', 4096],
+            ['"4Mi"', 4194304],
+            ['"4MiB"', 4194304],
+            ['"4MB"', 4194304],
+            ['"100Mb"', 104857600],
+            ['"1Ti"', 2 ** 40],
+            ['"1TB"', 2 ** 40],
+            ['"1Pi"', 2 ** 50],
+            ['"1PB"', 2 ** 50],
+        ])("should parse drive size %s as %i bytes", (size, expected) => {
+            const config = parse([
+                `[drives.data]\nbuilder = "empty"\nsize = ${size}`,
+                `[drives.root]\nextra_size = ${size}`,
+            ]);
+            expect(config.drives.data).toMatchObject({ size: expected });
+            expect(config.drives.root).toMatchObject({ extraSize: expected });
+        });
+
+        it("should fail for an unparseable drive size", () => {
+            expect(() =>
+                parse(['[drives.data]\nbuilder = "empty"\nsize = "4XB"']),
+            ).toThrowError(new InvalidBytesValueError("4XB"));
+        });
+
+        // sizes are numbers, which can't hold every integer beyond 2^53 bytes (8 PiB)
+        it.each([
+            ['"9PB"', "9PB"],
+            ["9007199254740993", 9007199254740993n],
+        ])(
+            "should fail for a drive size beyond 2^53 bytes: %s",
+            (size, parsed) => {
+                expect(() =>
+                    parse([`[drives.data]\nbuilder = "empty"\nsize = ${size}`]),
+                ).toThrowError(new InvalidBytesValueError(parsed));
+            },
+        );
     });
 
     /**
@@ -611,6 +785,8 @@ shared = true`,
             ['"4kb"', 4096],
             ['"1Mi"', 1048576],
             ['"1Mb"', 1048576],
+            ['"1Ti"', 2 ** 40],
+            ['"1PB"', 2 ** 50],
         ])("should parse size %s as %i bytes", (size, expected) => {
             expect(
                 parse([`[nvrams.input]\nsize = ${size}`]).nvrams.input.size,
@@ -681,6 +857,62 @@ shared = true`,
             expect(() =>
                 parse(['[nvrams.input]\nsize = "4Ki"\nuser = 42']),
             ).toThrowError(new InvalidStringValueError(42));
+        });
+    });
+
+    /**
+     * accounts_drive
+     */
+    describe("when parsing the accounts drive marker", () => {
+        it("should find a marked raw drive", () => {
+            const config = parse([
+                `
+                [drives.accounts]
+                builder = "empty"
+                format = "raw"
+                size = "4Mi"
+                accounts_drive = true
+                `,
+            ]);
+            expect(config.drives.accounts).toMatchObject({
+                accountsDrive: true,
+            });
+            expect(getAccountsDrive(config)).toMatchObject({
+                kind: "flash_drive",
+                label: "accounts",
+            });
+        });
+
+        it("should find a marked nvram with the accounts at its beginning", () => {
+            const config = parse([
+                `
+                [nvrams.state]
+                size = "12Mi"
+                accounts_drive = true
+                accounts_drive_size = "4Mi"
+                `,
+            ]);
+            expect(config.nvrams.state).toMatchObject({
+                accountsDrive: true,
+                accountsDriveSize: 4 * 1024 * 1024,
+            });
+            expect(getAccountsDrive(config)).toMatchObject({
+                kind: "nvram",
+                label: "state",
+            });
+        });
+
+        it("should leave the marker out of unmarked drives and nvrams", () => {
+            const config = parse(['[nvrams.input]\nsize = "4Ki"']);
+            expect(config.drives.root).not.toHaveProperty("accountsDrive");
+            expect(config.nvrams.input).not.toHaveProperty("accountsDrive");
+            expect(getAccountsDrive(config)).toBeUndefined();
+        });
+
+        it("should fail for an invalid marker", () => {
+            expect(() =>
+                parse(['[nvrams.input]\nsize = "4Ki"\naccounts_drive = 1']),
+            ).toThrowError(new InvalidBooleanValueError(1));
         });
     });
 

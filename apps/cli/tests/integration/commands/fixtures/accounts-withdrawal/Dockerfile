@@ -31,6 +31,6 @@ rm /tmp/machine-guest-tools_riscv64.deb
 rm -rf /var/lib/apt/lists/* /var/log/* /var/cache/*
 EOF
 
-COPY --chmod=755 dapp.sh /usr/local/bin/erc20-withdrawal-dapp
+COPY --chmod=755 dapp.sh /usr/local/bin/accounts-withdrawal-dapp
 
-ENTRYPOINT ["/usr/local/bin/erc20-withdrawal-dapp"]
+ENTRYPOINT ["/usr/local/bin/accounts-withdrawal-dapp"]

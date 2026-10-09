@@ -15,6 +15,7 @@ import {
 } from "../builder/index.js";
 import type { Config, DriveConfig, ImageInfo, NvramConfig } from "../config.js";
 import { bootMachine } from "../machine.js";
+import { describeWithdrawalConfig, resolveWithdrawal } from "../withdrawal.js";
 
 // context for Listr build tasks
 interface BuildContext {
@@ -202,6 +203,17 @@ export const createBuildCommand = () => {
             );
 
             // make snapshot readable by all users, because cartesi-machine sets to 600
-            await fs.chmod(path.join(destination, "image"), 0o755);
+            const imagePath = path.join(destination, "image");
+            await fs.chmod(imagePath, 0o755);
+
+            // check the accounts drive where the machine placed it, and show the result
+            const resolved = resolveWithdrawal(config, imagePath);
+            if (resolved) {
+                const { layout, withdrawal } = resolved;
+                console.log();
+                console.log(
+                    describeWithdrawalConfig(config, layout, withdrawal),
+                );
+            }
         });
 };

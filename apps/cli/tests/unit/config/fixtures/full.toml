@@ -66,9 +66,14 @@
 # filename = "./seed.raw" # existing raw image. it is copied into .cartesi/, never written to
 # size = "4Ki" # optional. when given it must match the size of the file exactly
 
-# [withdrawal.config]
-# guardian = "0x1111111111111111111111111111111111111111" 
-# log2_leaves_per_account = 0
-# log2_max_num_of_accounts = 20
-# accounts_drive_start_index = 33554432
-# withdrawal_output_builder = "0x2222222222222222222222222222222222222222"
+# [nvrams.accounts]
+# size = "4Mi"
+# accounts_drive = true # holds the accounts of emergency withdrawal, which turns it on
+# accounts_drive_size = "4Mi" # optional. accounts only at the beginning of a larger drive
+
+# [withdrawal.config] # optional, every key is optional too
+# guardian = "0x1111111111111111111111111111111111111111" # devnet account by default
+# withdrawal_output_builder = "0x2222222222222222222222222222222222222222" # devnet builder by default
+# account_size = 32 # bytes per account, 32 by default as the devnet builder expects
+# log2_max_num_of_accounts = 17 # derived from the built machine, checked when given
+# accounts_drive_start_index = 0x221 # derived from the built machine, checked when given
