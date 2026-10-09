@@ -1,5 +1,4 @@
 ---
-"@cartesi/devnet": minor
 "@cartesi/sdk": minor
 ---
 
