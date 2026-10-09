@@ -1,4 +1,3 @@
-import bytes from "bytes";
 import { extname } from "node:path";
 import { parse as parseToml, type TomlPrimitive } from "smol-toml";
 import { getAddress, isAddress, isHex, type Address } from "viem";
@@ -465,22 +464,6 @@ const parseOptionalNumber = (value: TomlPrimitive): bigint | undefined => {
     throw new InvalidNumberValueError(value);
 };
 
-const parseBytes = (value: TomlPrimitive, defaultValue: number): number => {
-    if (value === undefined) {
-        return defaultValue;
-    }
-    if (typeof value === "bigint") {
-        return Number(value);
-    }
-    if (typeof value === "number" || typeof value === "string") {
-        const output = bytes.parse(value);
-        if (output !== null) {
-            return output;
-        }
-    }
-    throw new InvalidBytesValueError(value);
-};
-
 const IEC_MULTIPLIERS: Record<string, number> = {
     "": 1,
     b: 1,
@@ -496,38 +479,52 @@ const IEC_MULTIPLIERS: Record<string, number> = {
     gi: 1024 ** 3,
     gb: 1024 ** 3,
     gib: 1024 ** 3,
+    t: 1024 ** 4,
+    ti: 1024 ** 4,
+    tb: 1024 ** 4,
+    tib: 1024 ** 4,
+    p: 1024 ** 5,
+    pi: 1024 ** 5,
+    pb: 1024 ** 5,
+    pib: 1024 ** 5,
 };
 
 /**
- * Parses a byte size, accepting both the IEC suffixes used by cartesi-machine ("4Ki", "1MiB")
- * and the ones understood by the `bytes` package ("4kb", "100Mb"). Not to be confused with
- * `parseBytes`, which delegates to `bytes.parse` and reads "4Ki" as 4 bytes.
+ * Parses a byte size of a drive or nvram, accepting the IEC suffixes used by cartesi-machine
+ * ("4Ki", "1MiB") and their decimal spellings ("4kb", "100Mb"), all as powers of 1024, up to
+ * petabytes. Sizes are numbers, so the ones beyond 2^53 bytes, which they can't hold exactly,
+ * are rejected.
  */
-const parseNvramSize = (value: TomlPrimitive): number | undefined => {
+const parseSize = (value: TomlPrimitive): number | undefined => {
     if (value === undefined) {
         return undefined;
     }
+    let size: number | undefined;
     if (typeof value === "bigint") {
-        return Number(value);
-    }
-    if (typeof value === "number") {
-        return value;
-    }
-    if (typeof value === "string") {
+        size = value <= Number.MAX_SAFE_INTEGER ? Number(value) : undefined;
+    } else if (typeof value === "number") {
+        size = value;
+    } else if (typeof value === "string") {
         const match = /^\s*(\d+(?:\.\d+)?)\s*([a-z]*)\s*$/i.exec(value);
         const multiplier = match
             ? IEC_MULTIPLIERS[match[2].toLowerCase()]
             : undefined;
         if (match && multiplier !== undefined) {
-            return Number(match[1]) * multiplier;
+            size = Number(match[1]) * multiplier;
         }
+    }
+    if (size !== undefined && size <= Number.MAX_SAFE_INTEGER) {
+        return size;
     }
     throw new InvalidBytesValueError(value);
 };
 
+const parseBytes = (value: TomlPrimitive, defaultValue: number): number =>
+    parseSize(value) ?? defaultValue;
+
 const parseNvram = (label: string, value: TomlPrimitive): NvramConfig => {
     const toml = isTomlTable(value) ? value : {};
-    const size = parseNvramSize(toml.size);
+    const size = parseSize(toml.size);
     const filename = parseOptionalString(toml.filename);
 
     if (size === undefined && filename === undefined) {
