@@ -19,7 +19,6 @@ import {
     erc20PortalAddress,
     testUsdcAbi,
     testUsdcAddress,
-    testUsdWithdrawalOutputBuilderAddress,
 } from "../../../src/contracts";
 import { replayStorePath } from "../../../src/commands/withdraw";
 import {
@@ -71,24 +70,6 @@ const guardian = mnemonicToAccount(guardianMnemonic).address;
 const amounts = { alice: 100n, bob: 50n, carol: 25n, dave: 15n, erin: 10n };
 
 const count = (text: string, part: string) => text.split(part).length - 1;
-
-/**
- * Layout of the accounts drive in the built machine: its size in log2 of the
- * number of 32-byte accounts, and its start as a multiple of its size
- */
-const accountsDriveLayout = async (appDir: string, driveIndex: number) => {
-    const { config } = await fs.readJson(
-        path.join(appDir, ".cartesi", "image", "config.json"),
-    );
-    const { start, length } = config.flash_drive[driveIndex];
-    const log2Length = Math.log2(length);
-    expect(Number.isInteger(log2Length)).toBe(true);
-    expect(start % length).toBe(0);
-    return {
-        accountsDriveStartIndex: start / length,
-        log2MaxNumOfAccounts: log2Length - 5,
-    };
-};
 
 describe("fund recovery", () => {
     let appDir: string;
@@ -191,6 +172,10 @@ format = "raw"
 size = "4MB"
 mount = false
 user = "dapp"
+accounts_drive = true
+
+[withdrawal]
+guardian = "${guardian}"
 `,
         );
 
@@ -202,20 +187,6 @@ user = "dapp"
         });
         expect(build.exitCode, build.all).toBe(0);
         console.log("✓ Built the erc20-withdrawal application");
-
-        // the accounts drive follows the root drive
-        const layout = await accountsDriveLayout(appDir, 1);
-        await fs.appendFile(
-            path.join(appDir, "cartesi.toml"),
-            `
-[withdrawal.config]
-guardian = "${guardian}"
-log2_leaves_per_account = 0
-log2_max_num_of_accounts = ${layout.log2MaxNumOfAccounts}
-accounts_drive_start_index = ${layout.accountsDriveStartIndex}
-withdrawal_output_builder = "${testUsdWithdrawalOutputBuilderAddress}"
-`,
-        );
 
         // without a terminal the environment runs in the foreground
         console.log(`! Starting the environment ${projectName}...`);

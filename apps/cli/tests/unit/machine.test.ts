@@ -12,7 +12,23 @@ const argsOf = (toml: string) =>
 const nvramArgs = (toml: string) =>
     argsOf(toml).filter((arg) => arg.startsWith("--nvram="));
 
+const flashDriveArg = (toml: string, label: string) =>
+    argsOf(toml).find((arg) => arg.startsWith(`--flash-drive=label:${label},`));
+
 describe("buildMachineArgs", () => {
+    it("should not mount a raw accounts drive", () => {
+        const toml = `
+            [drives.accounts]
+            builder = "empty"
+            format = "raw"
+            size = "4Mb"
+            accounts_drive = true
+        `;
+        expect(flashDriveArg(toml, "accounts")).toEqual(
+            "--flash-drive=label:accounts,data_filename:accounts.raw,mount:false",
+        );
+    });
+
     it("should not emit any --nvram when none is configured", () => {
         expect(nvramArgs("")).toEqual([]);
     });
