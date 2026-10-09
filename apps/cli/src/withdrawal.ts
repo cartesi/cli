@@ -1,3 +1,4 @@
+import chalk from "chalk";
 import fs from "node:fs";
 import path from "node:path";
 import type { Address } from "viem";
@@ -9,9 +10,11 @@ import {
     InvalidAccountsDriveError,
     InvalidWithdrawalConfigError,
     LOG2_LEAF_SIZE,
+    splitSize,
     type WithdrawalConfig,
 } from "./config.js";
 import { testUsdWithdrawalOutputBuilderAddress } from "./contracts.js";
+import { stringifyWithdrawalConfig } from "./exec/rollups.js";
 
 /**
  * Second account of the devnet mnemonic. The node signs with the first one, so the guardian
@@ -195,6 +198,135 @@ export const resolveWithdrawalConfig = (
     };
 };
 
+// a size as people read it, e.g. "4 MiB"
+const formatBytes = (length: bigint): string => {
+    const { value, unit } = splitSize(length);
+    return unit ? `${value} ${unit}B` : `${value} bytes`;
+};
+
+const formatRows = (rows: [string, string, string?][], indent = "") => {
+    const keyWidth = Math.max(...rows.map(([key]) => key.length));
+    const valueWidth = Math.max(...rows.map(([, value]) => value.length));
+    return rows.map(([key, value, note]) =>
+        `${indent}${key.padEnd(keyWidth)}  ${note ? `${value.padEnd(valueWidth)}  ${chalk.dim(note)}` : value}`.trimEnd(),
+    );
+};
+
+/**
+ * Describes the accounts drive layout and the withdrawal configuration derived from it, to
+ * show the developer what the guest sees and what will be deployed.
+ */
+export const describeWithdrawalConfig = (
+    config: Config,
+    layout: AccountsDriveLayout,
+    withdrawal: WithdrawalConfig,
+): string => {
+    const settings = config.withdrawalConfig ?? {};
+    const accountSize =
+        1n << BigInt(LOG2_LEAF_SIZE + withdrawal.log2_leaves_per_account);
+    const accounts = 1n << BigInt(withdrawal.log2_max_num_of_accounts);
+    const derived = (key: keyof WithdrawalConfig) =>
+        settings[key] === undefined
+            ? "derived"
+            : "derived, matches cartesi.toml";
+    const address = (
+        key: "guardian" | "withdrawal_output_builder",
+        devnet: Address,
+        name: string,
+    ): [string, string, string?] => [
+        key,
+        withdrawal[key],
+        settings[key] === undefined && withdrawal[key] === devnet
+            ? `devnet ${name}`
+            : undefined,
+    ];
+    const devnetDefaults =
+        settings.guardian === undefined ||
+        settings.withdrawal_output_builder === undefined;
+
+    const lines = [
+        ...formatRows([
+            [
+                "accounts drive",
+                `${chalk.cyan(layout.label)} (${layout.kind === "nvram" ? "nvram" : "flash drive"}) → ${chalk.cyan(layout.device)}`,
+            ],
+            ["start", hex(layout.start)],
+            [
+                "size",
+                `${formatBytes(layout.length)} (2^${layout.log2Length} bytes)${layout.length === layout.driveLength ? "" : `, at the beginning of ${formatBytes(layout.driveLength)}`}`,
+            ],
+            ["accounts", `${accounts} × ${accountSize} bytes`],
+        ]),
+        "",
+        "[withdrawal.config]",
+        ...formatRows(
+            [
+                address("guardian", DEVNET_GUARDIAN, "account 1"),
+                address(
+                    "withdrawal_output_builder",
+                    DEVNET_WITHDRAWAL_OUTPUT_BUILDER,
+                    "TestUsdWithdrawalOutputBuilder",
+                ),
+                [
+                    "log2_leaves_per_account",
+                    withdrawal.log2_leaves_per_account.toString(),
+                    settings.log2_leaves_per_account === undefined
+                        ? "default"
+                        : undefined,
+                ],
+                [
+                    "log2_max_num_of_accounts",
+                    withdrawal.log2_max_num_of_accounts.toString(),
+                    derived("log2_max_num_of_accounts"),
+                ],
+                [
+                    "accounts_drive_start_index",
+                    `${withdrawal.accounts_drive_start_index} (${hex(withdrawal.accounts_drive_start_index)})`,
+                    derived("accounts_drive_start_index"),
+                ],
+            ],
+            "  ",
+        ),
+        "",
+        `--withdrawal-config '${stringifyWithdrawalConfig(withdrawal)}'`,
+    ];
+    if (devnetDefaults) {
+        lines.push(
+            chalk.yellow(
+                "devnet defaults in use: set guardian and withdrawal_output_builder in [withdrawal.config] to deploy elsewhere",
+            ),
+        );
+    }
+    return lines.join("\n");
+};
+
+/**
+ * Locates the accounts drive in the built machine, and derives from it the emergency withdrawal
+ * configuration of the application.
+ * @returns undefined if emergency withdrawal is not enabled
+ */
+export const resolveWithdrawal = (
+    config: Config,
+    imagePath: string,
+    options?: { fork?: boolean },
+):
+    | { layout: AccountsDriveLayout; withdrawal: WithdrawalConfig }
+    | undefined => {
+    if (!getAccountsDrive(config)) {
+        return undefined;
+    }
+    const layout = resolveAccountsDriveLayout(
+        config,
+        readStoredMachineConfig(imagePath),
+    );
+    return (
+        layout && {
+            layout,
+            withdrawal: resolveWithdrawalConfig(config, layout, options),
+        }
+    );
+};
+
 /**
  * Derives the emergency withdrawal configuration of the application from its built machine.
  * @returns undefined if emergency withdrawal is not enabled
@@ -203,13 +335,5 @@ export const getWithdrawalConfig = (
     config: Config,
     imagePath: string,
     options?: { fork?: boolean },
-): WithdrawalConfig | undefined => {
-    if (!getAccountsDrive(config)) {
-        return undefined;
-    }
-    const layout = resolveAccountsDriveLayout(
-        config,
-        readStoredMachineConfig(imagePath),
-    );
-    return layout && resolveWithdrawalConfig(config, layout, options);
-};
+): WithdrawalConfig | undefined =>
+    resolveWithdrawal(config, imagePath, options)?.withdrawal;
