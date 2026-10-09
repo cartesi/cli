@@ -2,9 +2,9 @@
 
 # ERC-20 deposit dapp for the emergency withdrawal tests. It keeps the balances
 # in the accounts drive, using the account layout of the USD withdrawal output
-# builder. Unlike erc20-withdrawal, it doesn't know where its accounts drive is
-# or how large it is: it looks the drive up by label, so only the layout the CLI
-# derives makes its funds recoverable.
+# builder. It doesn't know where its accounts drive is or how large it is: it
+# looks the drive up by label, so only the layout the CLI derives makes its funds
+# recoverable.
 #
 # ACCOUNTS_LABEL is the label of the accounts drive. ACCOUNTS_SIZE, when set, is
 # the size of the accounts at the beginning of a larger drive.

@@ -48,7 +48,7 @@ import {
 
 const EPOCH_LENGTH = 720;
 
-const fixture = path.join(__dirname, "fixtures", "erc20-withdrawal");
+const fixture = path.join(__dirname, "fixtures", "accounts-withdrawal");
 const projectName = `recovery-${process.pid}`;
 
 const alice = devnetAccount(0);
@@ -113,13 +113,14 @@ describe("fund recovery", () => {
     beforeAll(async () => {
         const dir = tmp.dirSync({ unsafeCleanup: true });
         cleanup = dir.removeCallback;
-        appDir = path.join(dir.name, "erc20-withdrawal");
+        appDir = path.join(dir.name, "accounts-withdrawal");
         await fs.copy(fixture, appDir);
         const config = `sdk = "${TEST_SDK}"
 
 [machine.env]
 TRUSTED_ERC20_PORTAL = "${erc20PortalAddress}"
 TRUSTED_ERC20_TOKEN = "${testUsdcAddress}"
+ACCOUNTS_LABEL = "accounts"
 
 [drives.accounts]
 builder = "empty"
@@ -137,10 +138,10 @@ guardian = "${guardian}"
 `,
         );
 
-        console.log("! Building the erc20-withdrawal application...");
+        console.log("! Building the accounts-withdrawal application...");
         const build = await buildApplication(appDir);
         expect(build.exitCode, build.all).toBe(0);
-        console.log("✓ Built the erc20-withdrawal application");
+        console.log("✓ Built the accounts-withdrawal application");
 
         // spell out the whole config as before the CLI derived the layout,
         // which the CLI checks against the layout it derives on run
