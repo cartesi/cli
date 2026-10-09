@@ -341,7 +341,55 @@ shared = true`,
                 withdrawal("[withdrawal.config]\nguardain = '0x1'"),
             ).toThrowError(
                 new InvalidWithdrawalConfigError(
-                    "unknown key 'guardain', expected one of guardian, log2_leaves_per_account, log2_max_num_of_accounts, accounts_drive_start_index, withdrawal_output_builder",
+                    "unknown key 'guardain', expected one of guardian, account_size, log2_leaves_per_account, log2_max_num_of_accounts, accounts_drive_start_index, withdrawal_output_builder",
+                ),
+            );
+        });
+
+        it.each([
+            ["64", 64],
+            ['"64"', 64],
+            ['"1Ki"', 1024],
+        ])("should parse account_size %s as %i bytes", (value, expected) => {
+            expect(
+                withdrawal(`[withdrawal.config]\naccount_size = ${value}`),
+            ).toEqual({ account_size: expected });
+        });
+
+        it.each([
+            ["48", 48],
+            ["16", 16],
+            ['"1.5Ki"', "1.5Ki"],
+        ])("should fail for an account_size of %s", (value, parsed) => {
+            expect(() =>
+                withdrawal(`[withdrawal.config]\naccount_size = ${value}`),
+            ).toThrowError(
+                new InvalidWithdrawalConfigError(
+                    `account_size ${parsed} must be a power of two of at least 32 bytes, such as 32 or 64`,
+                ),
+            );
+        });
+
+        it("should accept account_size and log2_leaves_per_account that agree", () => {
+            expect(
+                withdrawal(`
+                    [withdrawal.config]
+                    account_size = 64
+                    log2_leaves_per_account = 1
+                `),
+            ).toEqual({ account_size: 64, log2_leaves_per_account: 1 });
+        });
+
+        it("should fail for account_size and log2_leaves_per_account that disagree", () => {
+            expect(() =>
+                withdrawal(`
+                    [withdrawal.config]
+                    account_size = 64
+                    log2_leaves_per_account = 0
+                `),
+            ).toThrowError(
+                new InvalidWithdrawalConfigError(
+                    "account_size 64 and log2_leaves_per_account 0 give different account sizes, keep only account_size",
                 ),
             );
         });

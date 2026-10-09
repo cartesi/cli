@@ -1,12 +1,13 @@
 import chalk from "chalk";
 import fs from "node:fs";
 import path from "node:path";
-import type { Address } from "viem";
+import { type Address, isAddressEqual } from "viem";
 import {
     type AccountsDrive,
     assertAccountsDriveLength,
     type Config,
     getAccountsDrive,
+    getLog2LeavesPerAccount,
     InvalidAccountsDriveError,
     InvalidWithdrawalConfigError,
     LOG2_LEAF_SIZE,
@@ -152,7 +153,8 @@ export const resolveWithdrawalConfig = (
     options?: { fork?: boolean },
 ): WithdrawalConfig => {
     const settings = config.withdrawalConfig ?? {};
-    const log2LeavesPerAccount = settings.log2_leaves_per_account ?? 0;
+    const log2LeavesPerAccount = getLog2LeavesPerAccount(settings);
+    const accountSize = 1n << BigInt(LOG2_LEAF_SIZE + log2LeavesPerAccount);
     const log2MaxNumOfAccounts =
         layout.log2Length - log2LeavesPerAccount - LOG2_LEAF_SIZE;
     const accountsDriveStartIndex = layout.startIndex;
@@ -170,7 +172,21 @@ export const resolveWithdrawalConfig = (
         settings.log2_max_num_of_accounts !== log2MaxNumOfAccounts
     ) {
         throw new InvalidWithdrawalConfigError(
-            `log2_max_num_of_accounts is ${settings.log2_max_num_of_accounts}, but the accounts drive '${layout.label}' of ${layout.length} bytes holds 2^${log2MaxNumOfAccounts} accounts of ${1n << BigInt(LOG2_LEAF_SIZE + log2LeavesPerAccount)} bytes. Remove it to use the derived value, or change the size of the drive`,
+            `log2_max_num_of_accounts is ${settings.log2_max_num_of_accounts}, but the accounts drive '${layout.label}' of ${layout.length} bytes holds 2^${log2MaxNumOfAccounts} accounts of ${accountSize} bytes. Remove it to use the derived value, or change the size of the drive`,
+        );
+    }
+
+    const withdrawalOutputBuilder =
+        settings.withdrawal_output_builder ?? DEVNET_WITHDRAWAL_OUTPUT_BUILDER;
+    if (
+        isAddressEqual(
+            withdrawalOutputBuilder,
+            DEVNET_WITHDRAWAL_OUTPUT_BUILDER,
+        ) &&
+        accountSize !== 32n
+    ) {
+        throw new InvalidWithdrawalConfigError(
+            `the devnet withdrawal output builder expects accounts of 32 bytes, but they are set to ${accountSize} bytes. Remove account_size, or set withdrawal_output_builder to a builder for ${accountSize}-byte accounts`,
         );
     }
 
@@ -192,9 +208,7 @@ export const resolveWithdrawalConfig = (
         log2_leaves_per_account: log2LeavesPerAccount,
         log2_max_num_of_accounts: log2MaxNumOfAccounts,
         accounts_drive_start_index: accountsDriveStartIndex,
-        withdrawal_output_builder:
-            settings.withdrawal_output_builder ??
-            DEVNET_WITHDRAWAL_OUTPUT_BUILDER,
+        withdrawal_output_builder: withdrawalOutputBuilder,
     };
 };
 
@@ -268,10 +282,18 @@ export const describeWithdrawalConfig = (
                     "TestUsdWithdrawalOutputBuilder",
                 ),
                 [
+                    "account_size",
+                    `${accountSize} bytes`,
+                    settings.account_size === undefined &&
+                    settings.log2_leaves_per_account === undefined
+                        ? "default"
+                        : undefined,
+                ],
+                [
                     "log2_leaves_per_account",
                     withdrawal.log2_leaves_per_account.toString(),
                     settings.log2_leaves_per_account === undefined
-                        ? "default"
+                        ? "derived"
                         : undefined,
                 ],
                 [

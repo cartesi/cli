@@ -191,12 +191,37 @@ describe("resolveWithdrawalConfig", () => {
         });
     });
 
-    it("should fit fewer accounts when they are larger", () => {
-        expect(resolve("log2_leaves_per_account = 1")).toMatchObject({
-            log2_leaves_per_account: 1,
-            log2_max_num_of_accounts: 16,
-        });
-    });
+    it.each([["account_size = 64"], ["log2_leaves_per_account = 1"]])(
+        "should fit fewer accounts when they are larger: %s",
+        (accountSize) => {
+            expect(
+                resolve(`
+                withdrawal_output_builder = "0x2222222222222222222222222222222222222222"
+                ${accountSize}
+            `),
+            ).toMatchObject({
+                log2_leaves_per_account: 1,
+                log2_max_num_of_accounts: 16,
+            });
+        },
+    );
+
+    it.each([
+        ["account_size = 64"],
+        ["log2_leaves_per_account = 1"],
+        [
+            `account_size = 64\nwithdrawal_output_builder = "${DEVNET_WITHDRAWAL_OUTPUT_BUILDER}"`,
+        ],
+    ])(
+        "should fail for accounts the devnet builder can't read: %s",
+        (accountSize) => {
+            expect(() => resolve(accountSize)).toThrowError(
+                new InvalidWithdrawalConfigError(
+                    "the devnet withdrawal output builder expects accounts of 32 bytes, but they are set to 64 bytes. Remove account_size, or set withdrawal_output_builder to a builder for 64-byte accounts",
+                ),
+            );
+        },
+    );
 
     it("should accept layout keys that match the built machine", () => {
         expect(
@@ -306,7 +331,8 @@ describe("describeWithdrawalConfig", () => {
                 "[withdrawal.config]",
                 `  guardian                    ${DEVNET_GUARDIAN}  devnet account 1`,
                 `  withdrawal_output_builder   ${DEVNET_WITHDRAWAL_OUTPUT_BUILDER}  devnet TestUsdWithdrawalOutputBuilder`,
-                "  log2_leaves_per_account     0                                           default",
+                "  account_size                32 bytes                                    default",
+                "  log2_leaves_per_account     0                                           derived",
                 "  log2_max_num_of_accounts    17                                          derived",
                 "  accounts_drive_start_index  545 (0x221)                                 derived",
                 "",

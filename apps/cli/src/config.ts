@@ -277,7 +277,9 @@ export type WithdrawalConfig = {
  * is optional: the accounts drive layout is derived from the built machine, and checked against
  * the keys given, and the addresses default to devnet values.
  */
-export type WithdrawalSettings = Partial<WithdrawalConfig>;
+export type WithdrawalSettings = Partial<WithdrawalConfig> & {
+    account_size?: number; // in bytes, the friendlier form of log2_leaves_per_account
+};
 
 export type Config = {
     drives: Record<string, DriveConfig>;
@@ -288,6 +290,17 @@ export type Config = {
 };
 
 export const LOG2_LEAF_SIZE = 5; // accounts are made of 32-byte leaves
+
+/**
+ * Number of 32-byte leaves of each account, in log2, as given by `account_size` or
+ * `log2_leaves_per_account`, which parse checks agree. Defaults to one leaf.
+ */
+export const getLog2LeavesPerAccount = (
+    settings?: WithdrawalSettings,
+): number =>
+    settings?.account_size !== undefined
+        ? Math.log2(settings.account_size) - LOG2_LEAF_SIZE // a power of two, so exact
+        : (settings?.log2_leaves_per_account ?? 0);
 
 /**
  * The drive or nvram marked with `accounts_drive = true`.
@@ -364,8 +377,9 @@ export const assertAccountsDriveLength = (
         accountsDrive.config.accountsDriveSize === undefined
             ? undefined
             : BigInt(accountsDrive.config.accountsDriveSize);
-    const log2LeavesPerAccount =
-        config.withdrawalConfig?.log2_leaves_per_account ?? 0;
+    const log2LeavesPerAccount = getLog2LeavesPerAccount(
+        config.withdrawalConfig,
+    );
     const length = accountsDriveSize ?? driveLength;
     if (length === undefined) {
         return undefined;
@@ -948,11 +962,27 @@ const parseLog2 = (value: TomlPrimitive, key: string): number => {
 
 const WITHDRAWAL_CONFIG_KEYS = [
     "guardian",
+    "account_size",
     "log2_leaves_per_account",
     "log2_max_num_of_accounts",
     "accounts_drive_start_index",
     "withdrawal_output_builder",
 ];
+
+const parseAccountSize = (value: TomlPrimitive): number => {
+    const size = parseSize(value);
+    if (
+        size === undefined ||
+        !Number.isInteger(size) ||
+        size < 1 << LOG2_LEAF_SIZE ||
+        (size & (size - 1)) !== 0
+    ) {
+        throw new InvalidWithdrawalConfigError(
+            `account_size ${formatValue(value)} must be a power of two of at least 32 bytes, such as 32 or 64`,
+        );
+    }
+    return size;
+};
 
 const parseWithdrawalConfig = (config: TomlTable): WithdrawalSettings => {
     for (const key of Object.keys(config)) {
@@ -969,8 +999,9 @@ const parseWithdrawalConfig = (config: TomlTable): WithdrawalSettings => {
     ): T | undefined =>
         config[key] === undefined ? undefined : parser(config[key], key);
 
-    return {
+    const settings: WithdrawalSettings = {
         guardian: optional("guardian", parseRequiredAddress),
+        account_size: optional("account_size", parseAccountSize),
         log2_leaves_per_account: optional("log2_leaves_per_account", parseLog2),
         log2_max_num_of_accounts: optional(
             "log2_max_num_of_accounts",
@@ -985,6 +1016,19 @@ const parseWithdrawalConfig = (config: TomlTable): WithdrawalSettings => {
             parseRequiredAddress,
         ),
     };
+
+    // both keys give the account size, so they must agree
+    const { account_size, log2_leaves_per_account } = settings;
+    if (
+        account_size !== undefined &&
+        log2_leaves_per_account !== undefined &&
+        getLog2LeavesPerAccount(settings) !== log2_leaves_per_account
+    ) {
+        throw new InvalidWithdrawalConfigError(
+            `account_size ${account_size} and log2_leaves_per_account ${log2_leaves_per_account} give different account sizes, keep only account_size`,
+        );
+    }
+    return settings;
 };
 
 /**
