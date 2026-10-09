@@ -1,39 +1,37 @@
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
-import { type ResultPromise, execa } from "execa";
+import type { ResultPromise } from "execa";
 import fs from "fs-extra";
 import path from "node:path";
-import pRetry, { AbortError } from "p-retry";
 import tmp from "tmp";
-import {
-    type Address,
-    createTestClient,
-    http,
-    parseEther,
-    publicActions,
-    walletActions,
-} from "viem";
+import { type Address, parseEther } from "viem";
 import { mnemonicToAccount } from "viem/accounts";
-import { DEVNET_MNEMONIC } from "../../../src/compose/node";
 import {
-    erc20PortalAbi,
     erc20PortalAddress,
-    testUsdcAbi,
     testUsdcAddress,
     testUsdWithdrawalOutputBuilderAddress,
 } from "../../../src/contracts";
 import { replayStorePath } from "../../../src/commands/withdraw";
 import {
-    getDeployments,
-    getLastAcceptedEpoch,
     getNodeInput,
     getNodeWithdrawalConfig,
-    getProjectPort,
-    stopEnvironment,
 } from "../../../src/exec/rollups";
 import { execNodeCommand } from "../../../src/exec/node-container";
 import { proveAccountsDrive } from "../../../src/exec/cartesi-rollups-machine-tool";
-import { cartesi } from "../../../src/wallet";
-import { TEST_RUNTIME_VERSION, TEST_SDK } from "../config";
+import { TEST_SDK } from "../config";
+import {
+    type AnvilClient,
+    buildApplication,
+    createAnvilClient,
+    deposit as depositTo,
+    devnetAccount,
+    runCli,
+    startApplication,
+    stopApplication,
+    TIMEOUT,
+    usdcBalance as usdcBalanceOf,
+    waitFor,
+    waitForAcceptedEpoch,
+} from "../devnet";
 
 /**
  * Covers the fund recovery of a foreclosed application end to end: a deposit
@@ -49,19 +47,15 @@ import { TEST_RUNTIME_VERSION, TEST_SDK } from "../config";
  */
 
 const EPOCH_LENGTH = 720;
-const TIMEOUT = 30 * 60 * 1000;
 
-const cliPath = path.join(__dirname, "..", "..", "..", "dist", "index.js");
 const fixture = path.join(__dirname, "fixtures", "erc20-withdrawal");
 const projectName = `recovery-${process.pid}`;
 
-const account = (addressIndex: number) =>
-    mnemonicToAccount(DEVNET_MNEMONIC, { addressIndex }).address;
-const alice = account(0);
-const bob = account(2);
-const carol = account(3);
-const dave = account(4);
-const erin = account(5);
+const alice = devnetAccount(0);
+const bob = devnetAccount(2);
+const carol = devnetAccount(3);
+const dave = devnetAccount(4);
+const erin = devnetAccount(5);
 
 // the guardian comes from a mnemonic the node doesn't sign with
 const guardianMnemonic =
@@ -97,15 +91,10 @@ describe("fund recovery", () => {
     let cleanup: () => void;
     let run: ResultPromise | undefined;
     let application: Address;
-    let anvil: Awaited<ReturnType<typeof createAnvilClient>>;
+    let anvil: AnvilClient;
 
     const cli = (args: string[], env?: Record<string, string>) =>
-        execa("node", [cliPath, ...args, "--project-name", projectName], {
-            all: true,
-            cwd: appDir,
-            env,
-            reject: false,
-        });
+        runCli({ appDir, projectName }, args, env);
 
     // temporary files written into the node container with mktemp
     const nodeTempFiles = async () =>
@@ -116,63 +105,10 @@ describe("fund recovery", () => {
             }),
         );
 
-    const createAnvilClient = async () => {
-        const host = await getProjectPort({ projectName });
-        return createTestClient({
-            chain: cartesi,
-            mode: "anvil",
-            transport: http(`http://${host}/anvil`),
-            pollingInterval: 200,
-        })
-            .extend(publicActions)
-            .extend(walletActions);
-    };
+    const usdcBalance = (owner: Address) => usdcBalanceOf(anvil, owner);
 
-    const usdcBalance = (owner: Address) =>
-        anvil.readContract({
-            abi: testUsdcAbi,
-            address: testUsdcAddress,
-            args: [owner],
-            functionName: "balanceOf",
-        });
-
-    const deposit = async (from: Address, amount: bigint) => {
-        await anvil.impersonateAccount({ address: from });
-        const transactions = [
-            () =>
-                anvil.writeContract({
-                    abi: testUsdcAbi,
-                    account: from,
-                    address: testUsdcAddress,
-                    args: [amount],
-                    functionName: "mint",
-                }),
-            () =>
-                anvil.writeContract({
-                    abi: testUsdcAbi,
-                    account: from,
-                    address: testUsdcAddress,
-                    args: [erc20PortalAddress, amount],
-                    functionName: "approve",
-                }),
-            () =>
-                anvil.writeContract({
-                    abi: erc20PortalAbi,
-                    account: from,
-                    address: erc20PortalAddress,
-                    args: [testUsdcAddress, application, amount, "0x"],
-                    functionName: "depositErc20Tokens",
-                }),
-        ];
-        for (const transaction of transactions) {
-            const hash = await transaction();
-            const receipt = await anvil.waitForTransactionReceipt({ hash });
-            expect(receipt.status).toBe("success");
-        }
-    };
-
-    const waitFor = <T>(fn: () => Promise<T>, retries = 120) =>
-        pRetry(fn, { retries, minTimeout: 1000, maxTimeout: 1000 });
+    const deposit = (from: Address, amount: bigint) =>
+        depositTo(anvil, application, from, amount);
 
     beforeAll(async () => {
         const dir = tmp.dirSync({ unsafeCleanup: true });
@@ -202,11 +138,7 @@ guardian = "${guardian}"
         );
 
         console.log("! Building the erc20-withdrawal application...");
-        const build = await execa("node", [cliPath, "build"], {
-            all: true,
-            cwd: appDir,
-            reject: false,
-        });
+        const build = await buildApplication(appDir);
         expect(build.exitCode, build.all).toBe(0);
         console.log("✓ Built the erc20-withdrawal application");
 
@@ -225,50 +157,16 @@ withdrawal_output_builder = "${testUsdWithdrawalOutputBuilderAddress}"
 `,
         );
 
-        // without a terminal the environment runs in the foreground
-        console.log(`! Starting the environment ${projectName}...`);
-        run = execa(
-            "node",
-            [
-                cliPath,
-                "run",
-                "--project-name",
-                projectName,
-                "--runtime-version",
-                TEST_RUNTIME_VERSION,
-                "--epoch-length",
-                EPOCH_LENGTH.toString(),
-                "--block-time",
-                "1",
-            ],
-            {
-                all: true,
-                cwd: appDir,
-                reject: false,
-            },
-        );
+        ({ application, run } = await startApplication({
+            appDir,
+            epochLength: EPOCH_LENGTH,
+            projectName,
+        }));
 
-        application = await waitFor(async () => {
-            if (run && run.nodeChildProcess.exitCode !== null) {
-                const { all } = await run;
-                throw new AbortError(`cartesi run exited\n${all}`);
-            }
-            const [deployment] = await getDeployments({ projectName });
-            if (!deployment) {
-                throw new Error("application not deployed yet");
-            }
-            return deployment.address;
-        }, 600);
-        console.log(`✓ Application deployed at ${application}`);
-
-        anvil = await createAnvilClient();
+        anvil = await createAnvilClient(projectName);
     }, TIMEOUT);
 
-    afterAll(async () => {
-        await stopEnvironment({ projectName }).catch(() => undefined);
-        run?.kill();
-        cleanup?.();
-    }, TIMEOUT);
+    afterAll(() => stopApplication({ cleanup, projectName, run }), TIMEOUT);
 
     it(
         "should finalize the first deposits",
@@ -280,15 +178,9 @@ withdrawal_output_builder = "${testUsdWithdrawalOutputBuilderAddress}"
             // close the first epoch and wait for its claim to be accepted
             await anvil.mine({ blocks: EPOCH_LENGTH });
             console.log("! Waiting for epoch 0 to be accepted...");
-            const epoch = await waitFor(async () => {
-                const accepted = await getLastAcceptedEpoch({
-                    application,
-                    projectName,
-                });
-                if (!accepted) {
-                    throw new Error("no accepted epoch yet");
-                }
-                return accepted;
+            const epoch = await waitForAcceptedEpoch({
+                application,
+                projectName,
             });
             expect(epoch.index).toBe(0n);
             console.log("✓ Epoch 0 accepted");
