@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import fs from "node:fs";
 import path from "node:path";
+import { stripVTControlCharacters } from "node:util";
 import tmp from "tmp";
 import {
     InvalidAccountsDriveError,
@@ -10,6 +11,7 @@ import {
 import {
     DEVNET_GUARDIAN,
     DEVNET_WITHDRAWAL_OUTPUT_BUILDER,
+    describeWithdrawalConfig,
     getWithdrawalConfig,
     resolveAccountsDriveLayout,
     resolveWithdrawalConfig,
@@ -274,6 +276,73 @@ describe("getWithdrawalConfig", () => {
             getWithdrawalConfig(withAccountsDrive(), "/nonexistent"),
         ).toThrowError(
             "Machine configuration /nonexistent/config.json not found, run 'cartesi build'",
+        );
+    });
+});
+
+describe("describeWithdrawalConfig", () => {
+    const describeConfig = (config: ReturnType<typeof parse>) => {
+        const layout = resolveAccountsDriveLayout(config, stored);
+        if (!layout) {
+            throw new Error("no accounts drive");
+        }
+        return stripVTControlCharacters(
+            describeWithdrawalConfig(
+                config,
+                layout,
+                resolveWithdrawalConfig(config, layout),
+            ),
+        );
+    };
+
+    it("should show the layout, the derived values and the devnet defaults", () => {
+        expect(describeConfig(withAccountsDrive())).toBe(
+            [
+                "accounts drive  accounts (flash drive) → /dev/pmem2",
+                "start           0x88400000",
+                "size            4 MiB (2^22 bytes)",
+                "accounts        131072 × 32 bytes",
+                "",
+                "[withdrawal.config]",
+                `  guardian                    ${DEVNET_GUARDIAN}  devnet account 1`,
+                `  withdrawal_output_builder   ${DEVNET_WITHDRAWAL_OUTPUT_BUILDER}  devnet TestUsdWithdrawalOutputBuilder`,
+                "  log2_leaves_per_account     0                                           default",
+                "  log2_max_num_of_accounts    17                                          derived",
+                "  accounts_drive_start_index  545 (0x221)                                 derived",
+                "",
+                `--withdrawal-config '{"guardian":"${DEVNET_GUARDIAN}","log2_leaves_per_account":0,"log2_max_num_of_accounts":17,"accounts_drive_start_index":545,"withdrawal_output_builder":"${DEVNET_WITHDRAWAL_OUTPUT_BUILDER}"}'`,
+                "devnet defaults in use: set guardian and withdrawal_output_builder in [withdrawal.config] to deploy elsewhere",
+            ].join("\n"),
+        );
+    });
+
+    it("should confirm the layout keys of cartesi.toml and drop the devnet notes", () => {
+        const text = describeConfig(
+            withAccountsDrive(`
+                guardian = "0x1111111111111111111111111111111111111111"
+                withdrawal_output_builder = "0x2222222222222222222222222222222222222222"
+                accounts_drive_start_index = 0x221
+            `),
+        );
+        expect(text).toContain(
+            "accounts_drive_start_index  545 (0x221)                                 derived, matches cartesi.toml",
+        );
+        expect(text).not.toContain("devnet");
+    });
+
+    it("should show the accounts at the beginning of a larger drive", () => {
+        const config = parse([
+            `
+            [nvrams.state]
+            size = "12Mi"
+            accounts_drive = true
+            accounts_drive_size = "4Mi"
+            `,
+        ]);
+        const text = describeConfig(config);
+        expect(text).toContain("accounts drive  state (nvram) → /dev/uio0");
+        expect(text).toContain(
+            "size            4 MiB (2^22 bytes), at the beginning of 12 MiB",
         );
     });
 });

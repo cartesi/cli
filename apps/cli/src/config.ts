@@ -320,19 +320,28 @@ export const getAccountsDrive = (config: Config): AccountsDrive | undefined =>
     getMarkedDrives(config)[0];
 
 /**
+ * Splits a number of bytes into the largest IEC unit that divides it exactly, e.g. 4194304 is
+ * 4 "Mi", and 1000 is 1000 "".
+ */
+export const splitSize = (bytes: bigint): { value: bigint; unit: string } => {
+    let value = bytes;
+    let unit = "";
+    for (const next of ["Ki", "Mi", "Gi", "Ti"]) {
+        if (value === 0n || value % 1024n !== 0n) {
+            break;
+        }
+        value /= 1024n;
+        unit = next;
+    }
+    return { value, unit };
+};
+
+/**
  * Formats a number of bytes as a size cartesi.toml accepts, e.g. "4Mi".
  */
 const formatSize = (bytes: bigint): string => {
-    for (const [unit, multiplier] of [
-        ["Gi", 1n << 30n],
-        ["Mi", 1n << 20n],
-        ["Ki", 1n << 10n],
-    ] as const) {
-        if (bytes >= multiplier && bytes % multiplier === 0n) {
-            return `${bytes / multiplier}${unit}`;
-        }
-    }
-    return bytes.toString();
+    const { value, unit } = splitSize(bytes);
+    return `${value}${unit}`;
 };
 
 const nextPowerOfTwo = (value: bigint): bigint =>
