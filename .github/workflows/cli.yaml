@@ -4,6 +4,9 @@ on:
         paths:
             - ".github/workflows/cli.yaml"
             - "apps/cli/**"
+            # TEMPORARY: the CLI is tested against the SDK built for the pull request
+            - ".github/workflows/sdk.yaml"
+            - "packages/sdk/**"
             - "packages/tsconfig/**"
 concurrency:
     group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
@@ -13,11 +16,27 @@ permissions:
     packages: write
     pull-requests: write
 jobs:
+    # TEMPORARY: build and push ghcr.io/cartesi/{sdk,rollups-runtime,rollups-database}:pr-<number>
+    # with the unreleased rollups-node fetched by packages/sdk/temp/fetch.sh
+    sdk:
+        uses: ./.github/workflows/sdk.yaml
+        secrets: inherit
+        permissions:
+            contents: read
+            packages: write
+            id-token: write
+            actions: write
+
     build:
         runs-on: ubuntu-latest
+        # TEMPORARY: the tests run against the images of the sdk job
+        needs: sdk
         env:
             TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
             TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+            # TEMPORARY: run the integration tests against the SDK built for the pull request
+            CARTESI_TEST_SDK: cartesi/sdk:pr-${{ github.event.number }}
+            CARTESI_TEST_RUNTIME_VERSION: pr-${{ github.event.number }}
         steps:
             - name: Checkout
               uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -42,6 +61,17 @@ jobs:
 
             - name: Type check
               run: bun run --cwd apps/cli typecheck:tsc
+
+            # TEMPORARY: the sdk job pushes the images to ghcr only, while compose refers to them
+            # as cartesi/<image>:<tag>, which Docker looks up on Docker Hub
+            - name: Use the SDK images of the pull request
+              env:
+                  TAG: pr-${{ github.event.number }}
+              run: |
+                  for image in sdk rollups-runtime rollups-database; do
+                      docker pull "ghcr.io/cartesi/${image}:${TAG}"
+                      docker tag "ghcr.io/cartesi/${image}:${TAG}" "cartesi/${image}:${TAG}"
+                  done
 
             - name: Test
               run: bun test apps/cli/

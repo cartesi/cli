@@ -76,7 +76,6 @@ accounts_drive = true
 `,
         label: "accounts",
         device: "/dev/uio0",
-        skip: true,
     },
     {
         name: "the beginning of a larger nvram",
@@ -96,7 +95,6 @@ accounts_drive_size = "4Mi"
         label: "state",
         device: "/dev/uio1",
         accountsSize: 4 * MiB,
-        skip: true,
     },
     {
         // like a DEX, which memory-maps its state after the accounts, from an image
@@ -118,6 +116,5 @@ accounts_drive_size = "4Mi"
             at: 4 * MiB,
             data: Buffer.alloc(8 * MiB, 0xab),
         },
-        skip: true,
     },
 ];

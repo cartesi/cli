@@ -6,12 +6,12 @@ on:
                 required: true
             DOCKERHUB_TOKEN:
                 required: true
-    pull_request:
-        paths:
-            - ".github/workflows/sdk.yaml"
-            - "packages/sdk/**"
+    # TEMPORARY: on pull requests cli.yaml calls this workflow and tests the CLI against the
+    # images it builds, so its own pull_request trigger would only build them twice.
+# TEMPORARY: a called workflow sees the caller's github.workflow, which would share cli.yaml's
+# concurrency group and deadlock, so the group is named explicitly.
 concurrency:
-    group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+    group: sdk-${{ github.ref }}-${{ github.event_name }}
     cancel-in-progress: true
 permissions:
     contents: read
@@ -82,6 +82,13 @@ jobs:
               with:
                   username: ${{ secrets.DOCKERHUB_USERNAME }}
                   password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+            # TEMPORARY: the Dockerfile installs cartesi-rollups-node from a bind mount of
+            # packages/sdk/temp, which is gitignored. Only `bun run build` fetches it, and the
+            # bake actions below don't go through that script.
+            - name: Fetch temporary rollups-node debs
+              run: ./temp/fetch.sh
+              working-directory: packages/sdk
 
             - name: Build and push
               uses: docker/bake-action@018cb6412ab401ebaa809aa5f85966b74628600f # v7.4.0

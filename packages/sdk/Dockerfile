@@ -216,16 +216,20 @@ cartesi-machine --version-json
 EOF
 
 # Install cartesi-rollups-node
-RUN <<EOF
-curl -fsSL https://github.com/cartesi/rollups-node/releases/download/v${CARTESI_ROLLUPS_NODE_VERSION}/cartesi-rollups-node-v${CARTESI_ROLLUPS_NODE_VERSION}_${TARGETARCH}.deb \
-    -o /tmp/cartesi-rollups-node.deb
+# TEMPORARY: install from the .deb fetched into temp/ by temp/fetch.sh, built by
+# https://github.com/cartesi/rollups-node/actions/runs/37725861959 (artifact "artifacts"),
+# i.e. rollups-node next/2.0 at e9da54b2: v2.0.0-alpha.13 plus the machine-tool fix that
+# finds an accounts drive kept in an nvram. It reports itself as v2.0.0-alpha.13, like the
+# published release, so the checksums below are the only reliable way to tell the two apart.
+# They are also pinned in temp/fetch.sh; update both together.
+RUN --mount=type=bind,source=temp,target=/debs <<EOF
+DEB=/debs/cartesi-rollups-node-v${CARTESI_ROLLUPS_NODE_VERSION}_${TARGETARCH}.deb
 case "${TARGETARCH}" in
-    amd64) echo "5c75b12082bded69e589781715c74ce7ddf433a7ed2fa6f831e92315fa6dc003 /tmp/cartesi-rollups-node.deb" | sha256sum --check ;;
-    arm64) echo "ab4007baa7ea37ed58957fa94478c5f6e6999ca5234520bbfecb82e9c9c9bab3 /tmp/cartesi-rollups-node.deb" | sha256sum --check ;;
+    amd64) echo "061e1c2806f04cb05b48b1e82815312e65d282d2952d640d028ce3e296bb5eed  ${DEB}" | sha256sum --check ;;
+    arm64) echo "984c7aae10a2ee47de0340e30cee877e902c031953e4df8b8272ba7312838062  ${DEB}" | sha256sum --check ;;
     *) echo "unsupported architecture: ${TARGETARCH}"; exit 1 ;;
 esac
-apt-get install -y --no-install-recommends /tmp/cartesi-rollups-node.deb
-rm /tmp/cartesi-rollups-node.deb
+apt-get install -y --no-install-recommends "${DEB}"
 mkdir -p /var/lib/cartesi-rollups-node/snapshots
 chmod 755 /var/lib/cartesi-rollups-node/snapshots
 chown cartesi:cartesi /var/lib/cartesi-rollups-node/snapshots
