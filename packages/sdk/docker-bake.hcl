@@ -8,7 +8,7 @@ target "default" {
   args = {
     ALTO_VERSION                      = "1.2.7"
     ALTO_PACKAGE_VERSION              = "0.0.20"
-    CARTESI_BASE_IMAGE                = "docker.io/library/debian:trixie-20260918@sha256:9cc080028c43b27d2074d63a5f9caf7166d731494965616c1a6d2827a004585c"
+    CARTESI_BASE_IMAGE                = "docker.io/library/debian:trixie-20261005@sha256:913f6706df59a68922d1dd08f78c2476560a8d367897200a6005b00e5f67c2d5"
     CARTESI_IMAGE_KERNEL_VERSION      = "0.21.0"
     CARTESI_LINUX_KERNEL_VERSION      = "6.5.13-ctsi-2-v0.21.0"
     CARTESI_MACHINE_EMULATOR_VERSION  = "0.21.0"
@@ -20,7 +20,7 @@ target "default" {
     NITRO_VERSION                     = "c937fa4fd202074dd250086ebd92de6884968b84" # v0.8.1
     NODE_VERSION                      = "24.14.0"
     NVM_VERSION                       = "977563e97ddc66facf3a8e31c6cff01d236f09bd" # 0.40.3
-    POSTGRES_BASE_IMAGE               = "docker.io/library/postgres:17-trixie@sha256:d74eeac9a635390a49bc21bd49fccd973de707e2a53a76ac49b552b8712ec46f"
+    POSTGRES_BASE_IMAGE               = "docker.io/library/postgres:17-trixie@sha256:ae69c452f483507a6b99fb654cf93aad7fe156ffd2c56247707eef4e36d3c12b"
     SQUASHFS_TOOLS_VERSION            = "bad1d213ab6df587d6fa0ef7286180fbf7b86167" # 4.7.4
     SU_EXEC_VERSION                   = "0.3"
     TELEGRAF_VERSION                  = "1.38.0"
