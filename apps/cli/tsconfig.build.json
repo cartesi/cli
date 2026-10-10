@@ -1,0 +1,15 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "noEmit": false,
+        "declaration": true,
+        "emitDeclarationOnly": true,
+        "allowImportingTsExtensions": false,
+        "outDir": "dist/types",
+        "rootDir": "src"
+    },
+    // only the library entrypoint and what it imports, the commands are not part
+    // of the public API and are typed by the CLI build
+    "files": ["src/lib.ts"],
+    "include": []
+}
