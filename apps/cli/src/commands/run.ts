@@ -309,6 +309,12 @@ export const createRunCommand = () => {
                 "deploy application with PRT consensus",
             ).default(false),
         )
+        .option(
+            "--anvil-arg <arg>",
+            "extra argument passed verbatim to anvil, can be repeated (e.g. --anvil-arg=--slots-in-an-epoch=1)",
+            (value, prev: string[]) => prev.concat([value]),
+            [] as string[],
+        )
         .addOption(
             new Option(
                 "--block-time <number>",
@@ -394,6 +400,7 @@ export const createRunCommand = () => {
         .option("-v, --verbose", "verbose output", false)
         .action(async (options, program) => {
             const {
+                anvilArg: anvilArgs,
                 prt,
                 blockTime,
                 cpus,
@@ -456,6 +463,7 @@ export const createRunCommand = () => {
 
             // run compose environment (detached)
             const { cmd, config } = await startEnvironment({
+                anvilArgs,
                 blockTime,
                 cpus,
                 defaultBlock,

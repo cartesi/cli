@@ -5,6 +5,7 @@ import {
     describe,
     expect,
     it,
+    setDefaultTimeout,
 } from "bun:test";
 import fs from "fs-extra";
 import path from "node:path";
@@ -13,6 +14,9 @@ import { build } from "../../../src/builder/docker.js";
 import type { DockerDriveConfig } from "../../../src/config.js";
 import { setupIntegrationTests, TEST_SDK } from "../config.js";
 import { cleanupTempDir, createTempDir } from "./tmpdirTest.js";
+
+// building pulls the base image on a cold docker cache, which can exceed the default 5s timeout
+setDefaultTimeout(60000);
 
 beforeAll(
     async () => {

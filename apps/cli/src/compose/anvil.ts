@@ -6,6 +6,7 @@ type ServiceOptions = {
     imageTag?: string;
     blockTime?: number;
     forkConfig?: ForkConfig;
+    extraArgs?: string[];
 };
 
 // Anvil service
@@ -13,9 +14,10 @@ const service = (options?: ServiceOptions): Service => {
     const blockTime = options?.blockTime ?? 2;
     const imageTag = options?.imageTag ?? "latest";
     const forkConfig = options?.forkConfig;
+    const extraArgs = options?.extraArgs ?? [];
 
     // command for fork and command for load-state local (non-fork)
-    const command = forkConfig
+    const baseCommand = forkConfig
         ? [
               "anvil",
               "--chain-id",
@@ -29,6 +31,9 @@ const service = (options?: ServiceOptions): Service => {
                   : []),
           ]
         : ["devnet", "--block-time", blockTime.toString()];
+
+    // extra arguments passed verbatim to anvil
+    const command = [...baseCommand, ...extraArgs];
 
     // in case of forked network service is ready only when it responds with target block number
     const test = forkConfig?.blockNumber
