@@ -147,8 +147,17 @@ export class InvalidAccountsDriveError extends Error {
 
 export class InvalidWithdrawalConfigError extends Error {
     constructor(reason: string) {
-        super(`Invalid [withdrawal.config]: ${reason}`);
+        super(`Invalid [withdrawal]: ${reason}`);
         this.name = "InvalidWithdrawalConfigError";
+    }
+}
+
+export class UnsupportedWithdrawalConfigError extends Error {
+    constructor() {
+        super(
+            "[withdrawal.config] is no longer supported: mark the accounts drive with accounts_drive = true, and keep only guardian, withdrawal_output_builder or account_size under [withdrawal]",
+        );
+        this.name = "UnsupportedWithdrawalConfigError";
     }
 }
 
@@ -273,12 +282,15 @@ export type WithdrawalConfig = {
 };
 
 /**
- * The optional [withdrawal.config] section of an application with an accounts drive. Every key
- * is optional: the accounts drive layout is derived from the built machine, and checked against
- * the keys given, and the addresses default to devnet values.
+ * The optional [withdrawal] section of an application with an accounts drive. The accounts
+ * drive layout is derived from the built machine; these keys override the defaults.
  */
-export type WithdrawalSettings = Partial<WithdrawalConfig> & {
-    account_size?: number; // in bytes, the friendlier form of log2_leaves_per_account
+export type WithdrawalOptions = {
+    guardian?: Address; // default is a devnet account
+    withdrawal_output_builder?: Address; // default is the devnet TestUsdWithdrawalOutputBuilder
+    account_size?: number; // in bytes, default is 32
+    log2_leaves_per_account?: number; // the account size, in log2 of 32-byte leaves
+    ignored: string[]; // warnings about keys written in cartesi.toml that aren't read
 };
 
 export type Config = {
@@ -286,7 +298,7 @@ export type Config = {
     machine: MachineConfig;
     nvrams: Record<string, NvramConfig>;
     sdk: string;
-    withdrawalConfig?: WithdrawalSettings;
+    withdrawal?: WithdrawalOptions;
 };
 
 export const LOG2_LEAF_SIZE = 5; // accounts are made of 32-byte leaves
@@ -295,12 +307,10 @@ export const LOG2_LEAF_SIZE = 5; // accounts are made of 32-byte leaves
  * Number of 32-byte leaves of each account, in log2, as given by `account_size` or
  * `log2_leaves_per_account`, which parse checks agree. Defaults to one leaf.
  */
-export const getLog2LeavesPerAccount = (
-    settings?: WithdrawalSettings,
-): number =>
-    settings?.account_size !== undefined
-        ? Math.log2(settings.account_size) - LOG2_LEAF_SIZE // a power of two, so exact
-        : (settings?.log2_leaves_per_account ?? 0);
+export const getLog2LeavesPerAccount = (options?: WithdrawalOptions): number =>
+    options?.account_size !== undefined
+        ? Math.log2(options.account_size) - LOG2_LEAF_SIZE // a power of two, so exact
+        : (options?.log2_leaves_per_account ?? 0);
 
 /**
  * The drive or nvram marked with `accounts_drive = true`.
@@ -377,9 +387,7 @@ export const assertAccountsDriveLength = (
         accountsDrive.config.accountsDriveSize === undefined
             ? undefined
             : BigInt(accountsDrive.config.accountsDriveSize);
-    const log2LeavesPerAccount = getLog2LeavesPerAccount(
-        config.withdrawalConfig,
-    );
+    const log2LeavesPerAccount = getLog2LeavesPerAccount(config.withdrawal);
     const length = accountsDriveSize ?? driveLength;
     if (length === undefined) {
         return undefined;
@@ -446,7 +454,7 @@ export const defaultConfig = (): Config => ({
     machine: defaultMachineConfig(),
     nvrams: {},
     sdk: `${DEFAULT_SDK_IMAGE}:${DEFAULT_SDK_VERSION}`,
-    withdrawalConfig: undefined,
+    withdrawal: undefined,
 });
 
 const parseBoolean = (value: TomlPrimitive, defaultValue: boolean): boolean => {
@@ -551,34 +559,6 @@ const parseRequiredNumber = (value: TomlPrimitive, key: string): number => {
         typeof value === "string" && isHex(value) ? parseInt(value, 16) : null;
 
     if (val !== null && !Number.isNaN(val)) {
-        return val;
-    }
-
-    throw new InvalidNumberValueError(value, key);
-};
-
-/**
- * Parses a non-negative integer without losing precision, from a TOML integer or a decimal or
- * hex string.
- */
-const parseRequiredBigInt = (value: TomlPrimitive, key: string): bigint => {
-    if (value === undefined) {
-        throw new RequiredFieldError(key);
-    }
-
-    let val: bigint | undefined;
-    if (typeof value === "bigint") {
-        val = value;
-    } else if (typeof value === "number" && Number.isInteger(value)) {
-        val = BigInt(value);
-    } else if (
-        typeof value === "string" &&
-        /^(0x[0-9a-f]+|\d+)$/i.test(value)
-    ) {
-        val = BigInt(value);
-    }
-
-    if (val !== undefined && val >= 0n) {
         return val;
     }
 
@@ -960,14 +940,11 @@ const parseLog2 = (value: TomlPrimitive, key: string): number => {
     return log2;
 };
 
-const WITHDRAWAL_CONFIG_KEYS = [
-    "guardian",
-    "account_size",
-    "log2_leaves_per_account",
-    "log2_max_num_of_accounts",
-    "accounts_drive_start_index",
-    "withdrawal_output_builder",
-];
+// keys of [withdrawal] that are written but not read, and why
+const IGNORED_WITHDRAWAL_KEYS: Record<string, string> = {
+    accounts_drive_start_index: "it is derived from the built machine",
+    log2_max_num_of_accounts: "it is derived from the built machine",
+};
 
 const parseAccountSize = (value: TomlPrimitive): number => {
     const size = parseSize(value);
@@ -984,74 +961,61 @@ const parseAccountSize = (value: TomlPrimitive): number => {
     return size;
 };
 
-const parseWithdrawalConfig = (config: TomlTable): WithdrawalSettings => {
-    for (const key of Object.keys(config)) {
-        if (!WITHDRAWAL_CONFIG_KEYS.includes(key)) {
-            throw new InvalidWithdrawalConfigError(
-                `unknown key '${key}', expected one of ${WITHDRAWAL_CONFIG_KEYS.join(", ")}`,
-            );
-        }
+/**
+ * Parses [withdrawal], which only applies to an application with an accounts drive. It reads
+ * the keys it uses; the ones it no longer reads are listed in `ignored`, to warn about, and any
+ * other key is left alone.
+ */
+const parseOptionalWithdrawal = (
+    withdrawal: TomlPrimitive,
+): WithdrawalOptions | undefined => {
+    if (withdrawal === undefined) {
+        return undefined;
+    }
+    if (!isTomlTable(withdrawal)) {
+        throw new InvalidWithdrawalConfigError(
+            `expected a table, got ${formatValue(withdrawal)}`,
+        );
+    }
+    if (withdrawal.config !== undefined) {
+        throw new UnsupportedWithdrawalConfigError();
     }
 
     const optional = <T>(
         key: string,
         parser: (value: TomlPrimitive, key: string) => T,
     ): T | undefined =>
-        config[key] === undefined ? undefined : parser(config[key], key);
+        withdrawal[key] === undefined
+            ? undefined
+            : parser(withdrawal[key], key);
 
-    const settings: WithdrawalSettings = {
+    const options: WithdrawalOptions = {
         guardian: optional("guardian", parseRequiredAddress),
-        account_size: optional("account_size", parseAccountSize),
-        log2_leaves_per_account: optional("log2_leaves_per_account", parseLog2),
-        log2_max_num_of_accounts: optional(
-            "log2_max_num_of_accounts",
-            parseLog2,
-        ),
-        accounts_drive_start_index: optional(
-            "accounts_drive_start_index",
-            parseRequiredBigInt,
-        ),
         withdrawal_output_builder: optional(
             "withdrawal_output_builder",
             parseRequiredAddress,
         ),
+        account_size: optional("account_size", parseAccountSize),
+        log2_leaves_per_account: optional("log2_leaves_per_account", parseLog2),
+        ignored: Object.entries(IGNORED_WITHDRAWAL_KEYS)
+            .filter(([key]) => withdrawal[key] !== undefined)
+            .map(
+                ([key, reason]) => `Ignoring ${key} in [withdrawal]: ${reason}`,
+            ),
     };
 
     // both keys give the account size, so they must agree
-    const { account_size, log2_leaves_per_account } = settings;
+    const { account_size, log2_leaves_per_account } = options;
     if (
         account_size !== undefined &&
         log2_leaves_per_account !== undefined &&
-        getLog2LeavesPerAccount(settings) !== log2_leaves_per_account
+        getLog2LeavesPerAccount(options) !== log2_leaves_per_account
     ) {
         throw new InvalidWithdrawalConfigError(
             `account_size ${account_size} and log2_leaves_per_account ${log2_leaves_per_account} give different account sizes, keep only account_size`,
         );
     }
-    return settings;
-};
-
-/**
- * Parses [withdrawal.config], which only applies to an application with an accounts drive.
- */
-const parseOptionalWithdrawalConfig = (
-    withdrawal: TomlPrimitive,
-): WithdrawalSettings | undefined => {
-    if (withdrawal === undefined) {
-        return undefined;
-    }
-
-    const config = (withdrawal as TomlTable).config;
-    if (config === undefined) {
-        return undefined;
-    }
-    if (!isTomlTable(config)) {
-        throw new InvalidWithdrawalConfigError(
-            `expected a table, got ${formatValue(config)}`,
-        );
-    }
-
-    return parseWithdrawalConfig(config);
+    return options;
 };
 
 /**
@@ -1078,7 +1042,7 @@ const assertAccountsDrive = (config: Config) => {
 
     const [accountsDrive] = marked;
     if (!accountsDrive) {
-        if (config.withdrawalConfig) {
+        if (config.withdrawal) {
             throw new InvalidWithdrawalConfigError(
                 "emergency withdrawal needs an accounts drive, mark a raw drive or an nvram with accounts_drive = true",
             );
@@ -1137,7 +1101,7 @@ export const parse = (str: string[]): Config => {
     }
 
     const config: Config = {
-        withdrawalConfig: parseOptionalWithdrawalConfig(toml.withdrawal),
+        withdrawal: parseOptionalWithdrawal(toml.withdrawal),
         drives,
         machine: parseMachine(toml.machine),
         nvrams,

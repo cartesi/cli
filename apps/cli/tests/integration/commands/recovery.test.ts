@@ -115,7 +115,9 @@ describe("fund recovery", () => {
         cleanup = dir.removeCallback;
         appDir = path.join(dir.name, "accounts-withdrawal");
         await fs.copy(fixture, appDir);
-        const config = `sdk = "${TEST_SDK}"
+        await fs.writeFile(
+            path.join(appDir, "cartesi.toml"),
+            `sdk = "${TEST_SDK}"
 
 [machine.env]
 TRUSTED_ERC20_PORTAL = "${erc20PortalAddress}"
@@ -129,11 +131,8 @@ size = "4MB"
 mount = false
 user = "dapp"
 accounts_drive = true
-`;
-        await fs.writeFile(
-            path.join(appDir, "cartesi.toml"),
-            `${config}
-[withdrawal.config]
+
+[withdrawal]
 guardian = "${guardian}"
 `,
         );
@@ -142,21 +141,6 @@ guardian = "${guardian}"
         const build = await buildApplication(appDir);
         expect(build.exitCode, build.all).toBe(0);
         console.log("✓ Built the accounts-withdrawal application");
-
-        // spell out the whole config as before the CLI derived the layout,
-        // which the CLI checks against the layout it derives on run
-        const layout = await accountsDriveLayout(appDir, "accounts");
-        await fs.writeFile(
-            path.join(appDir, "cartesi.toml"),
-            `${config}
-[withdrawal.config]
-guardian = "${guardian}"
-log2_leaves_per_account = 0
-log2_max_num_of_accounts = ${layout.log2MaxNumOfAccounts}
-accounts_drive_start_index = ${layout.accountsDriveStartIndex}
-withdrawal_output_builder = "${testUsdWithdrawalOutputBuilderAddress}"
-`,
-        );
 
         ({ application, run } = await startApplication({
             appDir,
@@ -168,6 +152,24 @@ withdrawal_output_builder = "${testUsdWithdrawalOutputBuilderAddress}"
     }, TIMEOUT);
 
     afterAll(() => stopApplication({ cleanup, projectName, run }), TIMEOUT);
+
+    // the layout worked out here from the built machine, independently of the CLI
+    it(
+        "should deploy the accounts drive layout of the built machine",
+        async () => {
+            const layout = await accountsDriveLayout(appDir, "accounts");
+            expect(
+                await getNodeWithdrawalConfig({ application, projectName }),
+            ).toEqual({
+                accountsDriveStartIndex: BigInt(layout.accountsDriveStartIndex),
+                guardian,
+                log2LeavesPerAccount: 0n,
+                log2MaxNumOfAccounts: BigInt(layout.log2MaxNumOfAccounts),
+                withdrawalOutputBuilder: testUsdWithdrawalOutputBuilderAddress,
+            });
+        },
+        TIMEOUT,
+    );
 
     it(
         "should finalize the first deposits",

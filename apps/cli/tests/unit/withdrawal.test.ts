@@ -50,7 +50,7 @@ const withAccountsDrive = (withdrawal?: string) =>
     parse([
         withdrawal === undefined
             ? drives
-            : `${drives}\n[withdrawal.config]\n${withdrawal}`,
+            : `${drives}\n[withdrawal]\n${withdrawal}`,
     ]);
 
 describe("resolveAccountsDriveLayout", () => {
@@ -223,34 +223,16 @@ describe("resolveWithdrawalConfig", () => {
         },
     );
 
-    it("should accept layout keys that match the built machine", () => {
+    it("should ignore the layout keys written in cartesi.toml", () => {
         expect(
             resolve(`
-                log2_max_num_of_accounts = 17
-                accounts_drive_start_index = 0x221
+                log2_max_num_of_accounts = 20
+                accounts_drive_start_index = 0x200
             `),
         ).toMatchObject({
             log2_max_num_of_accounts: 17,
             accounts_drive_start_index: 0x221n,
         });
-    });
-
-    it("should fail for a start index the built machine moved", () => {
-        expect(() =>
-            resolve("accounts_drive_start_index = 0x200"),
-        ).toThrowError(
-            new InvalidWithdrawalConfigError(
-                "accounts_drive_start_index is 512 (0x200), but the built machine places the accounts drive 'accounts' at index 545 (0x221). Remove it to use the derived value, or check what moved the drive: a drive declared before it was added or resized, the root drive grew, ram_length changed, or the emulator version changed",
-            ),
-        );
-    });
-
-    it("should fail for a number of accounts that doesn't fit the drive", () => {
-        expect(() => resolve("log2_max_num_of_accounts = 20")).toThrowError(
-            new InvalidWithdrawalConfigError(
-                "log2_max_num_of_accounts is 20, but the accounts drive 'accounts' of 4194304 bytes holds 2^17 accounts of 32 bytes. Remove it to use the derived value, or change the size of the drive",
-            ),
-        );
     });
 
     it("should require the addresses on a fork", () => {
@@ -328,7 +310,7 @@ describe("describeWithdrawalConfig", () => {
                 "size            4 MiB (2^22 bytes)",
                 "accounts        131072 × 32 bytes",
                 "",
-                "[withdrawal.config]",
+                "withdrawal config",
                 `  guardian                    ${DEVNET_GUARDIAN}  devnet account 1`,
                 `  withdrawal_output_builder   ${DEVNET_WITHDRAWAL_OUTPUT_BUILDER}  devnet TestUsdWithdrawalOutputBuilder`,
                 "  account_size                32 bytes                                    default",
@@ -337,21 +319,20 @@ describe("describeWithdrawalConfig", () => {
                 "  accounts_drive_start_index  545 (0x221)                                 derived",
                 "",
                 `--withdrawal-config '{"guardian":"${DEVNET_GUARDIAN}","log2_leaves_per_account":0,"log2_max_num_of_accounts":17,"accounts_drive_start_index":545,"withdrawal_output_builder":"${DEVNET_WITHDRAWAL_OUTPUT_BUILDER}"}'`,
-                "devnet defaults in use: set guardian and withdrawal_output_builder in [withdrawal.config] to deploy elsewhere",
+                "devnet defaults in use: set guardian and withdrawal_output_builder under [withdrawal] to deploy elsewhere",
             ].join("\n"),
         );
     });
 
-    it("should confirm the layout keys of cartesi.toml and drop the devnet notes", () => {
+    it("should drop the devnet notes for the addresses written in cartesi.toml", () => {
         const text = describeConfig(
             withAccountsDrive(`
                 guardian = "0x1111111111111111111111111111111111111111"
                 withdrawal_output_builder = "0x2222222222222222222222222222222222222222"
-                accounts_drive_start_index = 0x221
             `),
         );
         expect(text).toContain(
-            "accounts_drive_start_index  545 (0x221)                                 derived, matches cartesi.toml",
+            "  guardian                    0x1111111111111111111111111111111111111111",
         );
         expect(text).not.toContain("devnet");
     });

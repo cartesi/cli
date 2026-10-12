@@ -143,8 +143,8 @@ export const resolveAccountsDriveLayout = (
 };
 
 /**
- * Derives the configuration passed to the node from the accounts drive layout. Layout keys of
- * [withdrawal.config] must match the derived values, and its addresses default to devnet ones.
+ * Derives the configuration passed to the node from the accounts drive layout, with the
+ * overrides of [withdrawal] and devnet defaults for the rest.
  * @param options.fork whether the node runs against a fork, where the devnet defaults don't apply
  */
 export const resolveWithdrawalConfig = (
@@ -152,32 +152,15 @@ export const resolveWithdrawalConfig = (
     layout: AccountsDriveLayout,
     options?: { fork?: boolean },
 ): WithdrawalConfig => {
-    const settings = config.withdrawalConfig ?? {};
-    const log2LeavesPerAccount = getLog2LeavesPerAccount(settings);
+    const withdrawal = config.withdrawal;
+    const log2LeavesPerAccount = getLog2LeavesPerAccount(withdrawal);
     const accountSize = 1n << BigInt(LOG2_LEAF_SIZE + log2LeavesPerAccount);
     const log2MaxNumOfAccounts =
         layout.log2Length - log2LeavesPerAccount - LOG2_LEAF_SIZE;
-    const accountsDriveStartIndex = layout.startIndex;
-
-    if (
-        settings.accounts_drive_start_index !== undefined &&
-        settings.accounts_drive_start_index !== accountsDriveStartIndex
-    ) {
-        throw new InvalidWithdrawalConfigError(
-            `accounts_drive_start_index is ${settings.accounts_drive_start_index} (${hex(settings.accounts_drive_start_index)}), but the built machine places the accounts drive '${layout.label}' at index ${accountsDriveStartIndex} (${hex(accountsDriveStartIndex)}). Remove it to use the derived value, or check what moved the drive: a drive declared before it was added or resized, the root drive grew, ram_length changed, or the emulator version changed`,
-        );
-    }
-    if (
-        settings.log2_max_num_of_accounts !== undefined &&
-        settings.log2_max_num_of_accounts !== log2MaxNumOfAccounts
-    ) {
-        throw new InvalidWithdrawalConfigError(
-            `log2_max_num_of_accounts is ${settings.log2_max_num_of_accounts}, but the accounts drive '${layout.label}' of ${layout.length} bytes holds 2^${log2MaxNumOfAccounts} accounts of ${accountSize} bytes. Remove it to use the derived value, or change the size of the drive`,
-        );
-    }
 
     const withdrawalOutputBuilder =
-        settings.withdrawal_output_builder ?? DEVNET_WITHDRAWAL_OUTPUT_BUILDER;
+        withdrawal?.withdrawal_output_builder ??
+        DEVNET_WITHDRAWAL_OUTPUT_BUILDER;
     if (
         isAddressEqual(
             withdrawalOutputBuilder,
@@ -192,8 +175,8 @@ export const resolveWithdrawalConfig = (
 
     if (options?.fork) {
         const missing = [
-            settings.guardian === undefined && "guardian",
-            settings.withdrawal_output_builder === undefined &&
+            withdrawal?.guardian === undefined && "guardian",
+            withdrawal?.withdrawal_output_builder === undefined &&
                 "withdrawal_output_builder",
         ].filter(Boolean);
         if (missing.length > 0) {
@@ -204,10 +187,10 @@ export const resolveWithdrawalConfig = (
     }
 
     return {
-        guardian: settings.guardian ?? DEVNET_GUARDIAN,
+        guardian: withdrawal?.guardian ?? DEVNET_GUARDIAN,
         log2_leaves_per_account: log2LeavesPerAccount,
         log2_max_num_of_accounts: log2MaxNumOfAccounts,
-        accounts_drive_start_index: accountsDriveStartIndex,
+        accounts_drive_start_index: layout.startIndex,
         withdrawal_output_builder: withdrawalOutputBuilder,
     };
 };
@@ -235,14 +218,10 @@ export const describeWithdrawalConfig = (
     layout: AccountsDriveLayout,
     withdrawal: WithdrawalConfig,
 ): string => {
-    const settings = config.withdrawalConfig ?? {};
+    const options = config.withdrawal;
     const accountSize =
         1n << BigInt(LOG2_LEAF_SIZE + withdrawal.log2_leaves_per_account);
     const accounts = 1n << BigInt(withdrawal.log2_max_num_of_accounts);
-    const derived = (key: keyof WithdrawalConfig) =>
-        settings[key] === undefined
-            ? "derived"
-            : "derived, matches cartesi.toml";
     const address = (
         key: "guardian" | "withdrawal_output_builder",
         devnet: Address,
@@ -250,13 +229,13 @@ export const describeWithdrawalConfig = (
     ): [string, string, string?] => [
         key,
         withdrawal[key],
-        settings[key] === undefined && withdrawal[key] === devnet
+        options?.[key] === undefined && withdrawal[key] === devnet
             ? `devnet ${name}`
             : undefined,
     ];
     const devnetDefaults =
-        settings.guardian === undefined ||
-        settings.withdrawal_output_builder === undefined;
+        options?.guardian === undefined ||
+        options?.withdrawal_output_builder === undefined;
 
     const lines = [
         ...formatRows([
@@ -272,7 +251,7 @@ export const describeWithdrawalConfig = (
             ["accounts", `${accounts} × ${accountSize} bytes`],
         ]),
         "",
-        "[withdrawal.config]",
+        "withdrawal config",
         ...formatRows(
             [
                 address("guardian", DEVNET_GUARDIAN, "account 1"),
@@ -284,27 +263,27 @@ export const describeWithdrawalConfig = (
                 [
                     "account_size",
                     `${accountSize} bytes`,
-                    settings.account_size === undefined &&
-                    settings.log2_leaves_per_account === undefined
+                    options?.account_size === undefined &&
+                    options?.log2_leaves_per_account === undefined
                         ? "default"
                         : undefined,
                 ],
                 [
                     "log2_leaves_per_account",
                     withdrawal.log2_leaves_per_account.toString(),
-                    settings.log2_leaves_per_account === undefined
+                    options?.log2_leaves_per_account === undefined
                         ? "derived"
                         : undefined,
                 ],
                 [
                     "log2_max_num_of_accounts",
                     withdrawal.log2_max_num_of_accounts.toString(),
-                    derived("log2_max_num_of_accounts"),
+                    "derived",
                 ],
                 [
                     "accounts_drive_start_index",
                     `${withdrawal.accounts_drive_start_index} (${hex(withdrawal.accounts_drive_start_index)})`,
-                    derived("accounts_drive_start_index"),
+                    "derived",
                 ],
             ],
             "  ",
@@ -315,7 +294,7 @@ export const describeWithdrawalConfig = (
     if (devnetDefaults) {
         lines.push(
             chalk.yellow(
-                "devnet defaults in use: set guardian and withdrawal_output_builder in [withdrawal.config] to deploy elsewhere",
+                "devnet defaults in use: set guardian and withdrawal_output_builder under [withdrawal] to deploy elsewhere",
             ),
         );
     }
