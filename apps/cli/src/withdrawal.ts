@@ -15,7 +15,6 @@ import {
     type WithdrawalConfig,
 } from "./config.js";
 import { testUsdWithdrawalOutputBuilderAddress } from "./contracts.js";
-import { stringifyWithdrawalConfig } from "./exec/rollups.js";
 
 /**
  * Second account of the devnet mnemonic. The node signs with the first one, so the guardian
@@ -52,11 +51,11 @@ export type StoredMachineConfig = {
  */
 export type AccountsDriveLayout = Pick<AccountsDrive, "kind" | "label"> & {
     device: string; // path the guest opens the drive at
-    driveLength: bigint; // length of the drive or nvram holding the accounts drive
-    length: bigint; // length of the accounts drive
+    driveLength: number; // length of the drive or nvram holding the accounts drive
+    length: number; // length of the accounts drive
     log2Length: number;
-    start: bigint;
-    startIndex: bigint; // start in units of length
+    start: number;
+    startIndex: number; // start in units of length
 };
 
 export const readStoredMachineConfig = (
@@ -71,7 +70,7 @@ export const readStoredMachineConfig = (
     return JSON.parse(fs.readFileSync(filename, "utf-8"));
 };
 
-const hex = (value: bigint | number) => `0x${value.toString(16)}`;
+const hex = (value: number) => `0x${value.toString(16)}`;
 
 /**
  * Locates the accounts drive in the built machine. Its placement is decided by cartesi-machine,
@@ -110,8 +109,7 @@ export const resolveAccountsDriveLayout = (
             `its start ${range.start} or length ${range.length} in the built machine can't be read without losing precision`,
         );
     }
-    const start = BigInt(range.start);
-    const driveLength = BigInt(range.length);
+    const { start, length: driveLength } = range;
 
     const region = assertAccountsDriveLength(
         config,
@@ -123,7 +121,7 @@ export const resolveAccountsDriveLayout = (
     }
     const { length, log2Length } = region;
 
-    if (start % length !== 0n) {
+    if (start % length !== 0) {
         throw new InvalidAccountsDriveError(
             label,
             `start ${hex(start)} is not aligned to its size ${hex(length)}, so its start index is not an integer`,
@@ -154,7 +152,7 @@ export const resolveWithdrawalConfig = (
 ): WithdrawalConfig => {
     const withdrawal = config.withdrawal;
     const log2LeavesPerAccount = getLog2LeavesPerAccount(withdrawal);
-    const accountSize = 1n << BigInt(LOG2_LEAF_SIZE + log2LeavesPerAccount);
+    const accountSize = 2 ** (LOG2_LEAF_SIZE + log2LeavesPerAccount);
     const log2MaxNumOfAccounts =
         layout.log2Length - log2LeavesPerAccount - LOG2_LEAF_SIZE;
 
@@ -166,7 +164,7 @@ export const resolveWithdrawalConfig = (
             withdrawalOutputBuilder,
             DEVNET_WITHDRAWAL_OUTPUT_BUILDER,
         ) &&
-        accountSize !== 32n
+        accountSize !== 32
     ) {
         throw new InvalidWithdrawalConfigError(
             `the devnet withdrawal output builder expects accounts of 32 bytes, but they are set to ${accountSize} bytes. Remove account_size, or set withdrawal_output_builder to a builder for ${accountSize}-byte accounts`,
@@ -196,7 +194,7 @@ export const resolveWithdrawalConfig = (
 };
 
 // a size as people read it, e.g. "4 MiB"
-const formatBytes = (length: bigint): string => {
+const formatBytes = (length: number): string => {
     const { value, unit } = splitSize(length);
     return unit ? `${value} ${unit}B` : `${value} bytes`;
 };
@@ -220,8 +218,8 @@ export const describeWithdrawalConfig = (
 ): string => {
     const options = config.withdrawal;
     const accountSize =
-        1n << BigInt(LOG2_LEAF_SIZE + withdrawal.log2_leaves_per_account);
-    const accounts = 1n << BigInt(withdrawal.log2_max_num_of_accounts);
+        2 ** (LOG2_LEAF_SIZE + withdrawal.log2_leaves_per_account);
+    const accounts = 2 ** withdrawal.log2_max_num_of_accounts;
     const address = (
         key: "guardian" | "withdrawal_output_builder",
         devnet: Address,
@@ -289,7 +287,7 @@ export const describeWithdrawalConfig = (
             "  ",
         ),
         "",
-        `--withdrawal-config '${stringifyWithdrawalConfig(withdrawal)}'`,
+        `--withdrawal-config '${JSON.stringify(withdrawal)}'`,
     ];
     if (devnetDefaults) {
         lines.push(

@@ -277,7 +277,7 @@ export type WithdrawalConfig = {
     guardian: Address;
     log2_leaves_per_account: number;
     log2_max_num_of_accounts: number;
-    accounts_drive_start_index: bigint; // a uint64 in the node, beyond the safe range of a number
+    accounts_drive_start_index: number;
     withdrawal_output_builder: Address;
 };
 
@@ -346,14 +346,14 @@ export const getAccountsDrive = (config: Config): AccountsDrive | undefined =>
  * Splits a number of bytes into the largest IEC unit that divides it exactly, e.g. 4194304 is
  * 4 "Mi", and 1000 is 1000 "".
  */
-export const splitSize = (bytes: bigint): { value: bigint; unit: string } => {
+export const splitSize = (bytes: number): { value: number; unit: string } => {
     let value = bytes;
     let unit = "";
     for (const next of ["Ki", "Mi", "Gi", "Ti"]) {
-        if (value === 0n || value % 1024n !== 0n) {
+        if (value === 0 || value % 1024 !== 0) {
             break;
         }
-        value /= 1024n;
+        value /= 1024;
         unit = next;
     }
     return { value, unit };
@@ -362,13 +362,23 @@ export const splitSize = (bytes: bigint): { value: bigint; unit: string } => {
 /**
  * Formats a number of bytes as a size cartesi.toml accepts, e.g. "4Mi".
  */
-const formatSize = (bytes: bigint): string => {
+const formatSize = (bytes: number): string => {
     const { value, unit } = splitSize(bytes);
     return `${value}${unit}`;
 };
 
-const nextPowerOfTwo = (value: bigint): bigint =>
-    1n << BigInt((value - 1n).toString(2).length);
+/**
+ * The log2 of a positive power of two, or undefined for any other number. It reads the bits,
+ * which is exact for every safe integer, where `&` wraps at 32 bits and Math.log2 rounds near
+ * 2^53.
+ */
+const log2OfPowerOfTwo = (value: number): number | undefined => {
+    const bits = Number.isInteger(value) ? value.toString(2) : "";
+    return /^10*$/.test(bits) ? bits.length - 1 : undefined;
+};
+
+const nextPowerOfTwo = (value: number): number =>
+    2 ** (value - 1).toString(2).length;
 
 /**
  * Checks the accounts drive can be divided into accounts. The accounts drive is either all of
@@ -380,22 +390,20 @@ const nextPowerOfTwo = (value: bigint): bigint =>
 export const assertAccountsDriveLength = (
     config: Config,
     accountsDrive: AccountsDrive,
-    driveLength?: bigint,
-): { length: bigint; log2Length: number } | undefined => {
+    driveLength?: number,
+): { length: number; log2Length: number } | undefined => {
     const { label } = accountsDrive;
-    const accountsDriveSize =
-        accountsDrive.config.accountsDriveSize === undefined
-            ? undefined
-            : BigInt(accountsDrive.config.accountsDriveSize);
+    const { accountsDriveSize } = accountsDrive.config;
     const log2LeavesPerAccount = getLog2LeavesPerAccount(config.withdrawal);
     const length = accountsDriveSize ?? driveLength;
     if (length === undefined) {
         return undefined;
     }
 
-    if (length <= 0n || (length & (length - 1n)) !== 0n) {
+    const log2Length = log2OfPowerOfTwo(length);
+    if (log2Length === undefined) {
         const suggestion =
-            length > 0n ? `, use "${formatSize(nextPowerOfTwo(length))}"` : "";
+            length > 0 ? `, use "${formatSize(nextPowerOfTwo(length))}"` : "";
         throw new InvalidAccountsDriveError(
             label,
             accountsDriveSize !== undefined
@@ -403,12 +411,11 @@ export const assertAccountsDriveLength = (
                 : `size ${length} is not a power of two${suggestion}, or set accounts_drive_size to keep the accounts at the beginning of a larger drive`,
         );
     }
-    const log2Length = length.toString(2).length - 1;
     const log2AccountSize = LOG2_LEAF_SIZE + log2LeavesPerAccount;
     if (log2Length < log2AccountSize) {
         throw new InvalidAccountsDriveError(
             label,
-            `size ${length} is smaller than one account of ${1n << BigInt(log2AccountSize)} bytes`,
+            `size ${length} is smaller than one account of ${2 ** log2AccountSize} bytes`,
         );
     }
     if (
@@ -649,9 +656,7 @@ const parseSize = (value: TomlPrimitive): number | undefined => {
         return undefined;
     }
     let size: number | undefined;
-    if (typeof value === "bigint") {
-        size = value <= Number.MAX_SAFE_INTEGER ? Number(value) : undefined;
-    } else if (typeof value === "number") {
+    if (typeof value === "number") {
         size = value;
     } else if (typeof value === "string") {
         const match = /^\s*(\d+(?:\.\d+)?)\s*([a-z]*)\s*$/i.exec(value);
@@ -950,9 +955,8 @@ const parseAccountSize = (value: TomlPrimitive): number => {
     const size = parseSize(value);
     if (
         size === undefined ||
-        !Number.isInteger(size) ||
-        size < 1 << LOG2_LEAF_SIZE ||
-        (size & (size - 1)) !== 0
+        size < 2 ** LOG2_LEAF_SIZE ||
+        log2OfPowerOfTwo(size) === undefined
     ) {
         throw new InvalidWithdrawalConfigError(
             `account_size ${formatValue(value)} must be a power of two of at least 32 bytes, such as 32 or 64`,
@@ -1073,21 +1077,13 @@ const assertAccountsDrive = (config: Config) => {
         size = config.nvrams[label].size;
     }
 
-    assertAccountsDriveLength(
-        config,
-        accountsDrive,
-        size === undefined ? undefined : BigInt(size),
-    );
+    assertAccountsDriveLength(config, accountsDrive, size);
 };
 
 export const parse = (str: string[]): Config => {
     let toml: TomlTable = {};
     for (const s of str) {
-        // integers beyond the safe range of a number come as bigint, instead of failing
-        toml = mergeTomlTables(
-            toml,
-            parseToml(s, { integersAsBigInt: "asNeeded" }),
-        );
+        toml = mergeTomlTables(toml, parseToml(s));
     }
 
     const drives = parseDrives(toml.drives);

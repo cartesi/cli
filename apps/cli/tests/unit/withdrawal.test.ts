@@ -60,11 +60,11 @@ describe("resolveAccountsDriveLayout", () => {
                 kind: "flash_drive",
                 label: "accounts",
                 device: "/dev/pmem2",
-                driveLength: 0x400000n,
-                length: 0x400000n,
+                driveLength: 0x400000,
+                length: 0x400000,
                 log2Length: 22,
-                start: 0x88400000n,
-                startIndex: 0x221n,
+                start: 0x88400000,
+                startIndex: 0x221,
             },
         );
     });
@@ -82,11 +82,11 @@ describe("resolveAccountsDriveLayout", () => {
             kind: "nvram",
             label: "state",
             device: "/dev/uio0",
-            driveLength: 0xc00000n,
-            length: 0x400000n,
+            driveLength: 0xc00000,
+            length: 0x400000,
             log2Length: 22,
-            start: 0x88800000n,
-            startIndex: 0x222n,
+            start: 0x88800000,
+            startIndex: 0x222,
         });
     });
 
@@ -173,7 +173,7 @@ describe("resolveWithdrawalConfig", () => {
             guardian: DEVNET_GUARDIAN,
             log2_leaves_per_account: 0,
             log2_max_num_of_accounts: 17,
-            accounts_drive_start_index: 0x221n,
+            accounts_drive_start_index: 0x221,
             withdrawal_output_builder: DEVNET_WITHDRAWAL_OUTPUT_BUILDER,
         });
     });
@@ -231,7 +231,7 @@ describe("resolveWithdrawalConfig", () => {
             `),
         ).toMatchObject({
             log2_max_num_of_accounts: 17,
-            accounts_drive_start_index: 0x221n,
+            accounts_drive_start_index: 0x221,
         });
     });
 
@@ -270,7 +270,7 @@ describe("getWithdrawalConfig", () => {
             expect(
                 getWithdrawalConfig(withAccountsDrive(), dir.name),
             ).toMatchObject({
-                accounts_drive_start_index: 0x221n,
+                accounts_drive_start_index: 0x221,
                 log2_max_num_of_accounts: 17,
             });
         } finally {
