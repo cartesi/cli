@@ -646,7 +646,12 @@ const parseSize = (value: TomlPrimitive): number | undefined => {
             size = Number(match[1]) * multiplier;
         }
     }
-    if (size !== undefined && size <= Number.MAX_SAFE_INTEGER) {
+    // a whole number of bytes, e.g. "1.5Ki" is but "1.1Ki" isn't
+    if (
+        size !== undefined &&
+        Number.isInteger(size) &&
+        size <= Number.MAX_SAFE_INTEGER
+    ) {
         return size;
     }
     throw new InvalidBytesValueError(value);
