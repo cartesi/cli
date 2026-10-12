@@ -23,6 +23,7 @@ import {
     parse,
     RequiredFieldError,
     TooManyNvramsError,
+    UnsupportedWithdrawalConfigError,
 } from "../../src/config.js";
 
 const loadFixture = (...segments: string[]) => {
@@ -237,7 +238,7 @@ shared = true`,
     /**
      * [withdrawal]
      */
-    describe("when parsing [withdrawal.config]", () => {
+    describe("when parsing [withdrawal]", () => {
         const accountsDrive = `
             [drives.accounts]
             builder = "empty"
@@ -246,103 +247,72 @@ shared = true`,
             accounts_drive = true
         `;
         const withdrawal = (config: string) =>
-            parse([accountsDrive, config]).withdrawalConfig;
+            parse([accountsDrive, config]).withdrawal;
 
-        it("should parse a complete withdrawal config", () => {
+        it("should parse the overrides", () => {
+            const config = `
+                [withdrawal]
+                guardian = "0x1111111111111111111111111111111111111111"
+                withdrawal_output_builder = "0x2222222222222222222222222222222222222222"
+                account_size = 64
+            `;
+            expect(withdrawal(config)).toEqual({
+                guardian: "0x1111111111111111111111111111111111111111",
+                withdrawal_output_builder:
+                    "0x2222222222222222222222222222222222222222",
+                account_size: 64,
+                ignored: [],
+            });
+        });
+
+        it("should accept an empty section", () => {
+            expect(withdrawal("[withdrawal]")).toEqual({ ignored: [] });
+        });
+
+        it("should return undefined when [withdrawal] is not defined", () => {
+            expect(parse([""])).toEqual({
+                ...defaultConfig(),
+                withdrawal: undefined,
+            });
+        });
+
+        it("should ignore keys it doesn't read", () => {
+            expect(
+                withdrawal("[withdrawal]\nguardain = '0x1'\ncolor = 'blue'"),
+            ).toEqual({ ignored: [] });
+        });
+
+        it("should warn about the layout keys it derives, and ignore them", () => {
+            const config = `
+                [withdrawal]
+                accounts_drive_start_index = 0x221
+                log2_max_num_of_accounts = 17
+            `;
+            expect(withdrawal(config)).toEqual({
+                ignored: [
+                    "Ignoring accounts_drive_start_index in [withdrawal]: it is derived from the built machine",
+                    "Ignoring log2_max_num_of_accounts in [withdrawal]: it is derived from the built machine",
+                ],
+            });
+        });
+
+        it("should fail for [withdrawal.config], which is no longer supported", () => {
             const config = `
                 [withdrawal.config]
                 guardian = "0x1111111111111111111111111111111111111111"
                 log2_leaves_per_account = 0
-                log2_max_num_of_accounts = 20
-                accounts_drive_start_index = 33554432
+                log2_max_num_of_accounts = 17
+                accounts_drive_start_index = 545
                 withdrawal_output_builder = "0x2222222222222222222222222222222222222222"
             `;
-            expect(withdrawal(config)).toEqual({
-                guardian: "0x1111111111111111111111111111111111111111",
-                log2_leaves_per_account: 0,
-                log2_max_num_of_accounts: 20,
-                accounts_drive_start_index: 33554432n,
-                withdrawal_output_builder:
-                    "0x2222222222222222222222222222222222222222",
-            });
+            expect(() => withdrawal(config)).toThrowError(
+                new UnsupportedWithdrawalConfigError(),
+            );
         });
 
-        it("should parse a withdrawal config that uses hex instead of decimal for numbers", () => {
-            const config = `
-                [withdrawal.config]
-                log2_leaves_per_account = 0x0
-                log2_max_num_of_accounts = 0x14
-                accounts_drive_start_index = 0x2000000
-            `;
-            expect(withdrawal(config)).toEqual({
-                log2_leaves_per_account: 0,
-                log2_max_num_of_accounts: 20,
-                accounts_drive_start_index: 33554432n,
-            });
-        });
-
-        it("should parse a withdrawal config even when using quoted hex for the numbers", () => {
-            const config = `
-                [withdrawal.config]
-                log2_leaves_per_account = "0x0"
-                log2_max_num_of_accounts = "0x14"
-                accounts_drive_start_index = "0x2000000"
-            `;
-            expect(withdrawal(config)).toEqual({
-                log2_leaves_per_account: 0,
-                log2_max_num_of_accounts: 20,
-                accounts_drive_start_index: 33554432n,
-            });
-        });
-
-        it.each([
-            ["a bare integer", "9007199254740993"],
-            ["a quoted decimal", '"9007199254740993"'],
-            ["a quoted hex", '"0x20000000000001"'],
-        ])(
-            "should keep every digit of an accounts_drive_start_index beyond 2^53 given as %s",
-            (_, value) => {
-                const config = `
-                [withdrawal.config]
-                accounts_drive_start_index = ${value}
-            `;
-                expect(withdrawal(config)?.accounts_drive_start_index).toBe(
-                    2n ** 53n + 1n,
-                );
-            },
-        );
-
-        it("should accept an empty section", () => {
-            expect(withdrawal("[withdrawal.config]")).toEqual({});
-        });
-
-        it("should keep only the addresses when the layout is left to be derived", () => {
-            const config = `
-                [withdrawal.config]
-                guardian = "0x1111111111111111111111111111111111111111"
-                withdrawal_output_builder = "0x2222222222222222222222222222222222222222"
-            `;
-            expect(withdrawal(config)).toEqual({
-                guardian: "0x1111111111111111111111111111111111111111",
-                withdrawal_output_builder:
-                    "0x2222222222222222222222222222222222222222",
-            });
-        });
-
-        it("should return undefined when [withdrawal.config] is not defined", () => {
-            expect(parse([""])).toEqual({
-                ...defaultConfig(),
-                withdrawalConfig: undefined,
-            });
-        });
-
-        it("should fail for an unknown key", () => {
-            expect(() =>
-                withdrawal("[withdrawal.config]\nguardain = '0x1'"),
-            ).toThrowError(
-                new InvalidWithdrawalConfigError(
-                    "unknown key 'guardain', expected one of guardian, account_size, log2_leaves_per_account, log2_max_num_of_accounts, accounts_drive_start_index, withdrawal_output_builder",
-                ),
+        it("should fail when the section is not a table", () => {
+            expect(() => withdrawal("withdrawal = 42")).toThrowError(
+                new InvalidWithdrawalConfigError("expected a table, got 42"),
             );
         });
 
@@ -351,9 +321,9 @@ shared = true`,
             ['"64"', 64],
             ['"1Ki"', 1024],
         ])("should parse account_size %s as %i bytes", (value, expected) => {
-            expect(
-                withdrawal(`[withdrawal.config]\naccount_size = ${value}`),
-            ).toEqual({ account_size: expected });
+            expect(withdrawal(`[withdrawal]\naccount_size = ${value}`)).toEqual(
+                { account_size: expected, ignored: [] },
+            );
         });
 
         it.each([
@@ -362,7 +332,7 @@ shared = true`,
             ['"1.5Ki"', "1.5Ki"],
         ])("should fail for an account_size of %s", (value, parsed) => {
             expect(() =>
-                withdrawal(`[withdrawal.config]\naccount_size = ${value}`),
+                withdrawal(`[withdrawal]\naccount_size = ${value}`),
             ).toThrowError(
                 new InvalidWithdrawalConfigError(
                     `account_size ${parsed} must be a power of two of at least 32 bytes, such as 32 or 64`,
@@ -373,17 +343,21 @@ shared = true`,
         it("should accept account_size and log2_leaves_per_account that agree", () => {
             expect(
                 withdrawal(`
-                    [withdrawal.config]
+                    [withdrawal]
                     account_size = 64
                     log2_leaves_per_account = 1
                 `),
-            ).toEqual({ account_size: 64, log2_leaves_per_account: 1 });
+            ).toEqual({
+                account_size: 64,
+                log2_leaves_per_account: 1,
+                ignored: [],
+            });
         });
 
         it("should fail for account_size and log2_leaves_per_account that disagree", () => {
             expect(() =>
                 withdrawal(`
-                    [withdrawal.config]
+                    [withdrawal]
                     account_size = 64
                     log2_leaves_per_account = 0
                 `),
@@ -391,12 +365,6 @@ shared = true`,
                 new InvalidWithdrawalConfigError(
                     "account_size 64 and log2_leaves_per_account 0 give different account sizes, keep only account_size",
                 ),
-            );
-        });
-
-        it("should fail when the section is not a table", () => {
-            expect(() => withdrawal("[withdrawal]\nconfig = 42")).toThrowError(
-                new InvalidWithdrawalConfigError("expected a table, got 42"),
             );
         });
 
@@ -411,7 +379,7 @@ shared = true`,
             "should fail when %s is not a valid address",
             (key, value, error) => {
                 expect(() =>
-                    withdrawal(`[withdrawal.config]\n${key} = ${value}`),
+                    withdrawal(`[withdrawal]\n${key} = ${value}`),
                 ).toThrowError(new error("invalid_address", key));
             },
         );
@@ -420,12 +388,9 @@ shared = true`,
             ["log2_leaves_per_account", '"not_a_number"', "not_a_number"],
             ["log2_leaves_per_account", "-1", -1],
             ["log2_leaves_per_account", "1.5", 1.5],
-            ["log2_max_num_of_accounts", '"not_a_number"', "not_a_number"],
-            ["accounts_drive_start_index", '"not_a_number"', "not_a_number"],
-            ["accounts_drive_start_index", "-1", -1],
         ])("should fail when %s is %s", (key, value, parsed) => {
             expect(() =>
-                withdrawal(`[withdrawal.config]\n${key} = ${value}`),
+                withdrawal(`[withdrawal]\n${key} = ${value}`),
             ).toThrowError(new InvalidNumberValueError(parsed, key));
         });
     });
@@ -436,8 +401,8 @@ shared = true`,
     describe("when checking the accounts drive", () => {
         const check = (config: string) => () => parse([config]);
 
-        it("should fail when [withdrawal.config] has no accounts drive", () => {
-            expect(() => parse(["[withdrawal.config]"])).toThrowError(
+        it("should fail when [withdrawal] has no accounts drive", () => {
+            expect(() => parse(["[withdrawal]"])).toThrowError(
                 new InvalidWithdrawalConfigError(
                     "emergency withdrawal needs an accounts drive, mark a raw drive or an nvram with accounts_drive = true",
                 ),
@@ -452,7 +417,7 @@ shared = true`,
                 kind: "nvram",
                 label: "accounts",
             });
-            expect(config.withdrawalConfig).toBeUndefined();
+            expect(config.withdrawal).toBeUndefined();
         });
 
         it("should fail when more than one drive is marked", () => {
@@ -580,7 +545,7 @@ shared = true`,
                     size = "4Ki"
                     accounts_drive = true
 
-                    [withdrawal.config]
+                    [withdrawal]
                     log2_leaves_per_account = 8
                     `,
                 ]),
