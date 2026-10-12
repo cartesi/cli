@@ -9,7 +9,7 @@ accounts_drive = true
 # optional overrides, and so is every key
 # [withdrawal]
 
-# default to devnet values, required on a fork
+# default to devnet values, the builder is required on a fork
 # guardian = "0x1111111111111111111111111111111111111111"
 # withdrawal_output_builder = "0x2222222222222222222222222222222222222222"
 

@@ -72,6 +72,6 @@
 # accounts_drive_size = "4Mi" # optional. accounts only at the beginning of a larger drive
 
 # [withdrawal] # optional overrides, every key is optional too
-# guardian = "0x1111111111111111111111111111111111111111" # devnet account by default, required on a fork
+# guardian = "0x1111111111111111111111111111111111111111" # devnet account by default
 # withdrawal_output_builder = "0x2222222222222222222222222222222222222222" # devnet builder by default, required on a fork
 # account_size = 32 # bytes per account, 32 by default as the devnet builder expects
