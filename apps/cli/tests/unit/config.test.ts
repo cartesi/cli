@@ -330,6 +330,8 @@ shared = true`,
             ["48", 48],
             ["16", 16],
             ['"1.5Ki"', "1.5Ki"],
+            // a power of two in its low 32 bits only
+            ['"6Gi"', "6Gi"],
         ])("should fail for an account_size of %s", (value, parsed) => {
             expect(() =>
                 withdrawal(`[withdrawal]\naccount_size = ${value}`),
@@ -490,6 +492,17 @@ shared = true`,
                 new InvalidAccountsDriveError(
                     "accounts",
                     'size 3145728 is not a power of two, use "4Mi", or set accounts_drive_size to keep the accounts at the beginning of a larger drive',
+                ),
+            );
+        });
+
+        it("should fail for a size that is a power of two in its low 32 bits only", () => {
+            expect(
+                check('[nvrams.accounts]\nsize = "6Gi"\naccounts_drive = true'),
+            ).toThrowError(
+                new InvalidAccountsDriveError(
+                    "accounts",
+                    'size 6442450944 is not a power of two, use "8Gi", or set accounts_drive_size to keep the accounts at the beginning of a larger drive',
                 ),
             );
         });
@@ -659,17 +672,17 @@ shared = true`,
         });
 
         // sizes are numbers, which can't hold every integer beyond 2^53 bytes (8 PiB)
-        it.each([
-            ['"9PB"', "9PB"],
-            ["9007199254740993", 9007199254740993n],
-        ])(
-            "should fail for a drive size beyond 2^53 bytes: %s",
-            (size, parsed) => {
-                expect(() =>
-                    parse([`[drives.data]\nbuilder = "empty"\nsize = ${size}`]),
-                ).toThrowError(new InvalidBytesValueError(parsed));
-            },
-        );
+        it("should fail for a drive size beyond 2^53 bytes", () => {
+            expect(() =>
+                parse(['[drives.data]\nbuilder = "empty"\nsize = "9PB"']),
+            ).toThrowError(new InvalidBytesValueError("9PB"));
+            // an integer that large is rejected by the TOML parser itself
+            expect(() =>
+                parse([
+                    '[drives.data]\nbuilder = "empty"\nsize = 9007199254740993',
+                ]),
+            ).toThrow("cannot be represented losslessly");
+        });
     });
 
     /**
