@@ -231,21 +231,21 @@ describe("resolveWithdrawalConfig", () => {
         });
     });
 
-    it("should require the addresses on a fork", () => {
+    it("should require the withdrawal output builder on a fork", () => {
         expect(() => resolve("", { fork: true })).toThrowError(
             new InvalidWithdrawalConfigError(
-                "the devnet defaults don't apply to a fork, set guardian and withdrawal_output_builder",
+                "the devnet withdrawal output builder doesn't exist on a fork, set withdrawal_output_builder",
             ),
         );
-        expect(() =>
-            resolve('guardian = "0x1111111111111111111111111111111111111111"', {
-                fork: true,
-            }),
-        ).toThrowError(
-            new InvalidWithdrawalConfigError(
-                "the devnet defaults don't apply to a fork, set withdrawal_output_builder",
+    });
+
+    it("should keep the devnet guardian on a fork", () => {
+        expect(
+            resolve(
+                'withdrawal_output_builder = "0x2222222222222222222222222222222222222222"',
+                { fork: true },
             ),
-        );
+        ).toMatchObject({ guardian: DEVNET_GUARDIAN });
     });
 });
 

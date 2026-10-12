@@ -143,7 +143,7 @@ export const resolveAccountsDriveLayout = (
 /**
  * Derives the configuration passed to the node from the accounts drive layout, with the
  * overrides of [withdrawal] and devnet defaults for the rest.
- * @param options.fork whether the node runs against a fork, where the devnet defaults don't apply
+ * @param options.fork whether the node runs against a fork, where the devnet builder doesn't exist
  */
 export const resolveWithdrawalConfig = (
     config: Config,
@@ -171,17 +171,12 @@ export const resolveWithdrawalConfig = (
         );
     }
 
-    if (options?.fork) {
-        const missing = [
-            withdrawal?.guardian === undefined && "guardian",
-            withdrawal?.withdrawal_output_builder === undefined &&
-                "withdrawal_output_builder",
-        ].filter(Boolean);
-        if (missing.length > 0) {
-            throw new InvalidWithdrawalConfigError(
-                `the devnet defaults don't apply to a fork, set ${missing.join(" and ")}`,
-            );
-        }
+    // the node signs with the devnet mnemonic on a fork too, so the default guardian works
+    // there, but the devnet withdrawal output builder isn't deployed on the forked chain
+    if (options?.fork && withdrawal?.withdrawal_output_builder === undefined) {
+        throw new InvalidWithdrawalConfigError(
+            "the devnet withdrawal output builder doesn't exist on a fork, set withdrawal_output_builder",
+        );
     }
 
     return {
