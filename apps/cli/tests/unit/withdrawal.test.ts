@@ -191,24 +191,20 @@ describe("resolveWithdrawalConfig", () => {
         });
     });
 
-    it.each([["account_size = 64"], ["log2_leaves_per_account = 1"]])(
-        "should fit fewer accounts when they are larger: %s",
-        (accountSize) => {
-            expect(
-                resolve(`
+    it("should fit fewer accounts when they are larger", () => {
+        expect(
+            resolve(`
                 withdrawal_output_builder = "0x2222222222222222222222222222222222222222"
-                ${accountSize}
+                account_size = 64
             `),
-            ).toMatchObject({
-                log2_leaves_per_account: 1,
-                log2_max_num_of_accounts: 16,
-            });
-        },
-    );
+        ).toMatchObject({
+            log2_leaves_per_account: 1,
+            log2_max_num_of_accounts: 16,
+        });
+    });
 
     it.each([
         ["account_size = 64"],
-        ["log2_leaves_per_account = 1"],
         [
             `account_size = 64\nwithdrawal_output_builder = "${DEVNET_WITHDRAWAL_OUTPUT_BUILDER}"`,
         ],

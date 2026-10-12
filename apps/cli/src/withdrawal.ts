@@ -261,17 +261,12 @@ export const describeWithdrawalConfig = (
                 [
                     "account_size",
                     `${accountSize} bytes`,
-                    options?.account_size === undefined &&
-                    options?.log2_leaves_per_account === undefined
-                        ? "default"
-                        : undefined,
+                    options?.account_size === undefined ? "default" : undefined,
                 ],
                 [
                     "log2_leaves_per_account",
                     withdrawal.log2_leaves_per_account.toString(),
-                    options?.log2_leaves_per_account === undefined
-                        ? "derived"
-                        : undefined,
+                    "derived",
                 ],
                 [
                     "log2_max_num_of_accounts",
