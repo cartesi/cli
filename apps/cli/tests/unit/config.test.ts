@@ -342,32 +342,14 @@ shared = true`,
             );
         });
 
-        it("should accept account_size and log2_leaves_per_account that agree", () => {
+        it("should warn about log2_leaves_per_account, and ignore it for account_size", () => {
             expect(
-                withdrawal(`
-                    [withdrawal]
-                    account_size = 64
-                    log2_leaves_per_account = 1
-                `),
+                withdrawal("[withdrawal]\nlog2_leaves_per_account = 1"),
             ).toEqual({
-                account_size: 64,
-                log2_leaves_per_account: 1,
-                ignored: [],
+                ignored: [
+                    "Ignoring log2_leaves_per_account in [withdrawal]: set account_size, in bytes, instead",
+                ],
             });
-        });
-
-        it("should fail for account_size and log2_leaves_per_account that disagree", () => {
-            expect(() =>
-                withdrawal(`
-                    [withdrawal]
-                    account_size = 64
-                    log2_leaves_per_account = 0
-                `),
-            ).toThrowError(
-                new InvalidWithdrawalConfigError(
-                    "account_size 64 and log2_leaves_per_account 0 give different account sizes, keep only account_size",
-                ),
-            );
         });
 
         it.each([
@@ -385,16 +367,6 @@ shared = true`,
                 ).toThrowError(new error("invalid_address", key));
             },
         );
-
-        it.each([
-            ["log2_leaves_per_account", '"not_a_number"', "not_a_number"],
-            ["log2_leaves_per_account", "-1", -1],
-            ["log2_leaves_per_account", "1.5", 1.5],
-        ])("should fail when %s is %s", (key, value, parsed) => {
-            expect(() =>
-                withdrawal(`[withdrawal]\n${key} = ${value}`),
-            ).toThrowError(new InvalidNumberValueError(parsed, key));
-        });
     });
 
     /**
@@ -559,7 +531,7 @@ shared = true`,
                     accounts_drive = true
 
                     [withdrawal]
-                    log2_leaves_per_account = 8
+                    account_size = "8Ki"
                     `,
                 ]),
             ).toThrowError(

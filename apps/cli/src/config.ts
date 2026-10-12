@@ -1,6 +1,6 @@
 import { extname } from "node:path";
 import { parse as parseToml, type TomlPrimitive } from "smol-toml";
-import { getAddress, isAddress, isHex, type Address } from "viem";
+import { getAddress, isAddress, type Address } from "viem";
 
 export const NVRAM_ALIGNMENT = 4096; // cartesi-machine requires length % 4Ki == 0
 const MAX_NVRAMS = 8; // guest exposes nvrams as /dev/uio0 to /dev/uio7
@@ -289,7 +289,6 @@ export type WithdrawalOptions = {
     guardian?: Address; // default is a devnet account
     withdrawal_output_builder?: Address; // default is the devnet TestUsdWithdrawalOutputBuilder
     account_size?: number; // in bytes, default is 32
-    log2_leaves_per_account?: number; // the account size, in log2 of 32-byte leaves
     ignored: string[]; // warnings about keys written in cartesi.toml that aren't read
 };
 
@@ -304,13 +303,12 @@ export type Config = {
 export const LOG2_LEAF_SIZE = 5; // accounts are made of 32-byte leaves
 
 /**
- * Number of 32-byte leaves of each account, in log2, as given by `account_size` or
- * `log2_leaves_per_account`, which parse checks agree. Defaults to one leaf.
+ * Number of 32-byte leaves of each account, in log2, from `account_size`. Defaults to one leaf.
  */
 export const getLog2LeavesPerAccount = (options?: WithdrawalOptions): number =>
     options?.account_size !== undefined
         ? Math.log2(options.account_size) - LOG2_LEAF_SIZE // a power of two, so exact
-        : (options?.log2_leaves_per_account ?? 0);
+        : 0;
 
 /**
  * The drive or nvram marked with `accounts_drive = true`.
@@ -551,25 +549,6 @@ const parseRequiredString = (value: TomlPrimitive, key: string): string => {
         return value;
     }
     throw new InvalidStringValueError(value);
-};
-
-const parseRequiredNumber = (value: TomlPrimitive, key: string): number => {
-    if (value === undefined) {
-        throw new RequiredFieldError(key);
-    }
-
-    if (typeof value === "number") {
-        return value;
-    }
-
-    const val =
-        typeof value === "string" && isHex(value) ? parseInt(value, 16) : null;
-
-    if (val !== null && !Number.isNaN(val)) {
-        return val;
-    }
-
-    throw new InvalidNumberValueError(value, key);
 };
 
 const parseRequiredAddress = (value: TomlPrimitive, key: string): Address => {
@@ -937,18 +916,11 @@ const parseDrives = (config: TomlPrimitive): Record<string, DriveConfig> => {
     return drives;
 };
 
-const parseLog2 = (value: TomlPrimitive, key: string): number => {
-    const log2 = parseRequiredNumber(value, key);
-    if (!Number.isInteger(log2) || log2 < 0) {
-        throw new InvalidNumberValueError(value, key);
-    }
-    return log2;
-};
-
 // keys of [withdrawal] that are written but not read, and why
 const IGNORED_WITHDRAWAL_KEYS: Record<string, string> = {
     accounts_drive_start_index: "it is derived from the built machine",
     log2_max_num_of_accounts: "it is derived from the built machine",
+    log2_leaves_per_account: "set account_size, in bytes, instead",
 };
 
 const parseAccountSize = (value: TomlPrimitive): number => {
@@ -1000,25 +972,12 @@ const parseOptionalWithdrawal = (
             parseRequiredAddress,
         ),
         account_size: optional("account_size", parseAccountSize),
-        log2_leaves_per_account: optional("log2_leaves_per_account", parseLog2),
         ignored: Object.entries(IGNORED_WITHDRAWAL_KEYS)
             .filter(([key]) => withdrawal[key] !== undefined)
             .map(
                 ([key, reason]) => `Ignoring ${key} in [withdrawal]: ${reason}`,
             ),
     };
-
-    // both keys give the account size, so they must agree
-    const { account_size, log2_leaves_per_account } = options;
-    if (
-        account_size !== undefined &&
-        log2_leaves_per_account !== undefined &&
-        getLog2LeavesPerAccount(options) !== log2_leaves_per_account
-    ) {
-        throw new InvalidWithdrawalConfigError(
-            `account_size ${account_size} and log2_leaves_per_account ${log2_leaves_per_account} give different account sizes, keep only account_size`,
-        );
-    }
     return options;
 };
 
