@@ -643,6 +643,29 @@ shared = true`,
             ).toThrowError(new InvalidBytesValueError("4XB"));
         });
 
+        it.each([
+            ['[drives.data]\nbuilder = "empty"\nsize = "1.1Ki"'],
+            ['[drives.root]\nextra_size = "1.1Ki"'],
+            ['[nvrams.input]\nsize = "1.1Ki"'],
+            [
+                '[nvrams.state]\nsize = "8Ki"\naccounts_drive = true\naccounts_drive_size = "1.1Ki"',
+            ],
+        ])(
+            "should fail for a size that isn't a whole number of bytes: %s",
+            (config) => {
+                expect(() => parse([config])).toThrowError(
+                    new InvalidBytesValueError("1.1Ki"),
+                );
+            },
+        );
+
+        it("should accept a fractional size that is a whole number of bytes", () => {
+            expect(
+                parse(['[drives.data]\nbuilder = "empty"\nsize = "1.5Ki"'])
+                    .drives.data,
+            ).toMatchObject({ size: 1536 });
+        });
+
         // sizes are numbers, which can't hold every integer beyond 2^53 bytes (8 PiB)
         it("should fail for a drive size beyond 2^53 bytes", () => {
             expect(() =>
