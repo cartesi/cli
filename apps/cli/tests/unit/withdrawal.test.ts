@@ -219,18 +219,6 @@ describe("resolveWithdrawalConfig", () => {
         },
     );
 
-    it("should ignore the layout keys written in cartesi.toml", () => {
-        expect(
-            resolve(`
-                log2_max_num_of_accounts = 20
-                accounts_drive_start_index = 0x200
-            `),
-        ).toMatchObject({
-            log2_max_num_of_accounts: 17,
-            accounts_drive_start_index: 0x221,
-        });
-    });
-
     it("should require the withdrawal output builder on a fork", () => {
         expect(() => resolve("", { fork: true })).toThrowError(
             new InvalidWithdrawalConfigError(

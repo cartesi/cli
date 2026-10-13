@@ -121,9 +121,6 @@ export const createBuildCommand = () => {
 
             // get application configuration from 'cartesi.toml'
             const config = getApplicationConfig(options.config);
-            for (const warning of config.withdrawal?.ignored ?? []) {
-                console.warn(chalk.yellow(warning));
-            }
 
             // destination directory for image and intermediate files
             const destination = path.resolve(getContextPath());
