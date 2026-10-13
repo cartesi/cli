@@ -41,13 +41,8 @@ const amounts = { alice: 100n, bob: 50n };
 
 /**
  * Writes the application with the layout, and builds it.
- * @param extraConfig more of cartesi.toml, appended to it
  */
-const buildLayout = async (
-    appDir: string,
-    layout: Layout,
-    extraConfig = "",
-) => {
+const buildLayout = async (appDir: string, layout: Layout) => {
     await fs.copy(fixture, appDir);
     if (layout.image) {
         const { at, data, filename, size } = layout.image;
@@ -64,7 +59,7 @@ TRUSTED_ERC20_PORTAL = "${erc20PortalAddress}"
 TRUSTED_ERC20_TOKEN = "${testUsdcAddress}"
 ACCOUNTS_LABEL = "${layout.label}"
 ${layout.accountsSize ? `ACCOUNTS_SIZE = "${layout.accountsSize}"` : ""}
-${extraConfig}`,
+`,
     );
     return buildApplication(appDir);
 };
@@ -170,34 +165,4 @@ layouts.forEach((layout, index) => {
             TIMEOUT,
         );
     });
-});
-
-describe("a cartesi.toml written before the layout was derived", () => {
-    it(
-        "should fail the build, saying how to migrate",
-        async () => {
-            const dir = tmp.dirSync({ unsafeCleanup: true });
-            try {
-                const build = await buildLayout(
-                    path.join(dir.name, "accounts-withdrawal"),
-                    layouts[0],
-                    `
-[withdrawal.config]
-guardian = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
-log2_leaves_per_account = 0
-log2_max_num_of_accounts = 15
-accounts_drive_start_index = 2308
-withdrawal_output_builder = "0xB4D253c7a110241561B3eD6d632846dF7d4e9Af7"
-`,
-                );
-                expect(build.exitCode).not.toBe(0);
-                expect(build.all).toContain(
-                    "[withdrawal.config] is no longer supported: mark the accounts drive with accounts_drive = true",
-                );
-            } finally {
-                dir.removeCallback();
-            }
-        },
-        TIMEOUT,
-    );
 });

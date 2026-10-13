@@ -152,15 +152,6 @@ export class InvalidWithdrawalConfigError extends Error {
     }
 }
 
-export class UnsupportedWithdrawalConfigError extends Error {
-    constructor() {
-        super(
-            "[withdrawal.config] is no longer supported: mark the accounts drive with accounts_drive = true, and keep only guardian, withdrawal_output_builder or account_size under [withdrawal]",
-        );
-        this.name = "UnsupportedWithdrawalConfigError";
-    }
-}
-
 /**
  * Configuration for drives of a Cartesi Machine. A drive may already exist or be built by a builder
  */
@@ -289,7 +280,6 @@ export type WithdrawalOptions = {
     guardian?: Address; // default is a devnet account
     withdrawal_output_builder?: Address; // default is the devnet TestUsdWithdrawalOutputBuilder
     account_size?: number; // in bytes, default is 32
-    ignored: string[]; // warnings about keys written in cartesi.toml that aren't read
 };
 
 export type Config = {
@@ -921,13 +911,6 @@ const parseDrives = (config: TomlPrimitive): Record<string, DriveConfig> => {
     return drives;
 };
 
-// keys of [withdrawal] that are written but not read, and why
-const IGNORED_WITHDRAWAL_KEYS: Record<string, string> = {
-    accounts_drive_start_index: "it is derived from the built machine",
-    log2_max_num_of_accounts: "it is derived from the built machine",
-    log2_leaves_per_account: "set account_size, in bytes, instead",
-};
-
 const parseAccountSize = (value: TomlPrimitive): number => {
     const size = parseSize(value);
     if (
@@ -943,9 +926,8 @@ const parseAccountSize = (value: TomlPrimitive): number => {
 };
 
 /**
- * Parses [withdrawal], which only applies to an application with an accounts drive. It reads
- * the keys it uses; the ones it no longer reads are listed in `ignored`, to warn about, and any
- * other key is left alone.
+ * Parses [withdrawal], which only applies to an application with an accounts drive. Like the
+ * other tables, it reads the keys it uses and leaves any other key alone.
  */
 const parseOptionalWithdrawal = (
     withdrawal: TomlPrimitive,
@@ -957,9 +939,6 @@ const parseOptionalWithdrawal = (
         throw new InvalidWithdrawalConfigError(
             `expected a table, got ${formatValue(withdrawal)}`,
         );
-    }
-    if (withdrawal.config !== undefined) {
-        throw new UnsupportedWithdrawalConfigError();
     }
 
     const optional = <T>(
@@ -977,11 +956,6 @@ const parseOptionalWithdrawal = (
             parseRequiredAddress,
         ),
         account_size: optional("account_size", parseAccountSize),
-        ignored: Object.entries(IGNORED_WITHDRAWAL_KEYS)
-            .filter(([key]) => withdrawal[key] !== undefined)
-            .map(
-                ([key, reason]) => `Ignoring ${key} in [withdrawal]: ${reason}`,
-            ),
     };
     return options;
 };

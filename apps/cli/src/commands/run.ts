@@ -442,9 +442,6 @@ export const createRunCommand = () => {
 
             // get application configuration (e.g. use withdrawal config if present)
             const applicationConfig = getApplicationConfig(configFiles);
-            for (const warning of applicationConfig.withdrawal?.ignored ?? []) {
-                console.warn(chalk.yellow(warning));
-            }
 
             // resolve port number, using the first free port in a range, unless explicitly set
             const port =
