@@ -7,7 +7,7 @@ import {
     InvalidAccountsDriveError,
     InvalidWithdrawalConfigError,
     parse,
-} from "../../src/config.js";
+} from "../../src/config/index.js";
 import {
     DEVNET_GUARDIAN,
     DEVNET_WITHDRAWAL_OUTPUT_BUILDER,

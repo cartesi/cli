@@ -2,7 +2,7 @@ import { ExecaError } from "execa";
 import fs from "fs-extra";
 import path from "node:path";
 import { getContextPath } from "../base.js";
-import { nvramHasImage, nvramImageFilename } from "../config.js";
+import { nvramHasImage, nvramImageFilename } from "../config/index.js";
 import { bootMachine } from "../machine.js";
 import { type ConfigOptions, resolveConfig } from "./types.js";
 
@@ -32,8 +32,8 @@ export type ShellOptions = ConfigOptions & {
 export const shell = async (options: ShellOptions = {}): Promise<void> => {
     const { command = "/bin/sh", runAsRoot = false } = options;
 
-    // get application configuration, from a Config object or 'cartesi.toml'
-    const config = resolveConfig(options.config);
+    // get application configuration, written inline or read from a file
+    const config = await resolveConfig(options.config, "shell");
 
     // destination directory for image and intermediate files
     const destination = path.resolve(getContextPath());

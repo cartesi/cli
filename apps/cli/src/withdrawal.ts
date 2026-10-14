@@ -13,7 +13,7 @@ import {
     LOG2_LEAF_SIZE,
     splitSize,
     type WithdrawalConfig,
-} from "./config.js";
+} from "./config/index.js";
 import { testUsdWithdrawalOutputBuilderAddress } from "./contracts.js";
 
 /**

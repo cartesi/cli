@@ -1,0 +1,4 @@
+machine:
+    entrypoint: overridden
+run:
+    epochLength: 20

@@ -1,6 +1,6 @@
 import { execa } from "execa";
 import semver from "semver";
-import { DEFAULT_SDK_IMAGE, DEFAULT_SDK_VERSION } from "../config.js";
+import { DEFAULT_SDK_IMAGE, DEFAULT_SDK_VERSION } from "../config/index.js";
 import { cartesiMachine } from "../exec/index.js";
 
 const MINIMUM_DOCKER_VERSION = "25.0.0"; // Replace with our minimum required Docker version
