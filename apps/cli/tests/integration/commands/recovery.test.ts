@@ -1,8 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import type { ResultPromise } from "execa";
 import fs from "fs-extra";
+import os from "node:os";
 import path from "node:path";
-import tmp from "tmp";
 import { type Address, parseEther } from "viem";
 import { mnemonicToAccount } from "viem/accounts";
 import {
@@ -111,9 +111,9 @@ describe("fund recovery", () => {
         depositTo(anvil, application, from, amount);
 
     beforeAll(async () => {
-        const dir = tmp.dirSync({ unsafeCleanup: true });
-        cleanup = dir.removeCallback;
-        appDir = path.join(dir.name, "accounts-withdrawal");
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), "recovery-"));
+        cleanup = () => fs.removeSync(dir);
+        appDir = path.join(dir, "accounts-withdrawal");
         await fs.copy(fixture, appDir);
         await fs.writeFile(
             path.join(appDir, "cartesi.toml"),

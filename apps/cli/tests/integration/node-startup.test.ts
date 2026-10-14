@@ -1,7 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { execa } from "execa";
 import getPort, { portNumbers } from "get-port";
-import tmp from "tmp";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import {
     startEnvironment,
     stopEnvironment,
@@ -16,14 +18,14 @@ import { TEST_RUNTIME_VERSION } from "./config.js";
 describe("rollups node startup", () => {
     const projectName = `cli-node-startup-${process.pid}`;
     let port: number;
-    let directory: tmp.DirResult;
+    let directory: string;
     let originalCwd: string;
 
     beforeAll(async () => {
         originalCwd = process.cwd();
-        directory = tmp.dirSync({ unsafeCleanup: true });
+        directory = fs.mkdtempSync(path.join(os.tmpdir(), "node-startup-"));
         // compose files are written relative to the working directory
-        process.chdir(directory.name);
+        process.chdir(directory);
         port = await getPort({ port: portNumbers(16751, 16761) });
     });
 
@@ -32,7 +34,7 @@ describe("rollups node startup", () => {
             await stopEnvironment({ projectName });
         } finally {
             process.chdir(originalCwd);
-            directory.removeCallback();
+            fs.rmSync(directory, { recursive: true, force: true });
         }
     });
 

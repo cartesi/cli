@@ -1,8 +1,8 @@
 import { describe, expect, it } from "bun:test";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { stripVTControlCharacters } from "node:util";
-import tmp from "tmp";
 import {
     InvalidAccountsDriveError,
     InvalidWithdrawalConfigError,
@@ -245,20 +245,20 @@ describe("getWithdrawalConfig", () => {
     });
 
     it("should derive the configuration from the stored machine", () => {
-        const dir = tmp.dirSync({ unsafeCleanup: true });
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), "withdrawal-"));
         try {
             fs.writeFileSync(
-                path.join(dir.name, "config.json"),
+                path.join(dir, "config.json"),
                 JSON.stringify(stored),
             );
-            expect(
-                getWithdrawalConfig(withAccountsDrive(), dir.name),
-            ).toMatchObject({
-                accounts_drive_start_index: 0x221,
-                log2_max_num_of_accounts: 17,
-            });
+            expect(getWithdrawalConfig(withAccountsDrive(), dir)).toMatchObject(
+                {
+                    accounts_drive_start_index: 0x221,
+                    log2_max_num_of_accounts: 17,
+                },
+            );
         } finally {
-            dir.removeCallback();
+            fs.rmSync(dir, { recursive: true, force: true });
         }
     });
 

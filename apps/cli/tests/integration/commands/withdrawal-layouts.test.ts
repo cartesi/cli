@@ -1,9 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import type { ResultPromise } from "execa";
 import fs from "fs-extra";
+import os from "node:os";
 import path from "node:path";
 import { stripVTControlCharacters } from "node:util";
-import tmp from "tmp";
 import type { Address } from "viem";
 import { erc20PortalAddress, testUsdcAddress } from "../../../src/contracts";
 import { getNodeWithdrawalConfig } from "../../../src/exec/rollups";
@@ -79,9 +79,11 @@ layouts.forEach((layout, index) => {
         const cli = (args: string[]) => runCli({ appDir, projectName }, args);
 
         beforeAll(async () => {
-            const dir = tmp.dirSync({ unsafeCleanup: true });
-            cleanup = dir.removeCallback;
-            appDir = path.join(dir.name, "accounts-withdrawal");
+            const dir = fs.mkdtempSync(
+                path.join(os.tmpdir(), "withdrawal-layout-"),
+            );
+            cleanup = () => fs.removeSync(dir);
+            appDir = path.join(dir, "accounts-withdrawal");
 
             console.log(`! Building an application with ${layout.name}...`);
             const build = await buildLayout(appDir, layout);

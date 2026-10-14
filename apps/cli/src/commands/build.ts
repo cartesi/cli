@@ -3,7 +3,6 @@ import chalk from "chalk";
 import fs from "fs-extra";
 import { Listr, type ListrTask } from "listr2";
 import path from "node:path";
-import tmp from "tmp";
 import { getApplicationConfig, getContextPath } from "../base.js";
 import {
     buildDirectory,
@@ -115,9 +114,6 @@ export const createBuildCommand = () => {
         .option("-v, --verbose", "verbose output", false)
         .action(async (options) => {
             const { debug, drivesOnly, verbose } = options;
-
-            // clean up temp files we create along the process
-            tmp.setGracefulCleanup();
 
             // get application configuration from 'cartesi.toml'
             const config = getApplicationConfig(options.config);
