@@ -8,7 +8,7 @@ Cartesi CLI — a tool for creating, building, running, and deploying [Cartesi](
 
 ## Monorepo Structure
 
--   **Package manager**: Bun (v1.3.6)
+-   **Package manager**: Bun (v1.4.3)
 -   **Build orchestration**: Turborepo
 -   **Linting/formatting**: Biome (4-space indentation, recommended rules)
 
