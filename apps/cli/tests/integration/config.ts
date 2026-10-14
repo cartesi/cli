@@ -1,7 +1,7 @@
 import { execa } from "execa";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
-import tmp from "tmp";
 import { DEFAULT_SDK_IMAGE, DEFAULT_SDK_VERSION } from "../../src/config.js";
 
 // CARTESI_TEST_SDK lets CI and local runs point the suite at an unreleased
@@ -56,8 +56,8 @@ export async function createTemporaryCartesiApplication(options?: {
     machineDir: string;
     cleanup: () => void;
 }> {
-    // Create a secure temporary directory that auto-cleans on exit
-    const tempDir = tmp.dirSync({ unsafeCleanup: true });
+    // Create a secure temporary directory, removed by cleanup()
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "cartesi-app-"));
     const cliPath = path.join(__dirname, "..", "..", "dist", "index.js");
 
     if (!fs.existsSync(cliPath)) {
@@ -68,7 +68,7 @@ export async function createTemporaryCartesiApplication(options?: {
 
     const isCI = process.env.CI === "true" || process.env.CI === "1";
 
-    console.log(`✓ Temporary sandbox directory created at: ${tempDir.name}`);
+    console.log(`✓ Temporary sandbox directory created at: ${tempDir}`);
     console.log(`✓ CLI binary located at: ${cliPath}`);
     console.log(`✓ Using Docker image: ${TEST_SDK}`);
     console.log(`! Creating a temporary Cartesi application in the sandbox...`);
@@ -78,7 +78,7 @@ export async function createTemporaryCartesiApplication(options?: {
 
     try {
         // Switch process working directory into the sandbox
-        process.chdir(tempDir.name);
+        process.chdir(tempDir);
 
         await execa("node", [
             cliPath,
@@ -88,7 +88,7 @@ export async function createTemporaryCartesiApplication(options?: {
             "temp-app",
         ]);
 
-        const appDir = path.join(tempDir.name, "temp-app");
+        const appDir = path.join(tempDir, "temp-app");
 
         console.log(`✓ Temporary Cartesi application created at: ${appDir}`);
 
@@ -128,13 +128,13 @@ export async function createTemporaryCartesiApplication(options?: {
             cleanup: () => {
                 // Restore working directory and wipe temporary files
                 process.chdir(originalCwd);
-                tempDir.removeCallback();
+                fs.rmSync(tempDir, { recursive: true, force: true });
             },
         };
     } catch (error) {
         // Ensure cwd is restored even if build/creation fails
         process.chdir(originalCwd);
-        tempDir.removeCallback();
+        fs.rmSync(tempDir, { recursive: true, force: true });
         throw error;
     }
 }

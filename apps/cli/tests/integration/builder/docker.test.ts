@@ -8,7 +8,6 @@ import {
 } from "bun:test";
 import fs from "fs-extra";
 import path from "node:path";
-import tmp from "tmp";
 import { build } from "../../../src/builder/docker.js";
 import type { DockerDriveConfig } from "../../../src/config.js";
 import { setupIntegrationTests, TEST_SDK } from "../config.js";
@@ -16,7 +15,6 @@ import { cleanupTempDir, createTempDir } from "./tmpdirTest.js";
 
 beforeAll(
     async () => {
-        tmp.setGracefulCleanup();
         await setupIntegrationTests();
     },
     { timeout: 60000 },

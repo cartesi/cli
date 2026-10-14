@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
-import { writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
-import tmp from "tmp";
 import { isHash, type Hash } from "viem";
 import { getMachineHash } from "../../../src/base";
 import { cartesiMachineStoredHash } from "../../../src/exec";
@@ -80,30 +80,32 @@ describe("cartesi-machine-stored-hash", () => {
 
     it("should return undefined when given an empty/corrupted machine directory", async () => {
         // Create an empty temporary directory simulating missing machine structures
-        const tempDir = tmp.dirSync({ unsafeCleanup: true });
+        const tempDir = mkdtempSync(path.join(os.tmpdir(), "machine-"));
 
         // write an empty config.json file to simulate a corrupted machine directory
-        writeFileSync(path.join(tempDir.name, "config.json"), "{}");
+        writeFileSync(path.join(tempDir, "config.json"), "{}");
         const machineHash = await cartesiMachineStoredHash.computeHash(".", {
             forceDocker: true,
             image: TEST_SDK,
-            cwd: tempDir.name,
+            cwd: tempDir,
         });
 
         expect(machineHash).toBeUndefined();
-        tempDir.removeCallback();
+        rmSync(tempDir, { recursive: true, force: true });
     });
 
     it("should return undefined when a file path is passed instead of a directory", async () => {
         // Create a temporary blank file
-        const tempFile = tmp.fileSync();
+        const tempDir = mkdtempSync(path.join(os.tmpdir(), "machine-"));
+        const tempFile = path.join(tempDir, "machine");
+        writeFileSync(tempFile, "");
         const machineHash = await cartesiMachineStoredHash.computeHash(".", {
             forceDocker: true,
             image: TEST_SDK,
-            cwd: tempFile.name,
+            cwd: tempFile,
         });
 
         expect(machineHash).toBeUndefined();
-        tempFile.removeCallback();
+        rmSync(tempDir, { recursive: true, force: true });
     });
 });

@@ -1,7 +1,7 @@
 import { execa } from "execa";
 import fs from "fs-extra";
+import os from "node:os";
 import path from "node:path";
-import tmp from "tmp";
 import type { DockerDriveConfig } from "../config.js";
 import { genext2fs, mksquashfs } from "../exec/index.js";
 import type { Reporter } from "../exec/util.js";
@@ -58,8 +58,9 @@ const buildImage = async (options: ImageBuildOptions): Promise<string> => {
 
     // use --metadata-file to capture the image ID from json format file, so stdout can be safely
     // ignored regardless of what --progress mode outputs there
-    const tmpFile = tmp.tmpNameSync();
-    args.push("--metadata-file", tmpFile);
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "cartesi-buildx-"));
+    const metadataFile = path.join(tmpDir, "metadata.json");
+    args.push("--metadata-file", metadataFile);
 
     if (target) {
         args.push("--target", target);
@@ -70,24 +71,28 @@ const buildImage = async (options: ImageBuildOptions): Promise<string> => {
     if (reporter)
         reporter(`Building docker image with args: ${args.join(" ")}`);
 
-    const proc = execa("docker", args, { input: dockerfileContent });
-    if (reporter) {
-        proc.stderr?.on("data", (chunk: Buffer) => {
-            for (const line of chunk.toString().split("\n")) {
-                if (line.trim()) reporter(line.trimEnd());
-            }
-        });
-    }
-    await proc;
-    const metadata = JSON.parse(
-        fs.readFileSync(tmpFile, "utf-8"),
-    ) as BuildxMetadata;
+    try {
+        const proc = execa("docker", args, { input: dockerfileContent });
+        if (reporter) {
+            proc.stderr?.on("data", (chunk: Buffer) => {
+                for (const line of chunk.toString().split("\n")) {
+                    if (line.trim()) reporter(line.trimEnd());
+                }
+            });
+        }
+        await proc;
+        const metadata = JSON.parse(
+            fs.readFileSync(metadataFile, "utf-8"),
+        ) as BuildxMetadata;
 
-    return (
-        metadata["containerimage.config.digest"] ??
-        metadata["containerimage.digest"] ??
-        ""
-    );
+        return (
+            metadata["containerimage.config.digest"] ??
+            metadata["containerimage.digest"] ??
+            ""
+        );
+    } finally {
+        await fs.remove(tmpDir);
+    }
 };
 
 /**
