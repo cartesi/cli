@@ -44,7 +44,9 @@ describe("when building with the directory builder", () => {
         ).rejects.toThrow("no such file or directory");
     });
 
-    it("should fail when the directory is empty", async () => {
+    it("should build a minimal drive when the directory is empty", async () => {
+        // xgenext2fs refused this with "too few blocks"; mkext2 sizes the
+        // filesystem to its own metadata, which leaves no room for anything
         const directory = path.join(__dirname, "data", "empty");
         fs.ensureDirSync(directory);
         const drive: DirectoryDriveConfig = {
@@ -53,9 +55,10 @@ describe("when building with the directory builder", () => {
             extraSize: 0,
             format: "ext2",
         };
-        await expect(
-            build("root", drive, image, destination, false),
-        ).rejects.toThrow("too few blocks");
+        await build("root", drive, image, destination, false);
+        const filename = path.join(destination, "root.ext2");
+        const stat = fs.statSync(filename);
+        expect(stat.size).toEqual(24576);
     });
 
     it("should pass when the directory is empty but extra size is defined", async () => {
@@ -70,7 +73,7 @@ describe("when building with the directory builder", () => {
         await build("root", drive, image, destination, false);
         const filename = path.join(destination, "root.ext2");
         const stat = fs.statSync(filename);
-        expect(stat.size).toEqual(1069056);
+        expect(stat.size).toEqual(1081344);
     });
 
     it("should pass for a populated directory (ext2)", async () => {
