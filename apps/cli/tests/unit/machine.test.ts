@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { parse } from "../../src/config.js";
+import { parse } from "../../src/config/index.js";
 import { buildMachineArgs } from "../../src/machine.js";
 
 const argsOf = (toml: string) =>

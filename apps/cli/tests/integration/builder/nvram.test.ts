@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import fs from "fs-extra";
 import path from "node:path";
 import { build } from "../../../src/builder/nvram.js";
-import type { NvramConfig } from "../../../src/config.js";
+import type { NvramConfig } from "../../../src/config/index.js";
 import { cleanupTempDir, createTempDir } from "./tmpdirTest.js";
 
 describe("when building an nvram", () => {

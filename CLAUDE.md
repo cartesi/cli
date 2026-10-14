@@ -52,7 +52,7 @@ The CLI build pipeline (`apps/cli`): `clean` → `codegen` (wagmi ABI generation
 -   **`builder/`** — Drive builder implementations (directory, docker, tar, empty, none). Each builder produces ext2 or SquashFS filesystems for Cartesi Machine drives.
 -   **`compose/`** — Docker Compose service definitions generated as TypeScript objects (anvil, node, bundler, database, paymaster, proxy, explorer, etc.).
 -   **`exec/`** — Wrappers around subprocess execution (cartesi-machine, rollups) using `execa`.
--   **`config.ts`** — Parses `cartesi.toml` (TOML-based project config) into typed `Config` objects. Defines drive configs, machine configs, and SDK versions.
+-   **`config/`** — Reads the project configuration into typed `Config` objects, and defines the drive, nvram, machine and run configs. An application is configured by a `cartesi.config.ts` file exporting `defineConfig({ ... })`, or by the same configuration as plain data in `cartesi.config.json`, `cartesi.config.yaml` or `cartesi.config`. The deprecated `cartesi.toml` is parsed by `config/toml.ts`.
 -   **`contracts.ts`** — Generated contract addresses and ABI bindings (via `@wagmi/cli`).
 -   **`wallet.ts`** — Wallet utilities using `viem` for Ethereum interaction.
 

@@ -6,7 +6,7 @@ import {
     type NvramConfig,
     nvramHasImage,
     nvramImageFilename,
-} from "../config.js";
+} from "../config/index.js";
 
 export const build = async (
     label: string,

@@ -2,7 +2,10 @@ import { execa } from "execa";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { DEFAULT_SDK_IMAGE, DEFAULT_SDK_VERSION } from "../../src/config.js";
+import {
+    DEFAULT_SDK_IMAGE,
+    DEFAULT_SDK_VERSION,
+} from "../../src/config/index.js";
 
 // CARTESI_TEST_SDK lets CI and local runs point the suite at an unreleased
 // SDK image, which is how changes are verified against the matching node.
