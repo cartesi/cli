@@ -184,7 +184,8 @@ apt-get install -y --no-install-recommends \
     libslirp0 \
     libgomp1 \
     lua5.4 \
-    lua-lpeg
+    lua-lpeg \
+    lua-socket
 rm -rf /var/lib/apt/lists/*
 EOF
 
