@@ -3,7 +3,7 @@ import fs from "fs-extra";
 import os from "node:os";
 import path from "node:path";
 import type { DockerDriveConfig } from "../config.js";
-import { genext2fs, mksquashfs } from "../exec/index.js";
+import { mkext2, mksquashfs } from "../exec/index.js";
 import type { Reporter } from "../exec/util.js";
 import type { BuildxMetadata } from "../types/docker.js";
 
@@ -162,12 +162,11 @@ export const build = async (
     try {
         switch (format) {
             case "ext2": {
-                await genext2fs.fromTar({
+                await mkext2.fromTar({
                     extraSize: drive.extraSize,
                     input: tar,
                     output: filename,
                     cwd: destination,
-                    image: sdkImage,
                     reporter,
                 });
                 break;

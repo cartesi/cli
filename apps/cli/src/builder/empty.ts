@@ -1,22 +1,20 @@
 import fs from "fs-extra";
 import path from "node:path";
 import type { EmptyDriveConfig } from "../config.js";
-import { genext2fs } from "../exec/index.js";
+import { mkext2 } from "../exec/index.js";
 
 export const build = async (
     name: string,
     drive: EmptyDriveConfig,
-    sdkImage: string,
     destination: string,
 ): Promise<void> => {
     const filename = `${name}.${drive.format}`;
     switch (drive.format) {
         case "ext2": {
-            await genext2fs.empty({
+            await mkext2.empty({
                 output: filename,
                 size: drive.size,
                 cwd: destination,
-                image: sdkImage,
             });
             break;
         }

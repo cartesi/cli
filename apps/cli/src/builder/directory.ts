@@ -1,7 +1,7 @@
 import fs from "fs-extra";
 import path from "node:path";
 import type { DirectoryDriveConfig } from "../config.js";
-import { genext2fs, mksquashfs } from "../exec/index.js";
+import { mkext2, mksquashfs } from "../exec/index.js";
 import type { Reporter } from "../exec/util.js";
 
 export const build = async (
@@ -22,12 +22,11 @@ export const build = async (
     try {
         switch (drive.format) {
             case "ext2": {
-                await genext2fs.fromDirectory({
+                await mkext2.fromDirectory({
                     extraSize: drive.extraSize,
                     input: name,
                     output: filename,
                     cwd: destination,
-                    image: sdkImage,
                     reporter,
                 });
                 break;

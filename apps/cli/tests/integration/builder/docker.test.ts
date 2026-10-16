@@ -87,7 +87,7 @@ describe("when building with the docker builder", () => {
             await build("root", drive, image, destination, false);
             const filename = path.join(destination, "root.ext2");
             const stat = fs.statSync(filename);
-            expect(stat.size).toEqual(93716480);
+            expect(stat.size).toEqual(89047040);
         },
         TIMEOUT,
     );
@@ -109,7 +109,7 @@ describe("when building with the docker builder", () => {
             await build("root", drive, image, destination, false);
             const filename = path.join(destination, "root.ext2");
             const stat = fs.statSync(filename);
-            expect(stat.size).toEqual(93716480);
+            expect(stat.size).toEqual(89047040);
         },
         TIMEOUT,
     );
