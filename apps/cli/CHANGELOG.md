@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0-alpha.40
+
+### Patch Changes
+
+- 2d6f72f: remove unused dependencies, replace tmp with node:fs, and stop installing bundled runtime dependencies
+
 ## 2.0.0-alpha.39
 
 ### Minor Changes
