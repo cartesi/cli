@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import fs from "fs-extra";
 import path from "node:path";
 import { satisfies } from "semver";
-import { parse } from "../../../src/config.js";
+import { parse } from "../../../src/config/index.js";
 import { cartesiMachine } from "../../../src/exec/index.js";
 import { bootMachine } from "../../../src/machine.js";
 import {

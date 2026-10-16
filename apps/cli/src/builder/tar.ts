@@ -1,6 +1,6 @@
 import fs from "fs-extra";
 import path from "node:path";
-import type { TarDriveConfig } from "../config.js";
+import type { TarDriveConfig } from "../config/index.js";
 import { genext2fs, mksquashfs } from "../exec/index.js";
 import type { Reporter } from "../exec/util.js";
 

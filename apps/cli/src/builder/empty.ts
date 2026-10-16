@@ -1,6 +1,6 @@
 import fs from "fs-extra";
 import path from "node:path";
-import type { EmptyDriveConfig } from "../config.js";
+import type { EmptyDriveConfig } from "../config/index.js";
 import { genext2fs } from "../exec/index.js";
 
 export const build = async (

@@ -23,7 +23,7 @@ import {
     parse,
     RequiredFieldError,
     TooManyNvramsError,
-} from "../../src/config.js";
+} from "../../src/config/index.js";
 
 const loadFixture = (...segments: string[]) => {
     const filePath = path.join(__dirname, "config", "fixtures", ...segments);
