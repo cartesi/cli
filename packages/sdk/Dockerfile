@@ -206,8 +206,8 @@ RUN <<EOF
 curl -fsSL https://github.com/cartesi/machine-emulator/releases/download/v${CARTESI_MACHINE_EMULATOR_VERSION}/machine-emulator_${TARGETARCH}.deb \
     -o /tmp/machine-emulator.deb
 case "${TARGETARCH}" in
-    amd64) echo "5f13034f43454c340062c677146daabe77c587cee1bd60342c95b8ad8f1463a3  /tmp/machine-emulator.deb" | sha256sum --check ;;
-    arm64) echo "866f0bde2db53b9b8e6a6eac85e5ad4116338379fa25cdfcc5e4bf835f948bb1  /tmp/machine-emulator.deb" | sha256sum --check ;;
+    amd64) echo "906ae4cd0524ef254ea9a83712e6ad353c36123acae21628fb93c1c47955429a  /tmp/machine-emulator.deb" | sha256sum --check ;;
+    arm64) echo "212710b5ad74e469368cd5f54b006eebde1e8620833acca5be9a845cf74ab2cc  /tmp/machine-emulator.deb" | sha256sum --check ;;
     *) echo "unsupported architecture: ${TARGETARCH}"; exit 1 ;;
 esac
 apt-get install -y --no-install-recommends /tmp/machine-emulator.deb
@@ -313,21 +313,19 @@ EOF
 ################################################################################
 # linux kernel image stage
 FROM scratch AS kernel-image
-ARG CARTESI_IMAGE_KERNEL_VERSION
 ARG CARTESI_LINUX_KERNEL_VERSION
 
-ADD --checksum=sha256:5c900060da2db2bfa84cd39cd9cd722988c83c42225f3cac55f2d3157e48f32f \
-  https://github.com/cartesi/image-kernel/releases/download/v${CARTESI_IMAGE_KERNEL_VERSION}/linux-${CARTESI_LINUX_KERNEL_VERSION}.bin \
+ADD --checksum=sha256:ad12ad141e639fb7b8ce0477dfbb7aa7a4d178222b06e0ce9b335a1c5230f0e1 \
+  https://github.com/cartesi/linux/releases/download/v${CARTESI_LINUX_KERNEL_VERSION}/linux-${CARTESI_LINUX_KERNEL_VERSION}.bin \
   /usr/share/cartesi-machine/images/linux.bin
 
 ################################################################################
 # linux headers stage
 FROM base AS kernel-headers
-ARG CARTESI_IMAGE_KERNEL_VERSION
 ARG CARTESI_LINUX_KERNEL_VERSION
 
-ADD --checksum=sha256:e3f140a8632fcfb18218e7aea32a7d002124d3dce5ba8121ae061ab7f40a6cf4 \
-  https://github.com/cartesi/image-kernel/releases/download/v${CARTESI_IMAGE_KERNEL_VERSION}/linux-headers-${CARTESI_LINUX_KERNEL_VERSION}.tar.xz \
+ADD --checksum=sha256:0c6ef54c47e50502a00f6d3785be1f797f74c8bc2f0b3bc0f22bc26017569aa1 \
+  https://github.com/cartesi/linux/releases/download/v${CARTESI_LINUX_KERNEL_VERSION}/linux-headers-${CARTESI_LINUX_KERNEL_VERSION}.tar.xz \
   /tmp/linux-headers-${CARTESI_LINUX_KERNEL_VERSION}.tar.xz
 RUN tar -xJf "/tmp/linux-headers-${CARTESI_LINUX_KERNEL_VERSION}.tar.xz" -C /
 
