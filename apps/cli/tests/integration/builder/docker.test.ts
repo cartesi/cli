@@ -20,6 +20,10 @@ beforeAll(
     { timeout: 60000 },
 );
 
+// a docker build and a filesystem build in one test run close to the five
+// second default, on a runner that is sometimes slower than that
+const TIMEOUT = 60000;
+
 describe("when building with the docker builder", () => {
     const image = TEST_SDK;
     let destination: string;
@@ -66,41 +70,49 @@ describe("when building with the docker builder", () => {
         ).rejects.toThrow(/no match for platform in manifest/);
     });
 
-    it("should build an ext2 drive with a target definition", async () => {
-        const drive: DockerDriveConfig = {
-            buildArgs: [],
-            builder: "docker",
-            context: path.join(__dirname, "fixtures"),
-            dockerfile: path.join(__dirname, "fixtures", "Dockerfile"),
-            extraSize: 0,
-            format: "ext2",
-            tags: [],
-            image: undefined,
-            target: "test",
-        };
-        await build("root", drive, image, destination, false);
-        const filename = path.join(destination, "root.ext2");
-        const stat = fs.statSync(filename);
-        expect(stat.size).toEqual(93716480);
-    });
+    it(
+        "should build an ext2 drive with a target definition",
+        async () => {
+            const drive: DockerDriveConfig = {
+                buildArgs: [],
+                builder: "docker",
+                context: path.join(__dirname, "fixtures"),
+                dockerfile: path.join(__dirname, "fixtures", "Dockerfile"),
+                extraSize: 0,
+                format: "ext2",
+                tags: [],
+                image: undefined,
+                target: "test",
+            };
+            await build("root", drive, image, destination, false);
+            const filename = path.join(destination, "root.ext2");
+            const stat = fs.statSync(filename);
+            expect(stat.size).toEqual(93716480);
+        },
+        TIMEOUT,
+    );
 
-    it("should build an ext2 drive", async () => {
-        const drive: DockerDriveConfig = {
-            buildArgs: [],
-            builder: "docker",
-            context: path.join(__dirname, "fixtures"),
-            dockerfile: path.join(__dirname, "fixtures", "Dockerfile"),
-            extraSize: 0,
-            format: "ext2",
-            tags: [],
-            image: undefined,
-            target: undefined,
-        };
-        await build("root", drive, image, destination, false);
-        const filename = path.join(destination, "root.ext2");
-        const stat = fs.statSync(filename);
-        expect(stat.size).toEqual(93716480);
-    });
+    it(
+        "should build an ext2 drive",
+        async () => {
+            const drive: DockerDriveConfig = {
+                buildArgs: [],
+                builder: "docker",
+                context: path.join(__dirname, "fixtures"),
+                dockerfile: path.join(__dirname, "fixtures", "Dockerfile"),
+                extraSize: 0,
+                format: "ext2",
+                tags: [],
+                image: undefined,
+                target: undefined,
+            };
+            await build("root", drive, image, destination, false);
+            const filename = path.join(destination, "root.ext2");
+            const stat = fs.statSync(filename);
+            expect(stat.size).toEqual(93716480);
+        },
+        TIMEOUT,
+    );
 
     it.skip("should build a sqfs drive", async () => {
         const drive: DockerDriveConfig = {
