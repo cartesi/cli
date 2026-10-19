@@ -1,0 +1,5 @@
+{
+    "$schema": "https://cartesi.io/schema/cartesi.config.json",
+    "machine": { "ramLength": "256Mi" },
+    "run": { "epochLength": 10 }
+}

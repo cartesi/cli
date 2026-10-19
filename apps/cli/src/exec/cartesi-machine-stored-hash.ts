@@ -1,5 +1,5 @@
 import { isHash, type Hash } from "viem";
-import { DEFAULT_SDK_IMAGE, DEFAULT_SDK_VERSION } from "../config.js";
+import { DEFAULT_SDK_IMAGE, DEFAULT_SDK_VERSION } from "../config/index.js";
 import { execaDockerFallback, type DockerFallbackOptions } from "./util.js";
 
 type ComputeHashOptions = { cwd?: string } & DockerFallbackOptions;

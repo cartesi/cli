@@ -30,7 +30,7 @@ import node from "../compose/node.js";
 import passkey from "../compose/passkey.js";
 import paymaster from "../compose/paymaster.js";
 import proxy from "../compose/proxy.js";
-import type { WithdrawalConfig } from "../config.js";
+import type { WithdrawalConfig } from "../config/index.js";
 import type { ForkConfig } from "../types/chain.js";
 import type { AccountsDriveConfig } from "./cartesi-rollups-machine-tool.js";
 import { execNodeCommand } from "./node-container.js";

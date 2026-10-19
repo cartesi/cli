@@ -7,7 +7,7 @@ import {
     type NvramConfig,
     nvramHasImage,
     nvramImageFilename,
-} from "./config.js";
+} from "./config/index.js";
 import { cartesiMachine } from "./exec/index.js";
 import type { ExecaOptionsDockerFallback } from "./exec/util.js";
 

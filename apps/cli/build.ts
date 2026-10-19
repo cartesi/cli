@@ -9,7 +9,7 @@ await Bun.build({
 });
 
 await Bun.build({
-    entrypoints: ["./src/lib.ts"],
+    entrypoints: ["./src/lib.ts", "./src/defineConfig.ts"],
     minify: true,
     outdir: "dist",
     sourcemap: true,
