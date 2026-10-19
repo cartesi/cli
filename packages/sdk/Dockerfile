@@ -88,7 +88,7 @@ RUN <<EOF
 mkdir -p /opt/devnet
 curl -fsSL https://github.com/cartesi/dave/releases/download/v${CARTESI_PRT_VERSION}/cartesi-rollups-prt-${CARTESI_PRT_VERSION}-anvil-${FOUNDRY_VERSION}.tar.gz \
   -o /tmp/prt-anvil.tar.gz
-echo "7e6b6a402b5e384fd6aa56387726cf4cc08783b6350b1c16a71a2e6ff454e583 /tmp/prt-anvil.tar.gz" | sha256sum --check
+echo "62500dc3558fbb1f289d99584cd8989d7b42d0c0e7e7a13b8f2d309746e9163e /tmp/prt-anvil.tar.gz" | sha256sum --check
 tar -xzO -f /tmp/prt-anvil.tar.gz state.json > /opt/devnet/anvil_state.json
 rm /tmp/prt-anvil.tar.gz
 echo ${CARTESI_PRT_VERSION} > /opt/devnet/PRT_VERSION
@@ -160,11 +160,11 @@ ARG CARTESI_PRT_VERSION
 ARG TARGETARCH
 WORKDIR /tmp
 RUN <<EOF
-curl -fsSL https://github.com/cartesi/dave/releases/download/v${CARTESI_PRT_VERSION}/cartesi-rollups-prt-${CARTESI_PRT_VERSION}-node-${TARGETARCH}.tar.gz \
+curl -fsSL https://github.com/cartesi/dave/releases/download/v${CARTESI_PRT_VERSION}/cartesi-sling-node-${CARTESI_PRT_VERSION}-${TARGETARCH}.tar.gz \
     -o ./sling-node.tar.gz;
 case "${TARGETARCH}" in
-    amd64) echo "a69beb8a96aad4eb0e7be1ac492bc6e3e312cbc105456403b14d2889c8364f68 /tmp/sling-node.tar.gz" | sha256sum --check ;;
-    arm64) echo "c19e932f6b4ac1039af8b0fac2355268397e31cae6302809cad50221d9058cba /tmp/sling-node.tar.gz" | sha256sum --check ;;
+    amd64) echo "25c04e29a1c3da2dec1cfc02413cae053b6093fe40c264348aeac69b680a0757 /tmp/sling-node.tar.gz" | sha256sum --check ;;
+    arm64) echo "a15c5df6679186f39c6e634815ecd47d696a947ad0ce66cf1f23b44d81d70b1a /tmp/sling-node.tar.gz" | sha256sum --check ;;
     *) echo "unsupported architecture: ${TARGETARCH}"; exit 1 ;;
 esac
 tar -xvzf /tmp/sling-node.tar.gz -C /usr/local/bin
@@ -238,7 +238,7 @@ COPY --from=nitro /usr/local/src/nitro /usr/local/bin/
 COPY --from=nitro /usr/local/src/nitroctl /usr/local/bin/
 COPY --from=tini /usr/local/bin/tini /usr/local/bin/
 COPY --from=telegraf /usr/local/bin/telegraf /usr/local/bin/
-COPY --from=sling-node --chmod=755 /usr/local/bin/cartesi-rollups-prt-node /usr/local/bin/cartesi-rollups-prt-node
+COPY --from=sling-node --chmod=755 /usr/local/bin/cartesi-sling-node /usr/local/bin/cartesi-sling-node
 
 COPY skel/ /
 RUN <<EOF
