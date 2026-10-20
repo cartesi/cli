@@ -1,4 +1,5 @@
 import {
+    afterAll,
     afterEach,
     beforeAll,
     beforeEach,
@@ -6,10 +7,10 @@ import {
     expect,
     it,
 } from "bun:test";
-import crypto from "node:crypto";
-import fs from "fs-extra";
-import path from "node:path";
 import { execa } from "execa";
+import fs from "fs-extra";
+import crypto from "node:crypto";
+import path from "node:path";
 import { build } from "../../../src/builder/docker.js";
 import type { DockerDriveConfig } from "../../../src/config.js";
 import { setupIntegrationTests, TEST_SDK } from "../config.js";
@@ -136,7 +137,39 @@ describe("when building with the docker builder", () => {
 describe("when using cache options", () => {
     const image = TEST_SDK;
     const CACHE_TEST_TAG = "cartesi-cli-integration-test-cache:latest";
+    const CACHE_TEST_BUILDER = `cartesi-cli-test-${process.pid}`;
+    let previousBuilder: string | undefined;
     let destination: string;
+
+    // Use a disposable, test-owned builder so pruning its cache never touches
+    // the developer's own builders. BUILDX_BUILDER is process-scoped, so the
+    // builder selected by `docker buildx use` is left unchanged.
+    beforeAll(
+        async () => {
+            await execa("docker", [
+                "buildx",
+                "create",
+                "--name",
+                CACHE_TEST_BUILDER,
+                "--driver",
+                "docker-container",
+            ]);
+            previousBuilder = process.env.BUILDX_BUILDER;
+            process.env.BUILDX_BUILDER = CACHE_TEST_BUILDER;
+        },
+        { timeout: 60000 },
+    );
+
+    afterAll(async () => {
+        if (previousBuilder === undefined) {
+            delete process.env.BUILDX_BUILDER;
+        } else {
+            process.env.BUILDX_BUILDER = previousBuilder;
+        }
+        await execa("docker", ["buildx", "rm", "--force", CACHE_TEST_BUILDER], {
+            reject: false,
+        });
+    });
 
     beforeEach(async () => {
         destination = await createTempDir();
@@ -217,8 +250,7 @@ describe("when using cache options", () => {
                 reject: false,
             });
             // Remove all build-cache records (including non-dangling ones) from the
-            // currently selected buildx builder, which may not be the daemon's own
-            // (e.g. a docker-container builder created by docker/setup-buildx-action)
+            // test-owned builder selected through BUILDX_BUILDER
             await execa("docker", ["buildx", "prune", "--all", "--force"]);
 
             // Remove build artefacts so the second build starts clean
