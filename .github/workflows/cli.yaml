@@ -3,7 +3,9 @@ on:
     pull_request:
         paths:
             - ".github/workflows/cli.yaml"
+            - ".github/workflows/sdk.yaml"
             - "apps/cli/**"
+            - "packages/sdk/**"
             - "packages/tsconfig/**"
 concurrency:
     group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
@@ -13,11 +15,21 @@ permissions:
     packages: write
     pull-requests: write
 jobs:
+    sdk:
+        uses: ./.github/workflows/sdk.yaml
+        secrets: inherit
+        permissions:
+            contents: read
+            packages: write
+            id-token: write
+            actions: write
     build:
+        needs: sdk
         runs-on: ubuntu-latest
         env:
             TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
             TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+            SDK_TAG: pr-${{ github.event.pull_request.number }}
         steps:
             - name: Checkout
               uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -27,6 +39,20 @@ jobs:
 
             - name: Set up Docker Buildx
               uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+            - name: Login to GitHub Container Registry
+              uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+              with:
+                  registry: ghcr.io
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Retag SDK images
+              run: |
+                  for image in sdk rollups-runtime rollups-database; do
+                      docker pull "ghcr.io/cartesi/$image:$SDK_TAG"
+                      docker tag "ghcr.io/cartesi/$image:$SDK_TAG" "cartesi/$image:$SDK_TAG"
+                  done
 
             - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
 
@@ -45,6 +71,9 @@ jobs:
 
             - name: Test
               run: bun test apps/cli/
+              env:
+                  CARTESI_TEST_SDK: cartesi/sdk:${{ env.SDK_TAG }}
+                  CARTESI_TEST_RUNTIME_VERSION: ${{ env.SDK_TAG }}
 
             - name: Coverage Report
               uses: 70-10/bun-coverage-report-action@6173866ce2a31456a726ff3f4c91f230bd94a9e9 # v1.0.3

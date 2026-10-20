@@ -6,12 +6,8 @@ on:
                 required: true
             DOCKERHUB_TOKEN:
                 required: true
-    pull_request:
-        paths:
-            - ".github/workflows/sdk.yaml"
-            - "packages/sdk/**"
 concurrency:
-    group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+    group: sdk-${{ github.ref }}
     cancel-in-progress: true
 permissions:
     contents: read
@@ -82,6 +78,9 @@ jobs:
               with:
                   username: ${{ secrets.DOCKERHUB_USERNAME }}
                   password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+            - name: Fetch rollups-node packages
+              run: ./packages/sdk/scripts/fetch-rollups-node.sh
 
             - name: Build and push
               uses: docker/bake-action@018cb6412ab401ebaa809aa5f85966b74628600f # v7.4.0

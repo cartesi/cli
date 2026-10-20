@@ -88,7 +88,7 @@ RUN <<EOF
 mkdir -p /opt/devnet
 curl -fsSL https://github.com/cartesi/dave/releases/download/v${CARTESI_PRT_VERSION}/cartesi-rollups-prt-${CARTESI_PRT_VERSION}-anvil-${FOUNDRY_VERSION}.tar.gz \
   -o /tmp/prt-anvil.tar.gz
-echo "7e6b6a402b5e384fd6aa56387726cf4cc08783b6350b1c16a71a2e6ff454e583 /tmp/prt-anvil.tar.gz" | sha256sum --check
+echo "62500dc3558fbb1f289d99584cd8989d7b42d0c0e7e7a13b8f2d309746e9163e /tmp/prt-anvil.tar.gz" | sha256sum --check
 tar -xzO -f /tmp/prt-anvil.tar.gz state.json > /opt/devnet/anvil_state.json
 rm /tmp/prt-anvil.tar.gz
 echo ${CARTESI_PRT_VERSION} > /opt/devnet/PRT_VERSION
@@ -160,11 +160,11 @@ ARG CARTESI_PRT_VERSION
 ARG TARGETARCH
 WORKDIR /tmp
 RUN <<EOF
-curl -fsSL https://github.com/cartesi/dave/releases/download/v${CARTESI_PRT_VERSION}/cartesi-rollups-prt-${CARTESI_PRT_VERSION}-node-${TARGETARCH}.tar.gz \
+curl -fsSL https://github.com/cartesi/dave/releases/download/v${CARTESI_PRT_VERSION}/cartesi-sling-node-${CARTESI_PRT_VERSION}-${TARGETARCH}.tar.gz \
     -o ./sling-node.tar.gz;
 case "${TARGETARCH}" in
-    amd64) echo "a69beb8a96aad4eb0e7be1ac492bc6e3e312cbc105456403b14d2889c8364f68 /tmp/sling-node.tar.gz" | sha256sum --check ;;
-    arm64) echo "c19e932f6b4ac1039af8b0fac2355268397e31cae6302809cad50221d9058cba /tmp/sling-node.tar.gz" | sha256sum --check ;;
+    amd64) echo "25c04e29a1c3da2dec1cfc02413cae053b6093fe40c264348aeac69b680a0757 /tmp/sling-node.tar.gz" | sha256sum --check ;;
+    arm64) echo "a15c5df6679186f39c6e634815ecd47d696a947ad0ce66cf1f23b44d81d70b1a /tmp/sling-node.tar.gz" | sha256sum --check ;;
     *) echo "unsupported architecture: ${TARGETARCH}"; exit 1 ;;
 esac
 tar -xvzf /tmp/sling-node.tar.gz -C /usr/local/bin
@@ -207,8 +207,8 @@ RUN <<EOF
 curl -fsSL https://github.com/cartesi/machine-emulator/releases/download/v${CARTESI_MACHINE_EMULATOR_VERSION}/machine-emulator_${TARGETARCH}.deb \
     -o /tmp/machine-emulator.deb
 case "${TARGETARCH}" in
-    amd64) echo "5f13034f43454c340062c677146daabe77c587cee1bd60342c95b8ad8f1463a3  /tmp/machine-emulator.deb" | sha256sum --check ;;
-    arm64) echo "866f0bde2db53b9b8e6a6eac85e5ad4116338379fa25cdfcc5e4bf835f948bb1  /tmp/machine-emulator.deb" | sha256sum --check ;;
+    amd64) echo "906ae4cd0524ef254ea9a83712e6ad353c36123acae21628fb93c1c47955429a  /tmp/machine-emulator.deb" | sha256sum --check ;;
+    arm64) echo "212710b5ad74e469368cd5f54b006eebde1e8620833acca5be9a845cf74ab2cc  /tmp/machine-emulator.deb" | sha256sum --check ;;
     *) echo "unsupported architecture: ${TARGETARCH}"; exit 1 ;;
 esac
 apt-get install -y --no-install-recommends /tmp/machine-emulator.deb
@@ -216,15 +216,9 @@ rm /tmp/machine-emulator.deb
 cartesi-machine --version-json
 EOF
 
-# Install cartesi-rollups-node
+# Install cartesi-rollups-node (WIP: built by rollups-node CI, see scripts/fetch-rollups-node.sh)
+COPY rollups-node/cartesi-rollups-node_${TARGETARCH}.deb /tmp/cartesi-rollups-node.deb
 RUN <<EOF
-curl -fsSL https://github.com/cartesi/rollups-node/releases/download/v${CARTESI_ROLLUPS_NODE_VERSION}/cartesi-rollups-node-v${CARTESI_ROLLUPS_NODE_VERSION}_${TARGETARCH}.deb \
-    -o /tmp/cartesi-rollups-node.deb
-case "${TARGETARCH}" in
-    amd64) echo "5c75b12082bded69e589781715c74ce7ddf433a7ed2fa6f831e92315fa6dc003 /tmp/cartesi-rollups-node.deb" | sha256sum --check ;;
-    arm64) echo "ab4007baa7ea37ed58957fa94478c5f6e6999ca5234520bbfecb82e9c9c9bab3 /tmp/cartesi-rollups-node.deb" | sha256sum --check ;;
-    *) echo "unsupported architecture: ${TARGETARCH}"; exit 1 ;;
-esac
 apt-get install -y --no-install-recommends /tmp/cartesi-rollups-node.deb
 rm /tmp/cartesi-rollups-node.deb
 mkdir -p /var/lib/cartesi-rollups-node/snapshots
@@ -238,7 +232,7 @@ COPY --from=nitro /usr/local/src/nitro /usr/local/bin/
 COPY --from=nitro /usr/local/src/nitroctl /usr/local/bin/
 COPY --from=tini /usr/local/bin/tini /usr/local/bin/
 COPY --from=telegraf /usr/local/bin/telegraf /usr/local/bin/
-COPY --from=sling-node --chmod=755 /usr/local/bin/cartesi-rollups-prt-node /usr/local/bin/cartesi-rollups-prt-node
+COPY --from=sling-node --chmod=755 /usr/local/bin/cartesi-sling-node /usr/local/bin/cartesi-sling-node
 
 COPY skel/ /
 RUN <<EOF
@@ -314,21 +308,19 @@ EOF
 ################################################################################
 # linux kernel image stage
 FROM scratch AS kernel-image
-ARG CARTESI_IMAGE_KERNEL_VERSION
 ARG CARTESI_LINUX_KERNEL_VERSION
 
-ADD --checksum=sha256:5c900060da2db2bfa84cd39cd9cd722988c83c42225f3cac55f2d3157e48f32f \
-  https://github.com/cartesi/image-kernel/releases/download/v${CARTESI_IMAGE_KERNEL_VERSION}/linux-${CARTESI_LINUX_KERNEL_VERSION}.bin \
+ADD --checksum=sha256:ad12ad141e639fb7b8ce0477dfbb7aa7a4d178222b06e0ce9b335a1c5230f0e1 \
+  https://github.com/cartesi/linux/releases/download/v${CARTESI_LINUX_KERNEL_VERSION}/linux-${CARTESI_LINUX_KERNEL_VERSION}.bin \
   /usr/share/cartesi-machine/images/linux.bin
 
 ################################################################################
 # linux headers stage
 FROM base AS kernel-headers
-ARG CARTESI_IMAGE_KERNEL_VERSION
 ARG CARTESI_LINUX_KERNEL_VERSION
 
-ADD --checksum=sha256:e3f140a8632fcfb18218e7aea32a7d002124d3dce5ba8121ae061ab7f40a6cf4 \
-  https://github.com/cartesi/image-kernel/releases/download/v${CARTESI_IMAGE_KERNEL_VERSION}/linux-headers-${CARTESI_LINUX_KERNEL_VERSION}.tar.xz \
+ADD --checksum=sha256:0c6ef54c47e50502a00f6d3785be1f797f74c8bc2f0b3bc0f22bc26017569aa1 \
+  https://github.com/cartesi/linux/releases/download/v${CARTESI_LINUX_KERNEL_VERSION}/linux-headers-${CARTESI_LINUX_KERNEL_VERSION}.tar.xz \
   /tmp/linux-headers-${CARTESI_LINUX_KERNEL_VERSION}.tar.xz
 RUN tar -xJf "/tmp/linux-headers-${CARTESI_LINUX_KERNEL_VERSION}.tar.xz" -C /
 
