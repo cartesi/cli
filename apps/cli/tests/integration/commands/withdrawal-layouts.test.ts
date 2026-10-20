@@ -65,9 +65,7 @@ ${layout.accountsSize ? `ACCOUNTS_SIZE = "${layout.accountsSize}"` : ""}
 };
 
 layouts.forEach((layout, index) => {
-    const describeLayout = layout.skip ? describe.skip : describe;
-
-    describeLayout(`emergency withdrawal from ${layout.name}`, () => {
+    describe(`emergency withdrawal from ${layout.name}`, () => {
         const projectName = `layouts-${index}-${process.pid}`;
         let appDir: string;
         let cleanup: () => void;
