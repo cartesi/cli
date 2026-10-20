@@ -4,7 +4,7 @@ import {
     type ExecaOptionsDockerFallback,
 } from "./util.js";
 
-export const requiredVersion = new Range("^0.21.0");
+export const requiredVersion = new Range("^0.22.0");
 
 export const boot = (
     args: readonly string[],

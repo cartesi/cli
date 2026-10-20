@@ -100,10 +100,12 @@ export async function createTemporaryCartesiApplication(options?: {
         // Build with the same image the snapshot readers use. Without this the
         // build falls back to the released SDK while the readers use TEST_SDK,
         // and a snapshot written by one emulator is rejected by the other.
-        fs.appendFileSync(
-            path.join(appDir, "cartesi.toml"),
-            `\nsdk = "${TEST_SDK}"\n`,
-        );
+        // Prepended, so the key stays top-level whatever tables the config ends with.
+        const configPath = path.join(appDir, "cartesi.toml");
+        const config = fs.existsSync(configPath)
+            ? fs.readFileSync(configPath, "utf-8")
+            : "";
+        fs.writeFileSync(configPath, `sdk = "${TEST_SDK}"\n${config}`);
 
         //  Change directory into the created application
         process.chdir(appDir);
