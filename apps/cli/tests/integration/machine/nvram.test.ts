@@ -24,7 +24,7 @@ const found = await cartesiMachine.version({
 const supported =
     found !== null && satisfies(found.format(), cartesiMachine.requiredVersion);
 
-// no sdk key here: the helper appends `sdk = "${TEST_SDK}"` itself, and TOML rejects duplicates
+// no sdk key here: the helper prepends `sdk = "${TEST_SDK}"` itself, and TOML rejects duplicates
 const CONFIG = `[nvrams.input]
 size = "4Ki"
 
@@ -54,7 +54,7 @@ describe.skipIf(!supported)("when booting a machine with nvrams", () => {
      * Boots the built application with a different entrypoint, the way the shell command does.
      */
     const boot = async (command: string) => {
-        // the app's own config, which carries the sdk pin the helper appended
+        // the app's own config, which carries the sdk pin the helper prepended
         const config = parse([
             fs.readFileSync(path.join(app.appDir, "cartesi.toml"), "utf-8"),
         ]);
