@@ -16,6 +16,15 @@ docker run cartesi/sdk:<version> cartesi-machine --help
 
 ## Building the image
 
+> **WIP, until the next rollups-node release:** the images install a rollups-node built by
+> rollups-node CI instead of a release. `bun run build` (here or at the repository root)
+> first runs `scripts/fetch-rollups-node.sh`, which downloads the `.deb` files of the
+> pinned run into `rollups-node/` (git-ignored) and skips the download once they are
+> there, then bakes `cartesi/sdk:devel`, `cartesi/rollups-runtime:devel` and
+> `cartesi/rollups-database:devel`. Use them with `sdk = "cartesi/sdk:devel"` in
+> `cartesi.toml` and `cartesi run --runtime-version devel`. Set `ROLLUPS_NODE_RUN_ID`
+> to take another run.
+
 To build and publish the images to the registry, you need to have the `docker` CLI installed and logged in to both `ghcr.io/cartesi` and `docker.io` registries.
 
 Then you can run the following command:
