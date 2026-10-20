@@ -66,17 +66,6 @@ jobs:
                   commit-message: "release: version packages"
                   publish-script: bun run publish-packages
 
-            - name: Release CLI binaries
-              if: ${{ !cancelled() && steps.changeset.outputs.published == 'true' && contains(fromJSON(steps.changeset.outputs.published-packages).*.name, '@cartesi/cli') }}
-              run: |
-                  for f in cartesi-*; do tar -czf "$f.tar.gz" "$f"; done
-                  VERSION=$(jq -r '.[] | select(.name=="@cartesi/cli") | .version' <<< '${{ steps.changeset.outputs.published-packages }}')
-                  TAG="@cartesi/cli@${VERSION}"
-                  gh release upload "$TAG" cartesi-*.tar.gz
-              working-directory: ./apps/cli/bin
-              env:
-                  GH_TOKEN: ${{ github.token }}
-
     build_sdk:
         name: Build SDK
         needs: release

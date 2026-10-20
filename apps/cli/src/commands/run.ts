@@ -86,7 +86,6 @@ const shell = async (options: {
     projectName: string;
     prt?: boolean;
     salt: number;
-    sdk: string;
     resolveWithdrawalConfig: () => WithdrawalConfig | undefined;
     claimStagingPeriod: number;
 }) => {
@@ -96,7 +95,6 @@ const shell = async (options: {
         log,
         projectName,
         prt,
-        sdk,
         resolveWithdrawalConfig,
         claimStagingPeriod,
     } = options;
@@ -179,7 +177,7 @@ const shell = async (options: {
                     await build?.parseAsync([], { from: "user" });
 
                     // redeploy
-                    const hash = await getMachineHash({ sdk });
+                    const hash = await getMachineHash();
                     if (hash) {
                         // the accounts drive may have moved with the rebuild,
                         // resolved before undeploying in case it is now invalid
@@ -440,9 +438,6 @@ export const createRunCommand = () => {
             // project name explicitly defined or the current directory name
             const projectName = getProjectName(options);
 
-            // get application configuration (e.g. use withdrawal config if present)
-            const applicationConfig = getApplicationConfig(configFiles);
-
             // resolve port number, using the first free port in a range, unless explicitly set
             const port =
                 options.port ||
@@ -518,9 +513,7 @@ export const createRunCommand = () => {
             // deploy the application
             let deployment: RollupsDeployment | undefined;
             let salt = 0;
-            const hash = await getMachineHash({
-                sdk: applicationConfig.sdk,
-            });
+            const hash = await getMachineHash();
             if (hash) {
                 deployment = await deploy({
                     epochLength,
@@ -571,7 +564,6 @@ export const createRunCommand = () => {
                     projectName,
                     prt,
                     salt,
-                    sdk: applicationConfig.sdk,
                     claimStagingPeriod,
                     resolveWithdrawalConfig,
                 });
