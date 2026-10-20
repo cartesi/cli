@@ -285,7 +285,9 @@ RUN /usr/local/bin/docker-ensure-initdb.sh postgres
 ################################################################################
 # rollups-database image
 FROM ${POSTGRES_BASE_IMAGE} AS rollups-database
-COPY --from=postgresql-initdb /var/lib/postgresql/data /var/lib/postgresql/data
+# postgres 18+ keeps PGDATA at /var/lib/postgresql/<major>/docker (not .../data),
+# so copy the whole VOLUME directory; the final stage shares the same default PGDATA
+COPY --from=postgresql-initdb /var/lib/postgresql /var/lib/postgresql
 
 ################################################################################
 # alto build
