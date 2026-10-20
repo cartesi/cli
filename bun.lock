@@ -19,6 +19,7 @@
       },
       "dependencies": {
         "@cartesi/machine": "1.0.0-alpha.2",
+        "@tuler/mkext2": "^0.1.0",
       },
       "devDependencies": {
         "@cartesi/wagmi-plugin": "1.0.0-alpha.7",
@@ -331,6 +332,18 @@
     "@tsconfig/node14": ["@tsconfig/node14@1.0.3", "", {}, "sha512-ysT8mhdixWK6Hw3i1V2AeRqZ5WfXg1G43mqoYlM2nc6388Fq5jcXyr5mRsqViLx/GJYdoL0bfXD8nmF+Zn/Iow=="],
 
     "@tsconfig/node16": ["@tsconfig/node16@1.0.4", "", {}, "sha512-vxhUy4J8lyeyinH7Azl1pdd43GJhZH/tP2weN8TntQblOY+A0XbT8DJk1/oCPuOOyg/Ja757rG0CgHcWC8OfMA=="],
+
+    "@tuler/mkext2": ["@tuler/mkext2@0.1.1", "", { "optionalDependencies": { "@tuler/mkext2-darwin-arm64": "0.1.1", "@tuler/mkext2-darwin-x64": "0.1.1", "@tuler/mkext2-linux-arm64-gnu": "0.1.1", "@tuler/mkext2-linux-x64-gnu": "0.1.1", "@tuler/mkext2-win32-x64-msvc": "0.1.1" } }, "sha512-x0C+2Luw/PMEVNZywWvlPyjJQVN+3Uoswj0/BJLBwxfKkfoCqxfEFVuRW8w5Dh+LkL3ERMA7eK7TJB+uh9gUhw=="],
+
+    "@tuler/mkext2-darwin-arm64": ["@tuler/mkext2-darwin-arm64@0.1.1", "", { "os": "darwin", "cpu": "arm64" }, "sha512-Yu+jj6oiRRgLdw+qBwEU/8dY2GmA9XumxHFfuXm+tgr1M9vczNzaxtTfGzFhzyatNK81lg4CDsrSwtdbG8H63Q=="],
+
+    "@tuler/mkext2-darwin-x64": ["@tuler/mkext2-darwin-x64@0.1.1", "", { "os": "darwin", "cpu": "x64" }, "sha512-tJM8/jL/fb5p3/+j4nDfduUC/mjXvucWl2QAzzTGmCPg/7bwqxuzTdGpXsHh1zKAfKpSSYSO6EjmKkZ4jcjtaQ=="],
+
+    "@tuler/mkext2-linux-arm64-gnu": ["@tuler/mkext2-linux-arm64-gnu@0.1.1", "", { "os": "linux", "cpu": "arm64" }, "sha512-j9K+H9fB7T4Y643OwgN3n01tH0wO6qUQHVgjvMCYlB9YqdK/R072ye+BXHu5mwBxPENqKc+JZPGrqX8zKcgMVA=="],
+
+    "@tuler/mkext2-linux-x64-gnu": ["@tuler/mkext2-linux-x64-gnu@0.1.1", "", { "os": "linux", "cpu": "x64" }, "sha512-/m5n6CR5DW8Iff691tRP/5hYQgtpehKGCMIP6kkVWW4eEmv+0M6P0a7h+0ubXVvJnzhh8OdAyRGdESjc1ZUNjw=="],
+
+    "@tuler/mkext2-win32-x64-msvc": ["@tuler/mkext2-win32-x64-msvc@0.1.1", "", { "os": "win32", "cpu": "x64" }, "sha512-+RTn+HnD/+kX5XgQTqWmvgebNuiu/JafCL7lKiIJ56xXiaXBWRW3G6LhFuSpEaDVjAMemXaP9ndYh38PTmIheg=="],
 
     "@turbo/darwin-64": ["@turbo/darwin-64@2.11.7", "", { "os": "darwin", "cpu": "x64" }, "sha512-Z2LFOxwbiJueD1miByXJS/BrW21vv6YaQXZustty5jEX4vQYw6zyh101Sz1QO7WG0mqBzKagZ/DoAeeujI0/Sw=="],
 
