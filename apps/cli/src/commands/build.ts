@@ -18,6 +18,8 @@ import { describeWithdrawalConfig, resolveWithdrawal } from "../withdrawal.js";
 
 // context for Listr build tasks
 interface BuildContext {
+    cacheFrom: string[];
+    cacheTo: string[];
     config: Config;
     debug: boolean;
     destination: string;
@@ -49,6 +51,8 @@ const buildDriveTask = (
                 break;
             }
             case "docker": {
+                if (ctx.cacheFrom.length > 0) drive.cacheFrom = ctx.cacheFrom;
+                if (ctx.cacheTo.length > 0) drive.cacheTo = ctx.cacheTo;
                 const imageInfo = await buildDocker(
                     name,
                     drive,
@@ -110,10 +114,22 @@ export const createBuildCommand = () => {
                 .default(false)
                 .hideHelp(),
         )
+        .option(
+            "--cache-from <spec>",
+            "cache source for docker buildx build (can be repeated)",
+            (value: string, prev: string[]) => prev.concat([value]),
+            [] as string[],
+        )
+        .option(
+            "--cache-to <spec>",
+            "cache destination for docker buildx build (can be repeated)",
+            (value: string, prev: string[]) => prev.concat([value]),
+            [] as string[],
+        )
         .option("-d, --drives-only", "only build drives, do not boot machine")
         .option("-v, --verbose", "verbose output", false)
         .action(async (options) => {
-            const { debug, drivesOnly, verbose } = options;
+            const { cacheFrom, cacheTo, debug, drivesOnly, verbose } = options;
 
             // get application configuration from 'cartesi.toml'
             const config = getApplicationConfig(options.config);
@@ -126,6 +142,8 @@ export const createBuildCommand = () => {
 
             // build context
             const ctx = {
+                cacheFrom,
+                cacheTo,
                 config,
                 debug,
                 destination,
