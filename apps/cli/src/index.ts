@@ -48,15 +48,18 @@ const program = new Command()
     .addCommand(createStatusCommand())
     .addCommand(createWithdrawCommand());
 
-// Global error handling
-process.on("uncaughtException", (err) => {
+// Global error handling. Node turns an unhandled rejection, such as an error from an async
+// command, into an uncaught exception, but Bun, which runs the compiled binaries, doesn't.
+const handleError = (err: unknown) => {
     if (process.env.NODE_ENV === "development") {
         console.error(err);
     } else {
         // in production, only print the error message, not the stack trace
-        console.error(err.message);
+        console.error(err instanceof Error ? err.message : String(err));
     }
     process.exit(1);
-});
+};
+process.on("uncaughtException", handleError);
+process.on("unhandledRejection", handleError);
 
 program.parse();
