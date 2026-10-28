@@ -1,77 +1,86 @@
-# sdk = "cartesi/sdk:0.12.0"
+# every key cartesi.toml accepts, with its meaning, each with a value other than its default at
+# least once. the unit tests load this file, so it always parses: a key the parser reads but
+# doesn't list fails here, and so does one the parser stops reading.
 
-# [machine]
-# assert_rolling_update = true
-# boot_args = ["no4lvl", "quiet", "earlycon=sbi", "console=hvc0", "rootfstype=ext2", "root=/dev/pmem0", "rw", "init=/usr/sbin/cartesi-init"]
-# entrypoint = "/usr/local/bin/app"
-# final_hash = true
-# max_mcycle = 0
-# ram_image = "/usr/share/cartesi-machine/images/linux.bin" # directory inside SDK image
-# ram_length = "128Mi"
-# use_docker_env = true
-# use_docker_workdir = true
-# user = "dapp"
-# env_file = ".env" # optional. path to a .env file with environment variables
+sdk = "my-sdk:dev" # another SDK image, such as a local build; the default is the version the CLI was released with
 
-# [machine.env] # optional. environment variables injected into the machine
-# FOO = "bar"
-# LOG_LEVEL = "debug"
+[machine]
+assert_rolling_template = true # fail the build if the machine doesn't halt waiting for input
+boot_args = ["no4lvl", "quiet"] # kernel command line, replaces the default
+entrypoint = "/usr/local/bin/app" # default is the image CMD and ENTRYPOINT
+env_file = ".env" # environment variables injected into the machine
+max_mcycle = 0 # default given by cartesi-machine
+ram_image = "/usr/share/cartesi-machine/images/linux.bin" # path inside the SDK image
+ram_length = "256Mi" # default is 128Mi
+use_docker_env = false # inject the image ENV into the machine, default is true
+use_docker_workdir = false # inject the image WORKDIR into the machine, default is true
+user = "dapp" # run the entrypoint as this user, default given by cartesi-machine
 
-# [drives.root]
-# builder = "docker"
-# dockerfile = "Dockerfile"
-# target = "docker-multi-stage-target"
-# format = "ext2"
-# format = "sqfs"
-# extra_size = "100Mb" # optional. size is given by directory content size plus this amount
+[machine.env] # variable names are free
+FOO = "bar"
 
-# [drives.data]
-# builder = "empty"
-# size = "100Mb" # size can be given as string, or as a number in bytes
-# mount = "/var/lib/app" # default is /mnt/{name}
+[drives.root] # the default builder, from a Dockerfile
+builder = "docker"
+build_args = ["RELEASE=1"]
+context = "backend" # default is "."
+dockerfile = "backend/Dockerfile" # default is "Dockerfile"
+extra_size = "100Mb" # added to the size of the image contents, default is 0
+format = "sqfs" # or ext2, the default
+tags = ["app:latest"] # also tag the built image
+target = "runtime" # stage of a multi-stage Dockerfile, default is the last
+shared = false # default given by cartesi-machine
+user = "dapp" # owner of the files, default given by cartesi-machine
 
-# [drives.data]
-# builder = "directory"
-# directory = "./data" # required
-# extra_size = "100Mb" # optional. size is given by directory content size plus this amount
-# format = "ext2"
-# format = "sqfs"
-# mount = "/var/lib/app" # optional, default is /mnt/{name}
+[drives.tools] # docker builder from an existing image, nothing is built
+builder = "docker"
+image = "cartesi/tools:0.1.0"
+mount = "/opt/tools" # default is /mnt/<name>, false for no mount
 
-# [drives.data]
-# builder = "tar"
-# filename = "build/files.tar"
-# extra_size = "100Mb" # optional. size is given by directory content size plus this amount
-# mount = "/var/lib/app" # optional, default is /mnt/{name}
+[drives.data] # from a directory of the project
+builder = "directory"
+directory = "./data" # required
+extra_size = "10Mb"
+format = "sqfs" # compressed and read-only; ext2, the default, can be written to
+mount = "/usr/share/app" # read-only content
 
-# [drives.doom]
-# builder = "none"
-# filename = "./games/doom.sqfs"
-# mount = "/usr/local/games/doom"
+[drives.scratch] # an empty drive for application data
+builder = "empty"
+format = "ext2" # or raw
+size = "8Mb"
+mount = "/tmp/scratch"
 
-# nvrams are raw byte ranges exposed to the guest as /dev/uio0 to /dev/uio7 (up to 8 of them).
-# unlike drives they have no filesystem and no mount point, so the guest reads and writes them
-# with the readmmap/writemmap tools from machine-guest-tools. requires cartesi-machine 0.21.0.
-# an nvram label cannot be the same as a drive label.
+[drives.doom] # an existing image, its format comes from the extension
+builder = "none"
+filename = "./games/doom.sqfs" # required
+mount = "/usr/local/games/doom"
 
-# [nvrams.input]
-# size = "4Ki" # required unless 'filename' is given. must be a multiple of 4Ki
+[drives.files] # from a tar file built elsewhere
+builder = "tar"
+filename = "build/files.tar" # required
+extra_size = "1Mb"
+format = "sqfs"
 
-# [nvrams.output]
-# size = "4Ki"
-# shared = true # guest writes are persisted to .cartesi/output.raw, which the next build wipes
-# user = "dapp" # optional. allows the unprivileged entrypoint user to write to it
+[drives.accounts] # holds the accounts of emergency withdrawal, which turns it on
+builder = "empty"
+format = "raw" # no filesystem, and no mount
+size = "8Mi"
+mount = false
+accounts_drive = true # also allowed on an nvram
+accounts_drive_size = "4Mi" # accounts only at the beginning, default is the whole drive
 
-# [nvrams.seed]
-# filename = "./seed.raw" # existing raw image. it is copied into .cartesi/, never written to
-# size = "4Ki" # optional. when given it must match the size of the file exactly
+# nvrams are raw byte ranges exposed to the guest as /dev/uio0 to /dev/uio7, in this order
+[nvrams.input]
+size = "4Ki" # a multiple of 4Ki, required unless filename is given
 
-# [nvrams.accounts]
-# size = "4Mi"
-# accounts_drive = true # holds the accounts of emergency withdrawal, which turns it on
-# accounts_drive_size = "4Mi" # optional. accounts only at the beginning of a larger drive
+[nvrams.output]
+size = "4Ki"
+shared = true # guest writes are persisted to .cartesi/output.raw
+user = "dapp" # lets the entrypoint user write to it
 
-# [withdrawal] # optional overrides, every key is optional too
-# guardian = "0x1111111111111111111111111111111111111111" # devnet account by default
-# withdrawal_output_builder = "0x2222222222222222222222222222222222222222" # devnet builder by default, required on a fork
-# account_size = 32 # bytes per account, 32 by default as the devnet builder expects
+[nvrams.seed]
+filename = "./seed.raw" # existing raw image with the initial contents
+
+[withdrawal] # optional overrides of emergency withdrawal, needs an accounts drive
+guardian = "0x1111111111111111111111111111111111111111" # devnet account by default
+withdrawal_output_builder = "0x2222222222222222222222222222222222222222" # devnet builder by default, required on a fork
+account_size = 64 # bytes per account, a power of two, 32 by default
