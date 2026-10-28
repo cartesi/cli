@@ -41,16 +41,10 @@ export const getContextPath = (...paths: string[]): string => {
 };
 
 /**
- * SDK image of the project, which built its machine snapshot
+ * SDK image of the project, which built its machine snapshot. An invalid cartesi.toml is
+ * reported rather than falling back to the default image, whose emulator may not load it.
  */
-const getProjectSdk = (): string | undefined => {
-    try {
-        return getApplicationConfig(["cartesi.toml"]).sdk;
-    } catch {
-        // an invalid config is reported by the commands that build with it
-        return undefined;
-    }
-};
+const getProjectSdk = (): string => getApplicationConfig(["cartesi.toml"]).sdk;
 
 /**
  * Read the hash of the cartesi machine snapshot, if one exists. Without a
@@ -64,10 +58,7 @@ export const getMachineHash = async (options?: {
     const imagePath = getContextPath("image");
     if (fs.existsSync(imagePath)) {
         const image = options?.sdk ?? getProjectSdk();
-        return await cartesiMachineStoredHash.computeHash(
-            imagePath,
-            image ? { image } : undefined,
-        );
+        return await cartesiMachineStoredHash.computeHash(imagePath, { image });
     }
     return undefined;
 };
