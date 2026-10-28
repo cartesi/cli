@@ -17,64 +17,152 @@ import {
     InvalidNumberValueError,
     InvalidNvramSizeError,
     InvalidStringValueError,
+    InvalidTableError,
     InvalidWithdrawalConfigError,
     MissingNvramSourceError,
     MultipleAccountsDrivesError,
     parse,
     RequiredFieldError,
     TooManyNvramsError,
+    UnknownConfigKeyError,
 } from "../../src/config.js";
 
-const loadFixture = (...segments: string[]) => {
-    const filePath = path.join(__dirname, "config", "fixtures", ...segments);
-    return [fs.readFileSync(filePath, "utf-8")];
-};
+const fixturesDir = path.join(__dirname, "config", "fixtures");
+const fixtures = fs
+    .readdirSync(fixturesDir, { recursive: true, encoding: "utf-8" })
+    .filter((name) => name.endsWith(".toml"))
+    .sort();
+const loadFixture = (name: string) => [
+    fs.readFileSync(path.join(fixturesDir, name), "utf-8"),
+];
 
-const loadDriveConfig = (driveName: string) =>
-    loadFixture("drives", `${driveName}.toml`);
-
-const loadNvramConfig = (nvramName: string) =>
-    loadFixture("nvrams", `${nvramName}.toml`);
-
-describe("when parsing only drive config files", () => {
-    it("should pass with a basic drive config", () => {
-        const basic = loadDriveConfig("basic");
-        expect(() => parse(basic)).not.toThrow();
+describe("when parsing the fixtures", () => {
+    // every fixture is a valid config, so no key they use is unknown to the parser
+    it.each(fixtures)("should parse %s", (name) => {
+        expect(() => parse(loadFixture(name))).not.toThrow();
     });
 
-    it("should pass with a data drive config", () => {
-        const basic = loadDriveConfig("data");
-        expect(() => parse(basic)).not.toThrow();
+    // full.toml gives every key a value other than its default at least once, so a key the parser
+    // reads but doesn't list fails here, and so does one it stops reading. The strict match also
+    // fails on a new field the expected object doesn't list, even an unset one.
+    it("should parse every key of full.toml", () => {
+        expect(parse(loadFixture("full.toml"))).toStrictEqual({
+            sdk: "my-sdk:dev",
+            machine: {
+                assertRollingTemplate: true,
+                bootargs: ["no4lvl", "quiet"],
+                entrypoint: "/usr/local/bin/app",
+                env: { FOO: "bar" },
+                envFile: ".env",
+                maxMCycle: 0n,
+                ramImage: "/usr/share/cartesi-machine/images/linux.bin",
+                ramLength: "256Mi",
+                useDockerEnv: false,
+                useDockerWorkdir: false,
+                user: "dapp",
+            },
+            drives: {
+                root: {
+                    builder: "docker",
+                    buildArgs: ["RELEASE=1"],
+                    context: "backend",
+                    dockerfile: "backend/Dockerfile",
+                    extraSize: 100 * 1024 * 1024,
+                    format: "sqfs",
+                    image: undefined,
+                    mount: undefined,
+                    shared: false,
+                    tags: ["app:latest"],
+                    target: "runtime",
+                    user: "dapp",
+                },
+                tools: {
+                    builder: "docker",
+                    buildArgs: [],
+                    context: ".",
+                    dockerfile: "Dockerfile",
+                    extraSize: 0,
+                    format: "ext2",
+                    image: "cartesi/tools:0.1.0",
+                    mount: "/opt/tools",
+                    shared: undefined,
+                    tags: [],
+                    target: undefined,
+                    user: undefined,
+                },
+                data: {
+                    builder: "directory",
+                    directory: "./data",
+                    extraSize: 10 * 1024 * 1024,
+                    format: "sqfs",
+                    mount: "/usr/share/app",
+                    shared: undefined,
+                    user: undefined,
+                },
+                scratch: {
+                    builder: "empty",
+                    format: "ext2",
+                    mount: "/tmp/scratch",
+                    shared: undefined,
+                    size: 8 * 1024 * 1024,
+                    user: undefined,
+                },
+                doom: {
+                    builder: "none",
+                    filename: "./games/doom.sqfs",
+                    format: "sqfs",
+                    mount: "/usr/local/games/doom",
+                    shared: undefined,
+                    user: undefined,
+                },
+                files: {
+                    builder: "tar",
+                    extraSize: 1024 * 1024,
+                    filename: "build/files.tar",
+                    format: "sqfs",
+                    mount: undefined,
+                    shared: undefined,
+                    user: undefined,
+                },
+                accounts: {
+                    builder: "empty",
+                    format: "raw",
+                    mount: false,
+                    shared: undefined,
+                    size: 8 * 1024 * 1024,
+                    user: undefined,
+                    accountsDrive: true,
+                    accountsDriveSize: 4 * 1024 * 1024,
+                },
+            },
+            nvrams: {
+                input: {
+                    filename: undefined,
+                    size: 4096,
+                    shared: undefined,
+                    user: undefined,
+                },
+                output: {
+                    filename: undefined,
+                    size: 4096,
+                    shared: true,
+                    user: "dapp",
+                },
+                seed: {
+                    filename: "./seed.raw",
+                    size: undefined,
+                    shared: undefined,
+                    user: undefined,
+                },
+            },
+            withdrawal: {
+                guardian: "0x1111111111111111111111111111111111111111",
+                withdrawal_output_builder:
+                    "0x2222222222222222222222222222222222222222",
+                account_size: 64,
+            },
+        });
     });
-
-    it("should pass with an empty drive config", () => {
-        const basic = loadDriveConfig("empty");
-        expect(() => parse(basic)).not.toThrow();
-    });
-
-    it("should pass with a none drive config", () => {
-        const basic = loadDriveConfig("none");
-        expect(() => parse(basic)).not.toThrow();
-    });
-
-    it("should pass with a rives config", () => {
-        const basic = loadDriveConfig("rives");
-        expect(() => parse(basic)).not.toThrow();
-    });
-
-    it("should pass with a tar drive config", () => {
-        const basic = loadDriveConfig("rives");
-        expect(() => parse(basic)).not.toThrow();
-    });
-});
-
-describe("when parsing only nvram config files", () => {
-    it.each(["pristine", "shared", "file", "multi"])(
-        "should pass with a %s nvram config",
-        (name) => {
-            expect(() => parse(loadNvramConfig(name))).not.toThrow();
-        },
-    );
 });
 
 describe("when parsing a cartesi.toml config", () => {
@@ -217,6 +305,12 @@ shared = true`,
             });
         });
 
+        it("should fail for a machine that is not a table", () => {
+            expect(() => parse(["machine = [1]"])).toThrowError(
+                new InvalidTableError("[machine]", [1]),
+            );
+        });
+
         it("should fail for an env that is not a table", () => {
             expect(() => parse(["[machine]\nenv = 42"])).toThrowError(
                 new InvalidEnvError(42),
@@ -276,7 +370,7 @@ shared = true`,
 
         it("should fail when the section is not a table", () => {
             expect(() => withdrawal("withdrawal = 42")).toThrowError(
-                new InvalidWithdrawalConfigError("expected a table, got 42"),
+                new InvalidTableError("[withdrawal]", 42),
             );
         });
 
@@ -509,10 +603,27 @@ shared = true`,
      * [drives]
      */
     describe("when parsing [drives]", () => {
-        it("should fail for invalid configuration", () => {
-            expect(parse(["drives = 42"])).toEqual(defaultConfig());
-            expect(parse(["drives.root = true"])).toEqual(defaultConfig());
-            expect(parse(["drives.root = 42"])).toEqual(defaultConfig());
+        it("should fail for drives that are not tables", () => {
+            expect(() => parse(["drives = 42"])).toThrowError(
+                new InvalidTableError("[drives]", 42),
+            );
+            expect(() => parse(['drives = "abc"'])).toThrowError(
+                new InvalidTableError("[drives]", "abc"),
+            );
+            expect(() => parse(["drives.root = true"])).toThrowError(
+                new InvalidTableError("[drives.root]", true),
+            );
+            expect(() => parse(["drives.root = 42"])).toThrowError(
+                new InvalidTableError("[drives.root]", 42),
+            );
+        });
+
+        it("should fail for an array of tables, which double brackets declare", () => {
+            expect(() =>
+                parse(['[[drives.root]]\nbuilder = "empty"\nsize = "1Mi"']),
+            ).toThrowError(
+                'Invalid [drives.root]: expected a table, got [{"builder":"empty","size":"1Mi"}]',
+            );
         });
 
         it("should fail for invalid builder", () => {
@@ -640,6 +751,20 @@ shared = true`,
     describe("when parsing [nvrams]", () => {
         it("should default to no nvrams", () => {
             expect(parse([""]).nvrams).toEqual({});
+        });
+
+        it("should fail for nvrams that are not tables", () => {
+            expect(() => parse(["nvrams = 5"])).toThrowError(
+                new InvalidTableError("[nvrams]", 5),
+            );
+            expect(() => parse(["nvrams.input = 5"])).toThrowError(
+                new InvalidTableError("[nvrams.input]", 5),
+            );
+            expect(() =>
+                parse(['[[nvrams.input]]\nsize = "4Ki"']),
+            ).toThrowError(
+                'Invalid [nvrams.input]: expected a table, got [{"size":"4Ki"}]',
+            );
         });
 
         it("should parse a pristine nvram", () => {
@@ -933,6 +1058,156 @@ shared = true`,
             expect(() => parse([invalidDirectoryDrive])).toThrowError(
                 new RequiredFieldError("directory"), //XXX: how to know which field was required
             );
+        });
+    });
+
+    /**
+     * unknown keys
+     */
+    describe("when a key is unknown", () => {
+        it("should fail for an unknown key at the top level", () => {
+            expect(() =>
+                parse(['[drive.root]\nbuilder = "docker"']),
+            ).toThrowError(
+                "Unknown key 'drive' at the top level, expected one of: drives, machine, nvrams, sdk, withdrawal",
+            );
+        });
+
+        it("should fail for an unknown key in [machine]", () => {
+            expect(() =>
+                parse(["[machine]\nassert_rolling_update = true"]),
+            ).toThrowError(
+                "Unknown key 'assert_rolling_update' in [machine], expected one of: assert_rolling_template, boot_args, entrypoint, env, env_file, max_mcycle, ram_image, ram_length, use_docker_env, use_docker_workdir, user",
+            );
+        });
+
+        it("should fail for an unknown key in [nvrams.<label>]", () => {
+            expect(() =>
+                parse(['[nvrams.input]\nsize = "4Ki"\nlength = "4Ki"']),
+            ).toThrowError(
+                "Unknown key 'length' in [nvrams.input], expected one of: accounts_drive, accounts_drive_size, filename, shared, size, user",
+            );
+        });
+
+        it("should fail for an unknown key in [withdrawal]", () => {
+            const config = `
+                [nvrams.accounts]
+                size = "4Mi"
+                accounts_drive = true
+
+                [withdrawal]
+                log2_max_num_of_accounts = 20
+            `;
+            expect(() => parse([config])).toThrowError(
+                "Unknown key 'log2_max_num_of_accounts' in [withdrawal], expected one of: account_size, guardian, withdrawal_output_builder",
+            );
+        });
+
+        it("should fail for an unknown key in [drives.<name>]", () => {
+            expect(() => parse(['[drives.root]\nsise = "1Gi"'])).toThrowError(
+                "Unknown key 'sise' in [drives.root] (builder = \"docker\" by default), expected one of: accounts_drive, accounts_drive_size, build_args, builder, context, dockerfile, extra_size, format, image, mount, shared, tags, target, user",
+            );
+        });
+
+        it.each([
+            [
+                'builder = "empty"\nsize = "1Mi"\nextra_size = "1Mi"',
+                "extra_size",
+                '"empty"',
+            ],
+            [
+                'builder = "none"\nfilename = "./data.ext2"\nformat = "ext2"',
+                "format",
+                '"none"',
+            ],
+            [
+                'builder = "directory"\ndirectory = "./data"\ndockerfile = "Dockerfile"',
+                "dockerfile",
+                '"directory"',
+            ],
+            [
+                'builder = "tar"\nfilename = "data.tar"\nsize = "1Mi"',
+                "size",
+                '"tar"',
+            ],
+            // the builder is docker when omitted, which the message says
+            ['size = "1Mi"', "size", '"docker" by default'],
+        ])(
+            "should fail for a key of another builder: %s",
+            (drive, key, builder) => {
+                const check = () => parse([`[drives.data]\n${drive}`]);
+                expect(check).toThrow(UnknownConfigKeyError);
+                expect(check).toThrow(
+                    `Unknown key '${key}' in [drives.data] (builder = ${builder})`,
+                );
+            },
+        );
+
+        it("should list every unknown key of a table", () => {
+            expect(() => parse(["[machine]\nfoo = 1\nbar = 2"])).toThrow(
+                "Unknown keys 'foo', 'bar' in [machine]",
+            );
+        });
+
+        it("should fail for [withdrawal.config], which is no longer read", () => {
+            const config = `
+                [withdrawal.config]
+                guardian = "0x1111111111111111111111111111111111111111"
+            `;
+            expect(() => parse([config])).toThrow(
+                "Unknown key 'config' in [withdrawal]",
+            );
+        });
+
+        it("should check the files merged with -c as one", () => {
+            expect(() =>
+                parse([
+                    '[drives.root]\nbuilder = "docker"',
+                    '[drives.root]\nsise = "1Gi"',
+                ]),
+            ).toThrow("Unknown key 'sise' in [drives.root]");
+        });
+
+        it("should reject the keys of a builder a later file replaces", () => {
+            // merging can't unset the first file's keys
+            expect(() =>
+                parse([
+                    '[drives.root]\ndockerfile = "backend/Dockerfile"',
+                    '[drives.root]\nbuilder = "none"\nfilename = "./rootfs.ext2"',
+                ]),
+            ).toThrow(
+                "Unknown key 'dockerfile' in [drives.root] (builder = \"none\")",
+            );
+        });
+
+        it("should report an invalid builder before the keys", () => {
+            expect(() =>
+                parse(['[drives.root]\nbuilder = "invalid"\nsise = 1']),
+            ).toThrowError(new InvalidBuilderError("invalid"));
+        });
+
+        it.each([
+            // not MissingNvramSourceError
+            ['[nvrams.input]\nlength = "4Ki"', "length"],
+            // not InvalidBooleanValueError
+            ["[machine]\nuse_docker_env = 42\nfoo = 1", "foo"],
+        ])("should check the keys before the values: %s", (config, key) => {
+            expect(() => parse([config])).toThrow(`Unknown key '${key}'`);
+        });
+
+        it("should keep drive names, nvram labels and env variable names free", () => {
+            const config = `
+                [drives.sise]
+                builder = "empty"
+                size = "1Mi"
+
+                [nvrams.length]
+                size = "4Ki"
+
+                [machine.env]
+                sise = "1"
+            `;
+            expect(() => parse([config])).not.toThrow();
         });
     });
 });
