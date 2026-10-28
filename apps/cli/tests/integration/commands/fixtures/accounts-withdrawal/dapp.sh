@@ -106,8 +106,8 @@ handle_erc20_deposit() {
   [[ "$token" == "$trusted_token" ]] || return 1
   [[ "${amount_hex:0:49}" =~ ^0{48}[0-7]$ ]] || return 1
 
+  # a zero deposit opens an account with no balance, as one emptied by a debit would be
   amount="$(uint64_be_to_dec "${amount_hex:48:16}")"
-  (( amount > 0 )) || return 1
   credit_account "$sender" "$amount"
 }
 

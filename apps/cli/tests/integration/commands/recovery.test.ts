@@ -42,8 +42,10 @@ import {
  * The runtime must ship a rollups node with the refund command, as the
  * default SDK does.
  *
- * Inputs: alice (0), bob (1) and erin (2) are finalized in epoch 0; carol (3)
- * and dave (4) stay in the open epoch 1 and are refunded.
+ * Inputs: alice (0), bob (1), erin (2) and frank (3) are finalized in epoch 0;
+ * carol (4) and dave (5) stay in the open epoch 1 and are refunded. frank
+ * deposits nothing, leaving an account with no balance in the drive, which
+ * must not stop the other accounts from being proven.
  */
 
 const EPOCH_LENGTH = 720;
@@ -56,13 +58,21 @@ const bob = devnetAccount(2);
 const carol = devnetAccount(3);
 const dave = devnetAccount(4);
 const erin = devnetAccount(5);
+const frank = devnetAccount(6);
 
 // the guardian comes from a mnemonic the node doesn't sign with
 const guardianMnemonic =
     "legal winner thank year wave sausage worth useful legal winner thank yellow";
 const guardian = mnemonicToAccount(guardianMnemonic).address;
 
-const amounts = { alice: 100n, bob: 50n, carol: 25n, dave: 15n, erin: 10n };
+const amounts = {
+    alice: 100n,
+    bob: 50n,
+    carol: 25n,
+    dave: 15n,
+    erin: 10n,
+    frank: 0n,
+};
 
 const count = (text: string, part: string) => text.split(part).length - 1;
 
@@ -177,6 +187,7 @@ guardian = "${guardian}"
             await deposit(alice, amounts.alice);
             await deposit(bob, amounts.bob);
             await deposit(erin, amounts.erin);
+            await deposit(frank, amounts.frank);
 
             // close the first epoch and wait for its claim to be accepted
             await anvil.mine({ blocks: EPOCH_LENGTH });
@@ -193,7 +204,7 @@ guardian = "${guardian}"
             await deposit(carol, amounts.carol);
             await deposit(dave, amounts.dave);
             await waitFor(() =>
-                getNodeInput({ application, inputIndex: 4n, projectName }),
+                getNodeInput({ application, inputIndex: 5n, projectName }),
             );
         },
         TIMEOUT,
@@ -203,7 +214,7 @@ guardian = "${guardian}"
         it(
             "should pass the node's NotForeclosed error through on refund",
             async () => {
-                const refund = await cli(["refund", "3", "--yes"]);
+                const refund = await cli(["refund", "4", "--yes"]);
                 expect(refund.exitCode).not.toBe(0);
                 expect(refund.all).toContain("NotForeclosed");
             },
@@ -273,10 +284,10 @@ guardian = "${guardian}"
             "should refund a deposit that was not finalized",
             async () => {
                 expect(await usdcBalance(carol)).toBe(0n);
-                const refund = await cli(["refund", "3", "--yes", "--json"]);
+                const refund = await cli(["refund", "4", "--yes", "--json"]);
                 expect(refund.exitCode, refund.all).toBe(0);
                 expect(JSON.parse(refund.stdout)).toMatchObject({
-                    input_index: "3",
+                    input_index: "4",
                 });
                 expect(await usdcBalance(carol)).toBe(amounts.carol);
             },
@@ -288,7 +299,7 @@ guardian = "${guardian}"
             async () => {
                 const rawData = await getNodeInput({
                     application,
-                    inputIndex: 4n,
+                    inputIndex: 5n,
                     projectName,
                 });
                 const inputFile = path.join(appDir, "dave-input.hex");
@@ -296,7 +307,7 @@ guardian = "${guardian}"
                 expect(await usdcBalance(dave)).toBe(0n);
                 const refund = await cli([
                     "refund",
-                    "4",
+                    "5",
                     "--input-file",
                     inputFile,
                     "--yes",
