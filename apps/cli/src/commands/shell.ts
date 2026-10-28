@@ -3,7 +3,7 @@ import { ExecaError } from "execa";
 import fs from "fs-extra";
 import path from "node:path";
 import { getApplicationConfig, getContextPath } from "../base.js";
-import { nvramHasImage, nvramImageFilename } from "../config.js";
+import { nvramHasImage, nvramImageFilename } from "../builder/nvram.js";
 import { bootMachine } from "../machine.js";
 
 export const createShellCommand = () => {

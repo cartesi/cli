@@ -1,13 +1,7 @@
 import dotenv from "dotenv";
 import fs from "node:fs";
-import {
-    type Config,
-    type DriveConfig,
-    type ImageInfo,
-    type NvramConfig,
-    nvramHasImage,
-    nvramImageFilename,
-} from "./config.js";
+import { nvramHasImage, nvramImageFilename } from "./builder/nvram.js";
+import type { Config, DriveConfig, ImageInfo, NvramConfig } from "./config.js";
 import { cartesiMachine } from "./exec/index.js";
 import type { ExecaOptionsDockerFallback } from "./exec/util.js";
 
