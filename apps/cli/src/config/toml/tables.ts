@@ -1,5 +1,5 @@
 import type { TomlPrimitive } from "smol-toml";
-import { UnknownConfigKeyError } from "./errors.js";
+import { UnknownConfigKeyError } from "../errors.js";
 
 export type TomlTable = { [key: string]: TomlPrimitive };
 
