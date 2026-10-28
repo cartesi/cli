@@ -1,188 +1,54 @@
 import { extname } from "node:path";
 import { parse as parseToml, type TomlPrimitive } from "smol-toml";
 import { getAddress, isAddress, type Address } from "viem";
+import {
+    DEFAULT_FORMAT,
+    DEFAULT_RAM,
+    DEFAULT_SDK_IMAGE,
+    DEFAULT_SDK_VERSION,
+    MAX_NVRAMS,
+    NVRAM_ALIGNMENT,
+} from "./config/constants.js";
+import {
+    DuplicateLabelError,
+    InvalidAccountsDriveError,
+    InvalidAddressValueError,
+    InvalidBooleanValueError,
+    InvalidBuilderError,
+    InvalidBytesValueError,
+    InvalidDriveFormatError,
+    InvalidEmptyDriveFormatError,
+    InvalidEnvError,
+    InvalidNumberValueError,
+    InvalidNvramSizeError,
+    InvalidStringArrayError,
+    InvalidStringValueError,
+    InvalidTableError,
+    InvalidWithdrawalConfigError,
+    MissingNvramSourceError,
+    MultipleAccountsDrivesError,
+    RequiredFieldError,
+    TooManyNvramsError,
+    formatValue,
+} from "./config/errors.js";
+import {
+    assertKnownKeys,
+    isTomlTable,
+    mergeTomlTables,
+    type TomlTable,
+} from "./config/toml.js";
 
-export const NVRAM_ALIGNMENT = 4096; // cartesi-machine requires length % 4Ki == 0
-const MAX_NVRAMS = 8; // guest exposes nvrams as /dev/uio0 to /dev/uio7
-
-/**
- * Typed Errors
- */
-
-// smol-toml creates tables with a null prototype, which can't be coerced to a
-// string by template literals, so format objects (tables, arrays) as JSON.
-const formatValue = (value: TomlPrimitive): string =>
-    typeof value === "object" && value !== null && !(value instanceof Date)
-        ? JSON.stringify(value, (_, v) =>
-              typeof v === "bigint" ? v.toString() : v,
-          )
-        : String(value);
-
-export class InvalidBuilderError extends Error {
-    constructor(builder: TomlPrimitive) {
-        super(`Invalid builder: ${formatValue(builder)}`);
-        this.name = "InvalidBuilder";
-    }
-}
-
-export class InvalidDriveFormatError extends Error {
-    constructor(format: TomlPrimitive) {
-        super(`Invalid drive format: ${formatValue(format)}`);
-        this.name = "InvalidDriveFormatError";
-    }
-}
-
-export class InvalidEmptyDriveFormatError extends Error {
-    constructor(format: TomlPrimitive) {
-        super(`Invalid empty drive format: ${formatValue(format)}`);
-        this.name = "InvalidEmptyDriveFormatError";
-    }
-}
-
-export class InvalidStringValueError extends Error {
-    constructor(value: TomlPrimitive) {
-        super(`Invalid string value: ${formatValue(value)}`);
-        this.name = "InvalidStringValueError";
-    }
-}
-
-export class InvalidBooleanValueError extends Error {
-    constructor(value: TomlPrimitive) {
-        super(`Invalid boolean value: ${formatValue(value)}`);
-        this.name = "InvalidBooleanValueError";
-    }
-}
-
-export class InvalidNumberValueError extends Error {
-    constructor(value: TomlPrimitive, key?: string) {
-        super(
-            `Invalid number value: ${formatValue(value)}${key ? ` for key: ${key}` : ""}`,
-        );
-        this.name = "InvalidNumberValueError";
-    }
-}
-
-export class InvalidAddressValueError extends Error {
-    constructor(value: TomlPrimitive, key?: string) {
-        super(
-            `Invalid address value: ${formatValue(value)}${key ? ` for key: ${key}` : ""}`,
-        );
-        this.name = "InvalidAddressValueError";
-    }
-}
-
-export class InvalidBytesValueError extends Error {
-    constructor(value: TomlPrimitive) {
-        super(`Invalid bytes value: ${formatValue(value)}`);
-        this.name = "InvalidBytesValueError";
-    }
-}
-
-export class RequiredFieldError extends Error {
-    constructor(key: TomlPrimitive) {
-        super(`Missing required field: ${formatValue(key)}`);
-        this.name = "RequiredFieldError";
-    }
-}
-
-export class InvalidStringArrayError extends Error {
-    constructor() {
-        super("Invalid string array");
-        this.name = "InvalidStringArrayError";
-    }
-}
-
-export class InvalidEnvError extends Error {
-    constructor(value: TomlPrimitive) {
-        super(`Invalid env configuration: ${formatValue(value)}`);
-        this.name = "InvalidEnvError";
-    }
-}
-
-export class MissingNvramSourceError extends Error {
-    constructor(label: string) {
-        super(`Nvram '${label}' must define either 'size' or 'filename'`);
-        this.name = "MissingNvramSourceError";
-    }
-}
-
-export class InvalidNvramSizeError extends Error {
-    constructor(label: string, size: number) {
-        super(
-            `Invalid size ${size} for nvram '${label}': must be a positive multiple of ${NVRAM_ALIGNMENT}`,
-        );
-        this.name = "InvalidNvramSizeError";
-    }
-}
-
-export class TooManyNvramsError extends Error {
-    constructor(count: number) {
-        super(`Too many nvrams: ${count}, maximum is ${MAX_NVRAMS}`);
-        this.name = "TooManyNvramsError";
-    }
-}
-
-export class DuplicateLabelError extends Error {
-    constructor(label: string) {
-        super(`Label '${label}' is used by both a drive and an nvram`);
-        this.name = "DuplicateLabelError";
-    }
-}
-
-export class MultipleAccountsDrivesError extends Error {
-    constructor(labels: string[]) {
-        super(
-            `Only one drive or nvram can be the accounts drive, but ${labels.map((label) => `'${label}'`).join(", ")} are marked with accounts_drive = true`,
-        );
-        this.name = "MultipleAccountsDrivesError";
-    }
-}
-
-export class InvalidAccountsDriveError extends Error {
-    constructor(label: string, reason: string) {
-        super(`Invalid accounts drive '${label}': ${reason}`);
-        this.name = "InvalidAccountsDriveError";
-    }
-}
-
-export class InvalidWithdrawalConfigError extends Error {
-    constructor(reason: string) {
-        super(`Invalid [withdrawal]: ${reason}`);
-        this.name = "InvalidWithdrawalConfigError";
-    }
-}
-
-export class UnknownConfigKeyError extends Error {
-    /**
-     * @param where where the keys are, e.g. "in [machine]" or "at the top level"
-     */
-    constructor(keys: string[], known: readonly string[], where: string) {
-        const list = keys.map((key) => `'${key}'`).join(", ");
-        super(
-            `Unknown ${keys.length > 1 ? "keys" : "key"} ${list} ${where}, expected one of: ${[...known].sort().join(", ")}`,
-        );
-        this.name = "UnknownConfigKeyError";
-    }
-}
-
-export class InvalidTableError extends Error {
-    constructor(location: string, value: TomlPrimitive) {
-        super(
-            `Invalid ${location}: expected a table, got ${formatValue(value)}`,
-        );
-        this.name = "InvalidTableError";
-    }
-}
+export {
+    DEFAULT_SDK_IMAGE,
+    DEFAULT_SDK_VERSION,
+    NVRAM_ALIGNMENT,
+    PREFERRED_PORT,
+} from "./config/constants.js";
+export * from "./config/errors.js";
 
 /**
  * Configuration for drives of a Cartesi Machine. A drive may already exist or be built by a builder
  */
-const DEFAULT_FORMAT = "ext2";
-const DEFAULT_RAM = "128Mi";
-export const DEFAULT_SDK_VERSION = "0.12.0-alpha.44";
-export const DEFAULT_SDK_IMAGE = "cartesi/sdk";
-export const PREFERRED_PORT = 6751;
-
 type Builder = "directory" | "docker" | "empty" | "none" | "tar";
 type DriveFormat = "ext2" | "sqfs";
 
@@ -439,23 +305,6 @@ export const assertAccountsDriveLength = (
         );
     }
     return { length, log2Length };
-};
-
-type TomlTable = { [key: string]: TomlPrimitive };
-
-/**
- * Fails on any key of a table that its parser doesn't read, naming the keys the table accepts.
- * @param where where the table is, e.g. "in [machine]" or "at the top level"
- */
-const assertKnownKeys = (
-    table: TomlTable,
-    known: readonly string[],
-    where: string,
-): void => {
-    const unknown = Object.keys(table).filter((key) => !known.includes(key));
-    if (unknown.length > 0) {
-        throw new UnknownConfigKeyError(unknown, known, where);
-    }
 };
 
 export const defaultRootDriveConfig = (): DriveConfig => ({
@@ -1175,61 +1024,3 @@ export const parse = (str: string[]): Config => {
 
     return config;
 };
-
-/**
- * Checks if a value is a plain object (TOML table)
- */
-function isTomlTable(value: TomlPrimitive): value is TomlTable {
-    return (
-        typeof value === "object" &&
-        value !== null &&
-        !Array.isArray(value) &&
-        !("toISOString" in value)
-    ); // Check for TomlDate (has toISOString method)
-}
-
-/**
- * Recursively merges two TOML table objects
- * Values from 'other' take precedence over 'base'
- *
- * @param base - The base TOML table
- * @param other - The TOML table to merge into base (takes precedence)
- * @returns A new merged TOML table
- */
-export function mergeTomlTables(base: TomlTable, other: TomlTable): TomlTable {
-    const result: TomlTable = { ...base };
-
-    for (const [key, otherValue] of Object.entries(other)) {
-        const baseValue = result[key];
-
-        // If both values are tables, merge them recursively
-        if (isTomlTable(baseValue) && isTomlTable(otherValue)) {
-            result[key] = mergeTomlTables(baseValue, otherValue);
-        } else {
-            // For all other cases, other value takes precedence
-            result[key] = otherValue;
-        }
-    }
-
-    return result;
-}
-
-/**
- * Merges two TOML values of any type
- *
- * @param base - The base TOML value
- * @param other - The TOML value to merge into base (takes precedence)
- * @returns The merged TOML value
- */
-export function mergeTomlValues(
-    base: TomlPrimitive,
-    other: TomlPrimitive,
-): TomlPrimitive {
-    // If both are tables, merge recursively
-    if (isTomlTable(base) && isTomlTable(other)) {
-        return mergeTomlTables(base, other);
-    }
-
-    // For arrays, replaces entirely
-    return other;
-}
