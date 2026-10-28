@@ -603,19 +603,6 @@ const parseNvrams = (config: TomlPrimitive): Record<string, NvramConfig> => {
     );
 };
 
-/**
- * Filename, relative to the build destination directory, of the image backing an nvram.
- */
-export const nvramImageFilename = (label: string): string => `${label}.raw`;
-
-/**
- * Whether an nvram is backed by an image file. A pristine nvram needs no image, as
- * cartesi-machine fills its range with zeros. A `shared` one does, as there must be a file for
- * the guest writes to be persisted to.
- */
-export const nvramHasImage = (nvram: NvramConfig): boolean =>
-    nvram.filename !== undefined || nvram.shared === true;
-
 const parseBuilder = (value: TomlPrimitive): Builder => {
     if (value === undefined) {
         return "docker";
