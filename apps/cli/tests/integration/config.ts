@@ -92,18 +92,18 @@ export async function createTemporaryCartesiApplication(options?: {
 
         console.log(`✓ Temporary Cartesi application created at: ${appDir}`);
 
-        if (options?.config !== undefined) {
-            fs.writeFileSync(path.join(appDir, "cartesi.toml"), options.config);
-            console.log(`✓ Wrote a custom cartesi.toml`);
-        }
-
         // Build with the same image the snapshot readers use. Without this the
         // build falls back to the released SDK while the readers use TEST_SDK,
-        // and a snapshot written by one emulator is rejected by the other.
-        fs.appendFileSync(
+        // and a snapshot written by one emulator is rejected by the other. The
+        // pin comes first: a key written after a table header belongs to that
+        // table, so appended to a config it would land in the last table.
+        fs.writeFileSync(
             path.join(appDir, "cartesi.toml"),
-            `\nsdk = "${TEST_SDK}"\n`,
+            `sdk = "${TEST_SDK}"\n${options?.config ?? ""}`,
         );
+        if (options?.config !== undefined) {
+            console.log(`✓ Wrote a custom cartesi.toml`);
+        }
 
         //  Change directory into the created application
         process.chdir(appDir);
