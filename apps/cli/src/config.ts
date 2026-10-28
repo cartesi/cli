@@ -1,6 +1,6 @@
 import { extname } from "node:path";
 import { parse as parseToml, type TomlPrimitive } from "smol-toml";
-import { getAddress, isAddress, type Address } from "viem";
+import { type Address, getAddress, isAddress } from "viem";
 import {
     DEFAULT_FORMAT,
     DEFAULT_RAM,
@@ -10,8 +10,12 @@ import {
     NVRAM_ALIGNMENT,
 } from "./config/constants.js";
 import {
+    assertAccountsDrive,
+    LOG2_LEAF_SIZE,
+    log2OfPowerOfTwo,
+} from "./config/accounts.js";
+import {
     DuplicateLabelError,
-    InvalidAccountsDriveError,
     InvalidAddressValueError,
     InvalidBooleanValueError,
     InvalidBuilderError,
@@ -26,7 +30,6 @@ import {
     InvalidTableError,
     InvalidWithdrawalConfigError,
     MissingNvramSourceError,
-    MultipleAccountsDrivesError,
     RequiredFieldError,
     TooManyNvramsError,
     formatValue,
@@ -37,6 +40,16 @@ import {
     mergeTomlTables,
     type TomlTable,
 } from "./config/toml.js";
+import type {
+    AccountsDriveMarker,
+    Builder,
+    Config,
+    DriveConfig,
+    DriveFormat,
+    MachineConfig,
+    NvramConfig,
+    WithdrawalOptions,
+} from "./config/types.js";
 
 export {
     DEFAULT_SDK_IMAGE,
@@ -44,268 +57,16 @@ export {
     NVRAM_ALIGNMENT,
     PREFERRED_PORT,
 } from "./config/constants.js";
+export {
+    type AccountsDrive,
+    assertAccountsDriveLength,
+    getAccountsDrive,
+    getLog2LeavesPerAccount,
+    LOG2_LEAF_SIZE,
+} from "./config/accounts.js";
 export * from "./config/errors.js";
-
-/**
- * Configuration for drives of a Cartesi Machine. A drive may already exist or be built by a builder
- */
-type Builder = "directory" | "docker" | "empty" | "none" | "tar";
-type DriveFormat = "ext2" | "sqfs";
-
-export type ImageInfo = {
-    cmd: string[];
-    entrypoint: string[];
-    env: string[];
-    workdir: string;
-};
-
-export type DriveResult = ImageInfo | undefined;
-
-export type DirectoryDriveConfig = {
-    builder: "directory";
-    extraSize: number; // default is 0 (no extra size)
-    format: DriveFormat;
-    directory: string; // required
-};
-
-export type DockerDriveConfig = {
-    builder: "docker";
-    buildArgs: string[]; // default is empty array
-    context: string;
-    dockerfile: string;
-    extraSize: number; // default is 0 (no extra size)
-    format: DriveFormat;
-    image?: string; // default is to build an image from a Dockerfile
-    tags: string[]; // default is empty array
-    target?: string; // default is last stage of multi-stage
-};
-
-export type EmptyDriveConfig = {
-    builder: "empty";
-    format: "ext2" | "raw";
-    size: number; // in bytes
-};
-
-export type ExistingDriveConfig = {
-    builder: "none";
-    filename: string; // required
-    format: DriveFormat;
-};
-
-export type TarDriveConfig = {
-    builder: "tar";
-    filename: string; // required
-    format: DriveFormat;
-    extraSize: number; // default is 0 (no extra size)
-};
-
-/**
- * Marks the drive or nvram that holds the accounts of emergency withdrawal, whose layout is
- * derived from the built machine.
- */
-type AccountsDriveMarker = {
-    accountsDrive?: boolean; // holds the accounts of emergency withdrawal
-    accountsDriveSize?: number; // accounts only in this many bytes at the beginning, default is all of it
-};
-
-export type DriveConfig = (
-    | DirectoryDriveConfig
-    | DockerDriveConfig
-    | EmptyDriveConfig
-    | ExistingDriveConfig
-    | TarDriveConfig
-) &
-    AccountsDriveMarker & {
-        mount?: string | boolean; // default given by cartesi-machine
-        shared?: boolean; // default given by cartesi-machine
-        user?: string; // default given by cartesi-machine
-    };
-
-/**
- * Configuration for an NVRAM of a Cartesi Machine. Unlike a flash drive, an nvram is a raw
- * range of bytes exposed to the guest as a /dev/uio* device, with no filesystem and no mount
- * point. Either `size` or `filename` must be defined.
- */
-export type NvramConfig = AccountsDriveMarker & {
-    filename?: string; // path to an existing raw image with the initial contents
-    size?: number; // in bytes, a positive multiple of 4Ki
-    shared?: boolean; // default given by cartesi-machine
-    user?: string; // default given by cartesi-machine
-};
-
-export type MachineConfig = {
-    assertRollingTemplate?: boolean; // default given by cartesi-machine
-    bootargs: string[];
-    entrypoint?: string;
-    env: Record<string, string>; // explicit environment variables injected into cartesi-machine ENV
-    envFile?: string; // path to a .env file with environment variables injected into cartesi-machine ENV
-    maxMCycle?: bigint; // default given by cartesi-machine
-    ramLength: string;
-    ramImage?: string; // default given by cartesi-machine
-    useDockerEnv: boolean; // inject docker image ENV into cartesi-machine ENV
-    useDockerWorkdir: boolean; // inject docker image WORKDIR into cartesi-machine WORKDIR
-    user?: string; // default given by cartesi-machine
-};
-
-/**
- * Configuration for Emergercy-withdrawals that will be passed down to the
- * cartesi-rollups-cli. This is a All or nothing kind of configuration.
- * The properties are kept snake_case to match the expected input in the cartesi-rollups-cli.
- */
-export type WithdrawalConfig = {
-    guardian: Address;
-    log2_leaves_per_account: number;
-    log2_max_num_of_accounts: number;
-    accounts_drive_start_index: number;
-    withdrawal_output_builder: Address;
-};
-
-/**
- * The optional [withdrawal] section of an application with an accounts drive. The accounts
- * drive layout is derived from the built machine; these keys override the defaults.
- */
-export type WithdrawalOptions = {
-    guardian?: Address; // default is a devnet account
-    withdrawal_output_builder?: Address; // default is the devnet TestUsdWithdrawalOutputBuilder
-    account_size?: number; // in bytes, default is 32
-};
-
-export type Config = {
-    drives: Record<string, DriveConfig>;
-    machine: MachineConfig;
-    nvrams: Record<string, NvramConfig>;
-    sdk: string;
-    withdrawal?: WithdrawalOptions;
-};
-
-export const LOG2_LEAF_SIZE = 5; // accounts are made of 32-byte leaves
-
-/**
- * Number of 32-byte leaves of each account, in log2, from `account_size`. Defaults to one leaf.
- */
-export const getLog2LeavesPerAccount = (options?: WithdrawalOptions): number =>
-    options?.account_size !== undefined
-        ? Math.log2(options.account_size) - LOG2_LEAF_SIZE // a power of two, so exact
-        : 0;
-
-/**
- * The drive or nvram marked with `accounts_drive = true`.
- */
-export type AccountsDrive = {
-    kind: "flash_drive" | "nvram"; // section of the stored machine config that holds it
-    label: string;
-    config: DriveConfig | NvramConfig; // its entry in cartesi.toml
-};
-
-/**
- * Every drive and nvram marked with `accounts_drive = true`. Parsing rejects more than one,
- * and lists them all to say which.
- */
-const getMarkedDrives = (config: Config): AccountsDrive[] =>
-    [
-        ...Object.entries(config.drives).map(([label, drive]) => ({
-            kind: "flash_drive" as const,
-            label,
-            config: drive,
-        })),
-        ...Object.entries(config.nvrams).map(([label, nvram]) => ({
-            kind: "nvram" as const,
-            label,
-            config: nvram,
-        })),
-    ].filter((drive) => drive.config.accountsDrive);
-
-export const getAccountsDrive = (config: Config): AccountsDrive | undefined =>
-    getMarkedDrives(config)[0];
-
-/**
- * Splits a number of bytes into the largest IEC unit that divides it exactly, e.g. 4194304 is
- * 4 "Mi", and 1000 is 1000 "".
- */
-export const splitSize = (bytes: number): { value: number; unit: string } => {
-    let value = bytes;
-    let unit = "";
-    for (const next of ["Ki", "Mi", "Gi", "Ti"]) {
-        if (value === 0 || value % 1024 !== 0) {
-            break;
-        }
-        value /= 1024;
-        unit = next;
-    }
-    return { value, unit };
-};
-
-/**
- * Formats a number of bytes as a size cartesi.toml accepts, e.g. "4Mi".
- */
-const formatSize = (bytes: number): string => {
-    const { value, unit } = splitSize(bytes);
-    return `${value}${unit}`;
-};
-
-/**
- * The log2 of a positive power of two, or undefined for any other number. It reads the bits,
- * which is exact for every safe integer, where `&` wraps at 32 bits and Math.log2 rounds near
- * 2^53.
- */
-const log2OfPowerOfTwo = (value: number): number | undefined => {
-    const bits = Number.isInteger(value) ? value.toString(2) : "";
-    return /^10*$/.test(bits) ? bits.length - 1 : undefined;
-};
-
-const nextPowerOfTwo = (value: number): number =>
-    2 ** (value - 1).toString(2).length;
-
-/**
- * Checks the accounts drive can be divided into accounts. The accounts drive is either all of
- * the drive or nvram marked with `accounts_drive = true`, or its first `accounts_drive_size`
- * bytes, the rest being free for other application state.
- * @param driveLength length of the whole drive, if known
- * @returns the length of the accounts drive and its log2, if known
- */
-export const assertAccountsDriveLength = (
-    config: Config,
-    accountsDrive: AccountsDrive,
-    driveLength?: number,
-): { length: number; log2Length: number } | undefined => {
-    const { label } = accountsDrive;
-    const { accountsDriveSize } = accountsDrive.config;
-    const log2LeavesPerAccount = getLog2LeavesPerAccount(config.withdrawal);
-    const length = accountsDriveSize ?? driveLength;
-    if (length === undefined) {
-        return undefined;
-    }
-
-    const log2Length = log2OfPowerOfTwo(length);
-    if (log2Length === undefined) {
-        const suggestion =
-            length > 0 ? `, use "${formatSize(nextPowerOfTwo(length))}"` : "";
-        throw new InvalidAccountsDriveError(
-            label,
-            accountsDriveSize !== undefined
-                ? `accounts_drive_size ${length} is not a power of two${suggestion}`
-                : `size ${length} is not a power of two${suggestion}, or set accounts_drive_size to keep the accounts at the beginning of a larger drive`,
-        );
-    }
-    const log2AccountSize = LOG2_LEAF_SIZE + log2LeavesPerAccount;
-    if (log2Length < log2AccountSize) {
-        throw new InvalidAccountsDriveError(
-            label,
-            `size ${length} is smaller than one account of ${2 ** log2AccountSize} bytes`,
-        );
-    }
-    if (
-        accountsDriveSize !== undefined &&
-        driveLength !== undefined &&
-        accountsDriveSize > driveLength
-    ) {
-        throw new InvalidAccountsDriveError(
-            label,
-            `accounts_drive_size ${accountsDriveSize} is larger than the drive itself (${driveLength} bytes)`,
-        );
-    }
-    return { length, log2Length };
-};
+export { splitSize } from "./config/size.js";
+export type * from "./config/types.js";
 
 export const defaultRootDriveConfig = (): DriveConfig => ({
     builder: "docker",
@@ -911,64 +672,6 @@ const parseOptionalWithdrawal = (
         account_size: optional("account_size", parseAccountSize),
     };
     return options;
-};
-
-/**
- * Checks what can be known about the accounts drive before the machine is built. Its placement
- * is only known after, see `resolveAccountsDriveLayout`.
- */
-const assertAccountsDrive = (config: Config) => {
-    const marked = getMarkedDrives(config);
-    if (marked.length > 1) {
-        throw new MultipleAccountsDrivesError(marked.map(({ label }) => label));
-    }
-
-    for (const [label, drive] of [
-        ...Object.entries(config.drives),
-        ...Object.entries(config.nvrams),
-    ]) {
-        if (drive.accountsDriveSize !== undefined && !drive.accountsDrive) {
-            throw new InvalidAccountsDriveError(
-                label,
-                "accounts_drive_size requires accounts_drive = true",
-            );
-        }
-    }
-
-    const [accountsDrive] = marked;
-    if (!accountsDrive) {
-        if (config.withdrawal) {
-            throw new InvalidWithdrawalConfigError(
-                "emergency withdrawal needs an accounts drive, mark a raw drive or an nvram with accounts_drive = true",
-            );
-        }
-        return;
-    }
-
-    const { label } = accountsDrive;
-
-    let size: number | undefined;
-    if (accountsDrive.kind === "flash_drive") {
-        const drive = config.drives[label];
-        if (drive.builder !== "empty" || drive.format !== "raw") {
-            throw new InvalidAccountsDriveError(
-                label,
-                `it must not have a filesystem, use builder = "empty" and format = "raw", or declare it under [nvrams.${label}]`,
-            );
-        }
-        if (drive.mount !== undefined && drive.mount !== false) {
-            throw new InvalidAccountsDriveError(
-                label,
-                "it can't be mounted, remove 'mount' or set it to false",
-            );
-        }
-        size = drive.size;
-    } else {
-        // the size of an nvram backed by an existing image is only known once built
-        size = config.nvrams[label].size;
-    }
-
-    assertAccountsDriveLength(config, accountsDrive, size);
 };
 
 const CONFIG_KEYS: readonly string[] = [
