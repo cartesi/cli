@@ -21,9 +21,6 @@ export type Layout = {
         at: number; // offset of data, the rest is zeros
         data: Buffer;
     };
-    // TODO: the machine-tool of rollups-node v2.0.0-alpha.13 only looks for the
-    // accounts drive among the flash drives, unskip once it finds nvrams too
-    skip?: boolean;
 };
 
 const scratchDrive = `
@@ -76,7 +73,6 @@ accounts_drive = true
 `,
         label: "accounts",
         device: "/dev/uio0",
-        skip: true,
     },
     {
         name: "the beginning of a larger nvram",
@@ -96,7 +92,6 @@ accounts_drive_size = "4Mi"
         label: "state",
         device: "/dev/uio1",
         accountsSize: 4 * MiB,
-        skip: true,
     },
     {
         // like a DEX, which memory-maps its state after the accounts, from an image
@@ -118,6 +113,5 @@ accounts_drive_size = "4Mi"
             at: 4 * MiB,
             data: Buffer.alloc(8 * MiB, 0xab),
         },
-        skip: true,
     },
 ];
