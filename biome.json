@@ -1,5 +1,5 @@
 {
-    "$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
+    "$schema": "https://biomejs.dev/schemas/2.6.4/schema.json",
     "assist": {
         "actions": {
             "source": {
@@ -9,7 +9,7 @@
     },
     "formatter": {
         "enabled": true,
-        "includes": ["**", "!.changeset/pre.json"],
+        "includes": ["**", "!.changeset/pre.json", "!**/CHANGELOG.md"],
         "indentStyle": "space",
         "indentWidth": 4
     },
@@ -17,5 +17,10 @@
         "enabled": true,
         "clientKind": "git",
         "useIgnoreFile": true
+    },
+    "markdown": {
+        "parser": {
+            "frontmatter": true
+        }
     }
 }
