@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.0-alpha.41
+
+### Patch Changes
+
+- 7d296fb: print only the message of an error, as intended, instead of a minified class name and a stack trace. The CLI is now built for production unless `NODE_ENV` says otherwise; build with `NODE_ENV=development` to get the full error.
+- d72c0f9: reject unknown keys in `cartesi.toml`. A key the CLI doesn't read, such as a misspelling like `sise`, a key of another builder, or a key of a removed feature like `[withdrawal.config]`, now fails `build`, `run` and `shell` with a message naming the key, the table it is in and the keys that table accepts, e.g. `Unknown key 'sise' in [drives.root] (builder = "docker" by default), expected one of: …`. A key written after the last table header belongs to that table, so a trailing `sdk = "…"` is reported too. Drive names, nvram labels and the variables under `[machine.env]` stay free, missing keys keep their defaults, and the files merged with `-c` are checked as one, so a later file can't change the builder of a drive whose builder-specific keys an earlier file set. The commands that read the snapshot with the project `sdk`, such as `hash`, `send`, `deposit` and `withdraw`, now report an invalid `cartesi.toml` instead of falling back to the default SDK image.
+
 ## 2.0.0-alpha.40
 
 ### Patch Changes
