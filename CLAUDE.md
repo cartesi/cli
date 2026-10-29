@@ -14,12 +14,12 @@ Cartesi CLI — a tool for creating, building, running, and deploying [Cartesi](
 
 ### Packages
 
-| Package | Path | Purpose |
-|---------|------|---------|
-| `@cartesi/cli` | `apps/cli/` | Main CLI application (Commander.js) |
-| `@cartesi/sdk` | `packages/sdk/` | Docker image with build tools (emulator, genext2fs, kernel) |
-| `@cartesi/mock-verifying-paymaster` | `packages/mock-verifying-paymaster/` | ERC-4337 paymaster (Fastify server) |
-| `tsconfig` | `packages/tsconfig/` | Shared TypeScript configs |
+| Package                             | Path                                 | Purpose                                                     |
+| ----------------------------------- | ------------------------------------ | ----------------------------------------------------------- |
+| `@cartesi/cli`                      | `apps/cli/`                          | Main CLI application (Commander.js)                         |
+| `@cartesi/sdk`                      | `packages/sdk/`                      | Docker image with build tools (emulator, genext2fs, kernel) |
+| `@cartesi/mock-verifying-paymaster` | `packages/mock-verifying-paymaster/` | ERC-4337 paymaster (Fastify server)                         |
+| `tsconfig`                          | `packages/tsconfig/`                 | Shared TypeScript configs                                   |
 
 ## Common Commands
 
