@@ -1,6 +1,6 @@
 import { Command } from "@commander-js/extra-typings";
 import chalk from "chalk";
-import { getMachineHash } from "../base.js";
+import { hash } from "../api/hash.js";
 
 export const createHashCommand = () => {
     return new Command("hash")
@@ -9,14 +9,14 @@ export const createHashCommand = () => {
         )
         .option("--json", "Format output as json.")
         .action(async ({ json }, command) => {
-            const hash = await getMachineHash();
-            if (hash) {
+            const machineHash = await hash();
+            if (machineHash) {
                 if (!json) {
                     console.log(
-                        `${chalk.green("?")} Cartesi machine templateHash ${chalk.cyan(hash)}\n`,
+                        `${chalk.green("?")} Cartesi machine templateHash ${chalk.cyan(machineHash)}\n`,
                     );
                 } else {
-                    process.stdout.write(JSON.stringify({ hash }));
+                    process.stdout.write(JSON.stringify({ hash: machineHash }));
                 }
             } else {
                 command.error(
