@@ -1,15 +1,11 @@
-import { parse as parseToml } from "smol-toml";
+import { parse as parseToml, type TomlTable } from "smol-toml";
 import { assertAccountsDrive } from "./config/accounts.js";
 import { DEFAULT_SDK_IMAGE, DEFAULT_SDK_VERSION } from "./config/constants.js";
 import { DuplicateLabelError } from "./config/errors.js";
 import { parseDrives } from "./config/toml/drives.js";
 import { parseMachine } from "./config/toml/machine.js";
 import { parseNvrams } from "./config/toml/nvrams.js";
-import {
-    assertKnownKeys,
-    mergeTomlTables,
-    type TomlTable,
-} from "./config/toml/tables.js";
+import { assertKnownKeys, mergeTomlTables } from "./config/toml/tables.js";
 import { parseString } from "./config/toml/values.js";
 import { parseOptionalWithdrawal } from "./config/toml/accounts.js";
 import type { Config } from "./config/types.js";

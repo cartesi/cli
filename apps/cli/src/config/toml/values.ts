@@ -1,4 +1,4 @@
-import type { TomlPrimitive } from "smol-toml";
+import type { TomlValue } from "smol-toml";
 import { type Address, getAddress, isAddress } from "viem";
 import {
     InvalidAddressValueError,
@@ -13,7 +13,7 @@ import {
 import { isTomlTable } from "./tables.js";
 
 export const parseBoolean = (
-    value: TomlPrimitive,
+    value: TomlValue,
     defaultValue: boolean,
 ): boolean => {
     if (value === undefined) {
@@ -25,9 +25,7 @@ export const parseBoolean = (
     throw new InvalidBooleanValueError(value);
 };
 
-export const parseOptionalBoolean = (
-    value: TomlPrimitive,
-): boolean | undefined => {
+export const parseOptionalBoolean = (value: TomlValue): boolean | undefined => {
     if (value === undefined) {
         return undefined;
     }
@@ -37,10 +35,7 @@ export const parseOptionalBoolean = (
     throw new InvalidBooleanValueError(value);
 };
 
-export const parseString = (
-    value: TomlPrimitive,
-    defaultValue: string,
-): string => {
+export const parseString = (value: TomlValue, defaultValue: string): string => {
     if (value === undefined) {
         return defaultValue;
     }
@@ -50,7 +45,7 @@ export const parseString = (
     throw new InvalidStringValueError(value);
 };
 
-export const parseStringArray = (value: TomlPrimitive): string[] => {
+export const parseStringArray = (value: TomlValue): string[] => {
     if (value === undefined) {
         return [];
     }
@@ -73,9 +68,7 @@ export const parseStringArray = (value: TomlPrimitive): string[] => {
  * Non-string scalar values (number, bigint, boolean) are coerced to string,
  * since environment variable values are always strings.
  */
-export const parseStringRecord = (
-    value: TomlPrimitive,
-): Record<string, string> => {
+export const parseStringRecord = (value: TomlValue): Record<string, string> => {
     if (value === undefined) {
         return {};
     }
@@ -101,10 +94,7 @@ export const parseStringRecord = (
     );
 };
 
-export const parseRequiredString = (
-    value: TomlPrimitive,
-    key: string,
-): string => {
+export const parseRequiredString = (value: TomlValue, key: string): string => {
     if (value === undefined) {
         throw new RequiredFieldError(key);
     }
@@ -115,7 +105,7 @@ export const parseRequiredString = (
 };
 
 export const parseRequiredAddress = (
-    value: TomlPrimitive,
+    value: TomlValue,
     key: string,
 ): Address => {
     if (value === undefined) {
@@ -127,9 +117,7 @@ export const parseRequiredAddress = (
     throw new InvalidAddressValueError(value, key);
 };
 
-export const parseOptionalString = (
-    value: TomlPrimitive,
-): string | undefined => {
+export const parseOptionalString = (value: TomlValue): string | undefined => {
     if (value === undefined) {
         return undefined;
     }
@@ -140,7 +128,7 @@ export const parseOptionalString = (
 };
 
 export const parseOptionalStringBoolean = (
-    value: TomlPrimitive,
+    value: TomlValue,
 ): string | boolean | undefined => {
     if (value === undefined) {
         return undefined;
@@ -154,9 +142,7 @@ export const parseOptionalStringBoolean = (
     throw new InvalidStringValueError(value);
 };
 
-export const parseOptionalNumber = (
-    value: TomlPrimitive,
-): bigint | undefined => {
+export const parseOptionalNumber = (value: TomlValue): bigint | undefined => {
     if (value === undefined) {
         return undefined;
     }
@@ -200,7 +186,7 @@ const IEC_MULTIPLIERS: Readonly<Record<string, number>> = {
  * petabytes. Sizes are numbers, so the ones beyond 2^53 bytes, which they can't hold exactly,
  * are rejected.
  */
-export const parseSize = (value: TomlPrimitive): number | undefined => {
+export const parseSize = (value: TomlValue): number | undefined => {
     if (value === undefined) {
         return undefined;
     }
@@ -227,7 +213,5 @@ export const parseSize = (value: TomlPrimitive): number | undefined => {
     throw new InvalidBytesValueError(value);
 };
 
-export const parseBytes = (
-    value: TomlPrimitive,
-    defaultValue: number,
-): number => parseSize(value) ?? defaultValue;
+export const parseBytes = (value: TomlValue, defaultValue: number): number =>
+    parseSize(value) ?? defaultValue;

@@ -1,7 +1,5 @@
-import type { TomlPrimitive } from "smol-toml";
+import type { TomlTable, TomlValue } from "smol-toml";
 import { UnknownConfigKeyError } from "../errors.js";
-
-export type TomlTable = { [key: string]: TomlPrimitive };
 
 /**
  * Fails on any key of a table that its parser doesn't read, naming the keys the table accepts.
@@ -21,7 +19,7 @@ export const assertKnownKeys = (
 /**
  * Checks if a value is a plain object (TOML table)
  */
-export function isTomlTable(value: TomlPrimitive): value is TomlTable {
+export function isTomlTable(value: TomlValue): value is TomlTable {
     return (
         typeof value === "object" &&
         value !== null &&

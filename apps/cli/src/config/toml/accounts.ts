@@ -1,4 +1,4 @@
-import type { TomlPrimitive } from "smol-toml";
+import type { TomlTable, TomlValue } from "smol-toml";
 import { LOG2_LEAF_SIZE, log2OfPowerOfTwo } from "../accounts.js";
 import {
     InvalidTableError,
@@ -6,7 +6,7 @@ import {
     formatValue,
 } from "../errors.js";
 import type { AccountsDriveMarker, WithdrawalOptions } from "../types.js";
-import { assertKnownKeys, isTomlTable, type TomlTable } from "./tables.js";
+import { assertKnownKeys, isTomlTable } from "./tables.js";
 import {
     parseOptionalBoolean,
     parseRequiredAddress,
@@ -32,7 +32,7 @@ export const parseAccountsDriveMarker = (
     };
 };
 
-const parseAccountSize = (value: TomlPrimitive): number => {
+const parseAccountSize = (value: TomlValue): number => {
     const size = parseSize(value);
     if (
         size === undefined ||
@@ -57,7 +57,7 @@ const WITHDRAWAL_KEYS: readonly string[] = [
  * other tables, it reads the keys it uses and rejects any other.
  */
 export const parseOptionalWithdrawal = (
-    withdrawal: TomlPrimitive,
+    withdrawal: TomlValue,
 ): WithdrawalOptions | undefined => {
     if (withdrawal === undefined) {
         return undefined;
@@ -69,7 +69,7 @@ export const parseOptionalWithdrawal = (
 
     const optional = <T>(
         key: string,
-        parser: (value: TomlPrimitive, key: string) => T,
+        parser: (value: TomlValue, key: string) => T,
     ): T | undefined =>
         withdrawal[key] === undefined
             ? undefined

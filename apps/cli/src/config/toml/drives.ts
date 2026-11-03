@@ -1,5 +1,5 @@
 import { extname } from "node:path";
-import type { TomlPrimitive } from "smol-toml";
+import type { TomlTable, TomlValue } from "smol-toml";
 import { DEFAULT_FORMAT } from "../constants.js";
 import { defaultRootDriveConfig } from "../defaults.js";
 import {
@@ -9,7 +9,7 @@ import {
     InvalidTableError,
 } from "../errors.js";
 import type { Builder, DriveConfig, DriveFormat } from "../types.js";
-import { assertKnownKeys, isTomlTable, type TomlTable } from "./tables.js";
+import { assertKnownKeys, isTomlTable } from "./tables.js";
 import {
     parseBytes,
     parseOptionalBoolean,
@@ -21,7 +21,7 @@ import {
 } from "./values.js";
 import { ACCOUNTS_DRIVE_KEYS, parseAccountsDriveMarker } from "./accounts.js";
 
-const parseBuilder = (value: TomlPrimitive): Builder => {
+const parseBuilder = (value: TomlValue): Builder => {
     if (value === undefined) {
         return "docker";
     }
@@ -42,7 +42,7 @@ const parseBuilder = (value: TomlPrimitive): Builder => {
     throw new InvalidBuilderError(value);
 };
 
-const parseFormat = (value: TomlPrimitive): DriveFormat => {
+const parseFormat = (value: TomlValue): DriveFormat => {
     if (value === undefined) {
         return DEFAULT_FORMAT;
     }
@@ -57,7 +57,7 @@ const parseFormat = (value: TomlPrimitive): DriveFormat => {
     throw new InvalidDriveFormatError(value);
 };
 
-const parseEmptyFormat = (value: TomlPrimitive): "ext2" | "raw" => {
+const parseEmptyFormat = (value: TomlValue): "ext2" | "raw" => {
     if (value === undefined) {
         return DEFAULT_FORMAT;
     }
@@ -112,7 +112,7 @@ const BUILDER_KEYS: Record<Builder, readonly string[]> = {
     tar: ["extra_size", "filename", "format"],
 };
 
-const parseDrive = (name: string, drive: TomlPrimitive): DriveConfig => {
+const parseDrive = (name: string, drive: TomlValue): DriveConfig => {
     if (!isTomlTable(drive)) {
         throw new InvalidTableError(`[drives.${name}]`, drive);
     }
@@ -214,9 +214,7 @@ const parseBuilderDrive = (builder: Builder, drive: TomlTable): DriveConfig => {
     }
 };
 
-export const parseDrives = (
-    config: TomlPrimitive,
-): Record<string, DriveConfig> => {
+export const parseDrives = (config: TomlValue): Record<string, DriveConfig> => {
     if (config !== undefined && !isTomlTable(config)) {
         throw new InvalidTableError("[drives]", config);
     }
