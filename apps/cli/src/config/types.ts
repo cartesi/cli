@@ -124,10 +124,100 @@ export type WithdrawalOptions = {
     account_size?: number; // in bytes, default is 32
 };
 
+/** Block used by the node when fetching new blocks. */
+export type DefaultBlock = "latest" | "safe" | "pending" | "finalized";
+
+export const DEFAULT_BLOCKS: readonly DefaultBlock[] = [
+    "latest",
+    "safe",
+    "pending",
+    "finalized",
+];
+
+/**
+ * Configuration of the local development environment started by `cartesi run`.
+ *
+ * Every field is optional: it defines a project level default for the
+ * equivalent command line option, which always takes precedence when given.
+ */
+export type RunConfig = {
+    /**
+     * Interval between blocks, in seconds.
+     * @default 2
+     */
+    blockTime?: number;
+
+    /**
+     * Number of blocks between a claim being submitted and accepted
+     * (Authority/Quorum only).
+     * @default 0
+     */
+    claimStagingPeriod?: number;
+
+    /** Number of cpu limits for the rollups-node. */
+    cpus?: number;
+
+    /**
+     * Block used when fetching new blocks.
+     * @default "latest"
+     */
+    defaultBlock?: DefaultBlock;
+
+    /**
+     * Length of an epoch, in blocks.
+     * @default 720
+     */
+    epochLength?: number;
+
+    /** Block number to fork from. */
+    forkBlockNumber?: number;
+
+    /** RPC URL to fork from. */
+    forkUrl?: string;
+
+    /** Memory limit for the rollups-node, in MB. */
+    memory?: number;
+
+    /**
+     * Port to listen on.
+     * @default first free port from 6751
+     */
+    port?: number;
+
+    /**
+     * Name of the project, used by docker compose and by the rollups node.
+     * @default basename of the current working directory
+     */
+    projectName?: string;
+
+    /**
+     * Deploy the application with PRT consensus.
+     * @default false
+     */
+    prt?: boolean;
+
+    /** Version of the Cartesi Rollups Runtime to use. */
+    runtimeVersion?: string;
+
+    /**
+     * Optional services to start. The single value `all` starts every optional
+     * service.
+     * @default []
+     */
+    services?: string[];
+
+    /**
+     * Increase the log level of the environment services.
+     * @default false
+     */
+    verbose?: boolean;
+};
+
 export type Config = {
     drives: Record<string, DriveConfig>;
     machine: MachineConfig;
     nvrams: Record<string, NvramConfig>;
+    run: RunConfig;
     sdk: string;
     withdrawal?: WithdrawalOptions;
 };

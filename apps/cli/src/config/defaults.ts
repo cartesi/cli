@@ -4,7 +4,7 @@ import {
     DEFAULT_SDK_IMAGE,
     DEFAULT_SDK_VERSION,
 } from "./constants.js";
-import type { Config, DriveConfig, MachineConfig } from "./types.js";
+import type { Config, DriveConfig, MachineConfig, RunConfig } from "./types.js";
 
 export const defaultRootDriveConfig = (): DriveConfig => ({
     builder: "docker",
@@ -29,10 +29,13 @@ export const defaultMachineConfig = (): MachineConfig => ({
     user: undefined,
 });
 
+export const defaultRunConfig = (): RunConfig => ({});
+
 export const defaultConfig = (): Config => ({
     drives: { root: defaultRootDriveConfig() },
     machine: defaultMachineConfig(),
     nvrams: {},
+    run: defaultRunConfig(),
     sdk: `${DEFAULT_SDK_IMAGE}:${DEFAULT_SDK_VERSION}`,
     withdrawal: undefined,
 });

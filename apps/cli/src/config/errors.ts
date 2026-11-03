@@ -1,9 +1,8 @@
-import type { TomlValue } from "smol-toml";
 import { MAX_NVRAMS, NVRAM_ALIGNMENT } from "./constants.js";
 
 // smol-toml creates tables with a null prototype, which can't be coerced to a
 // string by template literals, so format objects (tables, arrays) as JSON.
-export const formatValue = (value: TomlValue): string =>
+export const formatValue = (value: unknown): string =>
     typeof value === "object" && value !== null && !(value instanceof Date)
         ? JSON.stringify(value, (_, v) =>
               typeof v === "bigint" ? v.toString() : v,
@@ -11,42 +10,42 @@ export const formatValue = (value: TomlValue): string =>
         : String(value);
 
 export class InvalidBuilderError extends Error {
-    constructor(builder: TomlValue) {
+    constructor(builder: unknown) {
         super(`Invalid builder: ${formatValue(builder)}`);
         this.name = "InvalidBuilder";
     }
 }
 
 export class InvalidDriveFormatError extends Error {
-    constructor(format: TomlValue) {
+    constructor(format: unknown) {
         super(`Invalid drive format: ${formatValue(format)}`);
         this.name = "InvalidDriveFormatError";
     }
 }
 
 export class InvalidEmptyDriveFormatError extends Error {
-    constructor(format: TomlValue) {
+    constructor(format: unknown) {
         super(`Invalid empty drive format: ${formatValue(format)}`);
         this.name = "InvalidEmptyDriveFormatError";
     }
 }
 
 export class InvalidStringValueError extends Error {
-    constructor(value: TomlValue) {
+    constructor(value: unknown) {
         super(`Invalid string value: ${formatValue(value)}`);
         this.name = "InvalidStringValueError";
     }
 }
 
 export class InvalidBooleanValueError extends Error {
-    constructor(value: TomlValue) {
+    constructor(value: unknown) {
         super(`Invalid boolean value: ${formatValue(value)}`);
         this.name = "InvalidBooleanValueError";
     }
 }
 
 export class InvalidNumberValueError extends Error {
-    constructor(value: TomlValue, key?: string) {
+    constructor(value: unknown, key?: string) {
         super(
             `Invalid number value: ${formatValue(value)}${key ? ` for key: ${key}` : ""}`,
         );
@@ -55,7 +54,7 @@ export class InvalidNumberValueError extends Error {
 }
 
 export class InvalidAddressValueError extends Error {
-    constructor(value: TomlValue, key?: string) {
+    constructor(value: unknown, key?: string) {
         super(
             `Invalid address value: ${formatValue(value)}${key ? ` for key: ${key}` : ""}`,
         );
@@ -64,14 +63,14 @@ export class InvalidAddressValueError extends Error {
 }
 
 export class InvalidBytesValueError extends Error {
-    constructor(value: TomlValue) {
+    constructor(value: unknown) {
         super(`Invalid bytes value: ${formatValue(value)}`);
         this.name = "InvalidBytesValueError";
     }
 }
 
 export class RequiredFieldError extends Error {
-    constructor(key: TomlValue) {
+    constructor(key: unknown) {
         super(`Missing required field: ${formatValue(key)}`);
         this.name = "RequiredFieldError";
     }
@@ -85,7 +84,7 @@ export class InvalidStringArrayError extends Error {
 }
 
 export class InvalidEnvError extends Error {
-    constructor(value: TomlValue) {
+    constructor(value: unknown) {
         super(`Invalid env configuration: ${formatValue(value)}`);
         this.name = "InvalidEnvError";
     }
@@ -158,10 +157,70 @@ export class UnknownConfigKeyError extends Error {
 }
 
 export class InvalidTableError extends Error {
-    constructor(location: string, value: TomlValue) {
+    constructor(location: string, value: unknown) {
         super(
             `Invalid ${location}: expected a table, got ${formatValue(value)}`,
         );
         this.name = "InvalidTableError";
+    }
+}
+
+/**
+ * Thrown when a field only accepts a fixed set of values, and is given
+ * something else.
+ */
+export class InvalidEnumValueError extends Error {
+    constructor(key: string, value: unknown, allowed: readonly string[]) {
+        super(
+            `Invalid value for '${key}': ${formatValue(value)}, must be one of ${allowed.join(", ")}`,
+        );
+        this.name = "InvalidEnumValueError";
+    }
+}
+
+/**
+ * Thrown when a configuration file explicitly asked for does not exist.
+ */
+export class ConfigFileNotFoundError extends Error {
+    constructor(filename: string) {
+        super(`Config file ${filename} does not exist`);
+        this.name = "ConfigFileNotFoundError";
+    }
+}
+
+/**
+ * Thrown when a configuration file has an extension the CLI cannot read.
+ */
+export class UnsupportedConfigFormatError extends Error {
+    constructor(filename: string) {
+        super(`Unsupported configuration file format: ${filename}`);
+        this.name = "UnsupportedConfigFormatError";
+    }
+}
+
+/**
+ * Thrown when a TypeScript or JavaScript configuration file does not export a
+ * configuration as its default export.
+ */
+export class InvalidConfigExportError extends Error {
+    constructor(filename: string) {
+        super(
+            `Configuration file ${filename} must have a default export with the application configuration, ` +
+                "as in 'export default defineConfig({ ... })'",
+        );
+        this.name = "InvalidConfigExportError";
+    }
+}
+
+/**
+ * Thrown when the runtime cannot import a TypeScript configuration file.
+ */
+export class TypeScriptNotSupportedError extends Error {
+    constructor(filename: string) {
+        super(
+            `Cannot import ${filename}: this runtime does not strip TypeScript types. ` +
+                "Run on node 24 or later without '--no-experimental-strip-types', or write the configuration as cartesi.config.js, .json or .yaml",
+        );
+        this.name = "TypeScriptNotSupportedError";
     }
 }
