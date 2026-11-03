@@ -1,4 +1,4 @@
-import type { TomlPrimitive } from "smol-toml";
+import type { TomlValue } from "smol-toml";
 import { DEFAULT_RAM } from "../constants.js";
 import { defaultMachineConfig } from "../defaults.js";
 import { InvalidTableError } from "../errors.js";
@@ -28,7 +28,7 @@ const MACHINE_KEYS: readonly string[] = [
     "user",
 ];
 
-export const parseMachine = (value: TomlPrimitive): MachineConfig => {
+export const parseMachine = (value: TomlValue): MachineConfig => {
     if (value === undefined) {
         // default machine
         return defaultMachineConfig();

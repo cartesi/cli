@@ -1,4 +1,4 @@
-import type { TomlPrimitive } from "smol-toml";
+import type { TomlValue } from "smol-toml";
 import { MAX_NVRAMS, NVRAM_ALIGNMENT } from "../constants.js";
 import {
     InvalidNvramSizeError,
@@ -23,7 +23,7 @@ const NVRAM_KEYS: readonly string[] = [
     "user",
 ];
 
-const parseNvram = (label: string, value: TomlPrimitive): NvramConfig => {
+const parseNvram = (label: string, value: TomlValue): NvramConfig => {
     if (!isTomlTable(value)) {
         throw new InvalidTableError(`[nvrams.${label}]`, value);
     }
@@ -48,9 +48,7 @@ const parseNvram = (label: string, value: TomlPrimitive): NvramConfig => {
     };
 };
 
-export const parseNvrams = (
-    config: TomlPrimitive,
-): Record<string, NvramConfig> => {
+export const parseNvrams = (config: TomlValue): Record<string, NvramConfig> => {
     if (config !== undefined && !isTomlTable(config)) {
         throw new InvalidTableError("[nvrams]", config);
     }
