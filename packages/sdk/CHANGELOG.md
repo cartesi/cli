@@ -1,5 +1,11 @@
 # sdk
 
+## 0.12.0-alpha.45
+
+### Patch Changes
+
+- c173738: add lua-socket to cartesi/rollups-runtime
+
 ## 0.12.0-alpha.44
 
 ### Patch Changes
