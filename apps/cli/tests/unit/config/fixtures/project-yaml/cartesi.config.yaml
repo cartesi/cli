@@ -1,0 +1,4 @@
+machine:
+    ramLength: 256Mi
+run:
+    epochLength: 10

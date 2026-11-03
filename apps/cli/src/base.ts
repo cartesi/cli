@@ -2,6 +2,7 @@ import { InvalidArgumentError } from "@commander-js/extra-typings";
 import { execa } from "execa";
 import fs from "node:fs";
 import path from "node:path";
+import { loadConfig } from "./config/load.js";
 import {
     type Address,
     getAddress,
@@ -11,7 +12,6 @@ import {
     zeroHash,
 } from "viem";
 import { foundry } from "viem/chains";
-import { type Config, parse } from "./config.js";
 import {
     applicationFactoryAddress,
     authorityFactoryAddress,
@@ -44,7 +44,7 @@ export const getContextPath = (...paths: string[]): string => {
  * SDK image of the project, which built its machine snapshot. An invalid cartesi.toml is
  * reported rather than falling back to the default image, whose emulator may not load it.
  */
-const getProjectSdk = (): string => getApplicationConfig(["cartesi.toml"]).sdk;
+const getProjectSdk = async (): Promise<string> => (await loadConfig()).sdk;
 
 /**
  * Read the hash of the cartesi machine snapshot, if one exists. Without a
@@ -57,23 +57,10 @@ export const getMachineHash = async (options?: {
 }): Promise<Hash | undefined> => {
     const imagePath = getContextPath("image");
     if (fs.existsSync(imagePath)) {
-        const image = options?.sdk ?? getProjectSdk();
+        const image = options?.sdk ?? (await getProjectSdk());
         return await cartesiMachineStoredHash.computeHash(imagePath, { image });
     }
     return undefined;
-};
-
-export const getApplicationConfig = (configPaths: string[]): Config => {
-    const tomls = configPaths.map((configPath) => {
-        if (fs.existsSync(configPath)) {
-            return fs.readFileSync(configPath).toString();
-        }
-        if (configPath === "cartesi.toml") {
-            return "";
-        }
-        throw new Error(`Config file ${configPath} does not exist`);
-    });
-    return parse(tomls);
 };
 
 export const getProjectName = (options: { projectName?: string }) => {
