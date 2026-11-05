@@ -23,7 +23,7 @@ import {
     bigintInput,
     getInputApplicationAddress,
 } from "../../prompts.js";
-import { connect } from "../../wallet.js";
+import { connect, getDefaultSender } from "../../wallet.js";
 import type { DepositCommandOpts } from "../deposit.js";
 
 type ERC721Token = {
@@ -93,7 +93,7 @@ export const createErc721Command = () => {
             const account =
                 from && isAddress(from)
                     ? getAddress(from)
-                    : (await testClient.getAddresses())[0];
+                    : await getDefaultSender(testClient);
 
             const token = await parseToken({
                 testClient,

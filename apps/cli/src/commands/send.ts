@@ -12,7 +12,7 @@ import {
 import { getProjectName } from "../base.js";
 import { inputBoxAbi, inputBoxAddress } from "../contracts.js";
 import { bytesInput, getInputApplicationAddress } from "../prompts.js";
-import { connect } from "../wallet.js";
+import { connect, getDefaultSender } from "../wallet.js";
 
 const getInput = async (
     input: string | undefined,
@@ -114,7 +114,10 @@ export const createSendCommand = () => {
     const command = new Command("send")
         .description("Send input to the application")
         .argument("[input]", "input payload")
-        .option("--from <address>", "input sender address")
+        .option(
+            "--from <address>",
+            "input sender address (default: devnet account 8)",
+        )
         .option("--application <address>", "application address")
         .addOption(
             new Option("--encoding <encoding>", "input encoding").choices([
@@ -142,7 +145,7 @@ export const createSendCommand = () => {
             const account =
                 from && isAddress(from)
                     ? getAddress(from)
-                    : (await testClient.getAddresses())[0];
+                    : await getDefaultSender(testClient);
 
             // get dapp address from local node, or ask
             const applicationAddress = await getInputApplicationAddress({
