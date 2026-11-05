@@ -1,5 +1,6 @@
 import {
     afterAll,
+    beforeAll,
     beforeEach,
     describe,
     expect,
@@ -7,6 +8,9 @@ import {
     mock,
     spyOn,
 } from "bun:test";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import * as viem from "viem";
 import { celo, sepolia } from "viem/chains";
 import {
@@ -21,7 +25,7 @@ import {
 import ForkChainValidationError from "../../src/errors/ForkChainValidationError";
 import UnsupportedForkChainError from "../../src/errors/UnsupportedForkChainError";
 import type { ForkConfig } from "../../src/types/chain";
-import { assertForkConfig } from "../../src/validations";
+import { assertForkConfig, assertSecretFiles } from "../../src/validations";
 
 const mockGetBlockNumber = mock().mockResolvedValue(12345n);
 const mockGetCode = mock().mockResolvedValue("0x1234");
@@ -309,6 +313,55 @@ describe("validations", () => {
             expect(mockGetBlockNumber).not.toHaveBeenCalled();
             // getCode should be called with blockNumber: 999n
             expect(mockGetCode.mock.calls[0][0].blockNumber).toBe(999n);
+        });
+    });
+
+    describe("assertSecretFiles", () => {
+        let dir: string;
+        let keyFile: string;
+
+        beforeAll(() => {
+            dir = fs.mkdtempSync(path.join(os.tmpdir(), "secrets-"));
+            keyFile = path.join(dir, "key");
+            fs.writeFileSync(keyFile, "0xsecret\n");
+        });
+
+        afterAll(() => fs.rmSync(dir, { recursive: true }));
+
+        it("should accept readable key files", () => {
+            expect(() =>
+                assertSecretFiles({
+                    CARTESI_AUTH_PRIVATE_KEY_FILE: keyFile,
+                    CARTESI_PRT_AUTH_MNEMONIC_FILE: keyFile,
+                }),
+            ).not.toThrow();
+        });
+
+        it("should ignore the variables that name no file", () => {
+            expect(() =>
+                assertSecretFiles({
+                    CARTESI_AUTH_PRIVATE_KEY: "0xsecret",
+                    CARTESI_SNAPSHOTS_DIR: dir,
+                }),
+            ).not.toThrow();
+        });
+
+        it("should name the variable and path of a missing file", () => {
+            const missing = path.join(dir, "missing");
+
+            expect(() =>
+                assertSecretFiles({
+                    CARTESI_PRT_AUTH_PRIVATE_KEY_FILE: missing,
+                }),
+            ).toThrow(
+                `CARTESI_PRT_AUTH_PRIVATE_KEY_FILE must name a readable file: "${missing}"`,
+            );
+        });
+
+        it("should reject a directory", () => {
+            expect(() =>
+                assertSecretFiles({ CARTESI_AUTH_MNEMONIC_FILE: dir }),
+            ).toThrow("CARTESI_AUTH_MNEMONIC_FILE must name a readable file");
         });
     });
 });
