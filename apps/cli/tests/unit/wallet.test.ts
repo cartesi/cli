@@ -1,6 +1,12 @@
 import { describe, expect, it } from "bun:test";
 import { DEVNET_MNEMONIC } from "../../src/compose/node";
-import { findMnemonicAccountIndex } from "../../src/wallet";
+import type { Address } from "viem";
+import { mnemonicToAccount } from "viem/accounts";
+import {
+    DEFAULT_SENDER_INDEX,
+    findMnemonicAccountIndex,
+    getDefaultSender,
+} from "../../src/wallet";
 
 describe("findMnemonicAccountIndex", () => {
     it("should find the index of a devnet account", () => {
@@ -40,5 +46,32 @@ describe("findMnemonicAccountIndex", () => {
                 mnemonic: DEVNET_MNEMONIC,
             }),
         ).toBeUndefined();
+    });
+});
+
+describe("getDefaultSender", () => {
+    const devnetAddresses = (count: number): Address[] =>
+        Array.from(
+            { length: count },
+            (_, addressIndex) =>
+                mnemonicToAccount(DEVNET_MNEMONIC, { addressIndex }).address,
+        );
+    const client = (addresses: Address[]) => ({
+        getAddresses: async () => addresses,
+    });
+
+    it("should be devnet account 8", async () => {
+        expect(DEFAULT_SENDER_INDEX).toBe(8);
+        expect(await getDefaultSender(client(devnetAddresses(10)))).toBe(
+            "0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f",
+        );
+    });
+
+    it("should ask for --from when the RPC exposes too few accounts", async () => {
+        await expect(
+            getDefaultSender(client(devnetAddresses(8))),
+        ).rejects.toThrow(
+            "The RPC exposes 8 accounts, so there is no devnet account 8 to send from; pass --from to choose the sender",
+        );
     });
 });

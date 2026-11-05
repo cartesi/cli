@@ -12,7 +12,10 @@ export const createDepositCommand = () => {
     const command = new Command("deposit")
         .description("Deposits an asset to the application")
         .configureHelp({ showGlobalOptions: true })
-        .option("--from <address>", "input sender address")
+        .option(
+            "--from <address>",
+            "input sender address (default: devnet account 8)",
+        )
         .option("--application <address>", "application address")
         .option(
             "--project-name <string>",
