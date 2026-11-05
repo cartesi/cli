@@ -4,7 +4,12 @@ import fs from "fs-extra";
 import os from "node:os";
 import path from "node:path";
 import { erc20PortalAddress, testUsdcAddress } from "../../../src/contracts";
-import { getDeployments, removeApplication } from "../../../src/exec/rollups";
+import { type Address, numberToHex } from "viem";
+import {
+    deployApplication,
+    getDeployments,
+    removeApplication,
+} from "../../../src/exec/rollups";
 import { TEST_SDK } from "../config";
 import {
     buildApplication,
@@ -14,9 +19,9 @@ import {
 } from "../devnet";
 
 /**
- * Covers the undeploy `cartesi run` does before redeploying a rebuilt
- * application. The shell that rebuilds needs a terminal, so the removal is
- * called the way the shell calls it, against an application of its own.
+ * Covers the undeploy and the redeploy `cartesi run` does for a rebuilt
+ * application. The shell that rebuilds needs a terminal, so both are called
+ * the way the shell calls them, against an application of its own.
  */
 
 const EPOCH_LENGTH = 720;
@@ -28,6 +33,7 @@ describe("undeploy", () => {
     let appDir: string;
     let cleanup: () => void;
     let run: ResultPromise | undefined;
+    let consensus: Address | undefined;
 
     beforeAll(async () => {
         const dir = fs.mkdtempSync(path.join(os.tmpdir(), "undeploy-"));
@@ -63,6 +69,12 @@ accounts_drive = true
             epochLength: EPOCH_LENGTH,
             projectName,
         }));
+
+        // read before any case removes the application
+        const deployments = await getDeployments({ projectName });
+        consensus = deployments.find(
+            ({ name }) => name === projectName,
+        )?.consensus;
     }, TIMEOUT);
 
     afterAll(() => stopApplication({ cleanup, projectName, run }), TIMEOUT);
@@ -82,6 +94,31 @@ accounts_drive = true
             expect(deployments.map(({ name }) => name)).not.toContain(
                 projectName,
             );
+        },
+        TIMEOUT,
+    );
+
+    // the shell redeploys a rebuilt machine on the consensus of the first
+    // deploy, which the node does through the application factory
+    it(
+        "should deploy an application on an existing consensus",
+        async () => {
+            expect(consensus).toBeDefined();
+            const name = `${projectName}-redeploy`;
+
+            const deployment = await deployApplication({
+                claimStagingPeriod: 0,
+                consensus,
+                epochLength: EPOCH_LENGTH,
+                name,
+                projectName,
+                salt: numberToHex(1, { size: 32 }),
+                snapshotPath: "/var/lib/cartesi-rollups-node/snapshots/image",
+            });
+
+            expect(deployment.consensus).toBe(consensus as Address);
+            const deployments = await getDeployments({ projectName });
+            expect(deployments.map(({ name }) => name)).toContain(name);
         },
         TIMEOUT,
     );
