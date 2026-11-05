@@ -711,7 +711,9 @@ export const buildDeployApplicationArgs = (
 
     const deployArgs = [name, snapshotPath];
 
-    if (consensus) {
+    // a prt deploy always creates its own DaveConsensus, which is bound to
+    // the machine, so an existing consensus is only reused without --prt
+    if (consensus && !prt) {
         deployArgs.push("--consensus", consensus);
     } else {
         deployArgs.push("--epoch-length", epochLength.toString());
