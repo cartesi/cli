@@ -7,11 +7,16 @@ import {
 } from "../errors.js";
 import type { PrtOptions, PrtSentry, SentryType } from "../types.js";
 import { assertKnownKeys, isTomlTable } from "./tables.js";
-import { parseRequiredAddress } from "./values.js";
+import { parseRequiredAddress, parseRequiredString } from "./values.js";
 
 export const PRT_KEYS: readonly string[] = ["sentries", "sentry_manager"];
 
-export const PRT_SENTRY_KEYS: readonly string[] = ["address", "label", "type"];
+export const PRT_SENTRY_KEYS: readonly string[] = [
+    "address",
+    "label",
+    "private_key_file",
+    "type",
+];
 
 export const SENTRY_TYPES: readonly SentryType[] = ["sling"];
 
@@ -76,10 +81,26 @@ const parseSentry = (value: TomlValue, index: number): PrtSentry => {
             : parseSentryType(value.type, where);
     const label =
         value.label === undefined ? undefined : parseLabel(value.label, where);
+    const privateKeyFile =
+        value.private_key_file === undefined
+            ? undefined
+            : parseRequiredString(value.private_key_file, "private_key_file");
 
     if (type === undefined && address === undefined) {
         throw new InvalidPrtConfigError(
             "set a type for the CLI to run the sentry, or an address to appoint one run elsewhere",
+            where,
+        );
+    }
+    if (privateKeyFile !== undefined && type === undefined) {
+        throw new InvalidPrtConfigError(
+            "private_key_file needs a type: the CLI only reads the key of a sentry it runs",
+            where,
+        );
+    }
+    if (privateKeyFile === "") {
+        throw new InvalidPrtConfigError(
+            "private_key_file must name a file",
             where,
         );
     }
@@ -88,6 +109,7 @@ const parseSentry = (value: TomlValue, index: number): PrtSentry => {
         ...(address !== undefined && { address }),
         ...(type !== undefined && { type }),
         ...(label !== undefined && { label }),
+        ...(privateKeyFile !== undefined && { privateKeyFile }),
     };
 };
 
