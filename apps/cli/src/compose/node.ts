@@ -20,7 +20,7 @@ export type ServiceOptions = {
     databaseHost?: string;
     databasePort?: number;
     databasePassword: string;
-    defaultBlock?: "latest" | "safe" | "pending" | "finalized";
+    defaultBlock?: "latest" | "safe" | "finalized";
     forkChainId?: number;
     logLevel?: "info" | "debug" | "warn" | "error" | "fatal";
     memory?: number;

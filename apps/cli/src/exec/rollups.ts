@@ -455,7 +455,7 @@ const serviceMonitorTask = (options: {
 export const startEnvironment = async (options: {
     blockTime: number;
     cpus?: number;
-    defaultBlock: "latest" | "safe" | "pending" | "finalized";
+    defaultBlock: "latest" | "safe" | "finalized";
     detach: boolean;
     dryRun: boolean;
     forkConfig?: ForkConfig;

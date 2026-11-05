@@ -334,7 +334,7 @@ export const createRunCommand = () => {
                 "--default-block <string>",
                 "default block to be used when fetching new blocks.",
             )
-                .choices(["latest", "safe", "pending", "finalized"])
+                .choices(["latest", "safe", "finalized"])
                 .default("latest"),
         )
         .option("--dry-run", "show the docker compose configuration", false)
