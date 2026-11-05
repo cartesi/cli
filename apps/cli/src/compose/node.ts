@@ -7,7 +7,7 @@ import {
     selfHostedApplicationFactoryAddress,
 } from "../contracts.js";
 import type { ComposeFile, Config, Service } from "../types/compose.js";
-import { DEFAULT_HEALTHCHECK } from "./common.js";
+import { DEFAULT_HEALTHCHECK, escapeComposeValue } from "./common.js";
 
 /**
  * Mnemonic of the devnet test accounts, used by the node to sign transactions
@@ -151,8 +151,12 @@ const service = (options: ServiceOptions): Service => {
         CARTESI_SNAPSHOTS_DIR: "/var/lib/cartesi-rollups-node/snapshots",
     };
 
-    const hostVars = getNodeAllowedVariables(
-        options.cartesiEnvironmentVariables,
+    // the host values are the user's own and may hold a `$`, e.g. in a
+    // password, which compose must not interpolate
+    const hostVars = Object.fromEntries(
+        Object.entries(
+            getNodeAllowedVariables(options.cartesiEnvironmentVariables),
+        ).map(([name, value]) => [name, escapeComposeValue(value)]),
     );
 
     // Merge default and host environment variables, with host variables taking precedence
