@@ -103,4 +103,32 @@ describe("run", () => {
             expect(all).not.toContain("services:");
         });
     });
+
+    describe("CARTESI_BLOCKCHAIN_HTTP_ENDPOINT", () => {
+        it("should forward a supported endpoint to the node", async () => {
+            const { all, exitCode } = await dryRun([], {
+                CARTESI_BLOCKCHAIN_HTTP_ENDPOINT: "https://rpc.example.com/v1",
+            });
+
+            expect(exitCode, all).toBe(0);
+            expect(all).toContain(
+                "CARTESI_BLOCKCHAIN_HTTP_ENDPOINT: https://rpc.example.com/v1",
+            );
+        });
+
+        // the node only fails once its container starts, and hides the value
+        it("should reject an unsupported endpoint without showing it", async () => {
+            const { all, exitCode } = await dryRun([], {
+                CARTESI_BLOCKCHAIN_HTTP_ENDPOINT:
+                    "wss://rpc.example.com/SECRET",
+            });
+
+            expect(exitCode).not.toBe(0);
+            expect(all).toContain(
+                "CARTESI_BLOCKCHAIN_HTTP_ENDPOINT must be an http(s) URL",
+            );
+            expect(all).not.toContain("SECRET");
+            expect(all).not.toContain("services:");
+        });
+    });
 });

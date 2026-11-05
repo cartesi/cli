@@ -32,7 +32,7 @@ import paymaster from "../compose/paymaster.js";
 import proxy from "../compose/proxy.js";
 import type { WithdrawalConfig } from "../config.js";
 import type { ForkConfig } from "../types/chain.js";
-import { assertSecretFiles } from "../validations.js";
+import { assertBlockchainEndpoint, assertSecretFiles } from "../validations.js";
 import type { AccountsDriveConfig } from "./cartesi-rollups-machine-tool.js";
 import { execNodeCommand } from "./node-container.js";
 
@@ -496,6 +496,7 @@ export const startEnvironment = async (options: {
 
     // Load all environment variables from the host that start with CARTESI_.
     const hostVars = getCartesiEnvironmentVariables();
+    assertBlockchainEndpoint(hostVars);
     assertSecretFiles(hostVars);
 
     const files = [
