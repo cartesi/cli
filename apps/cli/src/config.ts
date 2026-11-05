@@ -5,6 +5,7 @@ import { DuplicateLabelError } from "./config/errors.js";
 import { parseDrives } from "./config/toml/drives.js";
 import { parseMachine } from "./config/toml/machine.js";
 import { parseNvrams } from "./config/toml/nvrams.js";
+import { parseOptionalPrt } from "./config/toml/prt.js";
 import { assertKnownKeys, mergeTomlTables } from "./config/toml/tables.js";
 import { parseString } from "./config/toml/values.js";
 import { parseOptionalWithdrawal } from "./config/toml/accounts.js";
@@ -37,6 +38,7 @@ const CONFIG_KEYS: readonly string[] = [
     "drives",
     "machine",
     "nvrams",
+    "prt",
     "sdk",
     "withdrawal",
 ];
@@ -63,6 +65,7 @@ export const parse = (str: string[]): Config => {
         drives,
         machine: parseMachine(toml.machine),
         nvrams,
+        prt: parseOptionalPrt(toml.prt),
         sdk: parseString(
             toml.sdk,
             `${DEFAULT_SDK_IMAGE}:${DEFAULT_SDK_VERSION}`,

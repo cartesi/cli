@@ -41,6 +41,7 @@ import {
     waitHealthyEnvironment,
 } from "../exec/rollups.js";
 import { keySelect } from "../prompts.js";
+import { describePrt, type ResolvedPrt, resolveSentries } from "../sentries.js";
 import type { ForkConfig } from "../types/chain.js";
 import { assertForkConfig } from "../validations.js";
 import { getWithdrawalConfig } from "../withdrawal.js";
@@ -88,6 +89,7 @@ const shell = async (options: {
     salt: number;
     sdk: string;
     resolveWithdrawalConfig: () => WithdrawalConfig | undefined;
+    resolvePrt: () => ResolvedPrt | undefined;
     claimStagingPeriod: number;
 }) => {
     const {
@@ -98,6 +100,7 @@ const shell = async (options: {
         prt,
         sdk,
         resolveWithdrawalConfig,
+        resolvePrt,
         claimStagingPeriod,
     } = options;
 
@@ -184,6 +187,10 @@ const shell = async (options: {
                         // the accounts drive may have moved with the rebuild,
                         // resolved before undeploying in case it is now invalid
                         const withdrawalConfig = resolveWithdrawalConfig();
+                        // a PRT redeploy creates a new consensus, with the
+                        // sentries as they are in the config now
+                        const prtConfig = resolvePrt();
+                        reportPrtWarnings(prtConfig, claimStagingPeriod);
                         if (lastDeployment) {
                             await undeploy({ projectName });
                         }
@@ -193,6 +200,7 @@ const shell = async (options: {
                             hash,
                             projectName,
                             prt,
+                            prtConfig,
                             salt: numberToHex(salt++, { size: 32 }),
                             withdrawalConfig,
                             claimStagingPeriod,
@@ -234,12 +242,36 @@ const undeploy = async (options: { projectName: string }) => {
     progress.succeed(`${chalk.cyan(projectName)} undeployed`);
 };
 
+/**
+ * Warn about [prt] settings that are valid but have no effect.
+ */
+const reportPrtWarnings = (
+    prtConfig: ResolvedPrt | undefined,
+    claimStagingPeriod: number,
+) => {
+    for (const warning of prtConfig?.warnings ?? []) {
+        console.warn(chalk.yellow(`WARNING: ${warning}`));
+    }
+    if (
+        prtConfig &&
+        prtConfig.sentries.length > 0 &&
+        claimStagingPeriod === 0
+    ) {
+        console.warn(
+            chalk.yellow(
+                "WARNING: with --claim-staging-period 0 a staged claim is accepted at once, so the sentries have no effect",
+            ),
+        );
+    }
+};
+
 const deploy = async (options: {
     consensus?: Address;
     epochLength: number;
     hash: Hex;
     projectName: string;
     prt?: boolean;
+    prtConfig?: ResolvedPrt;
     salt: Hex;
     withdrawalConfig?: WithdrawalConfig;
     claimStagingPeriod: number;
@@ -250,10 +282,16 @@ const deploy = async (options: {
         hash,
         projectName,
         prt,
+        prtConfig,
         salt,
         withdrawalConfig,
         claimStagingPeriod,
     } = options;
+
+    // the sentries the consensus is deployed with, in ID order
+    for (const line of prtConfig ? describePrt(prtConfig) : []) {
+        console.log(line);
+    }
 
     // deploy application to node (onchain and offchain)
     const progress = ora(
@@ -267,6 +305,8 @@ const deploy = async (options: {
         projectName,
         prt,
         salt,
+        sentries: prtConfig?.sentries.map(({ address }) => address),
+        sentryManager: prtConfig?.sentryManager,
         snapshotPath: "/var/lib/cartesi-rollups-node/snapshots/image",
         withdrawalConfig,
         claimStagingPeriod,
@@ -443,6 +483,25 @@ export const createRunCommand = () => {
             // get application configuration (e.g. use withdrawal config if present)
             const applicationConfig = getApplicationConfig(configFiles);
 
+            // [prt] is parsed either way, so a mistake in it fails early, but
+            // the node takes sentries only on a PRT deploy. Read again on a
+            // rebuild, like the withdrawal config.
+            const resolvePrt = () => {
+                const config = getApplicationConfig(configFiles);
+                return prt && config.prt
+                    ? resolveSentries(config.prt)
+                    : undefined;
+            };
+            if (applicationConfig.prt && !prt) {
+                console.log(
+                    chalk.dim("[prt] in cartesi.toml is ignored without --prt"),
+                );
+            }
+
+            // fail before starting the environment if the sentries can't be resolved
+            const prtConfig = resolvePrt();
+            reportPrtWarnings(prtConfig, claimStagingPeriod);
+
             // resolve port number, using the first free port in a range, unless explicitly set
             const port =
                 options.port ||
@@ -527,6 +586,7 @@ export const createRunCommand = () => {
                     hash,
                     projectName,
                     prt,
+                    prtConfig,
                     salt: numberToHex(salt++, { size: 32 }),
                     claimStagingPeriod,
                     withdrawalConfig,
@@ -574,6 +634,7 @@ export const createRunCommand = () => {
                     sdk: applicationConfig.sdk,
                     claimStagingPeriod,
                     resolveWithdrawalConfig,
+                    resolvePrt,
                 });
                 await shutdown();
             } else {
