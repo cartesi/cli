@@ -3,14 +3,17 @@ import {
     type Address,
     createTestClient,
     defineChain,
+    type Hex,
     http,
     isAddressEqual,
     publicActions,
+    toHex,
     walletActions,
 } from "viem";
 import { mnemonicToAccount } from "viem/accounts";
 import { anvil } from "viem/chains";
 import { getProjectName } from "./base.js";
+import { DEVNET_MNEMONIC } from "./compose/node.js";
 import { PREFERRED_PORT } from "./config.js";
 import { getProjectPort } from "./exec/rollups.js";
 
@@ -77,6 +80,34 @@ export const findMnemonicAccountIndex = (options: {
         }
     }
     return undefined;
+};
+
+/**
+ * How many accounts the CLI derives from the devnet mnemonic: the 10 anvil
+ * funds and unlocks, and the ones after them, up to the sentry pool's last.
+ */
+export const DEVNET_ACCOUNTS = 30;
+
+/**
+ * Returns a devnet account by its index in the mnemonic, with the key the
+ * CLI signs with on its behalf. The mnemonic is public, so the key is too.
+ */
+export const getDevnetAccount = (
+    index: number,
+): { address: Address; privateKey: Hex } => {
+    if (!Number.isInteger(index) || index < 0 || index >= DEVNET_ACCOUNTS) {
+        throw new Error(
+            `There is no devnet account ${index}, the CLI derives accounts 0 to ${DEVNET_ACCOUNTS - 1}`,
+        );
+    }
+    const account = mnemonicToAccount(DEVNET_MNEMONIC, {
+        addressIndex: index,
+    });
+    const privateKey = account.getHdKey().privateKey;
+    if (!privateKey) {
+        throw new Error(`Devnet account ${index} has no private key`);
+    }
+    return { address: account.address, privateKey: toHex(privateKey) };
 };
 
 /**

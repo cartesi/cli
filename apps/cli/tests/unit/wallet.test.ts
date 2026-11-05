@@ -4,8 +4,10 @@ import type { Address } from "viem";
 import { mnemonicToAccount } from "viem/accounts";
 import {
     DEFAULT_SENDER_INDEX,
+    DEVNET_ACCOUNTS,
     findMnemonicAccountIndex,
     getDefaultSender,
+    getDevnetAccount,
 } from "../../src/wallet";
 
 describe("findMnemonicAccountIndex", () => {
@@ -74,4 +76,35 @@ describe("getDefaultSender", () => {
             "The RPC exposes 8 accounts, so there is no devnet account 8 to send from; pass --from to choose the sender",
         );
     });
+});
+
+describe("getDevnetAccount", () => {
+    it("should derive the address and key of a devnet account", () => {
+        const account = mnemonicToAccount(DEVNET_MNEMONIC, {
+            addressIndex: 20,
+        });
+
+        expect(getDevnetAccount(20)).toEqual({
+            address: account.address,
+            privateKey: `0x${Buffer.from(account.getHdKey().privateKey as Uint8Array).toString("hex")}`,
+        });
+    });
+
+    it("should be the account anvil funds for the first indexes", () => {
+        expect(getDevnetAccount(0).address).toBe(
+            "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        );
+        expect(getDevnetAccount(0).privateKey).toBe(
+            "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+        );
+    });
+
+    it.each([-1, 1.5, DEVNET_ACCOUNTS])(
+        "should fail for the index %s",
+        (index) => {
+            expect(() => getDevnetAccount(index)).toThrow(
+                `There is no devnet account ${index}, the CLI derives accounts 0 to ${DEVNET_ACCOUNTS - 1}`,
+            );
+        },
+    );
 });

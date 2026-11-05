@@ -33,6 +33,7 @@ export const defaultConfig = (): Config => ({
     drives: { root: defaultRootDriveConfig() },
     machine: defaultMachineConfig(),
     nvrams: {},
+    prt: undefined,
     sdk: `${DEFAULT_SDK_IMAGE}:${DEFAULT_SDK_VERSION}`,
     withdrawal: undefined,
 });

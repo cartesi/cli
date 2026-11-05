@@ -104,6 +104,64 @@ describe("run", () => {
         });
     });
 
+    describe("[prt]", () => {
+        const sentries = `
+[prt]
+sentry_manager = "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc"
+
+[[prt.sentries]]
+type = "sling"
+
+[[prt.sentries]]
+type = "sling"
+`;
+        const config = (prt: string) => {
+            const file = path.join(dir, "prt.toml");
+            fs.writeFileSync(file, prt);
+            return ["--config", file];
+        };
+
+        // the section is read even without --prt, so a mistake fails early
+        it("should reject a duplicate sentry before rendering", async () => {
+            const { all, exitCode } = await dryRun([
+                "--prt",
+                ...config(`${sentries}
+[[prt.sentries]]
+address = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
+
+[[prt.sentries]]
+address = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8"
+`),
+            ]);
+
+            expect(exitCode).not.toBe(0);
+            expect(all).toContain("prt.sentries[4]");
+            expect(all).toContain("is also the address of prt.sentries[3]");
+            expect(all).not.toContain("services:");
+        });
+
+        it("should ignore the section without --prt", async () => {
+            const { all, exitCode } = await dryRun(config(sentries));
+
+            expect(exitCode, all).toBe(0);
+            expect(all).toContain(
+                "[prt] in cartesi.toml is ignored without --prt",
+            );
+            expect(all).toContain("services:");
+        });
+
+        it("should render the configuration with --prt and sentries", async () => {
+            const { all, exitCode } = await dryRun([
+                "--prt",
+                ...config(sentries),
+            ]);
+
+            expect(exitCode, all).toBe(0);
+            expect(all).not.toContain("ignored without --prt");
+            expect(all).toContain("services:");
+        });
+    });
+
     describe("CARTESI_BLOCKCHAIN_HTTP_ENDPOINT", () => {
         it("should forward a supported endpoint to the node", async () => {
             const { all, exitCode } = await dryRun([], {
