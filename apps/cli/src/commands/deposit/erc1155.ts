@@ -17,7 +17,7 @@ import {
     bigintInput,
     getInputApplicationAddress,
 } from "../../prompts.js";
-import { connect } from "../../wallet.js";
+import { connect, getDefaultSender } from "../../wallet.js";
 import type { DepositCommandOpts } from "../deposit.js";
 
 type ERC1155Token = {
@@ -75,7 +75,7 @@ export const createErc1155SingleCommand = () => {
             const account =
                 from && isAddress(from)
                     ? getAddress(from)
-                    : (await testClient.getAddresses())[0];
+                    : await getDefaultSender(testClient);
 
             const amount = amountString
                 ? BigInt(amountString)
@@ -253,7 +253,7 @@ export const createErc1155BatchCommand = () => {
             const account =
                 from && isAddress(from)
                     ? getAddress(from)
-                    : (await testClient.getAddresses())[0];
+                    : await getDefaultSender(testClient);
 
             const tokenAbi = testMultiTokenAbi;
 

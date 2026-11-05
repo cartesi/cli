@@ -5,7 +5,7 @@ import { formatUnits, getAddress, isAddress, isHex, parseUnits } from "viem";
 import { getProjectName } from "../../base.js";
 import { etherPortalAbi, etherPortalAddress } from "../../contracts.js";
 import { bigintInput, getInputApplicationAddress } from "../../prompts.js";
-import { connect } from "../../wallet.js";
+import { connect, getDefaultSender } from "../../wallet.js";
 import type { DepositCommandOpts } from "../deposit.js";
 
 export const createEtherCommand = () => {
@@ -26,7 +26,7 @@ export const createEtherCommand = () => {
             const account =
                 from && isAddress(from)
                     ? getAddress(from)
-                    : (await testClient.getAddresses())[0];
+                    : await getDefaultSender(testClient);
 
             // get dapp address from local node, or ask
             const application = await getInputApplicationAddress({

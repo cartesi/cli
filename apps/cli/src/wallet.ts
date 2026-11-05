@@ -78,3 +78,27 @@ export const findMnemonicAccountIndex = (options: {
     }
     return undefined;
 };
+
+/**
+ * Index of the devnet account that sends inputs and deposits when no `--from`
+ * is given. The node signs its claims with account 0 and the CLI uses account
+ * 1 as the guardian, so a sender of its own shares no nonces with either.
+ */
+export const DEFAULT_SENDER_INDEX = 8;
+
+/**
+ * Returns the default sender among the accounts the RPC exposes.
+ * @throws if the RPC exposes too few accounts
+ */
+export const getDefaultSender = async (client: {
+    getAddresses: () => Promise<readonly Address[]>;
+}): Promise<Address> => {
+    const addresses = await client.getAddresses();
+    const sender = addresses[DEFAULT_SENDER_INDEX];
+    if (sender === undefined) {
+        throw new Error(
+            `The RPC exposes ${addresses.length} accounts, so there is no devnet account ${DEFAULT_SENDER_INDEX} to send from; pass --from to choose the sender`,
+        );
+    }
+    return sender;
+};
