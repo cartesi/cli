@@ -339,6 +339,26 @@ describe("Compose node service", () => {
             expect(env).toHaveProperty("CARTESI_LOG_LEVEL", "warn");
         });
 
+        // compose interpolates `$name` in the file it reads, so a host value
+        // must reach it as `$$`, which compose turns back into `$`
+        it("should escape the $ in host variables for compose", () => {
+            const compose = buildNodeCompose({
+                ...baseOptions,
+                cartesiEnvironmentVariables: {
+                    CARTESI_BLOCKCHAIN_HTTP_ENDPOINT:
+                        "https://alice:s3cr$t@rpc.example.com/$key",
+                    CARTESI_LOG_LEVEL: "warn",
+                },
+            });
+            const env = compose.services?.rollups_node?.environment ?? {};
+
+            expect(env).toHaveProperty(
+                "CARTESI_BLOCKCHAIN_HTTP_ENDPOINT",
+                "https://alice:s3cr$$t@rpc.example.com/$$key",
+            );
+            expect(env).toHaveProperty("CARTESI_LOG_LEVEL", "warn");
+        });
+
         it("should build the database connection string from provided property", () => {
             const compose = buildNodeCompose({
                 databasePassword: "specialsecret",

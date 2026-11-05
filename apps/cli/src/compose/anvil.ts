@@ -1,6 +1,6 @@
 import type { ForkConfig } from "../types/chain.js";
 import type { ComposeFile, Config, Service } from "../types/compose.js";
-import { DEFAULT_HEALTHCHECK } from "./common.js";
+import { DEFAULT_HEALTHCHECK, escapeComposeValue } from "./common.js";
 
 type ServiceOptions = {
     imageTag?: string;
@@ -23,7 +23,8 @@ const service = (options?: ServiceOptions): Service => {
               "--block-time",
               blockTime.toString(),
               "--fork-url",
-              forkConfig.url,
+              // the URL may hold an API key with a `$`, which compose must not interpolate
+              escapeComposeValue(forkConfig.url),
               ...(forkConfig.blockNumber !== undefined
                   ? ["--fork-block-number", forkConfig.blockNumber.toString()]
                   : []),
