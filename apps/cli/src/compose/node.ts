@@ -1,6 +1,7 @@
 import { anvil } from "viem/chains";
 import type { CartesiEnvironmentVariables } from "../base.js";
 import {
+    applicationFactoryAddress,
     daveAppFactoryAddress,
     inputBoxAddress,
     selfHostedApplicationFactoryAddress,
@@ -130,6 +131,10 @@ const service = (options: ServiceOptions): Service => {
         CARTESI_BLOCKCHAIN_DEFAULT_BLOCK: defaultBlock,
         CARTESI_BLOCKCHAIN_HTTP_ENDPOINT: "http://anvil:8545",
         CARTESI_BLOCKCHAIN_ID: anvil.id.toString(),
+        // a deploy on an existing consensus, as the shell's redeploy does,
+        // creates only the application, through this factory
+        CARTESI_CONTRACTS_APPLICATION_FACTORY_ADDRESS:
+            applicationFactoryAddress,
         ...(chainDaveAppFactoryAddress && {
             CARTESI_CONTRACTS_DAVE_APP_FACTORY_ADDRESS:
                 chainDaveAppFactoryAddress,
