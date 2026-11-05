@@ -8,6 +8,7 @@ import {
 } from "../contracts.js";
 import type { ComposeFile, Config, Service } from "../types/compose.js";
 import { DEFAULT_HEALTHCHECK, escapeComposeValue } from "./common.js";
+import { type FileSecret, fileSecret, secretInitService } from "./secrets.js";
 
 /**
  * Mnemonic of the devnet test accounts, used by the node to sign transactions
@@ -105,8 +106,40 @@ export const getNodeAllowedVariables = (
     return allowedVars;
 };
 
+/**
+ * The allowed variables that name a file the node reads its keys from.
+ * Forwarding only the path would leave the node without the file, so each
+ * one is copied into the container instead.
+ */
+export const nodeSecretFileVariables = nodeAllowedEnvironmentVariables.filter(
+    (name) => name.endsWith("_FILE"),
+);
+
+/** Service that copies the key files for the node, and its volume. */
+const SECRET_INIT_SERVICE = "node-secret-init";
+const SECRETS_VOLUME = "node_secrets";
+
+/**
+ * Returns the key files named in the host variables, each with the variable
+ * that points the node at its copy.
+ */
+const nodeFileSecrets = (
+    cartesiVars?: CartesiEnvironmentVariables,
+): (FileSecret & { variable: string })[] => {
+    const allowedVars = getNodeAllowedVariables(cartesiVars);
+    return nodeSecretFileVariables.flatMap((variable) => {
+        const hostPath = allowedVars[variable];
+        return hostPath === undefined
+            ? []
+            : [{ variable, ...fileSecret(variable.toLowerCase(), hostPath) }];
+    });
+};
+
 // Rollups Node service
-const service = (options: ServiceOptions): Service => {
+const service = (
+    options: ServiceOptions,
+    fileSecrets: (FileSecret & { variable: string })[],
+): Service => {
     const databasePassword = options.databasePassword;
     const databaseHost = options.databaseHost ?? "database";
     const databasePort = options.databasePort ?? 5432;
@@ -159,6 +192,11 @@ const service = (options: ServiceOptions): Service => {
         ).map(([name, value]) => [name, escapeComposeValue(value)]),
     );
 
+    // the key files reach the node as secrets, at a path inside the container
+    for (const { variable, target } of fileSecrets) {
+        hostVars[variable] = target;
+    }
+
     // Merge default and host environment variables, with host variables taking precedence
     // further to the right of the parameter list the higher the precedence
     // TODO: Here or somewhere else; Add other variables with precedence rules, e.g. command line > <config>.toml > host environment > default
@@ -170,6 +208,11 @@ const service = (options: ServiceOptions): Service => {
         depends_on: {
             database: { condition: "service_healthy" },
             anvil: { condition: "service_healthy" },
+            ...(fileSecrets.length > 0 && {
+                [SECRET_INIT_SERVICE]: {
+                    condition: "service_completed_successfully",
+                },
+            }),
         },
         deploy: {
             resources: {
@@ -194,7 +237,12 @@ const service = (options: ServiceOptions): Service => {
         environment: {
             ...environmentVariables,
         },
-        volumes: ["./.cartesi:/var/lib/cartesi-rollups-node/snapshots:ro"],
+        volumes: [
+            "./.cartesi:/var/lib/cartesi-rollups-node/snapshots:ro",
+            ...(fileSecrets.length > 0
+                ? [`${SECRETS_VOLUME}:/run/secrets:ro`]
+                : []),
+        ],
     };
 };
 
@@ -243,19 +291,33 @@ http:
     };
 };
 
-export default (options: ServiceOptions): ComposeFile => ({
-    services: {
-        proxy: {
-            configs: [
-                {
-                    source: "rollups_node_proxy",
-                    target: "/etc/traefik/conf.d/rollups-node.yaml",
-                },
-            ],
+export default (options: ServiceOptions): ComposeFile => {
+    const fileSecrets = nodeFileSecrets(options.cartesiEnvironmentVariables);
+
+    return {
+        services: {
+            proxy: {
+                configs: [
+                    {
+                        source: "rollups_node_proxy",
+                        target: "/etc/traefik/conf.d/rollups-node.yaml",
+                    },
+                ],
+            },
+            rollups_node: service(options, fileSecrets),
+            ...(fileSecrets.length > 0 && {
+                [SECRET_INIT_SERVICE]: secretInitService({
+                    imageTag: options.imageTag ?? "latest",
+                    secrets: fileSecrets,
+                    volume: SECRETS_VOLUME,
+                }),
+            }),
         },
-        rollups_node: service(options),
-    },
-    configs: {
-        rollups_node_proxy: proxy(),
-    },
-});
+        configs: {
+            rollups_node_proxy: proxy(),
+        },
+        ...(fileSecrets.length > 0 && {
+            volumes: { [SECRETS_VOLUME]: {} },
+        }),
+    };
+};

@@ -72,4 +72,35 @@ describe("run", () => {
             );
         });
     });
+
+    describe("key files", () => {
+        it("should hand the node a copy of a key file named on the host", async () => {
+            fs.writeFileSync(path.join(dir, "claimer.key"), "0xsecret\n");
+
+            const { all, exitCode } = await dryRun([], {
+                CARTESI_AUTH_PRIVATE_KEY_FILE: "claimer.key",
+            });
+
+            expect(exitCode, all).toBe(0);
+            expect(all).toContain(
+                "CARTESI_AUTH_PRIVATE_KEY_FILE: /run/secrets/cartesi_auth_private_key_file",
+            );
+            expect(all).toContain("node-secret-init:");
+            expect(all).toContain("condition: service_completed_successfully");
+            expect(all).toContain(path.join(dir, "claimer.key"));
+            expect(all).not.toContain("0xsecret");
+        });
+
+        it("should reject a missing key file before rendering", async () => {
+            const { all, exitCode } = await dryRun([], {
+                CARTESI_AUTH_PRIVATE_KEY_FILE: "missing.key",
+            });
+
+            expect(exitCode).not.toBe(0);
+            expect(all).toContain(
+                'CARTESI_AUTH_PRIVATE_KEY_FILE must name a readable file: "missing.key"',
+            );
+            expect(all).not.toContain("services:");
+        });
+    });
 });
