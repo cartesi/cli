@@ -5,6 +5,7 @@ import buildNodeCompose, {
     type ServiceOptions,
 } from "../../../src/compose/node.js";
 import {
+    applicationFactoryAddress,
     inputBoxAddress,
     selfHostedApplicationFactoryAddress,
 } from "../../../src/contracts.js";
@@ -215,7 +216,7 @@ describe("Compose node service", () => {
 
             const env = compose.services?.rollups_node?.environment ?? {};
 
-            expect(Object.keys(env)).toHaveLength(11);
+            expect(Object.keys(env)).toHaveLength(12);
 
             expect(env).toHaveProperty(
                 "CARTESI_AUTH_MNEMONIC",
@@ -235,6 +236,10 @@ describe("Compose node service", () => {
                 "http://anvil:8545",
             );
             expect(env).toHaveProperty("CARTESI_BLOCKCHAIN_ID", "31337");
+            expect(env).toHaveProperty(
+                "CARTESI_CONTRACTS_APPLICATION_FACTORY_ADDRESS",
+                applicationFactoryAddress,
+            );
             expect(env).toHaveProperty(
                 "CARTESI_CONTRACTS_INPUT_BOX_ADDRESS",
                 inputBoxAddress,
