@@ -267,6 +267,74 @@ export const getLastAcceptedEpoch = async (options: {
     return parseLastAcceptedEpoch(stdout);
 };
 
+/**
+ * The sentries of an application's DaveConsensus, as `cartesi-rollups-cli
+ * contract consensus` reports them.
+ */
+export type DaveConsensusSentries = {
+    address: Address;
+    claimStagingPeriod: number;
+    sentryManager: Address;
+    sentries: { id: number; address: Address }[];
+    /** set once a tournament result is staged */
+    allSentriesAgree?: boolean;
+};
+
+type CliDaveConsensus = {
+    type: string;
+    address: string;
+    claim_staging_period: number;
+    sentry_manager: string;
+    num_sentries: number;
+    sentries: { id: number; address: string }[];
+    all_sentries_agree?: boolean;
+};
+
+/**
+ * Parse the JSON `cartesi-rollups-cli contract consensus --json` writes to
+ * stdout for a DaveConsensus
+ * @throws if the consensus is of another type
+ */
+export const parseDaveConsensus = (stdout: string): DaveConsensusSentries => {
+    const consensus = JSON.parse(stdout) as CliDaveConsensus;
+    if (consensus.type !== "DaveConsensus") {
+        throw new Error(
+            `The consensus at ${consensus.address} is a ${consensus.type}, not a DaveConsensus`,
+        );
+    }
+    return {
+        address: getAddress(consensus.address),
+        claimStagingPeriod: consensus.claim_staging_period,
+        sentryManager: getAddress(consensus.sentry_manager),
+        sentries: consensus.sentries.map(({ id, address }) => ({
+            id,
+            address: getAddress(address),
+        })),
+        allSentriesAgree: consensus.all_sentries_agree,
+    };
+};
+
+/**
+ * Read the sentries of an application's DaveConsensus from the chain
+ */
+export const getDaveConsensus = async (options: {
+    application: Address;
+    projectName: string;
+}): Promise<DaveConsensusSentries> => {
+    const { application, projectName } = options;
+    const stdout = await execNodeCommand({
+        command: [
+            "cartesi-rollups-cli",
+            "contract",
+            "consensus",
+            application,
+            "--json",
+        ],
+        projectName,
+    });
+    return parseDaveConsensus(stdout);
+};
+
 export const getApplicationDeployment = async (
     options: ComposeParams,
 ): Promise<RollupsDeployment | undefined> => {
@@ -689,6 +757,10 @@ export type DeployApplicationOptions = {
     projectName: string;
     prt?: boolean;
     salt?: Hex;
+    /** PRT only: the sentries appointed on the consensus, in ID order */
+    sentries?: Address[];
+    /** PRT only: the account that may rotate the sentries */
+    sentryManager?: Address;
     snapshotPath: string;
     withdrawalConfig?: WithdrawalConfig;
     claimStagingPeriod: number;
@@ -707,6 +779,8 @@ export const buildDeployApplicationArgs = (
         name,
         prt,
         salt,
+        sentries,
+        sentryManager,
         snapshotPath,
         withdrawalConfig,
         claimStagingPeriod,
@@ -726,6 +800,14 @@ export const buildDeployApplicationArgs = (
 
     if (prt) {
         deployArgs.push("--prt");
+    }
+
+    // the node takes both only with --prt
+    if (sentryManager) {
+        deployArgs.push("--sentry-manager", sentryManager);
+    }
+    if (sentries && sentries.length > 0) {
+        deployArgs.push("--sentries", sentries.join(","));
     }
 
     // the node takes this on the whole deploy command, PRT included

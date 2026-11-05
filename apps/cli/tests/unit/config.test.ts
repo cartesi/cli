@@ -16,6 +16,7 @@ import {
     InvalidEnvError,
     InvalidNumberValueError,
     InvalidNvramSizeError,
+    InvalidPrtConfigError,
     InvalidStringValueError,
     InvalidTableError,
     InvalidWithdrawalConfigError,
@@ -154,6 +155,18 @@ describe("when parsing the fixtures", () => {
                     shared: undefined,
                     user: undefined,
                 },
+            },
+            prt: {
+                sentryManager: "0x3333333333333333333333333333333333333333",
+                sentries: [
+                    { type: "sling" },
+                    {
+                        address: "0x4444444444444444444444444444444444444444",
+                        type: "sling",
+                        label: "mine",
+                    },
+                    { address: "0x5555555555555555555555555555555555555555" },
+                ],
             },
             withdrawal: {
                 guardian: "0x1111111111111111111111111111111111111111",
@@ -415,6 +428,185 @@ shared = true`,
                 ).toThrowError(new error("invalid_address", key));
             },
         );
+    });
+
+    /**
+     * [prt]
+     */
+    describe("when parsing [prt]", () => {
+        const prt = (config: string) => parse([config]).prt;
+        const address = (digit: string) =>
+            `0x${digit.repeat(40)}` as `0x${string}`;
+
+        it("should parse the sentries in order, with only the keys set", () => {
+            const config = `
+                [prt]
+                sentry_manager = "${address("3")}"
+
+                [[prt.sentries]]
+                type = "sling"
+
+                [[prt.sentries]]
+                type = "sling"
+                label = "mine"
+                address = "${address("4")}"
+
+                [[prt.sentries]]
+                address = "${address("5")}"
+            `;
+            expect(prt(config)).toStrictEqual({
+                sentryManager: address("3"),
+                sentries: [
+                    { type: "sling" },
+                    { address: address("4"), type: "sling", label: "mine" },
+                    { address: address("5") },
+                ],
+            });
+        });
+
+        it("should accept an empty section", () => {
+            expect(prt("[prt]")).toStrictEqual({ sentries: [] });
+        });
+
+        it("should return undefined when [prt] is not defined", () => {
+            expect(parse([""]).prt).toBeUndefined();
+        });
+
+        it("should fail when the section is not a table", () => {
+            expect(() => prt("prt = 42")).toThrowError(
+                new InvalidTableError("[prt]", 42),
+            );
+        });
+
+        it("should fail when sentries is not an array of tables", () => {
+            expect(() => prt('[prt]\nsentries = "0x1234"')).toThrowError(
+                new InvalidPrtConfigError(
+                    "sentries must be [[prt.sentries]] entries, got 0x1234",
+                ),
+            );
+            expect(() => prt("[prt]\nsentries = [42]")).toThrowError(
+                new InvalidTableError("prt.sentries[1]", 42),
+            );
+        });
+
+        it("should checksum the addresses", () => {
+            const config = `
+                [[prt.sentries]]
+                address = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8"
+            `;
+            expect(prt(config)?.sentries[0].address).toBe(
+                "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            );
+        });
+
+        it.each([
+            ["sentry_manager", "[prt]"],
+            ["address", "[[prt.sentries]]"],
+        ])("should fail when %s is not a valid address", (key, table) => {
+            expect(() =>
+                prt(`${table}\n${key} = "invalid_address"`),
+            ).toThrowError(
+                new InvalidAddressValueError("invalid_address", key),
+            );
+        });
+
+        // the node refuses it, so the config does too
+        it("should fail for the zero address", () => {
+            expect(() =>
+                prt(`[[prt.sentries]]\naddress = "${address("0")}"`),
+            ).toThrowError(
+                new InvalidPrtConfigError(
+                    "address must not be the zero address",
+                    "prt.sentries[1]",
+                ),
+            );
+        });
+
+        it("should fail when two entries name the same address", () => {
+            const config = `
+                [[prt.sentries]]
+                address = "${address("4")}"
+
+                [[prt.sentries]]
+                type = "sling"
+
+                [[prt.sentries]]
+                type = "sling"
+                address = "${address("4").toLowerCase()}"
+            `;
+            expect(() => prt(config)).toThrowError(
+                new InvalidPrtConfigError(
+                    `address ${address("4")} is also the address of prt.sentries[1]`,
+                    "prt.sentries[3]",
+                ),
+            );
+        });
+
+        it("should fail for a type the CLI can't run", () => {
+            expect(() =>
+                prt('[[prt.sentries]]\ntype = "rollups-node"'),
+            ).toThrowError(
+                new InvalidPrtConfigError(
+                    "type rollups-node isn't supported, expected one of: sling",
+                    "prt.sentries[1]",
+                ),
+            );
+        });
+
+        it("should fail for an entry with neither type nor address", () => {
+            expect(() => prt('[[prt.sentries]]\nlabel = "idle"')).toThrowError(
+                new InvalidPrtConfigError(
+                    "set a type for the CLI to run the sentry, or an address to appoint one run elsewhere",
+                    "prt.sentries[1]",
+                ),
+            );
+        });
+
+        it.each(['"My Sentry"', '"a/b"', '""', "7"])(
+            "should fail for the label %s",
+            (label) => {
+                expect(() =>
+                    prt(`[[prt.sentries]]\ntype = "sling"\nlabel = ${label}`),
+                ).toThrowError(
+                    new InvalidPrtConfigError(
+                        `label ${JSON.parse(label.startsWith('"') ? label : `"${label}"`) === "" ? "" : label.replace(/"/g, "")} must be lowercase letters, digits, - or _`,
+                        "prt.sentries[1]",
+                    ),
+                );
+            },
+        );
+
+        // a label names a container, and so does the default of another entry
+        it("should fail when a label repeats another entry's default label", () => {
+            const config = `
+                [[prt.sentries]]
+                type = "sling"
+                label = "2"
+
+                [[prt.sentries]]
+                type = "sling"
+            `;
+            expect(() => prt(config)).toThrowError(
+                new InvalidPrtConfigError(
+                    'label "2" is also the label of prt.sentries[1]',
+                    "prt.sentries[2]",
+                ),
+            );
+        });
+
+        it("should fail for an unknown key in [prt]", () => {
+            expect(() => prt("[prt]\nmanager = 1")).toThrowError(
+                "Unknown key 'manager' in [prt], expected one of: sentries, sentry_manager",
+            );
+        });
+
+        it("should fail for an unknown key in an entry", () => {
+            expect(() =>
+                prt('[[prt.sentries]]\ntype = "sling"\nkey = "x"'),
+            ).toThrowError(
+                "Unknown key 'key' in prt.sentries[1], expected one of: address, label, type",
+            );
+        });
     });
 
     /**
@@ -1069,7 +1261,7 @@ shared = true`,
             expect(() =>
                 parse(['[drive.root]\nbuilder = "docker"']),
             ).toThrowError(
-                "Unknown key 'drive' at the top level, expected one of: drives, machine, nvrams, sdk, withdrawal",
+                "Unknown key 'drive' at the top level, expected one of: drives, machine, nvrams, prt, sdk, withdrawal",
             );
         });
 

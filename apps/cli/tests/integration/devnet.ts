@@ -134,13 +134,20 @@ export const deposit = async (
 /**
  * Starts the environment with `cartesi run` and waits for the application to
  * be deployed.
+ * @returns `output` reads what `cartesi run` has printed so far
  */
 export const startApplication = async (options: {
     appDir: string;
     epochLength: number;
+    /** further `cartesi run` arguments, e.g. `--prt` */
+    extraArgs?: string[];
     projectName: string;
-}): Promise<{ application: Address; run: ResultPromise }> => {
-    const { appDir, epochLength, projectName } = options;
+}): Promise<{
+    application: Address;
+    output: () => string;
+    run: ResultPromise;
+}> => {
+    const { appDir, epochLength, extraArgs = [], projectName } = options;
 
     // without a terminal the environment runs in the foreground
     console.log(`! Starting the environment ${projectName}...`);
@@ -157,6 +164,7 @@ export const startApplication = async (options: {
             epochLength.toString(),
             "--block-time",
             "1",
+            ...extraArgs,
         ],
         {
             all: true,
@@ -164,6 +172,11 @@ export const startApplication = async (options: {
             reject: false,
         },
     );
+
+    // the process keeps running, so its output is read as it comes
+    const chunks: string[] = [];
+    run.all?.on("data", (chunk) => chunks.push(String(chunk)));
+    const output = () => chunks.join("");
 
     const application = await waitFor(async () => {
         if (run.nodeChildProcess.exitCode !== null) {
@@ -178,7 +191,7 @@ export const startApplication = async (options: {
     }, 600);
     console.log(`✓ Application deployed at ${application}`);
 
-    return { application, run };
+    return { application, output, run };
 };
 
 /**
