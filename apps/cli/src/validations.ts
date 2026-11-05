@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { isIPv6 } from "node:net";
 import {
     createPublicClient,
     http,
@@ -307,5 +308,133 @@ export const assertSecretFiles = (env: CartesiEnvironmentVariables) => {
         } catch {
             throw new Error(`${name} must name a readable file: "${file}"`);
         }
+    }
+};
+
+/** Whether every `%` in `value` starts a `%XX` escape. */
+const hasValidEscapes = (value: string): boolean =>
+    !/%(?![0-9A-Fa-f]{2})/.test(value);
+
+/**
+ * Whether `name` is a host name Go's `url.Parse` accepts: no character it
+ * would have to escape, and `%XX` only for non-ASCII bytes or `%25`.
+ */
+const isValidHostName = (name: string): boolean => {
+    for (let i = 0; i < name.length; i++) {
+        const c = name[i];
+        if (c === "%") {
+            const hex = name.slice(i + 1, i + 3);
+            if (!/^[0-9A-Fa-f]{2}$/.test(hex)) {
+                return false;
+            }
+            if (Number.parseInt(hex[0], 16) < 8 && hex !== "25") {
+                return false;
+            }
+            i += 2;
+        } else if (
+            c.charCodeAt(0) < 0x80 &&
+            !/[A-Za-z0-9\-._~!$&'()*+,;="<>[\]]/.test(c)
+        ) {
+            return false;
+        }
+    }
+    return true;
+};
+
+/** Whether `host` (`name[:port]` or `[ipv6][:port]`) has a non-empty name. */
+const isValidHost = (host: string): boolean => {
+    let name: string;
+    let port: string;
+    if (host.startsWith("[")) {
+        const close = host.lastIndexOf("]");
+        if (close < 0) {
+            return false;
+        }
+        name = host.slice(1, close);
+        port = host.slice(close + 1);
+        // an IPv6 zone is escaped as %25, e.g. [fe80::1%25en0]
+        const zoneAt = name.indexOf("%25");
+        const address = zoneAt < 0 ? name : name.slice(0, zoneAt);
+        if (!isIPv6(address) || !hasValidEscapes(name)) {
+            return false;
+        }
+    } else {
+        const colonAt = host.indexOf(":");
+        if (colonAt !== host.lastIndexOf(":")) {
+            return false;
+        }
+        name = colonAt < 0 ? host : host.slice(0, colonAt);
+        port = colonAt < 0 ? "" : host.slice(colonAt);
+        if (!isValidHostName(name)) {
+            return false;
+        }
+    }
+    return name !== "" && /^(:[0-9]*)?$/.test(port);
+};
+
+/**
+ * Whether `raw` is an endpoint the rollups-node accepts: Go's `url.Parse`
+ * succeeds on it, its scheme is http or https and it has a host name. Mirrors
+ * Go rather than WHATWG `URL`, which accepts and rejects other URLs.
+ */
+export const isValidHttpEndpoint = (raw: string): boolean => {
+    // Go rejects control characters; surrounding whitespace is a mistake
+    const isControl = (c: string) => c < " " || c === "\x7f";
+    if (raw !== raw.trim() || [...raw].some(isControl)) {
+        return false;
+    }
+    const scheme = /^([A-Za-z][A-Za-z0-9+.-]*):/.exec(raw);
+    if (!scheme || !["http", "https"].includes(scheme[1].toLowerCase())) {
+        return false;
+    }
+    let rest = raw.slice(scheme[0].length);
+
+    // Go checks the escapes of the fragment, but not the query
+    const hashAt = rest.indexOf("#");
+    if (hashAt >= 0) {
+        if (!hasValidEscapes(rest.slice(hashAt + 1))) {
+            return false;
+        }
+        rest = rest.slice(0, hashAt);
+    }
+    const queryAt = rest.indexOf("?");
+    if (queryAt >= 0) {
+        rest = rest.slice(0, queryAt);
+    }
+
+    // without //, the URL has no authority and so no host
+    if (!rest.startsWith("//")) {
+        return false;
+    }
+    rest = rest.slice(2);
+    const slashAt = rest.indexOf("/");
+    const authority = slashAt < 0 ? rest : rest.slice(0, slashAt);
+    const path = slashAt < 0 ? "" : rest.slice(slashAt);
+    if (!hasValidEscapes(path)) {
+        return false;
+    }
+
+    const atAt = authority.lastIndexOf("@");
+    const userinfo = atAt < 0 ? "" : authority.slice(0, atAt);
+    if (
+        !/^[A-Za-z0-9\-._:~!$&'()*+,;=%@]*$/.test(userinfo) ||
+        !hasValidEscapes(userinfo)
+    ) {
+        return false;
+    }
+    return isValidHost(authority.slice(atAt + 1));
+};
+
+/**
+ * Asserts that a blockchain endpoint set on the host is one the rollups-node
+ * accepts, so a wrong one fails before any container starts. The error never
+ * shows the value, which may hold credentials.
+ */
+export const assertBlockchainEndpoint = (env: CartesiEnvironmentVariables) => {
+    const endpoint = env.CARTESI_BLOCKCHAIN_HTTP_ENDPOINT;
+    if (endpoint !== undefined && !isValidHttpEndpoint(endpoint)) {
+        throw new Error(
+            "CARTESI_BLOCKCHAIN_HTTP_ENDPOINT must be an http(s) URL with a DNS name or IP address (redirects are not followed)",
+        );
     }
 };
