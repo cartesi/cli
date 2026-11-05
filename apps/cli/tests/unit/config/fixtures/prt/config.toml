@@ -16,5 +16,11 @@ type = "sling" # no address: devnet account 20, the first of the CLI's sentry po
 type = "sling" # devnet account 21
 label = "second" # default is the position, 2
 
+# a key of your own: the address is the key's, and you fund it
+# [[prt.sentries]]
+# type = "sling"
+# label = "mine"
+# private_key_file = "secrets/sentry.key"
+
 [[prt.sentries]]
 address = "0x5555555555555555555555555555555555555555" # appointed only

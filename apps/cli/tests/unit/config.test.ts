@@ -450,6 +450,7 @@ shared = true`,
                 type = "sling"
                 label = "mine"
                 address = "${address("4")}"
+                private_key_file = "secrets/sentry.key"
 
                 [[prt.sentries]]
                 address = "${address("5")}"
@@ -458,10 +459,46 @@ shared = true`,
                 sentryManager: address("3"),
                 sentries: [
                     { type: "sling" },
-                    { address: address("4"), type: "sling", label: "mine" },
+                    {
+                        address: address("4"),
+                        type: "sling",
+                        label: "mine",
+                        privateKeyFile: "secrets/sentry.key",
+                    },
                     { address: address("5") },
                 ],
             });
+        });
+
+        // the CLI reads a key only for a sentry it runs
+        it("should fail for a private_key_file without a type", () => {
+            expect(() =>
+                prt(
+                    `[[prt.sentries]]\naddress = "${address("4")}"\nprivate_key_file = "sentry.key"`,
+                ),
+            ).toThrowError(
+                new InvalidPrtConfigError(
+                    "private_key_file needs a type: the CLI only reads the key of a sentry it runs",
+                    "prt.sentries[1]",
+                ),
+            );
+        });
+
+        it("should fail for an empty private_key_file", () => {
+            expect(() =>
+                prt('[[prt.sentries]]\ntype = "sling"\nprivate_key_file = ""'),
+            ).toThrowError(
+                new InvalidPrtConfigError(
+                    "private_key_file must name a file",
+                    "prt.sentries[1]",
+                ),
+            );
+        });
+
+        it("should fail for a private_key_file that is not a string", () => {
+            expect(() =>
+                prt('[[prt.sentries]]\ntype = "sling"\nprivate_key_file = 1'),
+            ).toThrowError("Invalid string value: 1");
         });
 
         it("should accept an empty section", () => {
@@ -604,7 +641,7 @@ shared = true`,
             expect(() =>
                 prt('[[prt.sentries]]\ntype = "sling"\nkey = "x"'),
             ).toThrowError(
-                "Unknown key 'key' in prt.sentries[1], expected one of: address, label, type",
+                "Unknown key 'key' in prt.sentries[1], expected one of: address, label, private_key_file, type",
             );
         });
     });

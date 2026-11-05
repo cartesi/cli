@@ -138,6 +138,7 @@ export type PrtSentry = {
     address?: Address; // required without a type; with one, the CLI's sentry pool by default
     type?: SentryType;
     label?: string; // names the container, default is the 1-based position
+    privateKeyFile?: string; // the sentry's own key, for a type the CLI runs; sets the address
 };
 
 /**

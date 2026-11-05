@@ -30,8 +30,13 @@ import node from "../compose/node.js";
 import passkey from "../compose/passkey.js";
 import paymaster from "../compose/paymaster.js";
 import proxy from "../compose/proxy.js";
+import sentries, {
+    type SentryServiceOptions,
+    sentryServiceName,
+} from "../compose/sentry.js";
 import type { WithdrawalConfig } from "../config.js";
 import type { ForkConfig } from "../types/chain.js";
+import type { ComposeFile } from "../types/compose.js";
 import { assertBlockchainEndpoint, assertSecretFiles } from "../validations.js";
 import type { AccountsDriveConfig } from "./cartesi-rollups-machine-tool.js";
 import { execNodeCommand } from "./node-container.js";
@@ -521,12 +526,10 @@ const serviceMonitorTask = (options: {
     };
 };
 
-export const startEnvironment = async (options: {
+export type EnvironmentOptions = {
     blockTime: number;
     cpus?: number;
     defaultBlock: "latest" | "safe" | "finalized";
-    detach: boolean;
-    dryRun: boolean;
     forkConfig?: ForkConfig;
     memory?: number;
     port: number;
@@ -535,13 +538,21 @@ export const startEnvironment = async (options: {
     runtimeVersion: string;
     services: string[];
     verbose: boolean;
-}) => {
+};
+
+/**
+ * Composes the environment: the compose file of the project and the variables
+ * it is rendered with. The sentries, composed only after the deploy, are added
+ * to the same file so compose sees one project.
+ */
+const composeEnvironment = (
+    options: EnvironmentOptions,
+    extraFiles: ComposeFile[] = [],
+) => {
     const {
         blockTime,
         cpus,
         defaultBlock,
-        detach,
-        dryRun,
         forkConfig,
         memory,
         port,
@@ -606,13 +617,29 @@ export const startEnvironment = async (options: {
         files.push(passkey({ imageTag: runtimeVersion }));
     }
 
-    const composeArgs = ["compose", "-f", "-", "--project-directory", "."];
+    // merge files, following Docker Compose merge rules
+    const composeFile = concat([
+        { name: projectName },
+        ...files,
+        ...extraFiles,
+    ]);
+
+    return {
+        env,
+        input: stringify(composeFile, { lineWidth: 0, indent: 2 }),
+    };
+};
+
+const composeArgs = ["compose", "-f", "-", "--project-directory", "."];
+
+export const startEnvironment = async (
+    options: EnvironmentOptions & { detach: boolean; dryRun: boolean },
+) => {
+    const { detach, dryRun } = options;
+    const { env, input } = composeEnvironment(options);
 
     // run in detached mode (background)
     const upArgs = detach ? ["--detach"] : [];
-
-    // merge files, following Docker Compose merge rules
-    const composeFile = concat([{ name: projectName }, ...files]);
 
     // if only dry run, just return the config
     if (dryRun) {
@@ -620,7 +647,7 @@ export const startEnvironment = async (options: {
         const { stdout: config } = await execa(
             "docker",
             [...composeArgs, "config", "--format", "yaml"],
-            { env, input: stringify(composeFile, { lineWidth: 0, indent: 2 }) },
+            { env, input },
         );
 
         return { config };
@@ -629,7 +656,7 @@ export const startEnvironment = async (options: {
     // run compose
     const cmd = execa("docker", [...composeArgs, "up", ...upArgs], {
         env,
-        input: stringify(composeFile, { lineWidth: 0, indent: 2 }),
+        input,
     });
 
     // if detached, wait to finish
@@ -638,6 +665,56 @@ export const startEnvironment = async (options: {
     }
 
     return { cmd };
+};
+
+/**
+ * Starts the sentries the CLI runs for a deployed application, in the running
+ * environment. The file sent is the environment's plus the sentry services, so
+ * compose treats them as one project and recreates only the sentries, whose
+ * application changed. Their dependencies are already running, except the init
+ * service of a key file, which runs first.
+ * @returns the names of the services started
+ */
+export const startSentries = async (
+    options: EnvironmentOptions & SentryServiceOptions,
+): Promise<string[]> => {
+    const names = options.sentries
+        .filter(({ type }) => type !== undefined)
+        .map(({ label }) => sentryServiceName(label));
+    if (names.length === 0) {
+        return [];
+    }
+    const { env, input } = composeEnvironment(options, sentries(options));
+    // --wait: a sentry that exits at once, e.g. on a bad key, fails here
+    await execa(
+        "docker",
+        [...composeArgs, "up", "--detach", "--wait", ...names],
+        { env, input },
+    );
+    return names;
+};
+
+/**
+ * Stops and removes the sentry containers, before the application they claim
+ * for is undeployed. Their secret volumes stay until the environment stops.
+ */
+export const stopSentries = async (options: {
+    projectName: string;
+    services: string[];
+}) => {
+    const { projectName, services } = options;
+    if (services.length === 0) {
+        return;
+    }
+    await execa("docker", [
+        "compose",
+        "--project-name",
+        projectName,
+        "rm",
+        "--stop",
+        "--force",
+        ...services,
+    ]);
 };
 
 /**
