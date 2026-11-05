@@ -244,6 +244,20 @@ describe("buildDeployApplicationArgs", () => {
         expect(args).not.toContain("--epoch-length");
     });
 
+    // the shell's redeploy passes the last consensus, which a prt deploy
+    // can't reuse: the node creates a new DaveConsensus for the new machine
+    it("should not pass the consensus with prt", () => {
+        const args = buildDeployApplicationArgs({
+            ...base,
+            consensus: "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd",
+            prt: true,
+        });
+
+        expect(args).toContain("--prt");
+        expect(args).not.toContain("--consensus");
+        expect(args).toContain("--epoch-length");
+    });
+
     it("should start with the name and snapshot path and end with --json", () => {
         const args = buildDeployApplicationArgs(base);
 
