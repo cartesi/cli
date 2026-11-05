@@ -765,6 +765,27 @@ export const deployApplication = async (
 };
 
 /**
+ * Assemble the `cartesi-rollups-cli app remove` arguments.
+ * Kept separate from the call so it can be tested without a node.
+ */
+export const buildRemoveApplicationArgs = (options: {
+    application: string | Address;
+    force: boolean;
+}): string[] => {
+    const { application, force } = options;
+
+    const removeArgs = [application];
+
+    if (force) {
+        // the node refuses to remove without acknowledging the work it abandons,
+        // and --yes only skips its confirmation prompt
+        removeArgs.push("--allow-abandonment", "--yes");
+    }
+
+    return removeArgs;
+};
+
+/**
  * Remove application from rollups node
  * @param options
  * @returns
@@ -774,7 +795,7 @@ export const removeApplication = async (options: {
     force: boolean;
     projectName: string;
 }) => {
-    const { application, force, projectName } = options;
+    const { application, projectName } = options;
 
     // disable application first so we can remove it
     await execNodeCommand({
@@ -788,14 +809,13 @@ export const removeApplication = async (options: {
         projectName,
     });
 
-    const removeArgs = [application];
-
-    if (force) {
-        removeArgs.push("--yes");
-    }
-
     return execNodeCommand({
-        command: ["cartesi-rollups-cli", "app", "remove", ...removeArgs],
+        command: [
+            "cartesi-rollups-cli",
+            "app",
+            "remove",
+            ...buildRemoveApplicationArgs(options),
+        ],
         projectName,
     });
 };
