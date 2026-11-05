@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import {
     createPublicClient,
     http,
@@ -17,6 +18,8 @@ import {
     etherPortalConfig,
     inputBoxConfig,
 } from "./contracts";
+import type { CartesiEnvironmentVariables } from "./base";
+import { nodeSecretFileVariables } from "./compose/node";
 import ForkChainValidationError from "./errors/ForkChainValidationError";
 import UnsupportedForkChainError from "./errors/UnsupportedForkChainError";
 import type { ForkConfig } from "./types/chain";
@@ -283,4 +286,26 @@ export const assertForkConfig = async (
     }
 
     return true;
+};
+
+/**
+ * Asserts that each key file the host names for the node is a readable file,
+ * so a wrong path fails before any container starts. The error names the
+ * variable and the path, never the file's content.
+ */
+export const assertSecretFiles = (env: CartesiEnvironmentVariables) => {
+    for (const name of nodeSecretFileVariables) {
+        const file = env[name];
+        if (file === undefined) {
+            continue;
+        }
+        try {
+            if (!fs.statSync(file).isFile()) {
+                throw new Error("not a file");
+            }
+            fs.accessSync(file, fs.constants.R_OK);
+        } catch {
+            throw new Error(`${name} must name a readable file: "${file}"`);
+        }
+    }
 };
