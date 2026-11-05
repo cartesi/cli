@@ -3,6 +3,7 @@ import { execa } from "execa";
 import fs from "fs-extra";
 import os from "node:os";
 import path from "node:path";
+import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { TEST_RUNTIME_VERSION } from "../config";
 import { cliPath } from "../devnet";
 
@@ -159,6 +160,31 @@ address = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8"
             expect(exitCode, all).toBe(0);
             expect(all).not.toContain("ignored without --prt");
             expect(all).toContain("services:");
+        });
+
+        // a key file is read before anything starts, and never printed
+        it("should reject a key file that doesn't match the address, before rendering", async () => {
+            const named = privateKeyToAccount(generatePrivateKey());
+            const fileKey = generatePrivateKey();
+            const keyFile = path.join(dir, "sentry.key");
+            fs.writeFileSync(keyFile, `${fileKey}\n`);
+
+            const { all, exitCode } = await dryRun([
+                "--prt",
+                ...config(`
+[[prt.sentries]]
+type = "sling"
+address = "${named.address}"
+private_key_file = "${keyFile}"
+`),
+            ]);
+
+            expect(exitCode).not.toBe(0);
+            expect(all).toContain(
+                `private_key_file "${keyFile}" is the key of ${privateKeyToAccount(fileKey).address}, not ${named.address}`,
+            );
+            expect(all).not.toContain(fileKey.slice(2));
+            expect(all).not.toContain("services:");
         });
     });
 
