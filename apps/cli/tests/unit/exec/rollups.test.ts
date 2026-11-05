@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import {
     buildDeployApplicationArgs,
+    buildRemoveApplicationArgs,
     parseApplications,
     parseLastAcceptedEpoch,
     parseNodeInput,
@@ -266,5 +267,21 @@ describe("buildDeployApplicationArgs", () => {
         expect(args[args.indexOf("--withdrawal-config") + 1]).toBe(
             '{"guardian":"0x1111111111111111111111111111111111111111","log2_leaves_per_account":0,"log2_max_num_of_accounts":17,"accounts_drive_start_index":545,"withdrawal_output_builder":"0x2222222222222222222222222222222222222222"}',
         );
+    });
+});
+
+describe("buildRemoveApplicationArgs", () => {
+    // the node refuses `app remove` without --allow-abandonment, so a forced
+    // removal, like the shell's undeploy before a redeploy, must pass it
+    it("should acknowledge the abandoned work when forced", () => {
+        expect(
+            buildRemoveApplicationArgs({ application: "echo", force: true }),
+        ).toEqual(["echo", "--allow-abandonment", "--yes"]);
+    });
+
+    it("should leave the confirmation to the node when not forced", () => {
+        expect(
+            buildRemoveApplicationArgs({ application: "echo", force: false }),
+        ).toEqual(["echo"]);
     });
 });
