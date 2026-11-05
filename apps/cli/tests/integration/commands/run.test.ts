@@ -20,7 +20,7 @@ describe("run", () => {
 
     afterAll(() => fs.removeSync(dir));
 
-    const dryRun = (args: string[]) =>
+    const dryRun = (args: string[], env?: Record<string, string>) =>
         execa(
             "node",
             [
@@ -31,7 +31,7 @@ describe("run", () => {
                 TEST_RUNTIME_VERSION,
                 ...args,
             ],
-            { all: true, cwd: dir, reject: false },
+            { all: true, cwd: dir, env, reject: false },
         );
 
     describe("--default-block", () => {
@@ -55,6 +55,21 @@ describe("run", () => {
                 "Allowed choices are latest, safe, finalized",
             );
             expect(all).not.toContain("CARTESI_BLOCKCHAIN_DEFAULT_BLOCK");
+        });
+    });
+
+    describe("host variables", () => {
+        // compose prints the value it would pass as `$$`, the way it reads it
+        // back; unescaped, it would have replaced `$t` with nothing
+        it("should keep the $ in a forwarded node variable", async () => {
+            const { all, exitCode } = await dryRun([], {
+                CARTESI_BLOCKCHAIN_HTTP_AUTHORIZATION: "Bearer s3cr$t",
+            });
+
+            expect(exitCode, all).toBe(0);
+            expect(all).toContain(
+                "CARTESI_BLOCKCHAIN_HTTP_AUTHORIZATION: Bearer s3cr$$t",
+            );
         });
     });
 });
