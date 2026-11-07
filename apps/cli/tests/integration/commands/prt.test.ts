@@ -17,6 +17,7 @@ import {
     createAnvilClient,
     deposit,
     devnetAccount,
+    runCli,
     startApplication,
     stopApplication,
     TIMEOUT,
@@ -125,7 +126,7 @@ type = "sling"
         // the sentries start after the deploy, which is what startApplication waits for
         console.log("! Waiting for the sentries to start...");
         await waitFor(async () => {
-            if (!output().includes("sentry logs:")) {
+            if (!output().includes("(devnet account 21, funded by the CLI)")) {
                 throw new Error("sentries not started yet");
             }
         });
@@ -199,9 +200,44 @@ type = "sling"
         expect(printed).toContain(
             `sentry 2 ${devnetAccount(21)} (devnet account 21, funded by the CLI)`,
         );
-        expect(printed).toContain(
-            `sentry logs: docker compose -p ${projectName} logs -f sentry-1 sentry-2`,
-        );
+    });
+
+    // the shell's View logs runs `cartesi logs --follow`, so the sentries
+    // must show there, next to the node
+    it("should show the node and the sentries in cartesi logs", async () => {
+        const { all, exitCode } = await runCli({ appDir, projectName }, [
+            "logs",
+            "--tail",
+            "5",
+        ]);
+
+        expect(exitCode).toBe(0);
+        expect(all).toContain("rollups_node-1");
+        expect(all).toContain("sentry-1-1");
+        expect(all).toContain("sentry-2-1");
+    });
+
+    it("should show one service named, without a prefix", async () => {
+        const { all, exitCode } = await runCli({ appDir, projectName }, [
+            "logs",
+            "--tail",
+            "5",
+            "sentry-1",
+        ]);
+
+        expect(exitCode).toBe(0);
+        expect(all?.trim().length).toBeGreaterThan(0);
+        expect(all).not.toContain("sentry-1-1");
+    });
+
+    it("should reject a service the environment doesn't have", async () => {
+        const { all, exitCode } = await runCli({ appDir, projectName }, [
+            "logs",
+            "sentry-3",
+        ]);
+
+        expect(exitCode).not.toBe(0);
+        expect(all).toContain("service sentry-3 not found");
     });
 
     // with the staging period out of reach, the node accepts a staged claim
