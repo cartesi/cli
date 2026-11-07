@@ -144,6 +144,16 @@ export class InvalidWithdrawalConfigError extends Error {
     }
 }
 
+export class InvalidPrtConfigError extends Error {
+    /**
+     * @param where the table at fault, `[prt]` by default, or an entry such as `prt.sentries[2]`
+     */
+    constructor(reason: string, where = "[prt]") {
+        super(`Invalid ${where}: ${reason}`);
+        this.name = "InvalidPrtConfigError";
+    }
+}
+
 export class UnknownConfigKeyError extends Error {
     /**
      * @param where where the keys are, e.g. "in [machine]" or "at the top level"

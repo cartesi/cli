@@ -1,0 +1,26 @@
+# example of an application deployed with PRT sentries by `cartesi run --prt`.
+# without --prt the section is ignored.
+
+[prt]
+# optional, may rotate sentries on the consensus. default is none
+# sentry_manager = "0x3333333333333333333333333333333333333333"
+
+# appointed on the consensus in this order, with IDs from 1. an entry with a
+# type is run by the CLI, as container sentry-<label>; one with only an
+# address is appointed and run elsewhere
+
+[[prt.sentries]]
+type = "sling" # no address: devnet account 20, the first of the CLI's sentry pool
+
+[[prt.sentries]]
+type = "sling" # devnet account 21
+label = "second" # default is the position, 2
+
+# a key of your own: the address is the key's, and you fund it
+# [[prt.sentries]]
+# type = "sling"
+# label = "mine"
+# private_key_file = "secrets/sentry.key"
+
+[[prt.sentries]]
+address = "0x5555555555555555555555555555555555555555" # appointed only

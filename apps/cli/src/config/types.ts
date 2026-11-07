@@ -124,10 +124,37 @@ export type WithdrawalOptions = {
     account_size?: number; // in bytes, default is 32
 };
 
+/**
+ * The node the CLI runs for a PRT sentry. Only the Dave sling node exists today; a type is
+ * added once a released node can run as a sentry.
+ */
+export type SentryType = "sling";
+
+/**
+ * One [[prt.sentries]] entry: a sentry appointed on the application's DaveConsensus, in entry
+ * order. With a `type` the CLI runs a node for it; without one it is appointed only.
+ */
+export type PrtSentry = {
+    address?: Address; // required without a type; with one, the CLI's sentry pool by default
+    type?: SentryType;
+    label?: string; // names the container, default is the 1-based position
+    privateKeyFile?: string; // the sentry's own key, for a type the CLI runs; sets the address
+};
+
+/**
+ * The optional [prt] section, used by `cartesi run --prt` to deploy the application's
+ * DaveConsensus with sentries.
+ */
+export type PrtOptions = {
+    sentryManager?: Address; // may rotate sentries, default is none
+    sentries: PrtSentry[];
+};
+
 export type Config = {
     drives: Record<string, DriveConfig>;
     machine: MachineConfig;
     nvrams: Record<string, NvramConfig>;
+    prt?: PrtOptions;
     sdk: string;
     withdrawal?: WithdrawalOptions;
 };

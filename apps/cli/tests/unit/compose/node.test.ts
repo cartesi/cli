@@ -5,6 +5,7 @@ import buildNodeCompose, {
     type ServiceOptions,
 } from "../../../src/compose/node.js";
 import {
+    applicationFactoryAddress,
     inputBoxAddress,
     selfHostedApplicationFactoryAddress,
 } from "../../../src/contracts.js";
@@ -215,7 +216,7 @@ describe("Compose node service", () => {
 
             const env = compose.services?.rollups_node?.environment ?? {};
 
-            expect(Object.keys(env)).toHaveLength(11);
+            expect(Object.keys(env)).toHaveLength(12);
 
             expect(env).toHaveProperty(
                 "CARTESI_AUTH_MNEMONIC",
@@ -235,6 +236,10 @@ describe("Compose node service", () => {
                 "http://anvil:8545",
             );
             expect(env).toHaveProperty("CARTESI_BLOCKCHAIN_ID", "31337");
+            expect(env).toHaveProperty(
+                "CARTESI_CONTRACTS_APPLICATION_FACTORY_ADDRESS",
+                applicationFactoryAddress,
+            );
             expect(env).toHaveProperty(
                 "CARTESI_CONTRACTS_INPUT_BOX_ADDRESS",
                 inputBoxAddress,
@@ -332,6 +337,106 @@ describe("Compose node service", () => {
             });
             const env = compose.services?.rollups_node?.environment ?? {};
             expect(env).toHaveProperty("CARTESI_LOG_LEVEL", "warn");
+        });
+
+        // compose interpolates `$name` in the file it reads, so a host value
+        // must reach it as `$$`, which compose turns back into `$`
+        it("should escape the $ in host variables for compose", () => {
+            const compose = buildNodeCompose({
+                ...baseOptions,
+                cartesiEnvironmentVariables: {
+                    CARTESI_BLOCKCHAIN_HTTP_ENDPOINT:
+                        "https://alice:s3cr$t@rpc.example.com/$key",
+                    CARTESI_LOG_LEVEL: "warn",
+                },
+            });
+            const env = compose.services?.rollups_node?.environment ?? {};
+
+            expect(env).toHaveProperty(
+                "CARTESI_BLOCKCHAIN_HTTP_ENDPOINT",
+                "https://alice:s3cr$$t@rpc.example.com/$$key",
+            );
+            expect(env).toHaveProperty("CARTESI_LOG_LEVEL", "warn");
+        });
+
+        // only the path would reach the container otherwise, and the node
+        // couldn't open the file
+        // a bind mount would keep the host's owner and mode, which the node's
+        // user may not read, so an init service hands the node copies it owns
+        it("should copy the key files the host names for the node", () => {
+            const compose = buildNodeCompose({
+                ...baseOptions,
+                cartesiEnvironmentVariables: {
+                    CARTESI_AUTH_KIND: "private_key_file",
+                    CARTESI_AUTH_PRIVATE_KEY_FILE: "secrets/claimer.key",
+                    CARTESI_PRT_AUTH_MNEMONIC_FILE: "/keys/prt$1",
+                },
+            });
+            const init = compose.services?.["node-secret-init"];
+            const service = compose.services?.rollups_node;
+
+            expect(init).toMatchObject({
+                image: "cartesi/rollups-runtime:latest",
+                network_mode: "none",
+                restart: "no",
+                user: "root",
+            });
+            expect(init?.command).toEqual([
+                [
+                    "find /dst -mindepth 1 -delete",
+                    "install -o cartesi -g cartesi -m 0400 /src/cartesi_auth_private_key_file /dst/cartesi_auth_private_key_file",
+                    "install -o cartesi -g cartesi -m 0400 /src/cartesi_prt_auth_mnemonic_file /dst/cartesi_prt_auth_mnemonic_file",
+                ].join("\n"),
+            ]);
+            expect(init?.volumes).toEqual([
+                {
+                    type: "bind",
+                    source: "secrets/claimer.key",
+                    target: "/src/cartesi_auth_private_key_file",
+                    read_only: true,
+                    bind: { create_host_path: false },
+                },
+                {
+                    type: "bind",
+                    source: "/keys/prt$$1",
+                    target: "/src/cartesi_prt_auth_mnemonic_file",
+                    read_only: true,
+                    bind: { create_host_path: false },
+                },
+                "node_secrets:/dst",
+            ]);
+            expect(compose.volumes).toEqual({ node_secrets: {} });
+            expect(service?.depends_on).toMatchObject({
+                "node-secret-init": {
+                    condition: "service_completed_successfully",
+                },
+            });
+            expect(service?.volumes).toContain("node_secrets:/run/secrets:ro");
+            expect(service?.environment).toMatchObject({
+                CARTESI_AUTH_KIND: "private_key_file",
+                CARTESI_AUTH_PRIVATE_KEY_FILE:
+                    "/run/secrets/cartesi_auth_private_key_file",
+                CARTESI_PRT_AUTH_MNEMONIC_FILE:
+                    "/run/secrets/cartesi_prt_auth_mnemonic_file",
+            });
+        });
+
+        it("should copy nothing when the host names no key file", () => {
+            const compose = buildNodeCompose({
+                ...baseOptions,
+                cartesiEnvironmentVariables: {
+                    CARTESI_AUTH_PRIVATE_KEY: "0xsecret",
+                },
+            });
+
+            expect(compose.services).not.toHaveProperty("node-secret-init");
+            expect(compose.volumes).toBeUndefined();
+            expect(
+                compose.services?.rollups_node?.depends_on,
+            ).not.toHaveProperty("node-secret-init");
+            expect(compose.services?.rollups_node?.volumes).toEqual([
+                "./.cartesi:/var/lib/cartesi-rollups-node/snapshots:ro",
+            ]);
         });
 
         it("should build the database connection string from provided property", () => {

@@ -30,8 +30,14 @@ import node from "../compose/node.js";
 import passkey from "../compose/passkey.js";
 import paymaster from "../compose/paymaster.js";
 import proxy from "../compose/proxy.js";
+import sentries, {
+    type SentryServiceOptions,
+    sentryServiceName,
+} from "../compose/sentry.js";
 import type { WithdrawalConfig } from "../config.js";
 import type { ForkConfig } from "../types/chain.js";
+import type { ComposeFile } from "../types/compose.js";
+import { assertBlockchainEndpoint, assertSecretFiles } from "../validations.js";
 import type { AccountsDriveConfig } from "./cartesi-rollups-machine-tool.js";
 import { execNodeCommand } from "./node-container.js";
 
@@ -266,6 +272,74 @@ export const getLastAcceptedEpoch = async (options: {
     return parseLastAcceptedEpoch(stdout);
 };
 
+/**
+ * The sentries of an application's DaveConsensus, as `cartesi-rollups-cli
+ * contract consensus` reports them.
+ */
+export type DaveConsensusSentries = {
+    address: Address;
+    claimStagingPeriod: number;
+    sentryManager: Address;
+    sentries: { id: number; address: Address }[];
+    /** set once a tournament result is staged */
+    allSentriesAgree?: boolean;
+};
+
+type CliDaveConsensus = {
+    type: string;
+    address: string;
+    claim_staging_period: number;
+    sentry_manager: string;
+    num_sentries: number;
+    sentries: { id: number; address: string }[];
+    all_sentries_agree?: boolean;
+};
+
+/**
+ * Parse the JSON `cartesi-rollups-cli contract consensus --json` writes to
+ * stdout for a DaveConsensus
+ * @throws if the consensus is of another type
+ */
+export const parseDaveConsensus = (stdout: string): DaveConsensusSentries => {
+    const consensus = JSON.parse(stdout) as CliDaveConsensus;
+    if (consensus.type !== "DaveConsensus") {
+        throw new Error(
+            `The consensus at ${consensus.address} is a ${consensus.type}, not a DaveConsensus`,
+        );
+    }
+    return {
+        address: getAddress(consensus.address),
+        claimStagingPeriod: consensus.claim_staging_period,
+        sentryManager: getAddress(consensus.sentry_manager),
+        sentries: consensus.sentries.map(({ id, address }) => ({
+            id,
+            address: getAddress(address),
+        })),
+        allSentriesAgree: consensus.all_sentries_agree,
+    };
+};
+
+/**
+ * Read the sentries of an application's DaveConsensus from the chain
+ */
+export const getDaveConsensus = async (options: {
+    application: Address;
+    projectName: string;
+}): Promise<DaveConsensusSentries> => {
+    const { application, projectName } = options;
+    const stdout = await execNodeCommand({
+        command: [
+            "cartesi-rollups-cli",
+            "contract",
+            "consensus",
+            application,
+            "--json",
+        ],
+        projectName,
+    });
+    return parseDaveConsensus(stdout);
+};
+
 export const getApplicationDeployment = async (
     options: ComposeParams,
 ): Promise<RollupsDeployment | undefined> => {
@@ -452,12 +526,10 @@ const serviceMonitorTask = (options: {
     };
 };
 
-export const startEnvironment = async (options: {
+export type EnvironmentOptions = {
     blockTime: number;
     cpus?: number;
-    defaultBlock: "latest" | "safe" | "pending" | "finalized";
-    detach: boolean;
-    dryRun: boolean;
+    defaultBlock: "latest" | "safe" | "finalized";
     forkConfig?: ForkConfig;
     memory?: number;
     port: number;
@@ -466,13 +538,21 @@ export const startEnvironment = async (options: {
     runtimeVersion: string;
     services: string[];
     verbose: boolean;
-}) => {
+};
+
+/**
+ * Composes the environment: the compose file of the project and the variables
+ * it is rendered with. The sentries, composed only after the deploy, are added
+ * to the same file so compose sees one project.
+ */
+const composeEnvironment = (
+    options: EnvironmentOptions,
+    extraFiles: ComposeFile[] = [],
+) => {
     const {
         blockTime,
         cpus,
         defaultBlock,
-        detach,
-        dryRun,
         forkConfig,
         memory,
         port,
@@ -495,6 +575,8 @@ export const startEnvironment = async (options: {
 
     // Load all environment variables from the host that start with CARTESI_.
     const hostVars = getCartesiEnvironmentVariables();
+    assertBlockchainEndpoint(hostVars);
+    assertSecretFiles(hostVars);
 
     const files = [
         anvil({
@@ -535,13 +617,29 @@ export const startEnvironment = async (options: {
         files.push(passkey({ imageTag: runtimeVersion }));
     }
 
-    const composeArgs = ["compose", "-f", "-", "--project-directory", "."];
+    // merge files, following Docker Compose merge rules
+    const composeFile = concat([
+        { name: projectName },
+        ...files,
+        ...extraFiles,
+    ]);
+
+    return {
+        env,
+        input: stringify(composeFile, { lineWidth: 0, indent: 2 }),
+    };
+};
+
+const composeArgs = ["compose", "-f", "-", "--project-directory", "."];
+
+export const startEnvironment = async (
+    options: EnvironmentOptions & { detach: boolean; dryRun: boolean },
+) => {
+    const { detach, dryRun } = options;
+    const { env, input } = composeEnvironment(options);
 
     // run in detached mode (background)
     const upArgs = detach ? ["--detach"] : [];
-
-    // merge files, following Docker Compose merge rules
-    const composeFile = concat([{ name: projectName }, ...files]);
 
     // if only dry run, just return the config
     if (dryRun) {
@@ -549,7 +647,7 @@ export const startEnvironment = async (options: {
         const { stdout: config } = await execa(
             "docker",
             [...composeArgs, "config", "--format", "yaml"],
-            { env, input: stringify(composeFile, { lineWidth: 0, indent: 2 }) },
+            { env, input },
         );
 
         return { config };
@@ -558,7 +656,7 @@ export const startEnvironment = async (options: {
     // run compose
     const cmd = execa("docker", [...composeArgs, "up", ...upArgs], {
         env,
-        input: stringify(composeFile, { lineWidth: 0, indent: 2 }),
+        input,
     });
 
     // if detached, wait to finish
@@ -567,6 +665,56 @@ export const startEnvironment = async (options: {
     }
 
     return { cmd };
+};
+
+/**
+ * Starts the sentries the CLI runs for a deployed application, in the running
+ * environment. The file sent is the environment's plus the sentry services, so
+ * compose treats them as one project and recreates only the sentries, whose
+ * application changed. Their dependencies are already running, except the init
+ * service of a key file, which runs first.
+ * @returns the names of the services started
+ */
+export const startSentries = async (
+    options: EnvironmentOptions & SentryServiceOptions,
+): Promise<string[]> => {
+    const names = options.sentries
+        .filter(({ type }) => type !== undefined)
+        .map(({ label }) => sentryServiceName(label));
+    if (names.length === 0) {
+        return [];
+    }
+    const { env, input } = composeEnvironment(options, sentries(options));
+    // --wait: a sentry that exits at once, e.g. on a bad key, fails here
+    await execa(
+        "docker",
+        [...composeArgs, "up", "--detach", "--wait", ...names],
+        { env, input },
+    );
+    return names;
+};
+
+/**
+ * Stops and removes the sentry containers, before the application they claim
+ * for is undeployed. Their secret volumes stay until the environment stops.
+ */
+export const stopSentries = async (options: {
+    projectName: string;
+    services: string[];
+}) => {
+    const { projectName, services } = options;
+    if (services.length === 0) {
+        return;
+    }
+    await execa("docker", [
+        "compose",
+        "--project-name",
+        projectName,
+        "rm",
+        "--stop",
+        "--force",
+        ...services,
+    ]);
 };
 
 /**
@@ -686,6 +834,10 @@ export type DeployApplicationOptions = {
     projectName: string;
     prt?: boolean;
     salt?: Hex;
+    /** PRT only: the sentries appointed on the consensus, in ID order */
+    sentries?: Address[];
+    /** PRT only: the account that may rotate the sentries */
+    sentryManager?: Address;
     snapshotPath: string;
     withdrawalConfig?: WithdrawalConfig;
     claimStagingPeriod: number;
@@ -704,6 +856,8 @@ export const buildDeployApplicationArgs = (
         name,
         prt,
         salt,
+        sentries,
+        sentryManager,
         snapshotPath,
         withdrawalConfig,
         claimStagingPeriod,
@@ -723,6 +877,14 @@ export const buildDeployApplicationArgs = (
 
     if (prt) {
         deployArgs.push("--prt");
+    }
+
+    // the node takes both only with --prt
+    if (sentryManager) {
+        deployArgs.push("--sentry-manager", sentryManager);
+    }
+    if (sentries && sentries.length > 0) {
+        deployArgs.push("--sentries", sentries.join(","));
     }
 
     // the node takes this on the whole deploy command, PRT included
@@ -765,6 +927,27 @@ export const deployApplication = async (
 };
 
 /**
+ * Assemble the `cartesi-rollups-cli app remove` arguments.
+ * Kept separate from the call so it can be tested without a node.
+ */
+export const buildRemoveApplicationArgs = (options: {
+    application: string | Address;
+    force: boolean;
+}): string[] => {
+    const { application, force } = options;
+
+    const removeArgs = [application];
+
+    if (force) {
+        // the node refuses to remove without acknowledging the work it abandons,
+        // and --yes only skips its confirmation prompt
+        removeArgs.push("--allow-abandonment", "--yes");
+    }
+
+    return removeArgs;
+};
+
+/**
  * Remove application from rollups node
  * @param options
  * @returns
@@ -774,7 +957,7 @@ export const removeApplication = async (options: {
     force: boolean;
     projectName: string;
 }) => {
-    const { application, force, projectName } = options;
+    const { application, projectName } = options;
 
     // disable application first so we can remove it
     await execNodeCommand({
@@ -788,14 +971,13 @@ export const removeApplication = async (options: {
         projectName,
     });
 
-    const removeArgs = [application];
-
-    if (force) {
-        removeArgs.push("--yes");
-    }
-
     return execNodeCommand({
-        command: ["cartesi-rollups-cli", "app", "remove", ...removeArgs],
+        command: [
+            "cartesi-rollups-cli",
+            "app",
+            "remove",
+            ...buildRemoveApplicationArgs(options),
+        ],
         projectName,
     });
 };

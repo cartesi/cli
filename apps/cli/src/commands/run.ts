@@ -31,19 +31,30 @@ import {
 import {
     AVAILABLE_SERVICES,
     deployApplication,
+    type EnvironmentOptions,
     host,
     removeApplication,
     getDeployments,
     type RollupsDeployment,
     startEnvironment,
+    startSentries,
     stopEnvironment,
+    stopSentries,
     TERMINAL_APPLICATION_STATUSES,
     waitHealthyEnvironment,
 } from "../exec/rollups.js";
 import { keySelect } from "../prompts.js";
+import {
+    checkSentries,
+    describeSentry,
+    type ResolvedPrt,
+    resolveSentries,
+    runnableSentries,
+} from "../sentries.js";
 import type { ForkConfig } from "../types/chain.js";
 import { assertForkConfig } from "../validations.js";
-import { getWithdrawalConfig } from "../withdrawal.js";
+import { connect } from "../wallet.js";
+import { DEVNET_GUARDIAN, getWithdrawalConfig } from "../withdrawal.js";
 
 const commaSeparatedList = (value: string) => value.split(",");
 
@@ -81,28 +92,35 @@ const reportApplicationStatus = (deployment: RollupsDeployment) => {
 const shell = async (options: {
     build?: CommandUnknownOpts;
     deployment?: RollupsDeployment;
+    environment: EnvironmentOptions;
     epochLength: number;
     log?: CommandUnknownOpts;
     projectName: string;
     prt?: boolean;
     salt: number;
     sdk: string;
+    /** the sentry services running for the deployment */
+    sentryServices: string[];
     resolveWithdrawalConfig: () => WithdrawalConfig | undefined;
+    resolvePrt: () => ResolvedPrt | undefined;
     claimStagingPeriod: number;
 }) => {
     const {
         build,
+        environment,
         epochLength,
         log,
         projectName,
         prt,
         sdk,
         resolveWithdrawalConfig,
+        resolvePrt,
         claimStagingPeriod,
     } = options;
 
     let lastDeployment = options.deployment;
     let salt = options.salt;
+    let sentryServices = options.sentryServices;
     let lastStatus = lastDeployment?.status;
     let pendingReport: RollupsDeployment | undefined;
 
@@ -175,6 +193,14 @@ const shell = async (options: {
                     break;
                 }
                 case "b": {
+                    // the sentries read the machine the build replaces, and
+                    // claim for the application the redeploy removes
+                    await stopSentries({
+                        projectName,
+                        services: sentryServices,
+                    });
+                    sentryServices = [];
+
                     // build
                     await build?.parseAsync([], { from: "user" });
 
@@ -184,6 +210,11 @@ const shell = async (options: {
                         // the accounts drive may have moved with the rebuild,
                         // resolved before undeploying in case it is now invalid
                         const withdrawalConfig = resolveWithdrawalConfig();
+                        // a PRT redeploy creates a new consensus, with the
+                        // sentries as they are in the config now
+                        const prtConfig = resolvePrt();
+                        reportPrtWarnings(prtConfig, claimStagingPeriod);
+                        await fundSentries({ environment, prtConfig });
                         if (lastDeployment) {
                             await undeploy({ projectName });
                         }
@@ -193,12 +224,18 @@ const shell = async (options: {
                             hash,
                             projectName,
                             prt,
+                            prtConfig,
                             salt: numberToHex(salt++, { size: 32 }),
                             withdrawalConfig,
                             claimStagingPeriod,
                         });
                         lastStatus = lastDeployment?.status;
                         pendingReport = undefined;
+                        sentryServices = await runSentries({
+                            application: lastDeployment.address,
+                            environment,
+                            prtConfig,
+                        });
                     }
 
                     break;
@@ -234,12 +271,109 @@ const undeploy = async (options: { projectName: string }) => {
     progress.succeed(`${chalk.cyan(projectName)} undeployed`);
 };
 
+/**
+ * Warn about [prt] settings that are valid but have no effect.
+ */
+const reportPrtWarnings = (
+    prtConfig: ResolvedPrt | undefined,
+    claimStagingPeriod: number,
+) => {
+    for (const warning of prtConfig?.warnings ?? []) {
+        console.warn(chalk.yellow(`WARNING: ${warning}`));
+    }
+    if (
+        prtConfig &&
+        prtConfig.sentries.length > 0 &&
+        claimStagingPeriod === 0
+    ) {
+        console.warn(
+            chalk.yellow(
+                "WARNING: with --claim-staging-period 0 a staged claim is accepted at once, so the sentries have no effect",
+            ),
+        );
+    }
+};
+
+/**
+ * Funds the pool sentries and checks the others have ETH, once anvil is up and
+ * before the deploy they claim for.
+ */
+const fundSentries = async (options: {
+    environment: EnvironmentOptions;
+    prtConfig?: ResolvedPrt;
+}) => {
+    const { environment, prtConfig } = options;
+    if (!prtConfig || runnableSentries(prtConfig).length === 0) {
+        return;
+    }
+    const client = await connect({
+        rpcUrl: `${host}:${environment.port}/anvil`,
+    });
+    await checkSentries(client, prtConfig);
+};
+
+/**
+ * Starts the sentries the CLI runs, for the deployed application, then prints
+ * the manager and every sentry the consensus was deployed with, in ID order:
+ * a check for each one running, a note for each one appointed only.
+ * @returns the sentry services started
+ */
+const runSentries = async (options: {
+    application: Address;
+    environment: EnvironmentOptions;
+    prtConfig?: ResolvedPrt;
+}): Promise<string[]> => {
+    const { application, environment, prtConfig } = options;
+    if (!prtConfig || prtConfig.sentries.length === 0) {
+        return [];
+    }
+
+    const sentries = runnableSentries(prtConfig);
+    const progress = ora();
+    let services: string[] = [];
+    if (sentries.length > 0) {
+        progress.start(
+            `starting ${sentries.length === 1 ? "the sentry" : `${sentries.length} sentries`}...`,
+        );
+        try {
+            services = await startSentries({
+                ...environment,
+                application,
+                imageTag: environment.runtimeVersion,
+                sentries: prtConfig.sentries,
+            });
+            progress.stop();
+        } catch (error: unknown) {
+            progress.fail("the sentries failed to start");
+            throw error;
+        }
+    }
+
+    // log-symbols' blue info mark is hard to read on a dark terminal
+    const note = (text: string) =>
+        progress.stopAndPersist({ symbol: chalk.cyan("ℹ"), text });
+    if (prtConfig.sentryManager === undefined) {
+        progress.warn("sentry manager none (the sentries can't be rotated)");
+    } else {
+        note(`sentry manager ${prtConfig.sentryManager}`);
+    }
+    for (const sentry of prtConfig.sentries) {
+        if (sentry.type === undefined) {
+            note(describeSentry(sentry));
+        } else {
+            progress.succeed(describeSentry(sentry));
+        }
+    }
+    return services;
+};
+
 const deploy = async (options: {
     consensus?: Address;
     epochLength: number;
     hash: Hex;
     projectName: string;
     prt?: boolean;
+    prtConfig?: ResolvedPrt;
     salt: Hex;
     withdrawalConfig?: WithdrawalConfig;
     claimStagingPeriod: number;
@@ -250,6 +384,7 @@ const deploy = async (options: {
         hash,
         projectName,
         prt,
+        prtConfig,
         salt,
         withdrawalConfig,
         claimStagingPeriod,
@@ -267,6 +402,8 @@ const deploy = async (options: {
         projectName,
         prt,
         salt,
+        sentries: prtConfig?.sentries.map(({ address }) => address),
+        sentryManager: prtConfig?.sentryManager,
         snapshotPath: "/var/lib/cartesi-rollups-node/snapshots/image",
         withdrawalConfig,
         claimStagingPeriod,
@@ -334,7 +471,7 @@ export const createRunCommand = () => {
                 "--default-block <string>",
                 "default block to be used when fetching new blocks.",
             )
-                .choices(["latest", "safe", "pending", "finalized"])
+                .choices(["latest", "safe", "finalized"])
                 .default("latest"),
         )
         .option("--dry-run", "show the docker compose configuration", false)
@@ -443,6 +580,28 @@ export const createRunCommand = () => {
             // get application configuration (e.g. use withdrawal config if present)
             const applicationConfig = getApplicationConfig(configFiles);
 
+            // [prt] is parsed either way, so a mistake in it fails early, but
+            // the node takes sentries only on a PRT deploy. Read again on a
+            // rebuild, like the withdrawal config.
+            const resolvePrt = () => {
+                const config = getApplicationConfig(configFiles);
+                return prt && config.prt
+                    ? resolveSentries(config.prt, {
+                          guardian:
+                              config.withdrawal?.guardian ?? DEVNET_GUARDIAN,
+                      })
+                    : undefined;
+            };
+            if (applicationConfig.prt && !prt) {
+                console.log(
+                    chalk.dim("[prt] in cartesi.toml is ignored without --prt"),
+                );
+            }
+
+            // fail before starting the environment if the sentries can't be resolved
+            const prtConfig = resolvePrt();
+            reportPrtWarnings(prtConfig, claimStagingPeriod);
+
             // resolve port number, using the first free port in a range, unless explicitly set
             const port =
                 options.port ||
@@ -477,13 +636,10 @@ export const createRunCommand = () => {
             // if TTY is not attached, run on foreground (not detached)
             const detach = process.stdin.isTTY;
 
-            // run compose environment (detached)
-            const { cmd, config } = await startEnvironment({
+            const environment: EnvironmentOptions = {
                 blockTime,
                 cpus,
                 defaultBlock,
-                detach,
-                dryRun,
                 forkConfig,
                 memory,
                 port,
@@ -492,6 +648,13 @@ export const createRunCommand = () => {
                 runtimeVersion,
                 services,
                 verbose,
+            };
+
+            // run compose environment (detached)
+            const { cmd, config } = await startEnvironment({
+                ...environment,
+                detach,
+                dryRun,
             });
 
             // host address
@@ -517,19 +680,27 @@ export const createRunCommand = () => {
 
             // deploy the application
             let deployment: RollupsDeployment | undefined;
+            let sentryServices: string[] = [];
             let salt = 0;
             const hash = await getMachineHash({
                 sdk: applicationConfig.sdk,
             });
             if (hash) {
+                await fundSentries({ environment, prtConfig });
                 deployment = await deploy({
                     epochLength,
                     hash,
                     projectName,
                     prt,
+                    prtConfig,
                     salt: numberToHex(salt++, { size: 32 }),
                     claimStagingPeriod,
                     withdrawalConfig,
+                });
+                sentryServices = await runSentries({
+                    application: deployment.address,
+                    environment,
+                    prtConfig,
                 });
             } else {
                 console.warn(
@@ -566,14 +737,17 @@ export const createRunCommand = () => {
                 await shell({
                     build,
                     deployment,
+                    environment,
                     epochLength,
                     log,
                     projectName,
                     prt,
                     salt,
                     sdk: applicationConfig.sdk,
+                    sentryServices,
                     claimStagingPeriod,
                     resolveWithdrawalConfig,
+                    resolvePrt,
                 });
                 await shutdown();
             } else {

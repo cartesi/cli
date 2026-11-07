@@ -1,7 +1,9 @@
 import { describe, expect, it } from "bun:test";
 import {
     buildDeployApplicationArgs,
+    buildRemoveApplicationArgs,
     parseApplications,
+    parseDaveConsensus,
     parseLastAcceptedEpoch,
     parseNodeInput,
 } from "../../../src/exec/rollups";
@@ -199,6 +201,63 @@ describe("parseLastAcceptedEpoch", () => {
     });
 });
 
+describe("parseDaveConsensus", () => {
+    const consensus = (overrides: Record<string, unknown> = {}) =>
+        JSON.stringify({
+            type: "DaveConsensus",
+            address: "0xac9dde569ea502f8e002f6ff1bd4aa55386bc4e1",
+            claim_staging_period: 300,
+            is_tournament_result_staged: false,
+            current_epoch_number: 0,
+            sentry_manager: "0x9965507d1a55bcc2695c58ba16fb37d819b0a4dc",
+            num_sentries: 2,
+            sentries: [
+                {
+                    id: 1,
+                    address: "0x1111111111111111111111111111111111111111",
+                },
+                {
+                    id: 2,
+                    address: "0x2222222222222222222222222222222222222222",
+                },
+            ],
+            ...overrides,
+        });
+
+    it("should read the sentries in ID order, with checksummed addresses", () => {
+        expect(parseDaveConsensus(consensus())).toEqual({
+            address: "0xac9dDe569EA502f8e002f6Ff1Bd4AA55386Bc4E1",
+            claimStagingPeriod: 300,
+            sentryManager: "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc",
+            sentries: [
+                {
+                    id: 1,
+                    address: "0x1111111111111111111111111111111111111111",
+                },
+                {
+                    id: 2,
+                    address: "0x2222222222222222222222222222222222222222",
+                },
+            ],
+            allSentriesAgree: undefined,
+        });
+    });
+
+    // the node reports it only while a result is staged
+    it("should read whether all sentries agree when reported", () => {
+        expect(
+            parseDaveConsensus(consensus({ all_sentries_agree: true }))
+                .allSentriesAgree,
+        ).toBe(true);
+    });
+
+    it("should reject another consensus type", () => {
+        expect(() =>
+            parseDaveConsensus(consensus({ type: "Authority" })),
+        ).toThrow("is a Authority, not a DaveConsensus");
+    });
+});
+
 describe("buildDeployApplicationArgs", () => {
     const base = {
         claimStagingPeriod: 720,
@@ -250,6 +309,44 @@ describe("buildDeployApplicationArgs", () => {
         expect(args.at(-1)).toBe("--json");
     });
 
+    // the node takes the sentries as one comma separated list, in ID order
+    it("should pass the sentries and their manager with prt", () => {
+        const args = buildDeployApplicationArgs({
+            ...base,
+            prt: true,
+            sentries: [
+                "0x1111111111111111111111111111111111111111",
+                "0x2222222222222222222222222222222222222222",
+            ],
+            sentryManager: "0x3333333333333333333333333333333333333333",
+        });
+
+        expect(args).toContain("--prt");
+        expect(args[args.indexOf("--sentries") + 1]).toBe(
+            "0x1111111111111111111111111111111111111111,0x2222222222222222222222222222222222222222",
+        );
+        expect(args[args.indexOf("--sentry-manager") + 1]).toBe(
+            "0x3333333333333333333333333333333333333333",
+        );
+    });
+
+    it("should pass neither sentries nor a manager when none are set", () => {
+        const args = buildDeployApplicationArgs({ ...base, prt: true });
+
+        expect(args).not.toContain("--sentries");
+        expect(args).not.toContain("--sentry-manager");
+    });
+
+    it("should pass no --sentries for an empty list", () => {
+        const args = buildDeployApplicationArgs({
+            ...base,
+            prt: true,
+            sentries: [],
+        });
+
+        expect(args).not.toContain("--sentries");
+    });
+
     it("should pass the withdrawal config as JSON", () => {
         const args = buildDeployApplicationArgs({
             ...base,
@@ -266,5 +363,21 @@ describe("buildDeployApplicationArgs", () => {
         expect(args[args.indexOf("--withdrawal-config") + 1]).toBe(
             '{"guardian":"0x1111111111111111111111111111111111111111","log2_leaves_per_account":0,"log2_max_num_of_accounts":17,"accounts_drive_start_index":545,"withdrawal_output_builder":"0x2222222222222222222222222222222222222222"}',
         );
+    });
+});
+
+describe("buildRemoveApplicationArgs", () => {
+    // the node refuses `app remove` without --allow-abandonment, so a forced
+    // removal, like the shell's undeploy before a redeploy, must pass it
+    it("should acknowledge the abandoned work when forced", () => {
+        expect(
+            buildRemoveApplicationArgs({ application: "echo", force: true }),
+        ).toEqual(["echo", "--allow-abandonment", "--yes"]);
+    });
+
+    it("should leave the confirmation to the node when not forced", () => {
+        expect(
+            buildRemoveApplicationArgs({ application: "echo", force: false }),
+        ).toEqual(["echo"]);
     });
 });

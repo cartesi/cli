@@ -9,11 +9,11 @@ import {
 const semver = (version: string) => parse(version) as SemVer;
 
 describe("requiredVersion", () => {
-    it.each(["0.21.0", "0.21.3"])("should accept %s", (version) => {
+    it.each(["0.22.0", "0.22.3"])("should accept %s", (version) => {
         expect(satisfies(version, requiredVersion)).toBeTruthy();
     });
 
-    it.each(["0.20.0", "0.20.9", "0.22.0", "1.0.0"])(
+    it.each(["0.21.0", "0.21.9", "0.23.0", "1.0.0"])(
         "should reject %s",
         (version) => {
             expect(satisfies(version, requiredVersion)).toBeFalsy();
@@ -22,11 +22,11 @@ describe("requiredVersion", () => {
 });
 
 describe("assertSupported", () => {
-    it.each(["0.21.0", "0.21.3"])("should accept %s", (version) => {
+    it.each(["0.22.0", "0.22.3"])("should accept %s", (version) => {
         expect(() => assertSupported(semver(version))).not.toThrow();
     });
 
-    it.each(["0.20.0", "0.22.0"])("should reject %s", (version) => {
+    it.each(["0.21.0", "0.23.0"])("should reject %s", (version) => {
         expect(() => assertSupported(semver(version))).toThrowError(
             new UnsupportedVersionError(semver(version)),
         );

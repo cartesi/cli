@@ -1,5 +1,6 @@
 import {
     afterAll,
+    beforeAll,
     beforeEach,
     describe,
     expect,
@@ -7,6 +8,9 @@ import {
     mock,
     spyOn,
 } from "bun:test";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import * as viem from "viem";
 import { celo, sepolia } from "viem/chains";
 import {
@@ -21,7 +25,11 @@ import {
 import ForkChainValidationError from "../../src/errors/ForkChainValidationError";
 import UnsupportedForkChainError from "../../src/errors/UnsupportedForkChainError";
 import type { ForkConfig } from "../../src/types/chain";
-import { assertForkConfig } from "../../src/validations";
+import {
+    assertBlockchainEndpoint,
+    assertForkConfig,
+    assertSecretFiles,
+} from "../../src/validations";
 
 const mockGetBlockNumber = mock().mockResolvedValue(12345n);
 const mockGetCode = mock().mockResolvedValue("0x1234");
@@ -309,6 +317,127 @@ describe("validations", () => {
             expect(mockGetBlockNumber).not.toHaveBeenCalled();
             // getCode should be called with blockNumber: 999n
             expect(mockGetCode.mock.calls[0][0].blockNumber).toBe(999n);
+        });
+    });
+
+    describe("assertSecretFiles", () => {
+        let dir: string;
+        let keyFile: string;
+
+        beforeAll(() => {
+            dir = fs.mkdtempSync(path.join(os.tmpdir(), "secrets-"));
+            keyFile = path.join(dir, "key");
+            fs.writeFileSync(keyFile, "0xsecret\n");
+        });
+
+        afterAll(() => fs.rmSync(dir, { recursive: true }));
+
+        it("should accept readable key files", () => {
+            expect(() =>
+                assertSecretFiles({
+                    CARTESI_AUTH_PRIVATE_KEY_FILE: keyFile,
+                    CARTESI_PRT_AUTH_MNEMONIC_FILE: keyFile,
+                }),
+            ).not.toThrow();
+        });
+
+        it("should ignore the variables that name no file", () => {
+            expect(() =>
+                assertSecretFiles({
+                    CARTESI_AUTH_PRIVATE_KEY: "0xsecret",
+                    CARTESI_SNAPSHOTS_DIR: dir,
+                }),
+            ).not.toThrow();
+        });
+
+        it("should name the variable and path of a missing file", () => {
+            const missing = path.join(dir, "missing");
+
+            expect(() =>
+                assertSecretFiles({
+                    CARTESI_PRT_AUTH_PRIVATE_KEY_FILE: missing,
+                }),
+            ).toThrow(
+                `CARTESI_PRT_AUTH_PRIVATE_KEY_FILE must name a readable file: "${missing}"`,
+            );
+        });
+
+        it("should reject a directory", () => {
+            expect(() =>
+                assertSecretFiles({ CARTESI_AUTH_MNEMONIC_FILE: dir }),
+            ).toThrow("CARTESI_AUTH_MNEMONIC_FILE must name a readable file");
+        });
+    });
+
+    // the cases of the node's own tests (internal/httpclient/client_test.go and
+    // internal/config/http_endpoints_test.go), then the edges of Go's url.Parse;
+    // all checked against the alpha.14 node binary, which only differs in
+    // accepting trailing whitespace after the path
+    describe("assertBlockchainEndpoint", () => {
+        const marker = "SECRET";
+        const expectedError =
+            "CARTESI_BLOCKCHAIN_HTTP_ENDPOINT must be an http(s) URL with a DNS name or IP address (redirects are not followed)";
+
+        it.each([
+            "http://localhost:8545",
+            "https://u:p@example.com/path?q=key",
+            "http://[::1]:8545/rpc",
+            `http://user:${marker}@provider.example:8545/a%2Fb?key=${marker}&key=second`,
+            `https://user:${marker}@provider.example:8545/a%2Fb?key=${marker}&key=second`,
+            "HTTPS://provider.example",
+            "http://provider.example:",
+            "http://[fe80::1%25en0]:8545",
+            "http://us%41er@provider.example",
+            "http://ho%c3%a9st",
+            "http://provider.example?%zz",
+        ])("should accept %p", (endpoint) => {
+            expect(() =>
+                assertBlockchainEndpoint({
+                    CARTESI_BLOCKCHAIN_HTTP_ENDPOINT: endpoint,
+                }),
+            ).not.toThrow();
+        });
+
+        it.each([
+            "",
+            `${marker}.sock`,
+            `wss://host/${marker}`,
+            `ws://host/${marker}`,
+            `ipc://host/${marker}`,
+            `file:///tmp/${marker}`,
+            `/tmp/${marker}`,
+            `https:///${marker}`,
+            `http:///${marker}`,
+            `http://:8545/${marker}`,
+            `https://:8545/${marker}`,
+            `http:${marker}`,
+            `http://host/%${marker}`,
+            `https://provider.example/%${marker}`,
+            `http://host:${marker}`,
+            `http://user:${marker}@/`,
+            `http://user:${marker}@host:8545:8545`,
+            `http://[${marker}]:8545`,
+            `http://[::1/${marker}`,
+            `http://[fe80::1%en0]/${marker}`,
+            `http://ho st/${marker}`,
+            `http://ho%20st/${marker}`,
+            `http://us er:${marker}@host`,
+            `http://host/${marker}#%zz`,
+            ` http://host/${marker}`,
+            `http://host/${marker} `,
+            `http://host/${marker}\n`,
+        ])("should reject %p without showing it", (endpoint) => {
+            const assert = () =>
+                assertBlockchainEndpoint({
+                    CARTESI_BLOCKCHAIN_HTTP_ENDPOINT: endpoint,
+                });
+
+            expect(assert).toThrow(expectedError);
+            expect(assert).not.toThrow(marker);
+        });
+
+        it("should leave the endpoint to the CLI when the host sets none", () => {
+            expect(() => assertBlockchainEndpoint({})).not.toThrow();
         });
     });
 });
