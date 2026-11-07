@@ -364,13 +364,6 @@ const runSentries = async (options: {
             progress.succeed(describeSentry(sentry));
         }
     }
-    if (services.length > 0) {
-        console.log(
-            chalk.dim(
-                `sentry logs: docker compose -p ${environment.projectName} logs -f ${services.join(" ")}`,
-            ),
-        );
-    }
     return services;
 };
 
