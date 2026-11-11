@@ -221,8 +221,8 @@ RUN <<EOF
 curl -fsSL https://github.com/cartesi/rollups-node/releases/download/v${CARTESI_ROLLUPS_NODE_VERSION}/cartesi-rollups-node-v${CARTESI_ROLLUPS_NODE_VERSION}_${TARGETARCH}.deb \
     -o /tmp/cartesi-rollups-node.deb
 case "${TARGETARCH}" in
-    amd64) echo "5c75b12082bded69e589781715c74ce7ddf433a7ed2fa6f831e92315fa6dc003 /tmp/cartesi-rollups-node.deb" | sha256sum --check ;;
-    arm64) echo "ab4007baa7ea37ed58957fa94478c5f6e6999ca5234520bbfecb82e9c9c9bab3 /tmp/cartesi-rollups-node.deb" | sha256sum --check ;;
+    amd64) echo "ba4d1f5780adc75c46f9f9e4fe53f19e62543a5754104172f0f6aa80a0063fc6 /tmp/cartesi-rollups-node.deb" | sha256sum --check ;;
+    arm64) echo "d37c805f61b3149a418a933c656492775985c8e4a11c08e5a8dd9185900ac5a6 /tmp/cartesi-rollups-node.deb" | sha256sum --check ;;
     *) echo "unsupported architecture: ${TARGETARCH}"; exit 1 ;;
 esac
 apt-get install -y --no-install-recommends /tmp/cartesi-rollups-node.deb

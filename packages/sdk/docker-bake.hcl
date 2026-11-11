@@ -14,7 +14,7 @@ target "default" {
     CARTESI_PASSKEY_SERVER_VERSION    = "1.0.1"
     CARTESI_PAYMASTER_VERSION         = "0.2.0"
     CARTESI_PRT_VERSION               = "3.0.0-alpha.6"
-    CARTESI_ROLLUPS_NODE_VERSION      = "2.0.0-alpha.13"
+    CARTESI_ROLLUPS_NODE_VERSION      = "2.0.0-alpha.14"
     FOUNDRY_VERSION                   = "1.5.1"
     NITRO_VERSION                     = "c937fa4fd202074dd250086ebd92de6884968b84" # v0.8.1
     NODE_VERSION                      = "24.14.0"
