@@ -5,6 +5,7 @@ import {
     describe,
     expect,
     it,
+    setDefaultTimeout,
 } from "bun:test";
 import fs from "fs-extra";
 import path from "node:path";
@@ -13,12 +14,13 @@ import type { DockerDriveConfig } from "../../../src/config.js";
 import { setupIntegrationTests, TEST_SDK } from "../config.js";
 import { cleanupTempDir, createTempDir } from "./tmpdirTest.js";
 
-beforeAll(
-    async () => {
-        await setupIntegrationTests();
-    },
-    { timeout: 60000 },
-);
+// a docker build of the riscv64 fixture takes about 4s on a warm CI runner and
+// more on a cold one, past the 5s default
+setDefaultTimeout(60000);
+
+beforeAll(async () => {
+    await setupIntegrationTests();
+});
 
 describe("when building with the docker builder", () => {
     const image = TEST_SDK;
