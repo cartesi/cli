@@ -1,5 +1,21 @@
 # sdk
 
+## 0.12.0-alpha.45
+
+### Minor Changes
+
+- f3e3f30: bump machine-emulator to v0.22.0
+- 6839573: bump kernel to v6.18.56-ctsi-1
+
+### Patch Changes
+
+- 9aba98f: bump baseimage to debian:trixie-20261104
+- c173738: add lua-socket to cartesi/rollups-runtime
+- 097cdf7: bump rollups-node to 2.0.0-alpha.14
+- 57eff06: raise the devnet anvil's state retention from 3,600 to 86,400 past blocks (--max-persisted-states 86400, the value the rollups-node devnet uses), so reads at older blocks keep working through long cartesi run sessions
+- f591102: bump dave to v3.0.0-alpha.6
+- bee757c: bump PostgreSQL to v18
+
 ## 0.12.0-alpha.44
 
 ### Patch Changes
