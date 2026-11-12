@@ -159,15 +159,20 @@ describe("when parsing the fixtures", () => {
             prt: {
                 sentryManager: "0x3333333333333333333333333333333333333333",
                 nodes: {
-                    blue: { role: "claimer", type: "sling" },
-                    first: { role: "sentry", type: "sling" },
+                    reference: {
+                        type: "reference",
+                        sentry: false,
+                        claim: false,
+                    },
+                    blue: { type: "sling", sentry: false },
+                    first: { type: "sling", sentry: true },
                     mine: {
-                        role: "sentry",
                         type: "sling",
+                        sentry: true,
                         address: "0x4444444444444444444444444444444444444444",
                     },
                     theirs: {
-                        role: "sentry",
+                        sentry: true,
                         address: "0x5555555555555555555555555555555555555555",
                     },
                 },
@@ -447,99 +452,149 @@ shared = true`,
                 [prt]
                 sentry_manager = "${address("3")}"
 
-                [prt.nodes.first]
+                [prt.nodes.reference]
+                type = "reference"
+                claim = false
+
+                [prt.nodes.blue]
                 type = "sling"
-                role = "sentry"
 
                 [prt.nodes.mine]
                 type = "sling"
-                role = "sentry"
+                sentry = true
                 address = "${address("4")}"
                 private_key_file = "secrets/sentry.key"
 
                 [prt.nodes.theirs]
-                role = "sentry"
+                sentry = true
                 address = "${address("5")}"
             `;
             const parsed = prt(config);
             expect(parsed).toStrictEqual({
                 sentryManager: address("3"),
                 nodes: {
-                    first: { role: "sentry", type: "sling" },
+                    reference: {
+                        type: "reference",
+                        sentry: false,
+                        claim: false,
+                    },
+                    blue: { type: "sling", sentry: false },
                     mine: {
-                        role: "sentry",
                         type: "sling",
+                        sentry: true,
                         address: address("4"),
                         privateKeyFile: "secrets/sentry.key",
                     },
-                    theirs: { role: "sentry", address: address("5") },
+                    theirs: { sentry: true, address: address("5") },
                 },
             });
             expect(Object.keys(parsed?.nodes ?? {})).toEqual([
-                "first",
+                "reference",
+                "blue",
                 "mine",
                 "theirs",
             ]);
         });
 
-        // the roles differ in what the CLI funds and reserves, so no default
-        it("should fail without a role", () => {
-            expect(() => prt('[prt.nodes.first]\ntype = "sling"')).toThrowError(
-                new InvalidPrtConfigError(
-                    "role is required, one of: claimer, sentry",
-                    "[prt.nodes.first]",
-                ),
-            );
-        });
-
-        it("should fail for a role the CLI doesn't know", () => {
-            expect(() =>
-                prt('[prt.nodes.first]\ntype = "sling"\nrole = "validator"'),
-            ).toThrowError(
-                new InvalidPrtConfigError(
-                    "role validator isn't supported, expected one of: claimer, sentry",
-                    "[prt.nodes.first]",
-                ),
-            );
-        });
-
-        it("should parse a claimer", () => {
-            expect(
-                prt('[prt.nodes.blue]\ntype = "sling"\nrole = "claimer"'),
-            ).toStrictEqual({
-                nodes: { blue: { role: "claimer", type: "sling" } },
+        // a validator by default, and the rollups-node claims by default
+        it("should default sentry to false and the reference node's claim to true", () => {
+            expect(prt('[prt.nodes.blue]\ntype = "sling"')).toStrictEqual({
+                nodes: { blue: { type: "sling", sentry: false } },
+            });
+            expect(prt('[prt.nodes.node]\ntype = "reference"')).toStrictEqual({
+                nodes: {
+                    node: { type: "reference", sentry: false, claim: true },
+                },
             });
         });
 
-        // one participant claims
-        it("should fail for a second claimer", () => {
-            const config = `
-                [prt.nodes.a]
-                type = "sling"
-                role = "claimer"
+        it.each(["sentry", "claim"])(
+            "should fail when %s is not a boolean",
+            (key) => {
+                const type = key === "claim" ? "reference" : "sling";
+                expect(() =>
+                    prt(`[prt.nodes.a]\ntype = "${type}"\n${key} = "yes"`),
+                ).toThrowError("Invalid boolean value: yes");
+            },
+        );
 
-                [prt.nodes.b]
-                type = "sling"
-                role = "claimer"
+        // the rollups-node is one entry
+        it("should fail for a second reference node", () => {
+            const config = `
+                [prt.nodes.reference]
+                type = "reference"
+
+                [prt.nodes.node]
+                type = "reference"
             `;
             expect(() => prt(config)).toThrowError(
                 new InvalidPrtConfigError(
-                    "only one entry claims, and [prt.nodes.a] already does",
-                    "[prt.nodes.b]",
+                    "only one entry is the reference node, and [prt.nodes.reference] already is",
+                    "[prt.nodes.node]",
                 ),
             );
         });
 
-        // the CLI runs the claimer: the rollups-node reads
-        it("should fail for a claimer without a type", () => {
+        it("should fail for a sentry on the reference node", () => {
+            expect(() =>
+                prt('[prt.nodes.reference]\ntype = "reference"\nsentry = true'),
+            ).toThrowError(
+                new InvalidPrtConfigError(
+                    "the reference node can't be a sentry yet",
+                    "[prt.nodes.reference]",
+                ),
+            );
+        });
+
+        it("should fail for an address or a key file on the reference node", () => {
+            const reason =
+                "the reference node takes no address or private_key_file: the CLI runs it on the devnet accounts";
             expect(() =>
                 prt(
-                    `[prt.nodes.blue]\nrole = "claimer"\naddress = "${address("4")}"`,
+                    `[prt.nodes.reference]\ntype = "reference"\naddress = "${address("4")}"`,
+                ),
+            ).toThrowError(
+                new InvalidPrtConfigError(reason, "[prt.nodes.reference]"),
+            );
+            expect(() =>
+                prt(
+                    '[prt.nodes.reference]\ntype = "reference"\nprivate_key_file = "node.key"',
+                ),
+            ).toThrowError(
+                new InvalidPrtConfigError(reason, "[prt.nodes.reference]"),
+            );
+        });
+
+        // only the rollups-node can read instead of claiming, for now
+        it("should fail for claim on a sling node or an appointed entry", () => {
+            expect(() =>
+                prt('[prt.nodes.blue]\ntype = "sling"\nclaim = false'),
+            ).toThrowError(
+                new InvalidPrtConfigError(
+                    "claim isn't supported on a sling node yet: it always claims",
+                    "[prt.nodes.blue]",
+                ),
+            );
+            expect(() =>
+                prt(
+                    `[prt.nodes.theirs]\nsentry = true\naddress = "${address("5")}"\nclaim = true`,
                 ),
             ).toThrowError(
                 new InvalidPrtConfigError(
-                    "a claimer needs a type: the CLI runs it, and the rollups-node would read with no claimer",
-                    "[prt.nodes.blue]",
+                    'claim needs type = "reference": only the rollups-node can read instead of claiming',
+                    "[prt.nodes.theirs]",
+                ),
+            );
+        });
+
+        // without a type the CLI runs nothing, so the entry must appoint
+        it("should fail for an appointed entry without sentry = true", () => {
+            expect(() =>
+                prt(`[prt.nodes.theirs]\naddress = "${address("5")}"`),
+            ).toThrowError(
+                new InvalidPrtConfigError(
+                    "an entry without a type is appointed only, so it needs sentry = true",
+                    "[prt.nodes.theirs]",
                 ),
             );
         });
@@ -548,7 +603,7 @@ shared = true`,
         it("should fail for a private_key_file without a type", () => {
             expect(() =>
                 prt(
-                    `[prt.nodes.mine]\nrole = "sentry"\naddress = "${address("4")}"\nprivate_key_file = "sentry.key"`,
+                    `[prt.nodes.mine]\nsentry = true\naddress = "${address("4")}"\nprivate_key_file = "sentry.key"`,
                 ),
             ).toThrowError(
                 new InvalidPrtConfigError(
@@ -560,9 +615,7 @@ shared = true`,
 
         it("should fail for an empty private_key_file", () => {
             expect(() =>
-                prt(
-                    '[prt.nodes.mine]\ntype = "sling"\nrole = "sentry"\nprivate_key_file = ""',
-                ),
+                prt('[prt.nodes.mine]\ntype = "sling"\nprivate_key_file = ""'),
             ).toThrowError(
                 new InvalidPrtConfigError(
                     "private_key_file must name a file",
@@ -573,9 +626,7 @@ shared = true`,
 
         it("should fail for a private_key_file that is not a string", () => {
             expect(() =>
-                prt(
-                    '[prt.nodes.mine]\ntype = "sling"\nrole = "sentry"\nprivate_key_file = 1',
-                ),
+                prt('[prt.nodes.mine]\ntype = "sling"\nprivate_key_file = 1'),
             ).toThrowError("Invalid string value: 1");
         });
 
@@ -605,7 +656,7 @@ shared = true`,
         it("should checksum the addresses", () => {
             const config = `
                 [prt.nodes.first]
-                role = "sentry"
+                sentry = true
                 address = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8"
             `;
             expect(prt(config)?.nodes.first?.address).toBe(
@@ -615,7 +666,7 @@ shared = true`,
 
         it.each([
             ["sentry_manager", "[prt]"],
-            ["address", '[prt.nodes.first]\nrole = "sentry"'],
+            ["address", "[prt.nodes.first]\nsentry = true"],
         ])("should fail when %s is not a valid address", (key, table) => {
             expect(() =>
                 prt(`${table}\n${key} = "invalid_address"`),
@@ -628,7 +679,7 @@ shared = true`,
         it("should fail for the zero address", () => {
             expect(() =>
                 prt(
-                    `[prt.nodes.first]\nrole = "sentry"\naddress = "${address("0")}"`,
+                    `[prt.nodes.first]\nsentry = true\naddress = "${address("0")}"`,
                 ),
             ).toThrowError(
                 new InvalidPrtConfigError(
@@ -641,16 +692,14 @@ shared = true`,
         it("should fail when two entries name the same address", () => {
             const config = `
                 [prt.nodes.a]
-                role = "sentry"
+                sentry = true
                 address = "${address("4")}"
 
                 [prt.nodes.b]
                 type = "sling"
-                role = "sentry"
 
                 [prt.nodes.c]
                 type = "sling"
-                role = "sentry"
                 address = "${address("4").toLowerCase()}"
             `;
             expect(() => prt(config)).toThrowError(
@@ -663,21 +712,19 @@ shared = true`,
 
         it("should fail for a type the CLI can't run", () => {
             expect(() =>
-                prt(
-                    '[prt.nodes.first]\ntype = "rollups-node"\nrole = "sentry"',
-                ),
+                prt('[prt.nodes.first]\ntype = "rollups-node"'),
             ).toThrowError(
                 new InvalidPrtConfigError(
-                    "type rollups-node isn't supported, expected one of: sling",
+                    "type rollups-node isn't supported, expected one of: reference, sling",
                     "[prt.nodes.first]",
                 ),
             );
         });
 
         it("should fail for an entry with neither type nor address", () => {
-            expect(() => prt('[prt.nodes.idle]\nrole = "sentry"')).toThrowError(
+            expect(() => prt("[prt.nodes.idle]\nsentry = true")).toThrowError(
                 new InvalidPrtConfigError(
-                    "set a type for the CLI to run the sentry, or an address to appoint one run elsewhere",
+                    "set a type for the CLI to run the node, or an address to appoint one run elsewhere",
                     "[prt.nodes.idle]",
                 ),
             );
@@ -692,7 +739,7 @@ shared = true`,
             ["_x", "_x"],
         ])("should fail for the label %s", (key, label) => {
             expect(() =>
-                prt(`[prt.nodes.${key}]\ntype = "sling"\nrole = "sentry"`),
+                prt(`[prt.nodes.${key}]\ntype = "sling"`),
             ).toThrowError(
                 new InvalidPrtConfigError(
                     `label "${label}" must start with a lowercase letter, then lowercase letters, digits, - or _`,
@@ -709,11 +756,9 @@ shared = true`,
 
         it("should fail for an unknown key in an entry", () => {
             expect(() =>
-                prt(
-                    '[prt.nodes.first]\ntype = "sling"\nrole = "sentry"\nkey = "x"',
-                ),
+                prt('[prt.nodes.first]\ntype = "sling"\nrole = "sentry"'),
             ).toThrowError(
-                "Unknown key 'key' in [prt.nodes.first], expected one of: address, private_key_file, role, type",
+                "Unknown key 'role' in [prt.nodes.first], expected one of: address, claim, private_key_file, sentry, type",
             );
         });
     });

@@ -13,8 +13,6 @@ import { DEVNET_MNEMONIC } from "./compose/node.js";
 import {
     InvalidPrtConfigError,
     type PrtNode,
-    type PrtNodeRole,
-    type PrtNodeType,
     type PrtOptions,
 } from "./config.js";
 import { prtNodeTable } from "./config/toml/prt.js";
@@ -39,7 +37,7 @@ export const PRT_FUNDING = parseEther("10000");
 /**
  * Devnet accounts the node signs with: the claimer (`CARTESI_AUTH_MNEMONIC_ACCOUNT_INDEX`,
  * set by the CLI) and the PRT submitter (the node's `CARTESI_PRT_AUTH_MNEMONIC_ACCOUNT_INDEX`
- * default), which the node has only when it claims.
+ * default), which the node has only when it claims (the reference entry's `claim`).
  */
 const NODE_CLAIMER_INDEX = 0;
 const NODE_PRT_INDEX = 6;
@@ -54,8 +52,9 @@ export type PrtNodeSource =
 export type ResolvedPrtNode = {
     label: string;
     address: Address;
-    type?: PrtNodeType;
-    role: PrtNodeRole;
+    /** the node the CLI runs, the sling node; none for an appointed-only entry */
+    type?: "sling";
+    sentry: boolean;
     /** 1-based position among the sentries, in file order: the sentry's ID on the consensus */
     sentryId?: number;
     source: PrtNodeSource;
@@ -63,9 +62,18 @@ export type ResolvedPrtNode = {
     privateKey?: Hex;
 };
 
+/** The rollups-node's entry, implied when the config has none. */
+export type ResolvedReference = {
+    /** the entry's label, when the config spells it */
+    label?: string;
+    /** whether the node submits claims; false is reader mode */
+    claim: boolean;
+};
+
 export type ResolvedPrt = {
     sentryManager?: Address;
-    /** every entry, in file order */
+    reference: ResolvedReference;
+    /** every entry but the reference node, in file order */
     nodes: ResolvedPrtNode[];
     warnings: string[];
 };
@@ -146,8 +154,9 @@ const resolveKeyFile = (
 /**
  * Gives every [prt.nodes.<label>] entry its address: the one it names, the one of its key
  * file, or else the next free account of the PRT pool, in file order. Pool accounts named by
- * an entry are skipped, so no two entries share an address. Needs no chain, so it runs before
- * anything starts, `--dry-run` included.
+ * an entry are skipped, so no two entries share an address. The reference entry takes none,
+ * since the node runs on its own devnet accounts. Needs no chain, so it runs before anything
+ * starts, `--dry-run` included.
  * @param options.guardian the application's guardian, which an entry shouldn't share nonces with
  * @throws InvalidPrtConfigError when the pool runs out, a key file is unusable, or an entry
  * the CLI runs is an account the node signs with
@@ -157,7 +166,16 @@ export const resolvePrtNodes = (
     options: { guardian?: Address } = {},
 ): ResolvedPrt => {
     const warnings: string[] = [];
-    const entries = Object.entries(prt.nodes);
+    const referenceEntry = Object.entries(prt.nodes).find(
+        ([, { type }]) => type === "reference",
+    );
+    const reference: ResolvedReference = {
+        ...(referenceEntry && { label: referenceEntry[0] }),
+        claim: referenceEntry?.[1].claim ?? true,
+    };
+    const entries = Object.entries(prt.nodes).filter(
+        ([, { type }]) => type !== "reference",
+    );
     const named = new Set(
         entries.flatMap(([, { address }]) =>
             address === undefined ? [] : [address.toLowerCase()],
@@ -165,15 +183,14 @@ export const resolvePrtNodes = (
     );
     let next = PRT_POOL_START;
     let sentries = 0;
-    const nodeClaims = !entries.some(([, { role }]) => role === "claimer");
 
     const nodes = entries.map(([label, node]): ResolvedPrtNode => {
         const where = prtNodeTable(label);
         const resolved = {
             label,
-            ...(node.type !== undefined && { type: node.type }),
-            role: node.role,
-            ...(node.role === "sentry" && { sentryId: ++sentries }),
+            ...(node.type === "sling" && { type: node.type }),
+            sentry: node.sentry,
+            ...(node.sentry && { sentryId: ++sentries }),
         };
         if (node.privateKeyFile !== undefined) {
             return { ...resolved, ...resolveKeyFile(node, where) };
@@ -247,7 +264,7 @@ export const resolvePrtNodes = (
                     where,
                 );
             }
-            if (nodeClaims && node.source.index === NODE_PRT_INDEX) {
+            if (reference.claim && node.source.index === NODE_PRT_INDEX) {
                 throw new InvalidPrtConfigError(
                     `devnet account ${NODE_PRT_INDEX} signs the node's PRT transactions, so it can't also run ${where}`,
                     where,
@@ -275,38 +292,52 @@ export const resolvePrtNodes = (
         );
     }
 
-    return { sentryManager: prt.sentryManager, nodes, warnings };
+    // PRT is permissionless, so a claimer may run outside the CLI, but a devnet with
+    // nothing claiming settles no epoch
+    const slings = nodes.filter(({ type }) => type === "sling");
+    if (!reference.claim && slings.length === 0) {
+        warnings.push(
+            `nothing the CLI runs claims: ${prtNodeTable(reference.label as string)} has claim = false and no entry has type = "sling", so a claimer must run elsewhere`,
+        );
+    }
+    // the consensus accepts a staged result once every sentry voted for it, and a sling
+    // sentry votes for its own claim
+    const appointed = nodes.filter(({ sentry }) => sentry);
+    if (
+        !reference.claim &&
+        appointed.length > 0 &&
+        appointed.every(({ type }) => type === "sling")
+    ) {
+        warnings.push(
+            "every sentry is a sling node the CLI runs and the rollups-node reads, so a claim is accepted as soon as its own authors vote for it",
+        );
+    }
+
+    return { sentryManager: prt.sentryManager, reference, nodes, warnings };
 };
 
-/** The entry that claims, when a sling node does instead of the rollups-node. */
-export const claimerOf = (prt: ResolvedPrt): ResolvedPrtNode | undefined =>
-    prt.nodes.find(({ role }) => role === "claimer");
-
 /**
- * The warning for a claimer that moved between a startup and a rebuild: the rollups-node
- * saves its submission mode in its database at the first start and refuses the other mode on
- * it, so the placement can only change with a fresh `cartesi run`.
- * @returns the warning, or undefined when the claimer is where it was
+ * The warning for a reference entry whose `claim` changed between a startup and a rebuild:
+ * the rollups-node saves its submission mode in its database at the first start and refuses
+ * the other mode on it, so the change needs a fresh `cartesi run`. The sling entries are free
+ * to change, their containers are recreated on every rebuild.
+ * @returns the warning, or undefined when the mode is what it was
  */
-export const claimerMoved = (
+export const readerModeChanged = (
     before: ResolvedPrt | undefined,
     after: ResolvedPrt | undefined,
 ): string | undefined => {
-    const was = before && claimerOf(before)?.label;
-    const now = after && claimerOf(after)?.label;
+    const was = before?.reference.claim ?? true;
+    const now = after?.reference.claim ?? true;
     if (was === now) {
         return undefined;
     }
-    const to =
-        now === undefined
-            ? "back to the rollups-node"
-            : `to ${prtNodeTable(now)}`;
-    return `the claimer moved ${to} in cartesi.toml. Restart cartesi run to apply it. This rebuild keeps the [prt] setup it started with.`;
+    return `the rollups-node's claim setting changed to claim = ${now} in cartesi.toml. Restart cartesi run to apply it. This rebuild keeps the [prt] setup it started with.`;
 };
 
 /** The sentries, in ID order: what the deploy appoints on the consensus. */
 export const sentriesOf = (prt: ResolvedPrt): ResolvedPrtNode[] =>
-    prt.nodes.filter(({ role }) => role === "sentry");
+    prt.nodes.filter(({ sentry }) => sentry);
 
 /** The entries the CLI runs a node for. */
 export const runnableNodes = (prt: ResolvedPrt): ResolvedPrtNode[] =>
@@ -341,16 +372,22 @@ export const checkPrtNodes = async (
         const balance = await client.getBalance({ address: node.address });
         if (balance === 0n) {
             throw new Error(
-                `${node.role} ${node.label} ${node.address} has no ETH on this devnet. Fund it before cartesi run, e.g. with cast rpc anvil_setBalance`,
+                `${node.sentry ? "sentry" : "validator"} ${node.label} ${node.address} has no ETH on this devnet. Fund it before cartesi run, e.g. with cast rpc anvil_setBalance`,
             );
         }
     }
 };
 
+/** The rollups-node's line: what its entry says it does. */
+export const describeReference = (prt: ResolvedPrt): string =>
+    prt.reference.claim
+        ? "rollups-node claims"
+        : "rollups-node reads (claim = false, no PRT signer)";
+
 /**
- * One line per entry: its role, a sentry's ID, its label and its full address, so it can be
- * copied into other tools. The note says what the CLI does with the entry, then where its
- * account comes from.
+ * One line per entry: sentry with its ID or validator, its label and its full address, so it
+ * can be copied into other tools. The note says what the CLI does with the entry, then where
+ * its account comes from.
  */
 export const describePrtNode = (node: ResolvedPrtNode): string => {
     const { source } = node;
@@ -366,6 +403,6 @@ export const describePrtNode = (node: ResolvedPrtNode): string => {
         node.type === undefined
             ? ["appointed only", ...(account ? [account] : [])].join(", ")
             : (account ?? "");
-    const id = node.sentryId === undefined ? "" : `${node.sentryId} `;
-    return `${node.role} ${id}${chalk.cyan(node.label)} ${node.address} ${chalk.dim(`(${origin})`)}`;
+    const kind = node.sentry ? `sentry ${node.sentryId}` : "validator";
+    return `${kind} ${chalk.cyan(node.label)} ${node.address} ${chalk.dim(`(${origin})`)}`;
 };

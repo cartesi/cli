@@ -37,14 +37,14 @@ describe("Compose PRT node services", () => {
             imageTag: "devel",
             nodes: resolvePrtNodes({
                 nodes: {
-                    first: { type: "sling", role: "sentry" },
+                    first: { type: "sling", sentry: true },
                     mine: {
                         type: "sling",
-                        role: "sentry",
+                        sentry: true,
                         privateKeyFile: keyFile,
                     },
                     theirs: {
-                        role: "sentry",
+                        sentry: true,
                         address: "0x5555555555555555555555555555555555555555",
                     },
                 },
@@ -161,17 +161,17 @@ describe("Compose PRT node services", () => {
         expect(isPrtNodeService("rollups_node")).toBe(false);
     });
 
-    // the sling node takes no role flag: the same binary claims, or holds a
-    // sentry slot, depending only on its signer
-    it("should run the claimer as it runs a sentry, told apart by its signer", () => {
-        const [claimer, sentry] = buildPrtNodes({
+    // the sling node takes no flag: the same binary claims either way, and
+    // learns from the chain whether it also holds a sentry slot
+    it("should run a validator as it runs a sentry, told apart by its signer", () => {
+        const [validator, sentry] = buildPrtNodes({
             application,
             blockTime: 2,
             imageTag: "devel",
             nodes: resolvePrtNodes({
                 nodes: {
-                    blue: { type: "sling", role: "claimer" },
-                    green: { type: "sling", role: "sentry" },
+                    blue: { type: "sling", sentry: false },
+                    green: { type: "sling", sentry: true },
                 },
             }).nodes,
         });
@@ -180,8 +180,8 @@ describe("Compose PRT node services", () => {
                 string,
                 string
             >;
-        const { CARTESI_SLING_AUTH_PRIVATE_KEY: _, ...claimerEnv } = envOf(
-            claimer,
+        const { CARTESI_SLING_AUTH_PRIVATE_KEY: _, ...validatorEnv } = envOf(
+            validator,
             "prt-node-blue",
         );
         const { CARTESI_SLING_AUTH_PRIVATE_KEY: __, ...sentryEnv } = envOf(
@@ -189,9 +189,11 @@ describe("Compose PRT node services", () => {
             "prt-node-green",
         );
 
-        expect(Object.keys(claimer.services ?? {})).toEqual(["prt-node-blue"]);
-        expect(claimerEnv).toEqual(sentryEnv);
-        expect(claimer.services?.["prt-node-blue"]?.environment).toMatchObject({
+        expect(Object.keys(validator.services ?? {})).toEqual([
+            "prt-node-blue",
+        ]);
+        expect(validatorEnv).toEqual(sentryEnv);
+        expect(envOf(validator, "prt-node-blue")).toMatchObject({
             CARTESI_SLING_AUTH_PRIVATE_KEY: getDevnetAccount(20).privateKey,
         });
     });
