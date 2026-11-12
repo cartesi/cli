@@ -18,12 +18,12 @@ import {
     erc721PortalConfig,
     etherPortalConfig,
     inputBoxConfig,
-} from "./contracts";
-import type { CartesiEnvironmentVariables } from "./base";
-import { nodeSecretFileVariables } from "./compose/node";
-import ForkChainValidationError from "./errors/ForkChainValidationError";
-import UnsupportedForkChainError from "./errors/UnsupportedForkChainError";
-import type { ForkConfig } from "./types/chain";
+} from "./contracts.js";
+import type { CartesiEnvironmentVariables } from "./base.js";
+import { nodeSecretFileVariables } from "./compose/node.js";
+import ForkChainValidationError from "./errors/ForkChainValidationError.js";
+import UnsupportedForkChainError from "./errors/UnsupportedForkChainError.js";
+import type { ForkConfig } from "./types/chain.js";
 
 interface AssertForkConfigOptions {
     includePRT?: boolean;
