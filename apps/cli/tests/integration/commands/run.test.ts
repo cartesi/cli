@@ -191,6 +191,57 @@ private_key_file = "${keyFile}"
             expect(all).not.toContain(fileKey.slice(2));
             expect(all).not.toContain("services:");
         });
+
+        it("should reject a second claimer before rendering", async () => {
+            const { all, exitCode } = await dryRun([
+                "--prt",
+                ...config(`
+[prt.nodes.blue]
+type = "sling"
+role = "claimer"
+
+[prt.nodes.red]
+type = "sling"
+role = "claimer"
+`),
+            ]);
+
+            expect(exitCode).not.toBe(0);
+            expect(all).toContain(
+                "Invalid [prt.nodes.red]: only one entry claims, and [prt.nodes.blue] already does",
+            );
+            expect(all).not.toContain("services:");
+        });
+
+        // with a sling claimer the node follows the tournaments and records
+        // settled epochs, and the host's PRT signer has no node to go to
+        it("should render the node in reader mode with a sling claimer", async () => {
+            const { all, exitCode } = await dryRun(
+                [
+                    "--prt",
+                    ...config(`
+[prt.nodes.blue]
+type = "sling"
+role = "claimer"
+
+[prt.nodes.green]
+type = "sling"
+role = "sentry"
+`),
+                ],
+                { CARTESI_PRT_AUTH_MNEMONIC_ACCOUNT_INDEX: "7" },
+            );
+
+            expect(exitCode, all).toBe(0);
+            expect(all).toContain(
+                'CARTESI_FEATURE_CLAIM_SUBMISSION_ENABLED: "false"',
+            );
+            // the warning names the variable, the rendered env must not
+            expect(all).not.toContain("CARTESI_PRT_AUTH_MNEMONIC:");
+            expect(all).toContain(
+                "WARNING: CARTESI_PRT_AUTH_MNEMONIC_ACCOUNT_INDEX is set, but [prt.nodes.blue] claims, so the rollups-node runs in reader mode with no PRT signer and the value is dropped",
+            );
+        });
     });
 
     describe("CARTESI_BLOCKCHAIN_HTTP_ENDPOINT", () => {

@@ -39,7 +39,7 @@ export const PRT_FUNDING = parseEther("10000");
 /**
  * Devnet accounts the node signs with: the claimer (`CARTESI_AUTH_MNEMONIC_ACCOUNT_INDEX`,
  * set by the CLI) and the PRT submitter (the node's `CARTESI_PRT_AUTH_MNEMONIC_ACCOUNT_INDEX`
- * default).
+ * default), which the node has only when it claims.
  */
 const NODE_CLAIMER_INDEX = 0;
 const NODE_PRT_INDEX = 6;
@@ -165,6 +165,7 @@ export const resolvePrtNodes = (
     );
     let next = PRT_POOL_START;
     let sentries = 0;
+    const nodeClaims = !entries.some(([, { role }]) => role === "claimer");
 
     const nodes = entries.map(([label, node]): ResolvedPrtNode => {
         const where = prtNodeTable(label);
@@ -246,7 +247,7 @@ export const resolvePrtNodes = (
                     where,
                 );
             }
-            if (node.source.index === NODE_PRT_INDEX) {
+            if (nodeClaims && node.source.index === NODE_PRT_INDEX) {
                 throw new InvalidPrtConfigError(
                     `devnet account ${NODE_PRT_INDEX} signs the node's PRT transactions, so it can't also run ${where}`,
                     where,
@@ -275,6 +276,32 @@ export const resolvePrtNodes = (
     }
 
     return { sentryManager: prt.sentryManager, nodes, warnings };
+};
+
+/** The entry that claims, when a sling node does instead of the rollups-node. */
+export const claimerOf = (prt: ResolvedPrt): ResolvedPrtNode | undefined =>
+    prt.nodes.find(({ role }) => role === "claimer");
+
+/**
+ * The warning for a claimer that moved between a startup and a rebuild: the rollups-node
+ * saves its submission mode in its database at the first start and refuses the other mode on
+ * it, so the placement can only change with a fresh `cartesi run`.
+ * @returns the warning, or undefined when the claimer is where it was
+ */
+export const claimerMoved = (
+    before: ResolvedPrt | undefined,
+    after: ResolvedPrt | undefined,
+): string | undefined => {
+    const was = before && claimerOf(before)?.label;
+    const now = after && claimerOf(after)?.label;
+    if (was === now) {
+        return undefined;
+    }
+    const to =
+        now === undefined
+            ? "back to the rollups-node"
+            : `to ${prtNodeTable(now)}`;
+    return `the claimer moved ${to} in cartesi.toml. Restart cartesi run to apply it. This rebuild keeps the [prt] setup it started with.`;
 };
 
 /** The sentries, in ID order: what the deploy appoints on the consensus. */

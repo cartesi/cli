@@ -131,10 +131,12 @@ export type WithdrawalOptions = {
 export type PrtNodeType = "sling";
 
 /**
- * What a [prt.nodes.<label>] entry does: a sentry holds a slot on the application's
- * DaveConsensus and submits a sentry claim per epoch.
+ * What a [prt.nodes.<label>] entry does. A claimer is the PRT participant: it joins
+ * tournaments, stages and accepts results and recovers bonds, and the rollups-node then runs
+ * in reader mode. A sentry holds a slot on the application's DaveConsensus and submits a
+ * sentry claim per epoch.
  */
-export type PrtNodeRole = "sentry";
+export type PrtNodeRole = "claimer" | "sentry";
 
 /**
  * One [prt.nodes.<label>] entry. The label is the key and names the container. With a `type`

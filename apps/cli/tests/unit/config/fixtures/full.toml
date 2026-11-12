@@ -88,8 +88,12 @@ account_size = 64 # bytes per account, a power of two, 32 by default
 [prt] # optional, read by `cartesi run --prt`: the PRT nodes of the application's consensus
 sentry_manager = "0x3333333333333333333333333333333333333333" # may rotate sentries, default is none
 
-[prt.nodes.first] # the label is the key, and names the container prt-node-first
+[prt.nodes.blue] # the label is the key, and names the container prt-node-blue
 type = "sling" # the CLI runs a Dave sling node for it; without an address it gets devnet account 20
+role = "claimer" # the PRT participant that stages and accepts results, with the rollups-node in reader mode
+
+[prt.nodes.first]
+type = "sling" # devnet account 21, the next of the pool
 role = "sentry" # required: sentries are appointed in file order, with IDs from 1
 
 [prt.nodes.mine]

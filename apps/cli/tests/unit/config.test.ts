@@ -159,6 +159,7 @@ describe("when parsing the fixtures", () => {
             prt: {
                 sentryManager: "0x3333333333333333333333333333333333333333",
                 nodes: {
+                    blue: { role: "claimer", type: "sling" },
                     first: { role: "sentry", type: "sling" },
                     mine: {
                         role: "sentry",
@@ -485,7 +486,7 @@ shared = true`,
         it("should fail without a role", () => {
             expect(() => prt('[prt.nodes.first]\ntype = "sling"')).toThrowError(
                 new InvalidPrtConfigError(
-                    "role is required, one of: sentry",
+                    "role is required, one of: claimer, sentry",
                     "[prt.nodes.first]",
                 ),
             );
@@ -493,11 +494,52 @@ shared = true`,
 
         it("should fail for a role the CLI doesn't know", () => {
             expect(() =>
-                prt('[prt.nodes.first]\ntype = "sling"\nrole = "claimer"'),
+                prt('[prt.nodes.first]\ntype = "sling"\nrole = "validator"'),
             ).toThrowError(
                 new InvalidPrtConfigError(
-                    "role claimer isn't supported, expected one of: sentry",
+                    "role validator isn't supported, expected one of: claimer, sentry",
                     "[prt.nodes.first]",
+                ),
+            );
+        });
+
+        it("should parse a claimer", () => {
+            expect(
+                prt('[prt.nodes.blue]\ntype = "sling"\nrole = "claimer"'),
+            ).toStrictEqual({
+                nodes: { blue: { role: "claimer", type: "sling" } },
+            });
+        });
+
+        // one participant claims
+        it("should fail for a second claimer", () => {
+            const config = `
+                [prt.nodes.a]
+                type = "sling"
+                role = "claimer"
+
+                [prt.nodes.b]
+                type = "sling"
+                role = "claimer"
+            `;
+            expect(() => prt(config)).toThrowError(
+                new InvalidPrtConfigError(
+                    "only one entry claims, and [prt.nodes.a] already does",
+                    "[prt.nodes.b]",
+                ),
+            );
+        });
+
+        // the CLI runs the claimer: the rollups-node reads
+        it("should fail for a claimer without a type", () => {
+            expect(() =>
+                prt(
+                    `[prt.nodes.blue]\nrole = "claimer"\naddress = "${address("4")}"`,
+                ),
+            ).toThrowError(
+                new InvalidPrtConfigError(
+                    "a claimer needs a type: the CLI runs it, and the rollups-node would read with no claimer",
+                    "[prt.nodes.blue]",
                 ),
             );
         });

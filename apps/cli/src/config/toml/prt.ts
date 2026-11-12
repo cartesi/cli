@@ -25,7 +25,7 @@ export const PRT_NODE_KEYS: readonly string[] = [
 
 export const PRT_NODE_TYPES: readonly PrtNodeType[] = ["sling"];
 
-export const PRT_NODE_ROLES: readonly PrtNodeRole[] = ["sentry"];
+export const PRT_NODE_ROLES: readonly PrtNodeRole[] = ["claimer", "sentry"];
 
 /**
  * A label is the key of an entry and names its container, so it keeps to what a service name
@@ -93,6 +93,13 @@ const parseNode = (label: string, value: TomlValue): PrtNode => {
             ? undefined
             : parseRequiredString(value.private_key_file, "private_key_file");
 
+    // the CLI runs the claimer, and the rollups-node only reads
+    if (role === "claimer" && type === undefined) {
+        throw new InvalidPrtConfigError(
+            "a claimer needs a type: the CLI runs it, and the rollups-node would read with no claimer",
+            where,
+        );
+    }
     if (type === undefined && address === undefined) {
         throw new InvalidPrtConfigError(
             "set a type for the CLI to run the sentry, or an address to appoint one run elsewhere",
@@ -122,8 +129,8 @@ const parseNode = (label: string, value: TomlValue): PrtNode => {
 
 /**
  * Parses the [prt.nodes.<label>] entries, in file order. The label is the key, so it is unique
- * by construction, and addresses are checked against each other since the node rejects a
- * duplicate.
+ * by construction. Addresses are checked against each other since the node rejects a
+ * duplicate, and one participant claims.
  */
 const parseNodes = (value: TomlValue): Record<string, PrtNode> => {
     if (value === undefined) {
@@ -135,6 +142,15 @@ const parseNodes = (value: TomlValue): Record<string, PrtNode> => {
     const nodes: Record<string, PrtNode> = {};
     for (const [label, entry] of Object.entries(value)) {
         const node = parseNode(label, entry);
+        const claimer = Object.entries(nodes).find(
+            ([, other]) => other.role === "claimer",
+        );
+        if (node.role === "claimer" && claimer !== undefined) {
+            throw new InvalidPrtConfigError(
+                `only one entry claims, and ${prtNodeTable(claimer[0])} already does`,
+                prtNodeTable(label),
+            );
+        }
         const same = Object.entries(nodes).find(
             ([, other]) =>
                 other.address !== undefined &&

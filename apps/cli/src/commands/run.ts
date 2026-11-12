@@ -18,11 +18,15 @@ import {
 } from "viem";
 import {
     getApplicationConfig,
+    getCartesiEnvironmentVariables,
     getContextPath,
     getMachineHash,
     getProjectName,
 } from "../base.js";
-import { nodeAllowedEnvironmentVariables } from "../compose/node.js";
+import {
+    nodeAllowedEnvironmentVariables,
+    nodePrtAuthVariables,
+} from "../compose/node.js";
 import {
     DEFAULT_SDK_VERSION,
     PREFERRED_PORT,
@@ -46,6 +50,8 @@ import {
 import { keySelect } from "../prompts.js";
 import {
     checkPrtNodes,
+    claimerMoved,
+    claimerOf,
     describePrtNode,
     type ResolvedPrt,
     resolvePrtNodes,
@@ -102,6 +108,8 @@ const shell = async (options: {
     sdk: string;
     /** the PRT node services running for the deployment */
     prtServices: string[];
+    /** the [prt] setup the environment started with */
+    prtConfig?: ResolvedPrt;
     resolveWithdrawalConfig: () => WithdrawalConfig | undefined;
     resolvePrt: () => ResolvedPrt | undefined;
     claimStagingPeriod: number;
@@ -212,8 +220,15 @@ const shell = async (options: {
                         // resolved before undeploying in case it is now invalid
                         const withdrawalConfig = resolveWithdrawalConfig();
                         // a PRT redeploy creates a new consensus, with the
-                        // sentries as they are in the config now
-                        const prtConfig = resolvePrt();
+                        // sentries as they are in the config now. The claimer
+                        // can't move: the node's mode is fixed in its database
+                        const resolved = resolvePrt();
+                        const moved = claimerMoved(options.prtConfig, resolved);
+                        if (moved !== undefined) {
+                            console.warn(chalk.yellow(`WARNING: ${moved}`));
+                        }
+                        const prtConfig =
+                            moved === undefined ? resolved : options.prtConfig;
                         reportPrtWarnings(prtConfig, claimStagingPeriod);
                         await fundPrtNodes({ environment, prtConfig });
                         if (lastDeployment) {
@@ -315,8 +330,9 @@ const fundPrtNodes = async (options: {
 
 /**
  * Starts the PRT nodes the CLI runs, for the deployed application, then prints
- * the manager and every [prt.nodes] entry, in file order: a check for each one
- * running, a note for each one appointed only.
+ * the manager and every [prt.nodes] entry, the claimer first and the rest in
+ * file order: a check for each one running, a note for each one appointed
+ * only.
  * @returns the services started
  */
 const runPrtNodes = async (options: {
@@ -358,7 +374,12 @@ const runPrtNodes = async (options: {
     } else {
         note(`sentry manager ${prtConfig.sentryManager}`);
     }
-    for (const node of prtConfig.nodes) {
+    const claimer = claimerOf(prtConfig);
+    const listed = [
+        ...(claimer ? [claimer] : []),
+        ...prtConfig.nodes.filter((node) => node !== claimer),
+    ];
+    for (const node of listed) {
         if (node.type === undefined) {
             note(describePrtNode(node));
         } else {
@@ -451,7 +472,7 @@ export const createRunCommand = () => {
         .addOption(
             new Option(
                 "--prt",
-                "deploy application with PRT consensus",
+                "deploy the application on a PRT consensus, with the [prt] section of cartesi.toml",
             ).default(false),
         )
         .addOption(
@@ -604,6 +625,22 @@ export const createRunCommand = () => {
             const prtConfig = resolvePrt();
             reportPrtWarnings(prtConfig, claimStagingPeriod);
 
+            // with a sling claimer the node reads, and has no PRT signer
+            const claimer = prtConfig && claimerOf(prtConfig);
+            if (claimer) {
+                const hostVars = getCartesiEnvironmentVariables();
+                const prtAuth = nodePrtAuthVariables.filter(
+                    (name) => hostVars[name] !== undefined,
+                );
+                if (prtAuth.length > 0) {
+                    console.warn(
+                        chalk.yellow(
+                            `WARNING: ${prtAuth.join(", ")} ${prtAuth.length === 1 ? "is" : "are"} set, but [prt.nodes.${claimer.label}] claims, so the rollups-node runs in reader mode with no PRT signer and the value is dropped`,
+                        ),
+                    );
+                }
+            }
+
             // resolve port number, using the first free port in a range, unless explicitly set
             const port =
                 options.port ||
@@ -647,6 +684,7 @@ export const createRunCommand = () => {
                 port,
                 projectName,
                 prt,
+                claimSubmission: claimer === undefined,
                 runtimeVersion,
                 services,
                 verbose,
@@ -747,6 +785,7 @@ export const createRunCommand = () => {
                     salt,
                     sdk: applicationConfig.sdk,
                     prtServices,
+                    prtConfig,
                     claimStagingPeriod,
                     resolveWithdrawalConfig,
                     resolvePrt,

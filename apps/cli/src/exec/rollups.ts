@@ -535,6 +535,8 @@ export type EnvironmentOptions = {
     port: number;
     projectName: string;
     prt?: boolean;
+    /** false puts the node in reader mode, when a sling node claims */
+    claimSubmission?: boolean;
     runtimeVersion: string;
     services: string[];
     verbose: boolean;
@@ -558,6 +560,7 @@ const composeEnvironment = (
         port,
         projectName,
         prt,
+        claimSubmission,
         runtimeVersion,
         services,
         verbose,
@@ -594,6 +597,7 @@ const composeEnvironment = (
             logLevel: verbose ? "debug" : "info",
             memory,
             prt,
+            claimSubmission,
             cartesiEnvironmentVariables: hostVars,
         }),
         proxy({ imageTag: "v3.3.4", port }),

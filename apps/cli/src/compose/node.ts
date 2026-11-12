@@ -28,6 +28,12 @@ export type ServiceOptions = {
     mnemonic?: string;
     imageTag?: string;
     prt?: boolean;
+    /**
+     * whether the node submits claims, the default; with a sling claimer it
+     * runs in reader mode, following the tournaments and recording settled
+     * epochs with no PRT signer
+     */
+    claimSubmission?: boolean;
     cartesiEnvironmentVariables?: CartesiEnvironmentVariables;
 };
 
@@ -107,6 +113,14 @@ export const getNodeAllowedVariables = (
 };
 
 /**
+ * The allowed variables of the node's PRT signer, which a reader-mode node
+ * has no use for.
+ */
+export const nodePrtAuthVariables = nodeAllowedEnvironmentVariables.filter(
+    (name) => name.startsWith("CARTESI_PRT_AUTH_"),
+);
+
+/**
  * The allowed variables that name a file the node reads its keys from.
  * Forwarding only the path would leave the node without the file, so each
  * one is copied into the container instead.
@@ -114,6 +128,9 @@ export const getNodeAllowedVariables = (
 export const nodeSecretFileVariables = nodeAllowedEnvironmentVariables.filter(
     (name) => name.endsWith("_FILE"),
 );
+
+const isPrtAuthVariable = (name: string) =>
+    (nodePrtAuthVariables as readonly string[]).includes(name);
 
 /** Service that copies the key files for the node, and its volume. */
 const SECRET_INIT_SERVICE = "node-secret-init";
@@ -124,10 +141,14 @@ const SECRETS_VOLUME = "node_secrets";
  * that points the node at its copy.
  */
 const nodeFileSecrets = (
-    cartesiVars?: CartesiEnvironmentVariables,
+    cartesiVars: CartesiEnvironmentVariables | undefined,
+    claimSubmission: boolean,
 ): (FileSecret & { variable: string })[] => {
     const allowedVars = getNodeAllowedVariables(cartesiVars);
     return nodeSecretFileVariables.flatMap((variable) => {
+        if (!claimSubmission && isPrtAuthVariable(variable)) {
+            return [];
+        }
         const hostPath = allowedVars[variable];
         return hostPath === undefined
             ? []
@@ -148,6 +169,7 @@ const service = (
     const logLevel = options.logLevel ?? "info";
     const mnemonic = options.mnemonic ?? DEVNET_MNEMONIC;
     const prt = options.prt ?? false;
+    const claimSubmission = options.claimSubmission ?? true;
     const chainId = (options.forkChainId ??
         31337) as keyof typeof daveAppFactoryAddress;
 
@@ -179,8 +201,11 @@ const service = (
         CARTESI_LOG_LEVEL: logLevel,
         // The node always starts its PRT service, and with claim submission
         // enabled by default that service needs its own signer. PRT has no
-        // default mnemonic, so the devnet one is supplied explicitly.
-        CARTESI_PRT_AUTH_MNEMONIC: mnemonic,
+        // default mnemonic, so the devnet one is supplied explicitly. With a
+        // sling claimer the node reads instead, and needs no PRT signer.
+        ...(claimSubmission
+            ? { CARTESI_PRT_AUTH_MNEMONIC: mnemonic }
+            : { CARTESI_FEATURE_CLAIM_SUBMISSION_ENABLED: "false" }),
         CARTESI_SNAPSHOTS_DIR: "/var/lib/cartesi-rollups-node/snapshots",
     };
 
@@ -189,7 +214,10 @@ const service = (
     const hostVars = Object.fromEntries(
         Object.entries(
             getNodeAllowedVariables(options.cartesiEnvironmentVariables),
-        ).map(([name, value]) => [name, escapeComposeValue(value)]),
+        )
+            // a reader-mode node has no PRT signer, so the host's is dropped
+            .filter(([name]) => claimSubmission || !isPrtAuthVariable(name))
+            .map(([name, value]) => [name, escapeComposeValue(value)]),
     );
 
     // the key files reach the node as secrets, at a path inside the container
@@ -292,7 +320,10 @@ http:
 };
 
 export default (options: ServiceOptions): ComposeFile => {
-    const fileSecrets = nodeFileSecrets(options.cartesiEnvironmentVariables);
+    const fileSecrets = nodeFileSecrets(
+        options.cartesiEnvironmentVariables,
+        options.claimSubmission ?? true,
+    );
 
     return {
         services: {
