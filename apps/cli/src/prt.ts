@@ -349,18 +349,23 @@ export const checkPrtNodes = async (
 
 /**
  * One line per entry: its role, a sentry's ID, its label and its full address, so it can be
- * copied into other tools.
+ * copied into other tools. The note says what the CLI does with the entry, then where its
+ * account comes from.
  */
 export const describePrtNode = (node: ResolvedPrtNode): string => {
     const { source } = node;
-    const origin =
+    const account =
         source.kind === "pool"
             ? `devnet account ${source.index}, funded by the CLI`
             : source.kind === "devnet"
               ? `devnet account ${source.index}`
               : source.kind === "key-file"
                 ? `key in ${source.path}`
-                : "appointed only";
+                : undefined;
+    const origin =
+        node.type === undefined
+            ? ["appointed only", ...(account ? [account] : [])].join(", ")
+            : (account ?? "");
     const id = node.sentryId === undefined ? "" : `${node.sentryId} `;
     return `${node.role} ${id}${chalk.cyan(node.label)} ${node.address} ${chalk.dim(`(${origin})`)}`;
 };

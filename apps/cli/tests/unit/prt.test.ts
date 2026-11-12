@@ -587,4 +587,12 @@ describe("describePrtNode", () => {
             `sentry 2 theirs ${external} (appointed only)`,
         );
     });
+
+    // what the CLI does comes first: a devnet address alone would read as
+    // an entry the CLI runs
+    it("should tell an appointed-only sentry on a devnet account", () => {
+        expect(describe_({ theirs: appointed(devnet(3)) })).toBe(
+            `sentry 1 theirs ${devnet(3)} (appointed only, devnet account 3)`,
+        );
+    });
 });
