@@ -303,6 +303,70 @@ describe("Compose node service", () => {
             );
         });
 
+        it("should submit claims by default", () => {
+            const env =
+                buildNodeCompose({ ...baseOptions, prt: true }).services
+                    ?.rollups_node?.environment ?? {};
+
+            expect(env).not.toHaveProperty(
+                "CARTESI_FEATURE_CLAIM_SUBMISSION_ENABLED",
+            );
+        });
+
+        // with a sling claimer the node follows the tournaments and records
+        // settled epochs, and needs no PRT signer
+        it("should run in reader mode without a PRT signer when a sling node claims", () => {
+            const env =
+                buildNodeCompose({
+                    ...baseOptions,
+                    prt: true,
+                    claimSubmission: false,
+                }).services?.rollups_node?.environment ?? {};
+
+            expect(env).toHaveProperty(
+                "CARTESI_FEATURE_CLAIM_SUBMISSION_ENABLED",
+                "false",
+            );
+            expect(env).not.toHaveProperty("CARTESI_PRT_AUTH_MNEMONIC");
+            // the deploy still signs with the claimer auth
+            expect(env).toHaveProperty(
+                "CARTESI_AUTH_MNEMONIC",
+                "test test test test test test test test test test test junk",
+            );
+        });
+
+        it("should drop the host's PRT auth variables in reader mode", () => {
+            const compose = buildNodeCompose({
+                ...baseOptions,
+                prt: true,
+                claimSubmission: false,
+                cartesiEnvironmentVariables: {
+                    CARTESI_AUTH_KIND: "private_key_file",
+                    CARTESI_AUTH_PRIVATE_KEY_FILE: "secrets/claimer.key",
+                    CARTESI_PRT_AUTH_KIND: "private_key",
+                    CARTESI_PRT_AUTH_PRIVATE_KEY: "0xprt",
+                    CARTESI_PRT_AUTH_MNEMONIC_FILE: "/keys/prt",
+                },
+            });
+            const env = compose.services?.rollups_node?.environment ?? {};
+
+            expect(env).toHaveProperty("CARTESI_AUTH_KIND", "private_key_file");
+            expect(env).toHaveProperty(
+                "CARTESI_AUTH_PRIVATE_KEY_FILE",
+                "/run/secrets/cartesi_auth_private_key_file",
+            );
+            expect(env).not.toHaveProperty("CARTESI_PRT_AUTH_KIND");
+            expect(env).not.toHaveProperty("CARTESI_PRT_AUTH_PRIVATE_KEY");
+            expect(env).not.toHaveProperty("CARTESI_PRT_AUTH_MNEMONIC_FILE");
+            // only the claimer's key file is copied
+            expect(compose.services?.["node-secret-init"]?.command).toEqual([
+                [
+                    "find /dst -mindepth 1 -delete",
+                    "install -o cartesi -g cartesi -m 0400 /src/cartesi_auth_private_key_file /dst/cartesi_auth_private_key_file",
+                ].join("\n"),
+            ]);
+        });
+
         it("should pass cartesiEnvironmentVariables that are in the allow-list to the service", () => {
             const compose = buildNodeCompose({
                 ...baseOptions,

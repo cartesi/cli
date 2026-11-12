@@ -9,6 +9,7 @@ import buildPrtNodes, {
     prtNodeServiceName,
 } from "../../../src/compose/prt-node";
 import { resolvePrtNodes } from "../../../src/prt";
+import type { ComposeFile } from "../../../src/types/compose";
 import { getDevnetAccount } from "../../../src/wallet";
 
 /**
@@ -158,5 +159,40 @@ describe("Compose PRT node services", () => {
             false,
         );
         expect(isPrtNodeService("rollups_node")).toBe(false);
+    });
+
+    // the sling node takes no role flag: the same binary claims, or holds a
+    // sentry slot, depending only on its signer
+    it("should run the claimer as it runs a sentry, told apart by its signer", () => {
+        const [claimer, sentry] = buildPrtNodes({
+            application,
+            blockTime: 2,
+            imageTag: "devel",
+            nodes: resolvePrtNodes({
+                nodes: {
+                    blue: { type: "sling", role: "claimer" },
+                    green: { type: "sling", role: "sentry" },
+                },
+            }).nodes,
+        });
+        const envOf = (file: ComposeFile, service: string) =>
+            (file.services?.[service]?.environment ?? {}) as Record<
+                string,
+                string
+            >;
+        const { CARTESI_SLING_AUTH_PRIVATE_KEY: _, ...claimerEnv } = envOf(
+            claimer,
+            "prt-node-blue",
+        );
+        const { CARTESI_SLING_AUTH_PRIVATE_KEY: __, ...sentryEnv } = envOf(
+            sentry,
+            "prt-node-green",
+        );
+
+        expect(Object.keys(claimer.services ?? {})).toEqual(["prt-node-blue"]);
+        expect(claimerEnv).toEqual(sentryEnv);
+        expect(claimer.services?.["prt-node-blue"]?.environment).toMatchObject({
+            CARTESI_SLING_AUTH_PRIVATE_KEY: getDevnetAccount(20).privateKey,
+        });
     });
 });
