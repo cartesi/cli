@@ -110,11 +110,13 @@ describe("run", () => {
 [prt]
 sentry_manager = "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc"
 
-[[prt.sentries]]
+[prt.nodes.first]
 type = "sling"
+role = "sentry"
 
-[[prt.sentries]]
+[prt.nodes.second]
 type = "sling"
+role = "sentry"
 `;
         const config = (prt: string) => {
             const file = path.join(dir, "prt.toml");
@@ -127,17 +129,19 @@ type = "sling"
             const { all, exitCode } = await dryRun([
                 "--prt",
                 ...config(`${sentries}
-[[prt.sentries]]
+[prt.nodes.third]
+role = "sentry"
 address = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
 
-[[prt.sentries]]
+[prt.nodes.fourth]
+role = "sentry"
 address = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8"
 `),
             ]);
 
             expect(exitCode).not.toBe(0);
-            expect(all).toContain("prt.sentries[4]");
-            expect(all).toContain("is also the address of prt.sentries[3]");
+            expect(all).toContain("[prt.nodes.fourth]");
+            expect(all).toContain("is also the address of [prt.nodes.third]");
             expect(all).not.toContain("services:");
         });
 
@@ -172,8 +176,9 @@ address = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8"
             const { all, exitCode } = await dryRun([
                 "--prt",
                 ...config(`
-[[prt.sentries]]
+[prt.nodes.mine]
 type = "sling"
+role = "sentry"
 address = "${named.address}"
 private_key_file = "${keyFile}"
 `),

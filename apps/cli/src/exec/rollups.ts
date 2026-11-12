@@ -30,10 +30,10 @@ import node from "../compose/node.js";
 import passkey from "../compose/passkey.js";
 import paymaster from "../compose/paymaster.js";
 import proxy from "../compose/proxy.js";
-import sentries, {
-    type SentryServiceOptions,
-    sentryServiceName,
-} from "../compose/sentry.js";
+import prtNodes, {
+    type PrtNodeServiceOptions,
+    prtNodeServiceName,
+} from "../compose/prt-node.js";
 import type { WithdrawalConfig } from "../config.js";
 import type { ForkConfig } from "../types/chain.js";
 import type { ComposeFile } from "../types/compose.js";
@@ -542,7 +542,7 @@ export type EnvironmentOptions = {
 
 /**
  * Composes the environment: the compose file of the project and the variables
- * it is rendered with. The sentries, composed only after the deploy, are added
+ * it is rendered with. The PRT nodes, composed only after the deploy, are added
  * to the same file so compose sees one project.
  */
 const composeEnvironment = (
@@ -668,24 +668,24 @@ export const startEnvironment = async (
 };
 
 /**
- * Starts the sentries the CLI runs for a deployed application, in the running
- * environment. The file sent is the environment's plus the sentry services, so
- * compose treats them as one project and recreates only the sentries, whose
+ * Starts the PRT nodes the CLI runs for a deployed application, in the running
+ * environment. The file sent is the environment's plus the node services, so
+ * compose treats them as one project and recreates only the nodes, whose
  * application changed. Their dependencies are already running, except the init
  * service of a key file, which runs first.
  * @returns the names of the services started
  */
-export const startSentries = async (
-    options: EnvironmentOptions & SentryServiceOptions,
+export const startPrtNodes = async (
+    options: EnvironmentOptions & PrtNodeServiceOptions,
 ): Promise<string[]> => {
-    const names = options.sentries
+    const names = options.nodes
         .filter(({ type }) => type !== undefined)
-        .map(({ label }) => sentryServiceName(label));
+        .map(({ label }) => prtNodeServiceName(label));
     if (names.length === 0) {
         return [];
     }
-    const { env, input } = composeEnvironment(options, sentries(options));
-    // --wait: a sentry that exits at once, e.g. on a bad key, fails here
+    const { env, input } = composeEnvironment(options, prtNodes(options));
+    // --wait: a node that exits at once, e.g. on a bad key, fails here
     await execa(
         "docker",
         [...composeArgs, "up", "--detach", "--wait", ...names],
@@ -695,10 +695,11 @@ export const startSentries = async (
 };
 
 /**
- * Stops and removes the sentry containers, before the application they claim
- * for is undeployed. Their secret volumes stay until the environment stops.
+ * Stops and removes the PRT node containers, before the application they
+ * claim for is undeployed. Their secret volumes stay until the environment
+ * stops.
  */
-export const stopSentries = async (options: {
+export const stopPrtNodes = async (options: {
     projectName: string;
     services: string[];
 }) => {

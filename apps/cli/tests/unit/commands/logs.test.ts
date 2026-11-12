@@ -7,15 +7,15 @@ import {
 
 describe("logs command", () => {
     // as `docker compose ps --services --all` lists an environment with a
-    // pool sentry and a key-file sentry, whose installer has exited
+    // pool node and a key-file node, whose installer has exited
     const services = [
         "anvil",
         "database",
+        "prt-node-first",
+        "prt-node-mine",
         "proxy",
         "rollups_node",
-        "secret-init-sentry-mine",
-        "sentry-1",
-        "sentry-mine",
+        "secret-init-prt-node-mine",
     ];
 
     it("should take the services to show as arguments", () => {
@@ -26,38 +26,38 @@ describe("logs command", () => {
         expect(argument?.required).toBe(false);
     });
 
-    it("should show the node first, then the sentries, by default", () => {
+    it("should show the node first, then the PRT nodes, by default", () => {
         expect(selectLogServices(services, [])).toEqual([
             "rollups_node",
-            "sentry-1",
-            "sentry-mine",
+            "prt-node-first",
+            "prt-node-mine",
         ]);
     });
 
-    it("should show only the node without sentries", () => {
+    it("should show only the node without PRT nodes", () => {
         expect(selectLogServices(["anvil", "rollups_node"], [])).toEqual([
             "rollups_node",
         ]);
     });
 
     it("should fail without the node", () => {
-        expect(() => selectLogServices(["anvil", "sentry-1"], [])).toThrow(
-            "service rollups_node not found",
-        );
+        expect(() =>
+            selectLogServices(["anvil", "prt-node-first"], []),
+        ).toThrow("service rollups_node not found");
     });
 
     it("should show the services named, in that order", () => {
         expect(
-            selectLogServices(services, ["sentry-mine", "rollups_node"]),
-        ).toEqual(["sentry-mine", "rollups_node"]);
+            selectLogServices(services, ["prt-node-mine", "rollups_node"]),
+        ).toEqual(["prt-node-mine", "rollups_node"]);
     });
 
     // compose shows nothing for an unknown service, without an error
     it("should reject a service the environment doesn't have", () => {
         expect(() =>
-            selectLogServices(services, ["sentry-1", "sentry-2"]),
+            selectLogServices(services, ["prt-node-first", "prt-node-second"]),
         ).toThrow(
-            "service sentry-2 not found; the environment has anvil, database, proxy, rollups_node, secret-init-sentry-mine, sentry-1, sentry-mine",
+            "service prt-node-second not found; the environment has anvil, database, prt-node-first, prt-node-mine, proxy, rollups_node, secret-init-prt-node-mine",
         );
     });
 
@@ -66,7 +66,7 @@ describe("logs command", () => {
             buildLogsArgs({
                 follow: true,
                 projectName: "app",
-                services: ["rollups_node", "sentry-1"],
+                services: ["rollups_node", "prt-node-first"],
                 since: "42m",
                 tail: "all",
                 until: "1m",
@@ -84,7 +84,7 @@ describe("logs command", () => {
             "--until",
             "1m",
             "rollups_node",
-            "sentry-1",
+            "prt-node-first",
         ]);
     });
 

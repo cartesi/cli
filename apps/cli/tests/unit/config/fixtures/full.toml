@@ -85,16 +85,18 @@ guardian = "0x1111111111111111111111111111111111111111" # devnet account by defa
 withdrawal_output_builder = "0x2222222222222222222222222222222222222222" # devnet builder by default, required on a fork
 account_size = 64 # bytes per account, a power of two, 32 by default
 
-[prt] # optional, read by `cartesi run --prt`: the sentries of the application's consensus
+[prt] # optional, read by `cartesi run --prt`: the PRT nodes of the application's consensus
 sentry_manager = "0x3333333333333333333333333333333333333333" # may rotate sentries, default is none
 
-[[prt.sentries]] # appointed in this order, with IDs from 1
+[prt.nodes.first] # the label is the key, and names the container prt-node-first
 type = "sling" # the CLI runs a Dave sling node for it; without an address it gets devnet account 20
+role = "sentry" # required: sentries are appointed in file order, with IDs from 1
 
-[[prt.sentries]]
+[prt.nodes.mine]
 type = "sling"
-label = "mine" # names the container sentry-mine, default is the position
+role = "sentry"
 address = "0x4444444444444444444444444444444444444444" # an account of your own
 
-[[prt.sentries]]
+[prt.nodes.theirs]
+role = "sentry"
 address = "0x5555555555555555555555555555555555555555" # no type: appointed only, run elsewhere

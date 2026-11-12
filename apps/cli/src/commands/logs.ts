@@ -1,7 +1,7 @@
 import { Command } from "@commander-js/extra-typings";
 import { execa } from "execa";
 import { getProjectName } from "../base.js";
-import { isSentryService } from "../compose/sentry.js";
+import { isPrtNodeService } from "../compose/prt-node.js";
 
 /** The node's compose service, shown by default and first. */
 export const NODE_SERVICE = "rollups_node";
@@ -27,7 +27,7 @@ export const listServices = async (projectName: string): Promise<string[]> => {
 
 /**
  * The services to show: the ones named, checked against the environment, or
- * the node followed by every sentry.
+ * the node followed by every PRT node.
  * @param services the environment's services, from `listServices`
  * @param requested the services named on the command line
  * @throws when the node isn't there, or a named service isn't
@@ -40,7 +40,7 @@ export const selectLogServices = (
         if (!services.includes(NODE_SERVICE)) {
             throw new Error(`service ${NODE_SERVICE} not found`);
         }
-        return [NODE_SERVICE, ...services.filter(isSentryService)];
+        return [NODE_SERVICE, ...services.filter(isPrtNodeService)];
     }
     // compose shows nothing for an unknown service, without an error
     const unknown = requested.filter((service) => !services.includes(service));
@@ -55,7 +55,7 @@ export const selectLogServices = (
 /**
  * The `docker compose logs` arguments. One service is shown as it is, like
  * `docker container logs`; more than one get compose's per-service prefix,
- * which tells the node's lines from the sentries'.
+ * which tells the node's lines from the PRT nodes'.
  */
 export const buildLogsArgs = (options: {
     follow?: boolean;
@@ -78,11 +78,11 @@ export const buildLogsArgs = (options: {
 export const createLogsCommand = () => {
     return new Command("logs")
         .description(
-            "Show logs of a local environment: the node and its sentries, or the services named.",
+            "Show logs of a local environment: the node and its PRT nodes, or the services named.",
         )
         .argument(
             "[service...]",
-            "services to show, as cartesi run names them (default: the node and the sentries)",
+            "services to show, as cartesi run names them (default: the node and the PRT nodes)",
         )
         .option(
             "--project-name <string>",

@@ -5,22 +5,25 @@
 # optional, may rotate sentries on the consensus. default is none
 # sentry_manager = "0x3333333333333333333333333333333333333333"
 
-# appointed on the consensus in this order, with IDs from 1. an entry with a
-# type is run by the CLI, as container sentry-<label>; one with only an
+# one table per PRT node, keyed by its label, which names the container
+# prt-node-<label>. sentries are appointed on the consensus in file order,
+# with IDs from 1. an entry with a type is run by the CLI; one with only an
 # address is appointed and run elsewhere
 
-[[prt.sentries]]
-type = "sling" # no address: devnet account 20, the first of the CLI's sentry pool
+[prt.nodes.first]
+type = "sling"
+role = "sentry" # no address: devnet account 20, the first of the CLI's PRT pool
 
-[[prt.sentries]]
-type = "sling" # devnet account 21
-label = "second" # default is the position, 2
+[prt.nodes.second]
+type = "sling"
+role = "sentry" # devnet account 21
 
 # a key of your own: the address is the key's, and you fund it
-# [[prt.sentries]]
+# [prt.nodes.mine]
 # type = "sling"
-# label = "mine"
+# role = "sentry"
 # private_key_file = "secrets/sentry.key"
 
-[[prt.sentries]]
+[prt.nodes.theirs]
+role = "sentry"
 address = "0x5555555555555555555555555555555555555555" # appointed only
