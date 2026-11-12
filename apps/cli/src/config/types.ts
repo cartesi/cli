@@ -125,28 +125,24 @@ export type WithdrawalOptions = {
 };
 
 /**
- * The node the CLI runs for a [prt.nodes.<label>] entry. Only the Dave sling node exists
- * today; a type is added once a released node can take a PRT role.
+ * The node of a [prt.nodes.<label>] entry: the rollups-node itself (`reference`, the one
+ * entry that is implied when omitted), or a Dave sling node the CLI runs. A type is added
+ * once a released node can take part.
  */
-export type PrtNodeType = "sling";
+export type PrtNodeType = "reference" | "sling";
 
 /**
- * What a [prt.nodes.<label>] entry does. A claimer is the PRT participant: it joins
- * tournaments, stages and accepts results and recovers bonds, and the rollups-node then runs
- * in reader mode. A sentry holds a slot on the application's DaveConsensus and submits a
- * sentry claim per epoch.
- */
-export type PrtNodeRole = "claimer" | "sentry";
-
-/**
- * One [prt.nodes.<label>] entry. The label is the key and names the container. With a `type`
- * the CLI runs a node for it; without one it is appointed only.
+ * One [prt.nodes.<label>] entry: a PRT validator, which joins tournaments, stages and accepts
+ * results. `sentry` is the optional extra: the address holds a slot on the application's
+ * DaveConsensus and submits a sentry claim per epoch. The label is the key and names the
+ * container of a node the CLI runs. Without a `type` the entry is appointed only.
  */
 export type PrtNode = {
     type?: PrtNodeType;
-    role: PrtNodeRole; // required: the roles differ in funding, reserved accounts and the node's mode
+    sentry: boolean; // default false
+    claim?: boolean; // the reference node only: false runs it in reader mode, default true
     address?: Address; // required without a type; with one, the PRT pool by default
-    privateKeyFile?: string; // the entry's own key, for a type the CLI runs; sets the address
+    privateKeyFile?: string; // the entry's own key, for a sling node; sets the address
 };
 
 /**

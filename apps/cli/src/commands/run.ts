@@ -50,9 +50,9 @@ import {
 import { keySelect } from "../prompts.js";
 import {
     checkPrtNodes,
-    claimerMoved,
-    claimerOf,
     describePrtNode,
+    describeReference,
+    readerModeChanged,
     type ResolvedPrt,
     resolvePrtNodes,
     runnableNodes,
@@ -220,10 +220,13 @@ const shell = async (options: {
                         // resolved before undeploying in case it is now invalid
                         const withdrawalConfig = resolveWithdrawalConfig();
                         // a PRT redeploy creates a new consensus, with the
-                        // sentries as they are in the config now. The claimer
-                        // can't move: the node's mode is fixed in its database
+                        // sentries as they are in the config now. The node's
+                        // mode can't change: it is fixed in its database
                         const resolved = resolvePrt();
-                        const moved = claimerMoved(options.prtConfig, resolved);
+                        const moved = readerModeChanged(
+                            options.prtConfig,
+                            resolved,
+                        );
                         if (moved !== undefined) {
                             console.warn(chalk.yellow(`WARNING: ${moved}`));
                         }
@@ -330,9 +333,8 @@ const fundPrtNodes = async (options: {
 
 /**
  * Starts the PRT nodes the CLI runs, for the deployed application, then prints
- * the manager and every [prt.nodes] entry, the claimer first and the rest in
- * file order: a check for each one running, a note for each one appointed
- * only.
+ * the rollups-node's line, the manager and every [prt.nodes] entry in file
+ * order: a check for each one running, a note for each one appointed only.
  * @returns the services started
  */
 const runPrtNodes = async (options: {
@@ -341,7 +343,11 @@ const runPrtNodes = async (options: {
     prtConfig?: ResolvedPrt;
 }): Promise<string[]> => {
     const { application, environment, prtConfig } = options;
-    if (!prtConfig || prtConfig.nodes.length === 0) {
+    if (
+        !prtConfig ||
+        (prtConfig.nodes.length === 0 &&
+            prtConfig.reference.label === undefined)
+    ) {
         return [];
     }
 
@@ -369,17 +375,17 @@ const runPrtNodes = async (options: {
     // log-symbols' blue info mark is hard to read on a dark terminal
     const note = (text: string) =>
         progress.stopAndPersist({ symbol: chalk.cyan("ℹ"), text });
+    if (prtConfig.reference.claim) {
+        note(describeReference(prtConfig));
+    } else {
+        progress.warn(describeReference(prtConfig));
+    }
     if (prtConfig.sentryManager === undefined) {
         progress.warn("sentry manager none (the sentries can't be rotated)");
     } else {
         note(`sentry manager ${prtConfig.sentryManager}`);
     }
-    const claimer = claimerOf(prtConfig);
-    const listed = [
-        ...(claimer ? [claimer] : []),
-        ...prtConfig.nodes.filter((node) => node !== claimer),
-    ];
-    for (const node of listed) {
+    for (const node of prtConfig.nodes) {
         if (node.type === undefined) {
             note(describePrtNode(node));
         } else {
@@ -625,9 +631,9 @@ export const createRunCommand = () => {
             const prtConfig = resolvePrt();
             reportPrtWarnings(prtConfig, claimStagingPeriod);
 
-            // with a sling claimer the node reads, and has no PRT signer
-            const claimer = prtConfig && claimerOf(prtConfig);
-            if (claimer) {
+            // in reader mode the node has no PRT signer
+            const claimSubmission = prtConfig?.reference.claim ?? true;
+            if (!claimSubmission) {
                 const hostVars = getCartesiEnvironmentVariables();
                 const prtAuth = nodePrtAuthVariables.filter(
                     (name) => hostVars[name] !== undefined,
@@ -635,7 +641,7 @@ export const createRunCommand = () => {
                 if (prtAuth.length > 0) {
                     console.warn(
                         chalk.yellow(
-                            `WARNING: ${prtAuth.join(", ")} ${prtAuth.length === 1 ? "is" : "are"} set, but [prt.nodes.${claimer.label}] claims, so the rollups-node runs in reader mode with no PRT signer and the value is dropped`,
+                            `WARNING: ${prtAuth.join(", ")} ${prtAuth.length === 1 ? "is" : "are"} set, but [prt.nodes.${prtConfig?.reference.label}] has claim = false, so the rollups-node runs in reader mode with no PRT signer and the value is dropped`,
                         ),
                     );
                 }
@@ -684,7 +690,7 @@ export const createRunCommand = () => {
                 port,
                 projectName,
                 prt,
-                claimSubmission: claimer === undefined,
+                claimSubmission,
                 runtimeVersion,
                 services,
                 verbose,

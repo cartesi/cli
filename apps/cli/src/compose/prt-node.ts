@@ -49,7 +49,7 @@ const TEMPLATE_DIR = "/var/lib/cartesi-rollups-node/template";
 const privateKeyOf = (node: ResolvedPrtNode): string => {
     if (node.privateKey === undefined) {
         throw new Error(
-            `${node.role} ${node.label} ${node.address} has no key to run with`,
+            `${node.sentry ? "sentry" : "validator"} ${node.label} ${node.address} has no key to run with`,
         );
     }
     return node.privateKey;

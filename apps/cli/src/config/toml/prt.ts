@@ -5,27 +5,25 @@ import {
     InvalidPrtConfigError,
     InvalidTableError,
 } from "../errors.js";
-import type {
-    PrtNode,
-    PrtNodeRole,
-    PrtNodeType,
-    PrtOptions,
-} from "../types.js";
+import type { PrtNode, PrtNodeType, PrtOptions } from "../types.js";
 import { assertKnownKeys, isTomlTable } from "./tables.js";
-import { parseRequiredAddress, parseRequiredString } from "./values.js";
+import {
+    parseBoolean,
+    parseRequiredAddress,
+    parseRequiredString,
+} from "./values.js";
 
 export const PRT_KEYS: readonly string[] = ["nodes", "sentry_manager"];
 
 export const PRT_NODE_KEYS: readonly string[] = [
     "address",
+    "claim",
     "private_key_file",
-    "role",
+    "sentry",
     "type",
 ];
 
-export const PRT_NODE_TYPES: readonly PrtNodeType[] = ["sling"];
-
-export const PRT_NODE_ROLES: readonly PrtNodeRole[] = ["claimer", "sentry"];
+export const PRT_NODE_TYPES: readonly PrtNodeType[] = ["reference", "sling"];
 
 /**
  * A label is the key of an entry and names its container, so it keeps to what a service name
@@ -65,19 +63,11 @@ const parseNode = (label: string, value: TomlValue): PrtNode => {
     }
     assertKnownKeys(value, PRT_NODE_KEYS, `in ${where}`);
 
-    // the roles differ in funding, reserved accounts and the node's mode, so
-    // every entry says which one it is
-    if (value.role === undefined) {
-        throw new InvalidPrtConfigError(
-            `role is required, one of: ${PRT_NODE_ROLES.join(", ")}`,
-            where,
-        );
-    }
-    const role = parseChoice(value.role, "role", PRT_NODE_ROLES, where);
     const type =
         value.type === undefined
             ? undefined
             : parseChoice(value.type, "type", PRT_NODE_TYPES, where);
+    const sentry = parseBoolean(value.sentry, false);
     const address =
         value.address === undefined
             ? undefined
@@ -93,24 +83,51 @@ const parseNode = (label: string, value: TomlValue): PrtNode => {
             ? undefined
             : parseRequiredString(value.private_key_file, "private_key_file");
 
-    // the CLI runs the claimer, and the rollups-node only reads
-    if (role === "claimer" && type === undefined) {
+    // the rollups-node's own entry: the CLI runs it on the devnet accounts, and it never
+    // claims as a sentry, so the only setting is whether it submits claims at all
+    if (type === "reference") {
+        if (sentry) {
+            throw new InvalidPrtConfigError(
+                "the reference node can't be a sentry yet",
+                where,
+            );
+        }
+        if (address !== undefined || privateKeyFile !== undefined) {
+            throw new InvalidPrtConfigError(
+                "the reference node takes no address or private_key_file: the CLI runs it on the devnet accounts",
+                where,
+            );
+        }
+        return { type, sentry, claim: parseBoolean(value.claim, true) };
+    }
+    if (value.claim !== undefined) {
         throw new InvalidPrtConfigError(
-            "a claimer needs a type: the CLI runs it, and the rollups-node would read with no claimer",
+            type === "sling"
+                ? "claim isn't supported on a sling node yet: it always claims"
+                : 'claim needs type = "reference": only the rollups-node can read instead of claiming',
             where,
         );
     }
-    if (type === undefined && address === undefined) {
-        throw new InvalidPrtConfigError(
-            "set a type for the CLI to run the sentry, or an address to appoint one run elsewhere",
-            where,
-        );
-    }
-    if (privateKeyFile !== undefined && type === undefined) {
-        throw new InvalidPrtConfigError(
-            "private_key_file needs a type: the CLI only reads the key of a node it runs",
-            where,
-        );
+    if (type === undefined) {
+        if (address === undefined) {
+            throw new InvalidPrtConfigError(
+                "set a type for the CLI to run the node, or an address to appoint one run elsewhere",
+                where,
+            );
+        }
+        if (privateKeyFile !== undefined) {
+            throw new InvalidPrtConfigError(
+                "private_key_file needs a type: the CLI only reads the key of a node it runs",
+                where,
+            );
+        }
+        // without a type the CLI runs nothing, so appointing is all the entry can do
+        if (!sentry) {
+            throw new InvalidPrtConfigError(
+                "an entry without a type is appointed only, so it needs sentry = true",
+                where,
+            );
+        }
     }
     if (privateKeyFile === "") {
         throw new InvalidPrtConfigError(
@@ -120,8 +137,8 @@ const parseNode = (label: string, value: TomlValue): PrtNode => {
     }
 
     return {
-        role,
         ...(type !== undefined && { type }),
+        sentry,
         ...(address !== undefined && { address }),
         ...(privateKeyFile !== undefined && { privateKeyFile }),
     };
@@ -130,7 +147,7 @@ const parseNode = (label: string, value: TomlValue): PrtNode => {
 /**
  * Parses the [prt.nodes.<label>] entries, in file order. The label is the key, so it is unique
  * by construction. Addresses are checked against each other since the node rejects a
- * duplicate, and one participant claims.
+ * duplicate, and the rollups-node is one entry.
  */
 const parseNodes = (value: TomlValue): Record<string, PrtNode> => {
     if (value === undefined) {
@@ -142,12 +159,12 @@ const parseNodes = (value: TomlValue): Record<string, PrtNode> => {
     const nodes: Record<string, PrtNode> = {};
     for (const [label, entry] of Object.entries(value)) {
         const node = parseNode(label, entry);
-        const claimer = Object.entries(nodes).find(
-            ([, other]) => other.role === "claimer",
+        const reference = Object.entries(nodes).find(
+            ([, other]) => other.type === "reference",
         );
-        if (node.role === "claimer" && claimer !== undefined) {
+        if (node.type === "reference" && reference !== undefined) {
             throw new InvalidPrtConfigError(
-                `only one entry claims, and ${prtNodeTable(claimer[0])} already does`,
+                `only one entry is the reference node, and ${prtNodeTable(reference[0])} already is`,
                 prtNodeTable(label),
             );
         }

@@ -7,13 +7,13 @@ import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { InvalidPrtConfigError, type PrtNode } from "../../src/config";
 import {
     checkPrtNodes,
-    claimerMoved,
-    claimerOf,
     describePrtNode,
+    describeReference,
     PRT_FUNDING,
     PRT_POOL_SIZE,
     PRT_POOL_START,
     type PrtClient,
+    readerModeChanged,
     readKeyFile,
     resolvePrtNodes,
     sentriesOf,
@@ -23,16 +23,23 @@ import { DEVNET_GUARDIAN } from "../../src/withdrawal";
 
 const devnet = (index: number) => getDevnetAccount(index).address;
 const external: Address = "0x4444444444444444444444444444444444444444";
+// a sling node that holds a sentry slot
 const sling = (node: Partial<PrtNode> = {}): PrtNode => ({
     type: "sling",
-    role: "sentry",
+    sentry: true,
     ...node,
 });
-const appointed = (address: Address): PrtNode => ({ role: "sentry", address });
-const claimer = (node: Partial<PrtNode> = {}): PrtNode => ({
+// a sling node with no slot
+const validator = (node: Partial<PrtNode> = {}): PrtNode => ({
     type: "sling",
-    role: "claimer",
+    sentry: false,
     ...node,
+});
+const appointed = (address: Address): PrtNode => ({ sentry: true, address });
+const reference = (claim: boolean): PrtNode => ({
+    type: "reference",
+    sentry: false,
+    claim,
 });
 const resolve = (
     nodes: Record<string, PrtNode>,
@@ -169,19 +176,23 @@ describe("resolvePrtNodes", () => {
             ["theirs", 2],
             ["last", 3],
         ]);
-        expect(sentriesOf({ nodes, warnings: [] })).toEqual(nodes);
+        expect(
+            sentriesOf({ reference: { claim: true }, nodes, warnings: [] }),
+        ).toEqual(nodes);
     });
 
-    it("should carry the type, the role and the manager", () => {
+    it("should carry the type, the sentry flag and the manager", () => {
         const resolved = resolvePrtNodes({
             sentryManager: devnet(5),
             nodes: { a: sling(), b: appointed(external) },
         });
 
         expect(resolved.sentryManager).toBe(devnet(5));
-        expect(resolved.nodes.map(({ role, type }) => [role, type])).toEqual([
-            ["sentry", "sling"],
-            ["sentry", undefined],
+        expect(
+            resolved.nodes.map(({ sentry, type }) => [sentry, type]),
+        ).toEqual([
+            [true, "sling"],
+            [true, undefined],
         ]);
         expect(resolved.warnings).toEqual([]);
     });
@@ -208,7 +219,7 @@ describe("resolvePrtNodes", () => {
                 label: "mine",
                 address: ownAddress,
                 type: "sling",
-                role: "sentry",
+                sentry: true,
                 sentryId: 1,
                 source: { kind: "key-file", path: file },
             });
@@ -339,11 +350,27 @@ describe("resolvePrtNodes", () => {
     });
 });
 
-// a sling node that claims, with the rollups-node reading
-describe("with a claimer", () => {
-    it("should draw the claimer from the pool like any entry, in file order", () => {
-        const resolved = resolve({ a: sling(), blue: claimer(), b: sling() });
+// the rollups-node's own entry: implied when omitted, and the one place that says whether
+// the node claims
+describe("with a reference entry", () => {
+    it("should imply a claiming reference node when the config has none", () => {
+        const resolved = resolve({ a: sling() });
 
+        expect(resolved.reference).toEqual({ claim: true });
+        expect(resolved.nodes.map(({ label }) => label)).toEqual(["a"]);
+    });
+
+    it("should keep the reference entry out of the nodes and the pool", () => {
+        const resolved = resolve({
+            reference: reference(false),
+            a: sling(),
+            blue: validator(),
+        });
+
+        expect(resolved.reference).toEqual({
+            label: "reference",
+            claim: false,
+        });
         expect(
             resolved.nodes.map(({ label, address, sentryId }) => [
                 label,
@@ -353,36 +380,31 @@ describe("with a claimer", () => {
         ).toEqual([
             ["a", devnet(20), 1],
             ["blue", devnet(21), undefined],
-            ["b", devnet(22), 2],
         ]);
-        expect(claimerOf(resolved)?.label).toBe("blue");
+    });
+
+    // every sling node claims; the flag only appoints
+    it("should number sentries only, and leave validators out of the deploy", () => {
+        const resolved = resolve({ blue: validator(), a: sling(), b: sling() });
+
+        expect(resolved.nodes.map(({ sentryId }) => sentryId)).toEqual([
+            undefined,
+            1,
+            2,
+        ]);
         expect(sentriesOf(resolved).map(({ label }) => label)).toEqual([
             "a",
             "b",
         ]);
     });
 
-    it("should have no claimer when the rollups-node claims", () => {
-        expect(claimerOf(resolve({ a: sling() }))).toBeUndefined();
-    });
-
-    it("should take the claimer's key from a file", () => {
-        const file = keyFile(ownKey);
-        const { nodes } = resolve({ blue: claimer({ privateKeyFile: file }) });
-
-        expect(nodes[0]).toEqual({
-            label: "blue",
-            address: ownAddress,
-            type: "sling",
-            role: "claimer",
-            source: { kind: "key-file", path: file },
-        });
-    });
-
     // the node has a PRT signer only when it claims
-    it("should free devnet account 6 when a sling node claims", () => {
+    it("should free devnet account 6 when the reference node reads", () => {
         expect(
-            resolve({ blue: claimer({ address: devnet(6) }) }).warnings,
+            resolve({
+                reference: reference(false),
+                blue: validator({ address: devnet(6) }),
+            }).warnings,
         ).toEqual([]);
         expect(() =>
             resolve({ a: sling({ address: devnet(6) }) }),
@@ -393,13 +415,16 @@ describe("with a claimer", () => {
 
     it("should still reserve devnet account 0 for the node", () => {
         expect(() =>
-            resolve({ blue: claimer({ address: devnet(0) }) }),
+            resolve({
+                reference: reference(false),
+                blue: validator({ address: devnet(0) }),
+            }),
         ).toThrowError(
             "devnet account 0 signs the node's claims, so it can't also run [prt.nodes.blue]",
         );
     });
 
-    it("should fund the claimer with the pool", async () => {
+    it("should fund a validator with the pool", async () => {
         const calls: { address: Address; value: bigint }[] = [];
         const client: PrtClient = {
             getBalance: async () => 1n,
@@ -408,50 +433,95 @@ describe("with a claimer", () => {
             },
         };
 
-        await checkPrtNodes(client, resolve({ blue: claimer() }));
+        await checkPrtNodes(client, resolve({ blue: validator() }));
 
         expect(calls).toEqual([{ address: devnet(20), value: PRT_FUNDING }]);
     });
 
-    it("should describe the claimer without a sentry ID", () => {
-        expect(describePrtNode(resolve({ blue: claimer() }).nodes[0])).toBe(
-            `claimer blue ${devnet(20)} (devnet account 20, funded by the CLI)`,
+    it("should describe a validator without a sentry ID", () => {
+        expect(describePrtNode(resolve({ blue: validator() }).nodes[0])).toBe(
+            `validator blue ${devnet(20)} (devnet account 20, funded by the CLI)`,
         );
     });
 
-    // the node's mode is saved in its database at the first start
-    describe("claimerMoved", () => {
-        const nodeClaims = resolve({ a: sling() });
-        const blueClaims = resolve({ a: sling(), blue: claimer() });
-        const redClaims = resolve({ a: sling(), red: claimer() });
+    it("should describe the reference node by its claim setting", () => {
+        expect(describeReference(resolve({ a: sling() }))).toBe(
+            "rollups-node claims",
+        );
+        expect(
+            describeReference(resolve({ reference: reference(false) })),
+        ).toBe("rollups-node reads (claim = false, no PRT signer)");
+    });
 
-        it("should accept the same placement", () => {
-            expect(claimerMoved(undefined, undefined)).toBeUndefined();
-            expect(claimerMoved(nodeClaims, nodeClaims)).toBeUndefined();
-            expect(claimerMoved(blueClaims, blueClaims)).toBeUndefined();
+    // PRT is permissionless, so a claimer may run outside the CLI
+    it("should warn when nothing the CLI runs claims", () => {
+        expect(
+            resolve({
+                reference: reference(false),
+                theirs: appointed(external),
+            }).warnings,
+        ).toEqual([
+            'nothing the CLI runs claims: [prt.nodes.reference] has claim = false and no entry has type = "sling", so a claimer must run elsewhere',
+        ]);
+        expect(
+            resolve({ reference: reference(false), blue: validator() })
+                .warnings,
+        ).toEqual([]);
+    });
+
+    // a sling sentry votes for its own claim
+    it("should warn when the only sentries are slings and the node reads", () => {
+        const warning =
+            "every sentry is a sling node the CLI runs and the rollups-node reads, so a claim is accepted as soon as its own authors vote for it";
+
+        expect(
+            resolve({ reference: reference(false), a: sling() }).warnings,
+        ).toEqual([warning]);
+        expect(
+            resolve({
+                reference: reference(false),
+                a: sling(),
+                theirs: appointed(external),
+            }).warnings,
+        ).toEqual([]);
+        expect(resolve({ a: sling() }).warnings).toEqual([]);
+    });
+
+    // the node's mode is saved in its database at the first start
+    describe("readerModeChanged", () => {
+        const nodeClaims = resolve({ a: sling() });
+        const nodeReads = resolve({ reference: reference(false), a: sling() });
+
+        it("should accept the same mode, whatever the other entries do", () => {
+            expect(readerModeChanged(undefined, undefined)).toBeUndefined();
+            expect(readerModeChanged(nodeClaims, nodeClaims)).toBeUndefined();
+            expect(readerModeChanged(nodeReads, nodeReads)).toBeUndefined();
             expect(
-                claimerMoved(nodeClaims, resolve({ b: sling() })),
+                readerModeChanged(
+                    nodeClaims,
+                    resolve({ reference: reference(true), b: validator() }),
+                ),
+            ).toBeUndefined();
+            expect(
+                readerModeChanged(
+                    nodeReads,
+                    resolve({ reference: reference(false), red: validator() }),
+                ),
             ).toBeUndefined();
         });
 
-        it("should warn when the claimer moves to an entry", () => {
-            expect(claimerMoved(nodeClaims, blueClaims)).toBe(
-                "the claimer moved to [prt.nodes.blue] in cartesi.toml. Restart cartesi run to apply it. This rebuild keeps the [prt] setup it started with.",
+        it("should warn when the reference node switches to reading", () => {
+            expect(readerModeChanged(nodeClaims, nodeReads)).toBe(
+                "the rollups-node's claim setting changed to claim = false in cartesi.toml. Restart cartesi run to apply it. This rebuild keeps the [prt] setup it started with.",
             );
-            expect(claimerMoved(undefined, blueClaims)).toBe(
-                "the claimer moved to [prt.nodes.blue] in cartesi.toml. Restart cartesi run to apply it. This rebuild keeps the [prt] setup it started with.",
-            );
-        });
-
-        it("should warn when the claimer moves back to the node", () => {
-            expect(claimerMoved(blueClaims, nodeClaims)).toBe(
-                "the claimer moved back to the rollups-node in cartesi.toml. Restart cartesi run to apply it. This rebuild keeps the [prt] setup it started with.",
+            expect(readerModeChanged(undefined, nodeReads)).toBe(
+                "the rollups-node's claim setting changed to claim = false in cartesi.toml. Restart cartesi run to apply it. This rebuild keeps the [prt] setup it started with.",
             );
         });
 
-        it("should warn when the claimer moves between entries", () => {
-            expect(claimerMoved(blueClaims, redClaims)).toBe(
-                "the claimer moved to [prt.nodes.red] in cartesi.toml. Restart cartesi run to apply it. This rebuild keeps the [prt] setup it started with.",
+        it("should warn when the reference node switches back to claiming", () => {
+            expect(readerModeChanged(nodeReads, nodeClaims)).toBe(
+                "the rollups-node's claim setting changed to claim = true in cartesi.toml. Restart cartesi run to apply it. This rebuild keeps the [prt] setup it started with.",
             );
         });
     });

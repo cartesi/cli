@@ -112,11 +112,11 @@ sentry_manager = "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc"
 
 [prt.nodes.first]
 type = "sling"
-role = "sentry"
+sentry = true
 
 [prt.nodes.second]
 type = "sling"
-role = "sentry"
+sentry = true
 `;
         const config = (prt: string) => {
             const file = path.join(dir, "prt.toml");
@@ -130,11 +130,11 @@ role = "sentry"
                 "--prt",
                 ...config(`${sentries}
 [prt.nodes.third]
-role = "sentry"
+sentry = true
 address = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
 
 [prt.nodes.fourth]
-role = "sentry"
+sentry = true
 address = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8"
 `),
             ]);
@@ -178,7 +178,7 @@ address = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8"
                 ...config(`
 [prt.nodes.mine]
 type = "sling"
-role = "sentry"
+sentry = true
 address = "${named.address}"
 private_key_file = "${keyFile}"
 `),
@@ -192,41 +192,72 @@ private_key_file = "${keyFile}"
             expect(all).not.toContain("services:");
         });
 
-        it("should reject a second claimer before rendering", async () => {
+        it("should reject a second reference node before rendering", async () => {
             const { all, exitCode } = await dryRun([
                 "--prt",
                 ...config(`
-[prt.nodes.blue]
-type = "sling"
-role = "claimer"
+[prt.nodes.reference]
+type = "reference"
 
-[prt.nodes.red]
-type = "sling"
-role = "claimer"
+[prt.nodes.node]
+type = "reference"
 `),
             ]);
 
             expect(exitCode).not.toBe(0);
             expect(all).toContain(
-                "Invalid [prt.nodes.red]: only one entry claims, and [prt.nodes.blue] already does",
+                "Invalid [prt.nodes.node]: only one entry is the reference node, and [prt.nodes.reference] already is",
             );
             expect(all).not.toContain("services:");
         });
 
-        // with a sling claimer the node follows the tournaments and records
+        // only the rollups-node can read instead of claiming, for now
+        it("should reject claim on a sling node before rendering", async () => {
+            const { all, exitCode } = await dryRun([
+                "--prt",
+                ...config('[prt.nodes.blue]\ntype = "sling"\nclaim = false\n'),
+            ]);
+
+            expect(exitCode).not.toBe(0);
+            expect(all).toContain(
+                "Invalid [prt.nodes.blue]: claim isn't supported on a sling node yet: it always claims",
+            );
+            expect(all).not.toContain("services:");
+        });
+
+        // an entry the CLI doesn't run is only there to be appointed
+        it("should reject an appointed entry without sentry = true", async () => {
+            const { all, exitCode } = await dryRun([
+                "--prt",
+                ...config(
+                    '[prt.nodes.theirs]\naddress = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"\n',
+                ),
+            ]);
+
+            expect(exitCode).not.toBe(0);
+            expect(all).toContain(
+                "Invalid [prt.nodes.theirs]: an entry without a type is appointed only, so it needs sentry = true",
+            );
+            expect(all).not.toContain("services:");
+        });
+
+        // with claim = false the node follows the tournaments and records
         // settled epochs, and the host's PRT signer has no node to go to
-        it("should render the node in reader mode with a sling claimer", async () => {
+        it("should render the node in reader mode with claim = false", async () => {
             const { all, exitCode } = await dryRun(
                 [
                     "--prt",
                     ...config(`
+[prt.nodes.reference]
+type = "reference"
+claim = false
+
 [prt.nodes.blue]
 type = "sling"
-role = "claimer"
 
 [prt.nodes.green]
 type = "sling"
-role = "sentry"
+sentry = true
 `),
                 ],
                 { CARTESI_PRT_AUTH_MNEMONIC_ACCOUNT_INDEX: "7" },
@@ -239,7 +270,7 @@ role = "sentry"
             // the warning names the variable, the rendered env must not
             expect(all).not.toContain("CARTESI_PRT_AUTH_MNEMONIC:");
             expect(all).toContain(
-                "WARNING: CARTESI_PRT_AUTH_MNEMONIC_ACCOUNT_INDEX is set, but [prt.nodes.blue] claims, so the rollups-node runs in reader mode with no PRT signer and the value is dropped",
+                "WARNING: CARTESI_PRT_AUTH_MNEMONIC_ACCOUNT_INDEX is set, but [prt.nodes.reference] has claim = false, so the rollups-node runs in reader mode with no PRT signer and the value is dropped",
             );
         });
     });

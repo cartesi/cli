@@ -24,8 +24,8 @@ import {
 } from "../devnet";
 
 /**
- * Covers `cartesi run --prt` with a sling claimer from [prt.nodes]: the
- * rollups-node runs in reader mode with no PRT signer, the sling claimer joins
+ * Covers `cartesi run --prt` with the reference entry's `claim = false`: the
+ * rollups-node runs in reader mode with no PRT signer, a sling validator joins
  * the tournament, stages and accepts the result, and the sling sentry's claim
  * lets it do so without waiting out the staging period.
  */
@@ -106,13 +106,16 @@ mount = false
 user = "dapp"
 accounts_drive = true
 
+[prt.nodes.reference]
+type = "reference"
+claim = false
+
 [prt.nodes.blue]
 type = "sling"
-role = "claimer"
 
 [prt.nodes.green]
 type = "sling"
-role = "sentry"
+sentry = true
 `,
         );
 
@@ -186,32 +189,34 @@ role = "sentry"
         TIMEOUT,
     );
 
-    it("should print the claimer first, then the sentry", () => {
+    it("should print the node's mode first, then the validator and the sentry", () => {
         const printed = output();
-        const claimer = printed.indexOf(
-            `claimer blue ${devnetAccount(20)} (devnet account 20, funded by the CLI)`,
+        const node = printed.indexOf(
+            "rollups-node reads (claim = false, no PRT signer)",
+        );
+        const validator = printed.indexOf(
+            `validator blue ${devnetAccount(20)} (devnet account 20, funded by the CLI)`,
         );
         const sentry = printed.indexOf(
             `sentry 1 green ${devnetAccount(21)} (devnet account 21, funded by the CLI)`,
         );
 
-        expect(claimer).toBeGreaterThan(
-            printed.indexOf("contract deployed at"),
-        );
-        expect(sentry).toBeGreaterThan(claimer);
+        expect(node).toBeGreaterThan(printed.indexOf("contract deployed at"));
+        expect(validator).toBeGreaterThan(node);
+        expect(sentry).toBeGreaterThan(validator);
     });
 
     // the sling node reads its role from the consensus: a signer in no slot
     // disputes and settles, a signer in a slot also casts sentry claims
     it(
-        "should log the claimer as no sentry, and the sentry with its slot",
+        "should log the validator as no sentry, and the sentry with its slot",
         async () => {
             await waitFor(async () => {
-                const [claimer, sentry] = await Promise.all(
+                const [validator, sentry] = await Promise.all(
                     services.map(logsOf),
                 );
-                if (!claimer.includes("is not a sentry of consensus")) {
-                    throw new Error("the claimer hasn't logged its role yet");
+                if (!validator.includes("is not a sentry of consensus")) {
+                    throw new Error("the validator hasn't logged its role yet");
                 }
                 if (!sentry.includes("is sentry 1 of consensus")) {
                     throw new Error("the sentry hasn't logged its role yet");
@@ -221,8 +226,8 @@ role = "sentry"
         TIMEOUT,
     );
 
-    // only the sling claimer can stage and accept here, and only the sentry's
-    // claim lets it accept inside the staging period
+    // only the sling nodes can stage and accept here, and only the sentry's
+    // vote lets them accept inside the staging period
     it(
         "should accept a claim inside the staging period, with the node reading",
         async () => {
@@ -251,7 +256,7 @@ role = "sentry"
         TIMEOUT,
     );
 
-    it("should show the node, the claimer and the sentry in cartesi logs", async () => {
+    it("should show the node, the validator and the sentry in cartesi logs", async () => {
         const { all, exitCode } = await runCli({ appDir, projectName }, [
             "logs",
             "--tail",

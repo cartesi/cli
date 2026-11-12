@@ -1,4 +1,4 @@
-# example of an application deployed with PRT sentries by `cartesi run --prt`.
+# example of an application deployed with PRT nodes by `cartesi run --prt`.
 # without --prt the section is ignored.
 
 [prt]
@@ -6,24 +6,30 @@
 # sentry_manager = "0x3333333333333333333333333333333333333333"
 
 # one table per PRT node, keyed by its label, which names the container
-# prt-node-<label>. sentries are appointed on the consensus in file order,
-# with IDs from 1. an entry with a type is run by the CLI; one with only an
-# address is appointed and run elsewhere
+# prt-node-<label>. every entry is a validator; sentry = true also appoints it
+# on the consensus, in file order, with IDs from 1. an entry with a type is run
+# by the CLI; one with only an address is appointed and run elsewhere
+
+# the rollups-node's own entry, implied when omitted. claim = false runs it in
+# reader mode, following the tournaments while the sling nodes claim
+# [prt.nodes.reference]
+# type = "reference"
+# claim = false
 
 [prt.nodes.first]
-type = "sling"
-role = "sentry" # no address: devnet account 20, the first of the CLI's PRT pool
+type = "sling" # no address: devnet account 20, the first of the CLI's PRT pool
+sentry = true
 
 [prt.nodes.second]
-type = "sling"
-role = "sentry" # devnet account 21
+type = "sling" # devnet account 21
+sentry = true
 
 # a key of your own: the address is the key's, and you fund it
 # [prt.nodes.mine]
 # type = "sling"
-# role = "sentry"
+# sentry = true
 # private_key_file = "secrets/sentry.key"
 
 [prt.nodes.theirs]
-role = "sentry"
+sentry = true
 address = "0x5555555555555555555555555555555555555555" # appointed only

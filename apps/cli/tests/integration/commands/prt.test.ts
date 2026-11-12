@@ -125,11 +125,11 @@ sentry_manager = "${sentryManager}"
 
 [prt.nodes.first]
 type = "sling"
-role = "sentry"
+sentry = true
 
 [prt.nodes.second]
 type = "sling"
-role = "sentry"
+sentry = true
 `,
         );
 
