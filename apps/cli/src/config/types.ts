@@ -125,20 +125,26 @@ export type WithdrawalOptions = {
 };
 
 /**
- * The node the CLI runs for a PRT sentry. Only the Dave sling node exists today; a type is
- * added once a released node can run as a sentry.
+ * The node the CLI runs for a [prt.nodes.<label>] entry. Only the Dave sling node exists
+ * today; a type is added once a released node can take a PRT role.
  */
-export type SentryType = "sling";
+export type PrtNodeType = "sling";
 
 /**
- * One [[prt.sentries]] entry: a sentry appointed on the application's DaveConsensus, in entry
- * order. With a `type` the CLI runs a node for it; without one it is appointed only.
+ * What a [prt.nodes.<label>] entry does: a sentry holds a slot on the application's
+ * DaveConsensus and submits a sentry claim per epoch.
  */
-export type PrtSentry = {
-    address?: Address; // required without a type; with one, the CLI's sentry pool by default
-    type?: SentryType;
-    label?: string; // names the container, default is the 1-based position
-    privateKeyFile?: string; // the sentry's own key, for a type the CLI runs; sets the address
+export type PrtNodeRole = "sentry";
+
+/**
+ * One [prt.nodes.<label>] entry. The label is the key and names the container. With a `type`
+ * the CLI runs a node for it; without one it is appointed only.
+ */
+export type PrtNode = {
+    type?: PrtNodeType;
+    role: PrtNodeRole; // required: the roles differ in funding, reserved accounts and the node's mode
+    address?: Address; // required without a type; with one, the PRT pool by default
+    privateKeyFile?: string; // the entry's own key, for a type the CLI runs; sets the address
 };
 
 /**
@@ -147,7 +153,7 @@ export type PrtSentry = {
  */
 export type PrtOptions = {
     sentryManager?: Address; // may rotate sentries, default is none
-    sentries: PrtSentry[];
+    nodes: Record<string, PrtNode>; // in file order, which sets sentry IDs and pool accounts
 };
 
 export type Config = {

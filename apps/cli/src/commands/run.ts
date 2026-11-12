@@ -37,20 +37,21 @@ import {
     getDeployments,
     type RollupsDeployment,
     startEnvironment,
-    startSentries,
+    startPrtNodes,
     stopEnvironment,
-    stopSentries,
+    stopPrtNodes,
     TERMINAL_APPLICATION_STATUSES,
     waitHealthyEnvironment,
 } from "../exec/rollups.js";
 import { keySelect } from "../prompts.js";
 import {
-    checkSentries,
-    describeSentry,
+    checkPrtNodes,
+    describePrtNode,
     type ResolvedPrt,
-    resolveSentries,
-    runnableSentries,
-} from "../sentries.js";
+    resolvePrtNodes,
+    runnableNodes,
+    sentriesOf,
+} from "../prt.js";
 import type { ForkConfig } from "../types/chain.js";
 import { assertForkConfig } from "../validations.js";
 import { connect } from "../wallet.js";
@@ -99,8 +100,8 @@ const shell = async (options: {
     prt?: boolean;
     salt: number;
     sdk: string;
-    /** the sentry services running for the deployment */
-    sentryServices: string[];
+    /** the PRT node services running for the deployment */
+    prtServices: string[];
     resolveWithdrawalConfig: () => WithdrawalConfig | undefined;
     resolvePrt: () => ResolvedPrt | undefined;
     claimStagingPeriod: number;
@@ -120,7 +121,7 @@ const shell = async (options: {
 
     let lastDeployment = options.deployment;
     let salt = options.salt;
-    let sentryServices = options.sentryServices;
+    let prtServices = options.prtServices;
     let lastStatus = lastDeployment?.status;
     let pendingReport: RollupsDeployment | undefined;
 
@@ -193,13 +194,13 @@ const shell = async (options: {
                     break;
                 }
                 case "b": {
-                    // the sentries read the machine the build replaces, and
+                    // the PRT nodes read the machine the build replaces, and
                     // claim for the application the redeploy removes
-                    await stopSentries({
+                    await stopPrtNodes({
                         projectName,
-                        services: sentryServices,
+                        services: prtServices,
                     });
-                    sentryServices = [];
+                    prtServices = [];
 
                     // build
                     await build?.parseAsync([], { from: "user" });
@@ -214,7 +215,7 @@ const shell = async (options: {
                         // sentries as they are in the config now
                         const prtConfig = resolvePrt();
                         reportPrtWarnings(prtConfig, claimStagingPeriod);
-                        await fundSentries({ environment, prtConfig });
+                        await fundPrtNodes({ environment, prtConfig });
                         if (lastDeployment) {
                             await undeploy({ projectName });
                         }
@@ -231,7 +232,7 @@ const shell = async (options: {
                         });
                         lastStatus = lastDeployment?.status;
                         pendingReport = undefined;
-                        sentryServices = await runSentries({
+                        prtServices = await runPrtNodes({
                             application: lastDeployment.address,
                             environment,
                             prtConfig,
@@ -283,7 +284,7 @@ const reportPrtWarnings = (
     }
     if (
         prtConfig &&
-        prtConfig.sentries.length > 0 &&
+        sentriesOf(prtConfig).length > 0 &&
         claimStagingPeriod === 0
     ) {
         console.warn(
@@ -295,56 +296,56 @@ const reportPrtWarnings = (
 };
 
 /**
- * Funds the pool sentries and checks the others have ETH, once anvil is up and
- * before the deploy they claim for.
+ * Funds the pool accounts and checks the other PRT nodes have ETH, once anvil
+ * is up and before the deploy they claim for.
  */
-const fundSentries = async (options: {
+const fundPrtNodes = async (options: {
     environment: EnvironmentOptions;
     prtConfig?: ResolvedPrt;
 }) => {
     const { environment, prtConfig } = options;
-    if (!prtConfig || runnableSentries(prtConfig).length === 0) {
+    if (!prtConfig || runnableNodes(prtConfig).length === 0) {
         return;
     }
     const client = await connect({
         rpcUrl: `${host}:${environment.port}/anvil`,
     });
-    await checkSentries(client, prtConfig);
+    await checkPrtNodes(client, prtConfig);
 };
 
 /**
- * Starts the sentries the CLI runs, for the deployed application, then prints
- * the manager and every sentry the consensus was deployed with, in ID order:
- * a check for each one running, a note for each one appointed only.
- * @returns the sentry services started
+ * Starts the PRT nodes the CLI runs, for the deployed application, then prints
+ * the manager and every [prt.nodes] entry, in file order: a check for each one
+ * running, a note for each one appointed only.
+ * @returns the services started
  */
-const runSentries = async (options: {
+const runPrtNodes = async (options: {
     application: Address;
     environment: EnvironmentOptions;
     prtConfig?: ResolvedPrt;
 }): Promise<string[]> => {
     const { application, environment, prtConfig } = options;
-    if (!prtConfig || prtConfig.sentries.length === 0) {
+    if (!prtConfig || prtConfig.nodes.length === 0) {
         return [];
     }
 
-    const sentries = runnableSentries(prtConfig);
+    const nodes = runnableNodes(prtConfig);
     const progress = ora();
     let services: string[] = [];
-    if (sentries.length > 0) {
+    if (nodes.length > 0) {
         progress.start(
-            `starting ${sentries.length === 1 ? "the sentry" : `${sentries.length} sentries`}...`,
+            `starting ${nodes.length === 1 ? "the PRT node" : `${nodes.length} PRT nodes`}...`,
         );
         try {
-            services = await startSentries({
+            services = await startPrtNodes({
                 ...environment,
                 application,
                 imageTag: environment.runtimeVersion,
-                sentries: prtConfig.sentries,
+                nodes: prtConfig.nodes,
             });
             progress.stop();
         } catch (error: unknown) {
-            progress.fail("the sentries failed to start");
+            progress.fail("the PRT nodes failed to start");
             throw error;
         }
     }
@@ -357,11 +358,11 @@ const runSentries = async (options: {
     } else {
         note(`sentry manager ${prtConfig.sentryManager}`);
     }
-    for (const sentry of prtConfig.sentries) {
-        if (sentry.type === undefined) {
-            note(describeSentry(sentry));
+    for (const node of prtConfig.nodes) {
+        if (node.type === undefined) {
+            note(describePrtNode(node));
         } else {
-            progress.succeed(describeSentry(sentry));
+            progress.succeed(describePrtNode(node));
         }
     }
     return services;
@@ -402,7 +403,8 @@ const deploy = async (options: {
         projectName,
         prt,
         salt,
-        sentries: prtConfig?.sentries.map(({ address }) => address),
+        sentries:
+            prtConfig && sentriesOf(prtConfig).map(({ address }) => address),
         sentryManager: prtConfig?.sentryManager,
         snapshotPath: "/var/lib/cartesi-rollups-node/snapshots/image",
         withdrawalConfig,
@@ -586,7 +588,7 @@ export const createRunCommand = () => {
             const resolvePrt = () => {
                 const config = getApplicationConfig(configFiles);
                 return prt && config.prt
-                    ? resolveSentries(config.prt, {
+                    ? resolvePrtNodes(config.prt, {
                           guardian:
                               config.withdrawal?.guardian ?? DEVNET_GUARDIAN,
                       })
@@ -598,7 +600,7 @@ export const createRunCommand = () => {
                 );
             }
 
-            // fail before starting the environment if the sentries can't be resolved
+            // fail before starting the environment if [prt] can't be resolved
             const prtConfig = resolvePrt();
             reportPrtWarnings(prtConfig, claimStagingPeriod);
 
@@ -680,13 +682,13 @@ export const createRunCommand = () => {
 
             // deploy the application
             let deployment: RollupsDeployment | undefined;
-            let sentryServices: string[] = [];
+            let prtServices: string[] = [];
             let salt = 0;
             const hash = await getMachineHash({
                 sdk: applicationConfig.sdk,
             });
             if (hash) {
-                await fundSentries({ environment, prtConfig });
+                await fundPrtNodes({ environment, prtConfig });
                 deployment = await deploy({
                     epochLength,
                     hash,
@@ -697,7 +699,7 @@ export const createRunCommand = () => {
                     claimStagingPeriod,
                     withdrawalConfig,
                 });
-                sentryServices = await runSentries({
+                prtServices = await runPrtNodes({
                     application: deployment.address,
                     environment,
                     prtConfig,
@@ -744,7 +746,7 @@ export const createRunCommand = () => {
                     prt,
                     salt,
                     sdk: applicationConfig.sdk,
-                    sentryServices,
+                    prtServices,
                     claimStagingPeriod,
                     resolveWithdrawalConfig,
                     resolvePrt,

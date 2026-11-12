@@ -4,25 +4,25 @@ import os from "node:os";
 import path from "node:path";
 import type { Address } from "viem";
 import { generatePrivateKey } from "viem/accounts";
-import buildSentries, {
-    isSentryService,
-    sentryServiceName,
-} from "../../../src/compose/sentry";
-import { resolveSentries } from "../../../src/sentries";
+import buildPrtNodes, {
+    isPrtNodeService,
+    prtNodeServiceName,
+} from "../../../src/compose/prt-node";
+import { resolvePrtNodes } from "../../../src/prt";
 import { getDevnetAccount } from "../../../src/wallet";
 
 /**
- * The compose services of the sentries the CLI runs: a sling node per
+ * The compose services of the PRT nodes the CLI runs: a sling node per
  * `type = "sling"` entry, with its key in the environment for a devnet
  * account, or copied by an init service for a key file.
  */
-describe("Compose sentry services", () => {
+describe("Compose PRT node services", () => {
     const application: Address = "0x1111111111111111111111111111111111111111";
     const ownKey = generatePrivateKey();
     let keyFile: string;
 
     beforeAll(() => {
-        const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sentry-"));
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), "prt-node-"));
         keyFile = path.join(dir, "sentry.key");
         fs.writeFileSync(keyFile, ownKey);
     });
@@ -30,35 +30,42 @@ describe("Compose sentry services", () => {
     afterAll(() => fs.rmSync(path.dirname(keyFile), { recursive: true }));
 
     const compose = (blockTime = 2) =>
-        buildSentries({
+        buildPrtNodes({
             application,
             blockTime,
             imageTag: "devel",
-            sentries: resolveSentries({
-                sentries: [
-                    { type: "sling" },
-                    { type: "sling", label: "mine", privateKeyFile: keyFile },
-                    { address: "0x5555555555555555555555555555555555555555" },
-                ],
-            }).sentries,
+            nodes: resolvePrtNodes({
+                nodes: {
+                    first: { type: "sling", role: "sentry" },
+                    mine: {
+                        type: "sling",
+                        role: "sentry",
+                        privateKeyFile: keyFile,
+                    },
+                    theirs: {
+                        role: "sentry",
+                        address: "0x5555555555555555555555555555555555555555",
+                    },
+                },
+            }).nodes,
         });
 
     it("should name the services after the labels", () => {
-        expect(sentryServiceName("mine")).toBe("sentry-mine");
+        expect(prtNodeServiceName("mine")).toBe("prt-node-mine");
     });
 
-    it("should compose one file per sentry the CLI runs, none for an appointed one", () => {
+    it("should compose one file per node the CLI runs, none for an appointed one", () => {
         const files = compose();
 
         expect(files.map((file) => Object.keys(file.services ?? {}))).toEqual([
-            ["sentry-1"],
-            ["sentry-mine", "secret-init-sentry-mine"],
+            ["prt-node-first"],
+            ["prt-node-mine", "secret-init-prt-node-mine"],
         ]);
     });
 
     it("should run a sling node on the pool account's key, polling every block", () => {
         const [file] = compose(2);
-        const service = file.services?.["sentry-1"];
+        const service = file.services?.["prt-node-first"];
 
         expect(service?.image).toBe("cartesi/rollups-runtime:devel");
         expect(service?.command).toEqual(["cartesi-sling-node", "pk"]);
@@ -85,48 +92,48 @@ describe("Compose sentry services", () => {
     it("should poll at least every second", () => {
         const [file] = compose(0.5);
 
-        expect(file.services?.["sentry-1"]?.environment).toMatchObject({
+        expect(file.services?.["prt-node-first"]?.environment).toMatchObject({
             CARTESI_SLING_POLLING_INTERVAL: "1",
         });
     });
 
-    it("should copy a key file for the sentry and point it at the copy", () => {
+    it("should copy a key file for the node and point it at the copy", () => {
         const [, file] = compose();
-        const service = file.services?.["sentry-mine"];
-        const init = file.services?.["secret-init-sentry-mine"];
+        const service = file.services?.["prt-node-mine"];
+        const init = file.services?.["secret-init-prt-node-mine"];
 
         expect(service?.environment).toMatchObject({
-            CARTESI_SLING_AUTH_PRIVATE_KEY_FILE: "/run/secrets/sentry-mine",
+            CARTESI_SLING_AUTH_PRIVATE_KEY_FILE: "/run/secrets/prt-node-mine",
         });
         expect(service?.environment).not.toHaveProperty(
             "CARTESI_SLING_AUTH_PRIVATE_KEY",
         );
         expect(service?.depends_on).toEqual({
             anvil: { condition: "service_healthy" },
-            "secret-init-sentry-mine": {
+            "secret-init-prt-node-mine": {
                 condition: "service_completed_successfully",
             },
         });
         expect(service?.volumes).toEqual([
             "./.cartesi:/var/lib/cartesi-rollups-node/template:ro",
-            "sentry_mine_secrets:/run/secrets:ro",
+            "prt_node_mine_secrets:/run/secrets:ro",
         ]);
         expect(init?.image).toBe("cartesi/rollups-runtime:devel");
         expect(init?.user).toBe("root");
         expect(init?.command).toEqual([
-            `find /dst -mindepth 1 -delete\ninstall -o cartesi -g cartesi -m 0400 /src/sentry-mine /dst/sentry-mine`,
+            `find /dst -mindepth 1 -delete\ninstall -o cartesi -g cartesi -m 0400 /src/prt-node-mine /dst/prt-node-mine`,
         ]);
         expect(init?.volumes).toEqual([
             {
                 type: "bind",
                 source: keyFile,
-                target: "/src/sentry-mine",
+                target: "/src/prt-node-mine",
                 read_only: true,
                 bind: { create_host_path: false },
             },
-            "sentry_mine_secrets:/dst",
+            "prt_node_mine_secrets:/dst",
         ]);
-        expect(file.volumes).toEqual({ sentry_mine_secrets: {} });
+        expect(file.volumes).toEqual({ prt_node_mine_secrets: {} });
     });
 
     // the key never leaves the file
@@ -136,16 +143,20 @@ describe("Compose sentry services", () => {
         expect(JSON.stringify(file)).not.toContain(ownKey.slice(2));
     });
 
-    // `cartesi logs` tells the sentries from the rest of the environment by
-    // name; a label holding `-` must not make the installer of another sentry
-    it("should tell a sentry's service from its key file installer", () => {
+    // `cartesi logs` tells the PRT nodes from the rest of the environment by
+    // name; a label holding `-` must not make the installer of another node
+    it("should tell a node's service from its key file installer", () => {
         const [, file] = compose();
 
         expect(
-            Object.keys(file.services ?? {}).filter(isSentryService),
-        ).toEqual(["sentry-mine"]);
-        expect(isSentryService(sentryServiceName("x-secret-init"))).toBe(true);
-        expect(isSentryService("secret-init-sentry-x-secret-init")).toBe(false);
-        expect(isSentryService("rollups_node")).toBe(false);
+            Object.keys(file.services ?? {}).filter(isPrtNodeService),
+        ).toEqual(["prt-node-mine"]);
+        expect(isPrtNodeService(prtNodeServiceName("x-secret-init"))).toBe(
+            true,
+        );
+        expect(isPrtNodeService("secret-init-prt-node-x-secret-init")).toBe(
+            false,
+        );
+        expect(isPrtNodeService("rollups_node")).toBe(false);
     });
 });

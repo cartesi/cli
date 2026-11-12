@@ -158,15 +158,18 @@ describe("when parsing the fixtures", () => {
             },
             prt: {
                 sentryManager: "0x3333333333333333333333333333333333333333",
-                sentries: [
-                    { type: "sling" },
-                    {
-                        address: "0x4444444444444444444444444444444444444444",
+                nodes: {
+                    first: { role: "sentry", type: "sling" },
+                    mine: {
+                        role: "sentry",
                         type: "sling",
-                        label: "mine",
+                        address: "0x4444444444444444444444444444444444444444",
                     },
-                    { address: "0x5555555555555555555555555555555555555555" },
-                ],
+                    theirs: {
+                        role: "sentry",
+                        address: "0x5555555555555555555555555555555555555555",
+                    },
+                },
             },
             withdrawal: {
                 guardian: "0x1111111111111111111111111111111111111111",
@@ -438,71 +441,104 @@ shared = true`,
         const address = (digit: string) =>
             `0x${digit.repeat(40)}` as `0x${string}`;
 
-        it("should parse the sentries in order, with only the keys set", () => {
+        it("should parse the entries in file order, with only the keys set", () => {
             const config = `
                 [prt]
                 sentry_manager = "${address("3")}"
 
-                [[prt.sentries]]
+                [prt.nodes.first]
                 type = "sling"
+                role = "sentry"
 
-                [[prt.sentries]]
+                [prt.nodes.mine]
                 type = "sling"
-                label = "mine"
+                role = "sentry"
                 address = "${address("4")}"
                 private_key_file = "secrets/sentry.key"
 
-                [[prt.sentries]]
+                [prt.nodes.theirs]
+                role = "sentry"
                 address = "${address("5")}"
             `;
-            expect(prt(config)).toStrictEqual({
+            const parsed = prt(config);
+            expect(parsed).toStrictEqual({
                 sentryManager: address("3"),
-                sentries: [
-                    { type: "sling" },
-                    {
-                        address: address("4"),
+                nodes: {
+                    first: { role: "sentry", type: "sling" },
+                    mine: {
+                        role: "sentry",
                         type: "sling",
-                        label: "mine",
+                        address: address("4"),
                         privateKeyFile: "secrets/sentry.key",
                     },
-                    { address: address("5") },
-                ],
+                    theirs: { role: "sentry", address: address("5") },
+                },
             });
+            expect(Object.keys(parsed?.nodes ?? {})).toEqual([
+                "first",
+                "mine",
+                "theirs",
+            ]);
         });
 
-        // the CLI reads a key only for a sentry it runs
+        // the roles differ in what the CLI funds and reserves, so no default
+        it("should fail without a role", () => {
+            expect(() => prt('[prt.nodes.first]\ntype = "sling"')).toThrowError(
+                new InvalidPrtConfigError(
+                    "role is required, one of: sentry",
+                    "[prt.nodes.first]",
+                ),
+            );
+        });
+
+        it("should fail for a role the CLI doesn't know", () => {
+            expect(() =>
+                prt('[prt.nodes.first]\ntype = "sling"\nrole = "claimer"'),
+            ).toThrowError(
+                new InvalidPrtConfigError(
+                    "role claimer isn't supported, expected one of: sentry",
+                    "[prt.nodes.first]",
+                ),
+            );
+        });
+
+        // the CLI reads a key only for a node it runs
         it("should fail for a private_key_file without a type", () => {
             expect(() =>
                 prt(
-                    `[[prt.sentries]]\naddress = "${address("4")}"\nprivate_key_file = "sentry.key"`,
+                    `[prt.nodes.mine]\nrole = "sentry"\naddress = "${address("4")}"\nprivate_key_file = "sentry.key"`,
                 ),
             ).toThrowError(
                 new InvalidPrtConfigError(
-                    "private_key_file needs a type: the CLI only reads the key of a sentry it runs",
-                    "prt.sentries[1]",
+                    "private_key_file needs a type: the CLI only reads the key of a node it runs",
+                    "[prt.nodes.mine]",
                 ),
             );
         });
 
         it("should fail for an empty private_key_file", () => {
             expect(() =>
-                prt('[[prt.sentries]]\ntype = "sling"\nprivate_key_file = ""'),
+                prt(
+                    '[prt.nodes.mine]\ntype = "sling"\nrole = "sentry"\nprivate_key_file = ""',
+                ),
             ).toThrowError(
                 new InvalidPrtConfigError(
                     "private_key_file must name a file",
-                    "prt.sentries[1]",
+                    "[prt.nodes.mine]",
                 ),
             );
         });
 
         it("should fail for a private_key_file that is not a string", () => {
             expect(() =>
-                prt('[[prt.sentries]]\ntype = "sling"\nprivate_key_file = 1'),
+                prt(
+                    '[prt.nodes.mine]\ntype = "sling"\nrole = "sentry"\nprivate_key_file = 1',
+                ),
             ).toThrowError("Invalid string value: 1");
         });
 
         it("should accept an empty section", () => {
-            expect(prt("[prt]")).toStrictEqual({ sentries: [] });
+            expect(prt("[prt]")).toStrictEqual({ nodes: {} });
         });
 
         it("should return undefined when [prt] is not defined", () => {
@@ -515,30 +551,29 @@ shared = true`,
             );
         });
 
-        it("should fail when sentries is not an array of tables", () => {
-            expect(() => prt('[prt]\nsentries = "0x1234"')).toThrowError(
-                new InvalidPrtConfigError(
-                    "sentries must be [[prt.sentries]] entries, got 0x1234",
-                ),
+        it("should fail when nodes is not a table of tables", () => {
+            expect(() => prt('[prt]\nnodes = "0x1234"')).toThrowError(
+                new InvalidTableError("[prt.nodes]", "0x1234"),
             );
-            expect(() => prt("[prt]\nsentries = [42]")).toThrowError(
-                new InvalidTableError("prt.sentries[1]", 42),
+            expect(() => prt("[prt.nodes]\nfirst = 42")).toThrowError(
+                new InvalidTableError("[prt.nodes.first]", 42),
             );
         });
 
         it("should checksum the addresses", () => {
             const config = `
-                [[prt.sentries]]
+                [prt.nodes.first]
+                role = "sentry"
                 address = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8"
             `;
-            expect(prt(config)?.sentries[0].address).toBe(
+            expect(prt(config)?.nodes.first?.address).toBe(
                 "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
             );
         });
 
         it.each([
             ["sentry_manager", "[prt]"],
-            ["address", "[[prt.sentries]]"],
+            ["address", '[prt.nodes.first]\nrole = "sentry"'],
         ])("should fail when %s is not a valid address", (key, table) => {
             expect(() =>
                 prt(`${table}\n${key} = "invalid_address"`),
@@ -550,98 +585,93 @@ shared = true`,
         // the node refuses it, so the config does too
         it("should fail for the zero address", () => {
             expect(() =>
-                prt(`[[prt.sentries]]\naddress = "${address("0")}"`),
+                prt(
+                    `[prt.nodes.first]\nrole = "sentry"\naddress = "${address("0")}"`,
+                ),
             ).toThrowError(
                 new InvalidPrtConfigError(
                     "address must not be the zero address",
-                    "prt.sentries[1]",
+                    "[prt.nodes.first]",
                 ),
             );
         });
 
         it("should fail when two entries name the same address", () => {
             const config = `
-                [[prt.sentries]]
+                [prt.nodes.a]
+                role = "sentry"
                 address = "${address("4")}"
 
-                [[prt.sentries]]
+                [prt.nodes.b]
                 type = "sling"
+                role = "sentry"
 
-                [[prt.sentries]]
+                [prt.nodes.c]
                 type = "sling"
+                role = "sentry"
                 address = "${address("4").toLowerCase()}"
             `;
             expect(() => prt(config)).toThrowError(
                 new InvalidPrtConfigError(
-                    `address ${address("4")} is also the address of prt.sentries[1]`,
-                    "prt.sentries[3]",
+                    `address ${address("4")} is also the address of [prt.nodes.a]`,
+                    "[prt.nodes.c]",
                 ),
             );
         });
 
         it("should fail for a type the CLI can't run", () => {
             expect(() =>
-                prt('[[prt.sentries]]\ntype = "rollups-node"'),
+                prt(
+                    '[prt.nodes.first]\ntype = "rollups-node"\nrole = "sentry"',
+                ),
             ).toThrowError(
                 new InvalidPrtConfigError(
                     "type rollups-node isn't supported, expected one of: sling",
-                    "prt.sentries[1]",
+                    "[prt.nodes.first]",
                 ),
             );
         });
 
         it("should fail for an entry with neither type nor address", () => {
-            expect(() => prt('[[prt.sentries]]\nlabel = "idle"')).toThrowError(
+            expect(() => prt('[prt.nodes.idle]\nrole = "sentry"')).toThrowError(
                 new InvalidPrtConfigError(
                     "set a type for the CLI to run the sentry, or an address to appoint one run elsewhere",
-                    "prt.sentries[1]",
+                    "[prt.nodes.idle]",
                 ),
             );
         });
 
-        it.each(['"My Sentry"', '"a/b"', '""', "7"])(
-            "should fail for the label %s",
-            (label) => {
-                expect(() =>
-                    prt(`[[prt.sentries]]\ntype = "sling"\nlabel = ${label}`),
-                ).toThrowError(
-                    new InvalidPrtConfigError(
-                        `label ${JSON.parse(label.startsWith('"') ? label : `"${label}"`) === "" ? "" : label.replace(/"/g, "")} must be lowercase letters, digits, - or _`,
-                        "prt.sentries[1]",
-                    ),
-                );
-            },
-        );
-
-        // a label names a container, and so does the default of another entry
-        it("should fail when a label repeats another entry's default label", () => {
-            const config = `
-                [[prt.sentries]]
-                type = "sling"
-                label = "2"
-
-                [[prt.sentries]]
-                type = "sling"
-            `;
-            expect(() => prt(config)).toThrowError(
+        // the label is the key: a container name, and a position in file
+        // order, which a parsed table keeps only for keys that aren't numbers
+        it.each([
+            ['"My Sentry"', "My Sentry"],
+            ['"a/b"', "a/b"],
+            ["10", "10"],
+            ["_x", "_x"],
+        ])("should fail for the label %s", (key, label) => {
+            expect(() =>
+                prt(`[prt.nodes.${key}]\ntype = "sling"\nrole = "sentry"`),
+            ).toThrowError(
                 new InvalidPrtConfigError(
-                    'label "2" is also the label of prt.sentries[1]',
-                    "prt.sentries[2]",
+                    `label "${label}" must start with a lowercase letter, then lowercase letters, digits, - or _`,
+                    `[prt.nodes.${label}]`,
                 ),
             );
         });
 
         it("should fail for an unknown key in [prt]", () => {
             expect(() => prt("[prt]\nmanager = 1")).toThrowError(
-                "Unknown key 'manager' in [prt], expected one of: sentries, sentry_manager",
+                "Unknown key 'manager' in [prt], expected one of: nodes, sentry_manager",
             );
         });
 
         it("should fail for an unknown key in an entry", () => {
             expect(() =>
-                prt('[[prt.sentries]]\ntype = "sling"\nkey = "x"'),
+                prt(
+                    '[prt.nodes.first]\ntype = "sling"\nrole = "sentry"\nkey = "x"',
+                ),
             ).toThrowError(
-                "Unknown key 'key' in prt.sentries[1], expected one of: address, label, private_key_file, type",
+                "Unknown key 'key' in [prt.nodes.first], expected one of: address, private_key_file, role, type",
             );
         });
     });

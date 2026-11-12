@@ -9,7 +9,7 @@ import {
     getDaveConsensus,
     getLastAcceptedEpoch,
 } from "../../../src/exec/rollups";
-import { SENTRY_FUNDING } from "../../../src/sentries";
+import { PRT_FUNDING } from "../../../src/prt";
 import { TEST_SDK } from "../config";
 import {
     type AnvilClient,
@@ -27,7 +27,7 @@ import {
 /**
  * Covers `cartesi run --prt` with sentries from [prt]: the application is
  * deployed on a DaveConsensus with the sentries and the manager the config
- * names, in order; the CLI funds the pool sentries and runs a sling node for
+ * names, in order; the CLI funds the pool accounts and runs a sling node for
  * each; a claim they agree with is accepted without waiting out the staging
  * period; and a claim one of them is missing from waits, until it claims.
  */
@@ -49,7 +49,7 @@ const fixture = path.join(__dirname, "fixtures", "accounts-withdrawal");
 const projectName = `prt-${process.pid}`;
 
 const sentryManager = devnetAccount(5);
-const sentryServices = ["sentry-1", "sentry-2"];
+const sentryServices = ["prt-node-first", "prt-node-second"];
 
 const sentryLogs = async () => {
     const { all } = await execa(
@@ -123,11 +123,13 @@ accounts_drive = true
 [prt]
 sentry_manager = "${sentryManager}"
 
-[[prt.sentries]]
+[prt.nodes.first]
 type = "sling"
+role = "sentry"
 
-[[prt.sentries]]
+[prt.nodes.second]
 type = "sling"
+role = "sentry"
 `,
         );
 
@@ -200,10 +202,8 @@ type = "sling"
                 const balance = await anvil.getBalance({
                     address: devnetAccount(index),
                 });
-                expect(balance).toBeGreaterThan(
-                    SENTRY_FUNDING - parseEther("1"),
-                );
-                expect(balance).toBeLessThanOrEqual(SENTRY_FUNDING);
+                expect(balance).toBeGreaterThan(PRT_FUNDING - parseEther("1"));
+                expect(balance).toBeLessThanOrEqual(PRT_FUNDING);
             }
         },
         TIMEOUT,
@@ -220,10 +220,10 @@ type = "sling"
             printed.indexOf(`sentry manager ${sentryManager}`),
         ).toBeGreaterThan(deployed);
         expect(printed).toContain(
-            `sentry 1 ${devnetAccount(20)} (devnet account 20, funded by the CLI)`,
+            `sentry 1 first ${devnetAccount(20)} (devnet account 20, funded by the CLI)`,
         );
         expect(printed).toContain(
-            `sentry 2 ${devnetAccount(21)} (devnet account 21, funded by the CLI)`,
+            `sentry 2 second ${devnetAccount(21)} (devnet account 21, funded by the CLI)`,
         );
     });
 
@@ -238,8 +238,8 @@ type = "sling"
 
         expect(exitCode).toBe(0);
         expect(all).toContain("rollups_node-1");
-        expect(all).toContain("sentry-1-1");
-        expect(all).toContain("sentry-2-1");
+        expect(all).toContain("prt-node-first-1");
+        expect(all).toContain("prt-node-second-1");
     });
 
     it("should show one service named, without a prefix", async () => {
@@ -247,22 +247,22 @@ type = "sling"
             "logs",
             "--tail",
             "5",
-            "sentry-1",
+            "prt-node-first",
         ]);
 
         expect(exitCode).toBe(0);
         expect(all?.trim().length).toBeGreaterThan(0);
-        expect(all).not.toContain("sentry-1-1");
+        expect(all).not.toContain("prt-node-first-1");
     });
 
     it("should reject a service the environment doesn't have", async () => {
         const { all, exitCode } = await runCli({ appDir, projectName }, [
             "logs",
-            "sentry-3",
+            "prt-node-third",
         ]);
 
         expect(exitCode).not.toBe(0);
-        expect(all).toContain("service sentry-3 not found");
+        expect(all).toContain("service prt-node-third not found");
     });
 
     // with the staging period out of reach, the node accepts a staged claim
@@ -304,7 +304,7 @@ type = "sling"
                     "-p",
                     projectName,
                     command,
-                    "sentry-2",
+                    "prt-node-second",
                 ]);
             const lastAccepted = async () =>
                 (await getLastAcceptedEpoch({ application, projectName }))
