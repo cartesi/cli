@@ -602,7 +602,7 @@ const composeEnvironment = (
     if (services.includes("explorer")) {
         files.push(
             explorer({
-                imageTag: "2.0.0-alpha.5",
+                imageTag: "2.0.0-alpha.6",
                 port,
             }),
         );
