@@ -1,5 +1,27 @@
 # Changelog
 
+## 2.0.0-alpha.42
+
+### Minor Changes
+
+- 045ec9c: `cartesi build` and `cartesi run` now default to SDK 0.12.0-alpha.45, which carries rollups-node 2.0.0-alpha.14 with Dave 3.0.0-alpha.6 and cartesi-machine 0.22. The node's database migration was edited in place, so a database created by an earlier node can't be reused. `cartesi run` recreates its own on every start, and a node you run yourself needs a fresh one.
+- 1c5af20: `cartesi run --prt` now runs a sling node for each `[prt.nodes.<label>]` entry with `type = "sling"`, as container `prt-node-<label>`, so claims the sentries agree with are accepted without waiting out `--claim-staging-period`. Pool accounts (devnet 20 to 29) are funded with 10,000 ETH by the CLI. An entry with `private_key_file` runs on your own key, whose address becomes the entry's, and you fund it. The nodes are stopped before a rebuild and started again for the redeployed application.
+- 8009138: The rollups-node has its own `[prt.nodes.<label>]` entry, `type = "reference"`, implied when omitted. `claim = false` on it runs the node in reader mode, following the tournaments and recording settled epochs while sling nodes claim, as production deployments may do. Changing it takes effect on the next `cartesi run`, not on a shell rebuild.
+- 8baed52: `cartesi send` and `cartesi deposit` now default to devnet account 8 instead of account 0, which the node uses to sign its claims. Pass `--from` to pick another account.
+- 31d5433: `cartesi logs` and the shell's View logs now show the PRT nodes next to the rollups-node. Name services to pick some, e.g. `cartesi logs prt-node-green`.
+- 454d24a: Require cartesi-machine 0.22. Machines stored by 0.21 can't be loaded by 0.22: rebuild and redeploy every application.
+- 5c752fe: `cartesi run` now rejects a `CARTESI_BLOCKCHAIN_HTTP_ENDPOINT` the rollups-node can't use before starting anything. It must be an http(s) URL with a DNS name or IP address. The error doesn't show the value, which may hold credentials.
+- cdfc144: `cartesi run --prt` now deploys the application with the PRT sentries set in `cartesi.toml`. A `[prt]` section names an optional `sentry_manager` and one `[prt.nodes.<label>]` table per node, with `sentry = true` on the ones to appoint. The sentries are appointed on the consensus in file order. An entry with `type = "sling"` and no `address` gets one of the CLI's PRT pool, devnet accounts 20 to 29. An entry with only an `address` is appointed and run elsewhere. Without `--prt` the section is ignored.
+
+### Patch Changes
+
+- 3e6b039: `cartesi run --default-block` no longer accepts `pending`, which the rollups-node no longer supports. Use `latest`, `safe` or `finalized`.
+- 3a06730: Bump the rollups-explorer service to 2.0.0-alpha.6, which supports rollups-node 2.0.0-alpha.14.
+- 91e6a0d: `cartesi run`'s Build and redeploy no longer fails with "CARTESI_CONTRACTS_APPLICATION_FACTORY_ADDRESS: variable not defined". The CLI now passes the devnet's ApplicationFactory address to the node, which `CARTESI_CONTRACTS_APPLICATION_FACTORY_ADDRESS` can still override.
+- de862cd: `CARTESI_*_FILE` key files set on the host now reach the node container as copies the node can read. Before, only the path was forwarded and the node couldn't read the file.
+- 0936380: Use the Dave 3.0.0-alpha.6 PRT contracts. Every PRT address moves, including the devnet DaveAppFactory. The rollups contract addresses are unchanged.
+- 1389b97: Keep `$` in the `CARTESI_*` variables `cartesi run` forwards to the node and in its `--fork-url`. Docker Compose read `$name` in them as a variable, so a value such as a password or an API key in a URL arrived changed.
+
 ## 2.0.0-alpha.41
 
 ### Patch Changes
