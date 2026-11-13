@@ -18,7 +18,9 @@ import {
 import { nodePrtAuthVariables } from "../compose/node.js";
 import {
     DEFAULT_SDK_VERSION,
+    type DefaultBlock,
     PREFERRED_PORT,
+    type RunConfig,
     type WithdrawalConfig,
 } from "../config.js";
 import {
@@ -55,6 +57,11 @@ import {
     resolveConfig,
 } from "./types.js";
 
+/**
+ * Options of {@link run}. Every option that is not about this particular
+ * invocation can also be set in the `run` section of the application
+ * configuration, which these take precedence over.
+ */
 export type RunOptions = ConfigOptions &
     ProgressOptions & {
         /**
@@ -77,7 +84,7 @@ export type RunOptions = ConfigOptions &
          * Default block used when fetching new blocks.
          * @default "latest"
          */
-        defaultBlock?: "latest" | "safe" | "finalized";
+        defaultBlock?: DefaultBlock;
 
         /**
          * Deploy the application built at `.cartesi/image` after the
@@ -427,6 +434,39 @@ const deployMachine = async (options: {
 };
 
 /**
+ * Layer the three sources of every option of the environment: the options
+ * given to {@link run} (which is where the command line options end up), the
+ * `run` section of the application configuration, and the defaults.
+ *
+ * @param options options given to {@link run}
+ * @param config `run` section of the application configuration
+ * @returns the option values the environment is started with
+ */
+export const resolveRunOptions = (
+    options: RunOptions,
+    config: RunConfig = {},
+) => ({
+    blockTime: options.blockTime ?? config.blockTime ?? 2,
+    claimStagingPeriod:
+        options.claimStagingPeriod ?? config.claimStagingPeriod ?? 0,
+    cpus: options.cpus ?? config.cpus,
+    defaultBlock: options.defaultBlock ?? config.defaultBlock ?? "latest",
+    epochLength: options.epochLength ?? config.epochLength ?? 720,
+    forkBlockNumber: options.forkBlockNumber ?? config.forkBlockNumber,
+    forkUrl: options.forkUrl ?? config.forkUrl,
+    memory: options.memory ?? config.memory,
+    // a port of zero is not a port, so the first free one is resolved later
+    port: options.port || config.port,
+    projectName: options.projectName ?? config.projectName,
+    prt: options.prt ?? config.prt ?? false,
+    runtimeVersion:
+        options.runtimeVersion ?? config.runtimeVersion ?? DEFAULT_SDK_VERSION,
+    services: options.services ?? config.services ?? [],
+    verbose:
+        options.verbose ?? config.verbose ?? options.progress === "verbose",
+});
+
+/**
  * Run a local Cartesi node for the application, and deploy to it the machine
  * snapshot built at `.cartesi/image`, if there is one.
  *
@@ -438,34 +478,48 @@ const deployMachine = async (options: {
  */
 export const run = async (options: RunOptions = {}): Promise<RunResult> => {
     const {
-        blockTime = 2,
-        claimStagingPeriod = 0,
-        cpus,
-        defaultBlock = "latest",
         deploy: deployOnStart = true,
         detach = true,
         dryRun = false,
-        epochLength = 720,
-        memory,
         progress = "silent",
-        prt = false,
-        runtimeVersion = DEFAULT_SDK_VERSION,
-        services = [],
     } = options;
 
     const notify = options.onNotice ?? (() => {});
 
-    const verbose = options.verbose ?? progress === "verbose";
-
-    // project name explicitly defined or the current directory name
-    const projectName = getProjectName(options);
-
     // get application configuration (e.g. use withdrawal config if present)
-    const applicationConfig = resolveConfig(options.config);
+    const applicationConfig = await resolveConfig(options.config, "run");
+
+    // the 'run' section of the configuration defines project level defaults,
+    // which the options given to this function always take precedence over
+    const {
+        blockTime,
+        claimStagingPeriod,
+        cpus,
+        defaultBlock,
+        epochLength,
+        memory,
+        prt,
+        runtimeVersion,
+        services,
+        verbose,
+        ...resolved
+    } = resolveRunOptions(options, applicationConfig.run);
+
+    // project name explicitly defined, defined by the configuration, or the
+    // current directory name
+    const projectName = getProjectName(resolved);
+
+    if (defaultBlock !== "finalized" && progress !== "silent") {
+        console.warn(
+            chalk.yellow(
+                `WARNING: default block is set to '${defaultBlock}', production configuration will likely use 'finalized'`,
+            ),
+        );
+    }
 
     // resolve port number, using the first free port in a range, unless explicitly set
     const port =
-        options.port ||
+        resolved.port ||
         (await getPort({
             port: portNumbers(PREFERRED_PORT, PREFERRED_PORT + 10),
         }));
@@ -474,7 +528,7 @@ export const run = async (options: RunOptions = {}): Promise<RunResult> => {
     const url = `${host}:${port}`;
 
     // configure optional anvil fork
-    const forkConfig = await configureFork(options);
+    const forkConfig = await configureFork(resolved);
 
     if (forkConfig) {
         await assertForkConfig(forkConfig, { includePRT: prt });
@@ -483,21 +537,23 @@ export const run = async (options: RunOptions = {}): Promise<RunResult> => {
     // emergency withdrawal configuration, derived from the accounts drive of the built
     // machine. The configuration is resolved again, as a rebuild may have changed it.
     const imagePath = getContextPath("image");
-    const resolveWithdrawalConfig = () =>
-        getWithdrawalConfig(resolveConfig(options.config), imagePath, {
-            fork: forkConfig !== undefined,
-        });
+    const resolveWithdrawalConfig = async () =>
+        getWithdrawalConfig(
+            await resolveConfig(options.config, "run"),
+            imagePath,
+            { fork: forkConfig !== undefined },
+        );
 
     // fail before starting the environment if it can't be derived
     if (fs.existsSync(imagePath)) {
-        resolveWithdrawalConfig();
+        await resolveWithdrawalConfig();
     }
 
     // [prt] is parsed either way, so a mistake in it fails early, but the node
     // takes sentries only on a PRT deploy. Resolved again on a rebuild, like
     // the withdrawal configuration.
-    const resolvePrt = () => {
-        const config = resolveConfig(options.config);
+    const resolvePrt = async () => {
+        const config = await resolveConfig(options.config, "run");
         return prt && config.prt
             ? resolvePrtNodes(config.prt, {
                   guardian: config.withdrawal?.guardian ?? DEVNET_GUARDIAN,
@@ -507,12 +563,12 @@ export const run = async (options: RunOptions = {}): Promise<RunResult> => {
     if (applicationConfig.prt && !prt) {
         notify({
             level: "info",
-            message: "[prt] in cartesi.toml is ignored without --prt",
+            message: "the 'prt' configuration is ignored without --prt",
         });
     }
 
     // fail before starting the environment if [prt] can't be resolved
-    let prtConfig = resolvePrt();
+    let prtConfig = await resolvePrt();
     reportPrtWarnings({ claimStagingPeriod, notify, prtConfig });
 
     // in reader mode the node has no PRT signer
@@ -587,12 +643,12 @@ export const run = async (options: RunOptions = {}): Promise<RunResult> => {
 
         // the accounts drive may have moved with a rebuild, resolved before
         // undeploying in case it is now invalid
-        const withdrawalConfig = resolveWithdrawalConfig();
+        const withdrawalConfig = await resolveWithdrawalConfig();
 
         // a PRT redeploy creates a new consensus, with the sentries as they are
         // in the config now. The node's mode can't change: it is fixed in its
         // database
-        const resolved = resolvePrt();
+        const resolved = await resolvePrt();
         const moved = readerModeChanged(prtConfig, resolved);
         if (moved !== undefined) {
             notify({ level: "warning", message: moved });
