@@ -49,6 +49,8 @@ describe("when parsing the fixtures", () => {
     it("should parse every key of full.toml", () => {
         expect(parse(loadFixture("full.toml"))).toStrictEqual({
             sdk: "my-sdk:dev",
+            // the deprecated format has no [run] section, so it always defaults
+            run: {},
             machine: {
                 assertRollingTemplate: true,
                 bootargs: ["no4lvl", "quiet"],
