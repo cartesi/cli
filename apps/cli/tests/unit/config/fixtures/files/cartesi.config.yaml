@@ -1,0 +1,10 @@
+machine:
+    ramLength: 256Mi
+drives:
+    data:
+        builder: empty
+        size: 64Mb
+run:
+    epochLength: 10
+    services:
+        - explorer
