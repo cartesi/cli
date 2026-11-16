@@ -15,6 +15,7 @@ import {
     TERMINAL_APPLICATION_STATUSES,
 } from "../exec/rollups.js";
 import { keySelect } from "../prompts.js";
+import { printBuildResult } from "./build.js";
 
 const commaSeparatedList = (value: string) => value.split(",");
 
@@ -140,11 +141,13 @@ const shell = async (options: {
                     // the PRT nodes read the machine the build replaces
                     await node.stopPrtNodes();
 
-                    // build
-                    await build({
-                        config,
-                        progress: verbose ? "verbose" : "default",
-                    });
+                    // build, showing what `cartesi build` shows
+                    printBuildResult(
+                        await build({
+                            config,
+                            progress: verbose ? "verbose" : "default",
+                        }),
+                    );
 
                     // redeploy, with the PRT nodes of the configuration now
                     const deployment = await node.deploy();

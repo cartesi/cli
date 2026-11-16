@@ -1,6 +1,21 @@
 import { Command, Option } from "@commander-js/extra-typings";
-import { build } from "../api/build.js";
+import { type BuildResult, build } from "../api/build.js";
 import { describeWithdrawalConfig } from "../withdrawal.js";
+
+/**
+ * Print what a build has to show after its progress: the accounts drive
+ * layout, and what will be deployed from it. Shared by `cartesi build` and the
+ * "Build and redeploy" of `cartesi run`.
+ */
+export const printBuildResult = (result: BuildResult) => {
+    if (result.withdrawal) {
+        const { layout, withdrawal } = result.withdrawal;
+        console.log();
+        console.log(
+            describeWithdrawalConfig(result.config, layout, withdrawal),
+        );
+    }
+};
 
 export const createBuildCommand = () => {
     return new Command("build")
@@ -32,14 +47,6 @@ export const createBuildCommand = () => {
                 drivesOnly,
                 progress: verbose ? "verbose" : "default",
             });
-
-            // show the accounts drive layout, and what will be deployed from it
-            if (result.withdrawal) {
-                const { layout, withdrawal } = result.withdrawal;
-                console.log();
-                console.log(
-                    describeWithdrawalConfig(result.config, layout, withdrawal),
-                );
-            }
+            printBuildResult(result);
         });
 };
