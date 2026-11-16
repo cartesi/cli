@@ -7,17 +7,26 @@ const MINIMUM_DOCKER_VERSION = "25.0.0"; // Replace with our minimum required Do
 const MINIMUM_DOCKER_COMPOSE_VERSION = "2.24.0"; // Replace with our minimum required Docker Compose version
 const MINIMUM_BUILDX_VERSION = "0.13.0"; // Replace with our minimum required Buildx version
 
+const COMPOSE_NOT_INSTALLED =
+    "Docker Compose is required but not installed or the command execution failed. Please refer to the Docker Compose documentation for installation instructions: https://docs.docker.com/compose/install/";
+const BUILDX_NOT_INSTALLED =
+    "Docker Buildx is required but not installed. Please refer to the Docker Desktop documentation for installation instructions: https://docs.docker.com/desktop/";
+
 export type DoctorCheck = {
     /** Name of the requirement being checked. */
     name: string;
 
-    /** Whether the requirement is satisfied. */
-    ok: boolean;
+    /**
+     * Whether the requirement is satisfied (`ok`), is not (`failed`), or could
+     * not be checked because a requirement it depends on is not satisfied
+     * (`skipped`).
+     */
+    status: "ok" | "failed" | "skipped";
 
     /** Detail of a satisfied requirement, usually the installed version. */
     detail?: string;
 
-    /** Reason why the requirement is not satisfied. */
+    /** Reason why the requirement is not satisfied, or was skipped. */
     message?: string;
 };
 
@@ -31,24 +40,24 @@ export type DoctorResult = {
 
 type Check = {
     name: string;
+
+    /** Names of the checks this one depends on, listed before it. */
+    requires?: string[];
+
     run: () => Promise<string | undefined>;
 };
 
-const checkDocker = async (): Promise<string | undefined> => {
+/**
+ * Run a docker command, turning the failures of a missing docker, or of a
+ * missing docker plugin, into messages that say what to install.
+ * @param args arguments of the docker command
+ * @param notInstalled message for the docker exit code of an unknown command
+ * @returns the standard output of the command
+ */
+const docker = async (args: string[], notInstalled?: string) => {
     try {
-        const { stdout: dockerVersion } = await execa("docker", [
-            "version",
-            "--format",
-            "{{json .Client.Version}}",
-        ]);
-
-        const v = semver.coerce(dockerVersion);
-        if (v !== null && !semver.gte(v, MINIMUM_DOCKER_VERSION)) {
-            throw new Error(
-                `Unsupported Docker version. Minimum required version is ${MINIMUM_DOCKER_VERSION}. Installed version is ${v}.`,
-            );
-        }
-        return v?.version;
+        const { stdout } = await execa("docker", args);
+        return stdout;
     } catch (e: unknown) {
         if (
             e instanceof Error &&
@@ -56,72 +65,68 @@ const checkDocker = async (): Promise<string | undefined> => {
         ) {
             throw new Error("Docker not found");
         }
+        if (
+            notInstalled &&
+            e instanceof Error &&
+            (e as Error & { exitCode?: number }).exitCode === 125
+        ) {
+            throw new Error(notInstalled);
+        }
         throw e;
     }
+};
+
+const checkDocker = async (): Promise<string | undefined> => {
+    const dockerVersion = await docker([
+        "version",
+        "--format",
+        "{{json .Client.Version}}",
+    ]);
+
+    const v = semver.coerce(dockerVersion);
+    if (v !== null && !semver.gte(v, MINIMUM_DOCKER_VERSION)) {
+        throw new Error(
+            `Unsupported Docker version. Minimum required version is ${MINIMUM_DOCKER_VERSION}. Installed version is ${v}.`,
+        );
+    }
+    return v?.version;
 };
 
 const checkCompose = async (): Promise<string | undefined> => {
-    try {
-        const { stdout: dockerComposeVersion } = await execa("docker", [
-            "compose",
-            "version",
-            "--short",
-        ]);
+    const dockerComposeVersion = await docker(
+        ["compose", "version", "--short"],
+        COMPOSE_NOT_INSTALLED,
+    );
 
-        const v = semver.coerce(dockerComposeVersion);
-        if (v !== null && !semver.gte(v, MINIMUM_DOCKER_COMPOSE_VERSION)) {
-            throw new Error(
-                `Unsupported Docker Compose version. Minimum required version is ${MINIMUM_DOCKER_COMPOSE_VERSION}. Installed version is ${v}.`,
-            );
-        }
-        return dockerComposeVersion;
-    } catch (e: unknown) {
-        if (
-            e instanceof Error &&
-            (e as Error & { exitCode?: number }).exitCode === 125
-        ) {
-            throw new Error(
-                "Docker Compose is required but not installed or the command execution failed. Please refer to the Docker Compose documentation for installation instructions: https://docs.docker.com/compose/install/",
-            );
-        }
-        throw e;
+    const v = semver.coerce(dockerComposeVersion);
+    if (v !== null && !semver.gte(v, MINIMUM_DOCKER_COMPOSE_VERSION)) {
+        throw new Error(
+            `Unsupported Docker Compose version. Minimum required version is ${MINIMUM_DOCKER_COMPOSE_VERSION}. Installed version is ${v}.`,
+        );
     }
+    return dockerComposeVersion;
 };
 
 const checkBuildx = async (): Promise<string | undefined> => {
-    try {
-        const { stdout: buildxOutput } = await execa("docker", [
-            "buildx",
-            "version",
-        ]);
+    const buildxOutput = await docker(
+        ["buildx", "version"],
+        BUILDX_NOT_INSTALLED,
+    );
 
-        const v = semver.coerce(buildxOutput);
-        if (v !== null && !semver.gte(v, MINIMUM_BUILDX_VERSION)) {
-            throw new Error(
-                `Unsupported Docker Buildx version. Minimum required version is ${MINIMUM_BUILDX_VERSION}. Installed version is ${v}.`,
-            );
-        }
-        return v?.version;
-    } catch (e: unknown) {
-        if (
-            e instanceof Error &&
-            (e as Error & { exitCode?: number }).exitCode === 125
-        ) {
-            throw new Error(
-                "Docker Buildx is required but not installed. Please refer to the Docker Desktop documentation for installation instructions: https://docs.docker.com/desktop/",
-            );
-        }
-        throw e;
+    const v = semver.coerce(buildxOutput);
+    if (v !== null && !semver.gte(v, MINIMUM_BUILDX_VERSION)) {
+        throw new Error(
+            `Unsupported Docker Buildx version. Minimum required version is ${MINIMUM_BUILDX_VERSION}. Installed version is ${v}.`,
+        );
     }
+    return v?.version;
 };
 
 const checkRiscv = async (): Promise<string | undefined> => {
-    const { stdout: platformsOutput } = await execa("docker", [
-        "buildx",
-        "ls",
-        "--format",
-        "{{.Platforms}}",
-    ]);
+    const platformsOutput = await docker(
+        ["buildx", "ls", "--format", "{{.Platforms}}"],
+        BUILDX_NOT_INSTALLED,
+    );
 
     const buildxPlatforms: string[] = platformsOutput
         .split(",")
@@ -155,34 +160,83 @@ const checkCartesiMachine = async (): Promise<string | undefined> => {
     return v.format();
 };
 
+// the Cartesi Machine check requires nothing, as a host cartesi-machine
+// satisfies it without docker
 const checks: Check[] = [
     { name: "Docker Engine", run: checkDocker },
-    { name: "Docker Compose", run: checkCompose },
-    { name: "Docker Buildx", run: checkBuildx },
-    { name: "Docker RISC-V support", run: checkRiscv },
+    {
+        name: "Docker Compose",
+        requires: ["Docker Engine"],
+        run: checkCompose,
+    },
+    {
+        name: "Docker Buildx",
+        requires: ["Docker Engine"],
+        run: checkBuildx,
+    },
+    {
+        name: "Docker RISC-V support",
+        requires: ["Docker Engine", "Docker Buildx"],
+        run: checkRiscv,
+    },
     { name: "Cartesi Machine", run: checkCartesiMachine },
 ];
 
 /**
+ * Mark the checks whose requirements are not satisfied as skipped, as their
+ * own failure would only repeat the failure of the requirement. A check lists
+ * its requirements before it, so a skipped requirement skips its dependents.
+ * @param checks the checks, with their requirements
+ * @param results the result of each check, in the same order
+ * @returns the results, with the checks whose requirements failed skipped
+ */
+export const skipUnmetRequirements = (
+    checks: { name: string; requires?: string[] }[],
+    results: DoctorCheck[],
+): DoctorCheck[] => {
+    const status = new Map<string, DoctorCheck["status"]>();
+    return results.map((result, index) => {
+        const unmet = checks[index]?.requires?.find(
+            (name) => status.get(name) !== "ok",
+        );
+        const check: DoctorCheck =
+            unmet === undefined
+                ? result
+                : {
+                      name: result.name,
+                      status: "skipped",
+                      message: `requires ${unmet}`,
+                  };
+        status.set(check.name, check.status);
+        return check;
+    });
+};
+
+/**
  * Check whether the system has everything needed to build and run Cartesi
  * applications. All requirements are checked concurrently, and the result of
- * every check is reported, satisfied or not.
+ * every check is reported, satisfied or not. A check whose requirement is not
+ * satisfied is reported as skipped, instead of failing on its own.
  * @returns the result of every check
  */
 export const doctor = async (): Promise<DoctorResult> => {
     const results = await Promise.all(
         checks.map(async ({ name, run }): Promise<DoctorCheck> => {
             try {
-                return { name, ok: true, detail: await run() };
+                return { name, status: "ok", detail: await run() };
             } catch (e: unknown) {
                 return {
                     name,
-                    ok: false,
+                    status: "failed",
                     message: e instanceof Error ? e.message : String(e),
                 };
             }
         }),
     );
 
-    return { ok: results.every((check) => check.ok), checks: results };
+    const resolved = skipUnmetRequirements(checks, results);
+    return {
+        ok: resolved.every((check) => check.status === "ok"),
+        checks: resolved,
+    };
 };

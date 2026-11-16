@@ -9,14 +9,15 @@ export const createDoctorCommand = () => {
         const { checks, ok } = await doctor();
         progress.stop();
 
+        // a skipped check isn't shown, the failure of its requirement says it all
         for (const check of checks) {
-            if (check.ok) {
+            if (check.status === "ok") {
                 progress.succeed(
                     check.detail
                         ? `${check.name} ${chalk.cyan(check.detail)}`
                         : check.name,
                 );
-            } else {
+            } else if (check.status === "failed") {
                 progress.fail(check.message ?? `${check.name} not found`);
             }
         }
