@@ -1,24 +1,25 @@
-import {
-    type Command,
-    Option,
-    type OptionValues,
-} from "@commander-js/extra-typings";
 import chalk from "chalk";
 import {
     type Address,
     createPublicClient,
     getAddress,
     http,
+    type HttpTransport,
     isAddress,
+    type PublicClient,
 } from "viem";
-import { getServiceState, parseAccountIndex } from "./base.js";
+import { getServiceState } from "./base.js";
 import { getApplicationAddress, getProjectPort } from "./exec/rollups.js";
 
 /**
  * Create a read-only client for the anvil of the local environment
  * @param options projectName
  */
-export const getAnvilClient = async (options: { projectName: string }) => {
+// the return type is explicit because the one inferred by createPublicClient
+// cannot be named from outside viem, which breaks declaration emit
+export const getAnvilClient = async (options: {
+    projectName: string;
+}): Promise<PublicClient<HttpTransport>> => {
     const host = await getProjectPort(options);
     return createPublicClient({ transport: http(`http://${host}/anvil`) });
 };
@@ -67,40 +68,3 @@ export const resolveNodeApplication = async (options: {
     }
     return address;
 };
-
-/**
- * Add the options shared by the fund recovery commands: the application and
- * project, the signer account index, and the transaction flags forwarded to
- * cartesi-rollups-cli
- * @param accountIndexDescription what the account index selects for this command
- */
-export const addRecoveryOptions = <
-    Args extends unknown[],
-    Opts extends OptionValues,
-    GlobalOpts extends OptionValues,
->(
-    command: Command<Args, Opts, GlobalOpts>,
-    accountIndexDescription: string,
-) =>
-    command
-        .option("--application <address>", "application address")
-        .option(
-            "--project-name <string>",
-            "name of project (used by docker compose and cartesi-rollups-node)",
-        )
-        .addOption(
-            new Option(
-                "--account-index <index>",
-                accountIndexDescription,
-            ).argParser(parseAccountIndex),
-        )
-        .option("-y, --yes", "skip the confirmation prompt")
-        .option("--json", "print the result as JSON")
-        .option(
-            "--no-wait",
-            "return after broadcast without waiting for the receipt",
-        )
-        .option(
-            "--wait-timeout <duration>",
-            "maximum time to wait for the receipt (e.g. 30s, 5m)",
-        );

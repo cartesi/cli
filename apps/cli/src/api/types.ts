@@ -23,6 +23,16 @@ export type ProgressOptions = {
 };
 
 /**
+ * Something worth telling the caller, such as configuration that is valid but
+ * has no effect. API functions that take an `onNotice` callback report these
+ * through it, instead of writing them to the terminal.
+ */
+export type Notice = {
+    level: "info" | "warning";
+    message: string;
+};
+
+/**
  * Application configuration, either already parsed, or a path (or list of
  * paths) of TOML configuration files to be read and merged, in order.
  */

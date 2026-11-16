@@ -51,8 +51,8 @@ await node.stop();
 
 The following functions are available: `addressBook`, `build`, `clean`,
 `create`, `depositErc20`, `depositErc721`, `depositErc1155`,
-`depositErc1155Batch`, `depositEther`, `doctor`, `hash`, `logs`, `run`, `send`,
-`shell` and `status`.
+`depositErc1155Batch`, `depositEther`, `doctor`, `foreclose`, `hash`, `logs`,
+`refund`, `run`, `send`, `shell`, `status` and `withdraw`.
 
 A few things to keep in mind:
 
@@ -71,7 +71,11 @@ A few things to keep in mind:
     Amounts are given in the base unit of the asset as a `bigint`, or in its
     display unit as a string (`"1.5"`). A deposit that cannot be made throws a
     `DepositError` (`InsufficientBalanceError`, `InvalidAmountError` or
-    `TokenNotFoundError`).
+    `TokenNotFoundError`);
+-   `foreclose`, `refund` and `withdraw` send their transaction with
+    cartesi-rollups-cli in the rollups node container, without asking for
+    confirmation, and return its JSON output. With `stream: true` they attach
+    it to the terminal instead, as the CLI does.
 
 The package is typed, and the types of the configuration file (`Config`,
 `DriveConfig`, `MachineConfig`, ...) are exported as well.

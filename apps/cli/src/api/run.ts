@@ -50,6 +50,7 @@ import { DEVNET_GUARDIAN, getWithdrawalConfig } from "../withdrawal.js";
 import {
     type ConfigOptions,
     listrRenderer,
+    type Notice,
     type Progress,
     type ProgressOptions,
     resolveConfig,
@@ -159,10 +160,7 @@ export type RunOptions = ConfigOptions &
     };
 
 /** Something worth telling the caller about the configuration of a run. */
-export type RunNotice = {
-    level: "info" | "warning";
-    message: string;
-};
+export type RunNotice = Notice;
 
 export type RunResult = {
     /** Name of the project the environment was started as. */

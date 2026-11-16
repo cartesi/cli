@@ -10,7 +10,7 @@ import {
     testUsdcAddress,
     testUsdWithdrawalOutputBuilderAddress,
 } from "../../../src/contracts";
-import { replayStorePath } from "../../../src/commands/withdraw";
+import { replayStorePath } from "../../../src/withdraw";
 import {
     getNodeInput,
     getNodeWithdrawalConfig,
