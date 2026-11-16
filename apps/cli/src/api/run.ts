@@ -573,7 +573,13 @@ export const run = async (options: RunOptions = {}): Promise<RunResult> => {
         }
     };
 
-    const deploy = async () => {
+    /**
+     * Deploy the machine snapshot, replacing the previous deployment.
+     * @param options.initial whether this is the deploy at startup, which uses
+     * the [prt] setup resolved and reported before the environment started,
+     * instead of resolving and reporting it again
+     */
+    const deployMachineSnapshot = async (options: { initial: boolean }) => {
         const machineHash = await getMachineHash({
             sdk: applicationConfig.sdk,
         });
@@ -592,14 +598,16 @@ export const run = async (options: RunOptions = {}): Promise<RunResult> => {
         // a PRT redeploy creates a new consensus, with the sentries as they are
         // in the config now. The node's mode can't change: it is fixed in its
         // database
-        const resolved = resolvePrt();
-        const moved = readerModeChanged(prtConfig, resolved);
-        if (moved !== undefined) {
-            notify({ level: "warning", message: moved });
-        } else {
-            prtConfig = resolved;
+        if (!options.initial) {
+            const resolved = resolvePrt();
+            const moved = readerModeChanged(prtConfig, resolved);
+            if (moved !== undefined) {
+                notify({ level: "warning", message: moved });
+            } else {
+                prtConfig = resolved;
+            }
+            reportPrtWarnings({ claimStagingPeriod, notify, prtConfig });
         }
-        reportPrtWarnings({ claimStagingPeriod, notify, prtConfig });
         await fundPrtNodes({ environment, prtConfig });
 
         // keep the consensus of the previous deployment, if there is one; a
@@ -627,6 +635,8 @@ export const run = async (options: RunOptions = {}): Promise<RunResult> => {
         });
         return deployment;
     };
+
+    const deploy = () => deployMachineSnapshot({ initial: false });
 
     const result: RunResult = {
         get deployment() {
@@ -669,7 +679,7 @@ export const run = async (options: RunOptions = {}): Promise<RunResult> => {
 
     // deploy the application built at .cartesi/image, if there is one
     if (deployOnStart) {
-        await deploy();
+        await deployMachineSnapshot({ initial: true });
     }
 
     return result;
