@@ -1,13 +1,18 @@
 import input from "@inquirer/input";
 import {
     type Address,
+    type Chain,
     createTestClient,
     defineChain,
     type Hex,
     http,
+    type HttpTransport,
     isAddressEqual,
+    type PublicActions,
     publicActions,
+    type TestClient,
     toHex,
+    type WalletActions,
     walletActions,
 } from "viem";
 import { mnemonicToAccount } from "viem/accounts";
@@ -17,7 +22,9 @@ import { DEVNET_MNEMONIC } from "./compose/node.js";
 import { PREFERRED_PORT } from "./config.js";
 import { getProjectPort } from "./exec/rollups.js";
 
-export const cartesi = defineChain({
+// the type is explicit because the one inferred by defineChain cannot be named
+// from outside viem, which breaks declaration emit
+export const cartesi: Chain = defineChain({
     ...anvil,
     name: "Cartesi Devnet",
     testnet: true,
@@ -26,6 +33,7 @@ export const cartesi = defineChain({
 const getRpcUrl = async (options: {
     rpcUrl?: string;
     projectName?: string;
+    interactive?: boolean;
 }) => {
     // if rpcUrl is provided, use it
     if (options.rpcUrl) return options.rpcUrl;
@@ -35,7 +43,14 @@ const getRpcUrl = async (options: {
         const projectName = getProjectName(options);
         const host = await getProjectPort({ projectName });
         return `http://${host}/anvil`;
-    } catch {
+    } catch (error: unknown) {
+        if (options.interactive === false) {
+            // no terminal to ask the user for the RPC URL
+            throw new Error(
+                `Unable to resolve the RPC URL of project '${getProjectName(options)}', make sure it is running, or define 'rpcUrl'`,
+                { cause: error },
+            );
+        }
         return await input({
             message: "RPC URL",
             default: `http://127.0.0.1:${PREFERRED_PORT}/anvil`,
@@ -43,10 +58,27 @@ const getRpcUrl = async (options: {
     }
 };
 
+/**
+ * Client connected to the devnet of a local environment.
+ *
+ * The type is spelled out, instead of inferred from {@link connect}, because the
+ * inferred one inlines viem internals that cannot be named from outside their
+ * package, which breaks declaration emit.
+ */
+export type DevnetClient = TestClient<"anvil", HttpTransport, typeof cartesi> &
+    PublicActions<HttpTransport, typeof cartesi> &
+    WalletActions<typeof cartesi>;
+
 export const connect = async (options: {
     rpcUrl?: string;
     projectName?: string;
-}) => {
+
+    /**
+     * Ask for the RPC URL when it can't be resolved from the running project.
+     * @default true
+     */
+    interactive?: boolean;
+}): Promise<DevnetClient> => {
     // resolve rpc url
     const rpcUrl = await getRpcUrl(options);
 

@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { parseInputIndex } from "../../../src/base";
-import { getInputData } from "../../../src/commands/refund";
+import { getInputData } from "../../../src/refund";
 import { application } from "../fixtures";
 
 describe("parseInputIndex", () => {

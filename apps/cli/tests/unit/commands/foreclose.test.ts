@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { zeroAddress } from "viem";
 import { mnemonicToAccount } from "viem/accounts";
-import { resolveForecloseSigner } from "../../../src/commands/foreclose";
+import { resolveForecloseSigner } from "../../../src/foreclose";
 import { DEVNET_MNEMONIC } from "../../../src/compose/node";
 
 // account 1 of the devnet mnemonic

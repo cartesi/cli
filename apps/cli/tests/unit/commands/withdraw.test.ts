@@ -6,7 +6,7 @@ import {
     replayLastFinalizedEpoch,
     replayStorePath,
     type WithdrawIo,
-} from "../../../src/commands/withdraw";
+} from "../../../src/withdraw";
 import { account, application } from "../fixtures";
 
 const root = toHex(1, { size: 32 });
