@@ -1,6 +1,6 @@
 import { Command } from "@commander-js/extra-typings";
 import { type Address, getAddress, isAddress, isHex } from "viem";
-import { depositErc721 } from "../../api/deposit/erc721.js";
+import { depositErc721, readErc721Token } from "../../api/deposit/erc721.js";
 import { getProjectName } from "../../base.js";
 import { testNonFungibleTokenAddress } from "../../contracts.js";
 import {
@@ -46,7 +46,12 @@ export const createErc721Command = () => {
                     ? getAddress(from)
                     : await getDefaultSender(client);
 
-            const token = await parseTokenAddress(options.token);
+            // read the token before asking for the application, so a wrong
+            // token address fails before the prompt
+            const token = await readErc721Token(
+                client,
+                await parseTokenAddress(options.token),
+            );
 
             // get dapp address from local node, or ask
             const application = await getInputApplicationAddress({
@@ -70,7 +75,7 @@ export const createErc721Command = () => {
                     from: account,
                     progress: "default",
                     projectName,
-                    token,
+                    token: token.address,
                     tokenId,
                 });
             } catch (e: unknown) {
