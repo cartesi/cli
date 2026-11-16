@@ -4,13 +4,12 @@ import { etherPortalAbi, etherPortalAddress } from "../../contracts.js";
 import { resolveConnection } from "../connection.js";
 import {
     type Amount,
-    applicationLabel,
     type DepositOptions,
     type DepositResult,
-    depositSpinner,
     InsufficientBalanceError,
     parseAmount,
 } from "./common.js";
+import { applicationLabel, depositSpinner } from "./progress.js";
 
 export type DepositEtherOptions = DepositOptions & {
     /** Amount to deposit, in wei, or in ETH when given as a string. */
