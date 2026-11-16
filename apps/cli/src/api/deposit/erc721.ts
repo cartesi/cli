@@ -18,14 +18,13 @@ import type { DevnetClient } from "../../wallet.js";
 import { resolveConnection } from "../connection.js";
 import {
     type Amount,
-    applicationLabel,
     type DepositResult,
-    depositSpinner,
     InsufficientBalanceError,
     parseAmount,
     type PortalDepositOptions,
     TokenNotFoundError,
 } from "./common.js";
+import { applicationLabel, depositSpinner } from "./progress.js";
 
 export type Erc721Token = {
     address: Address;

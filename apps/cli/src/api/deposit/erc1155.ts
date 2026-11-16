@@ -12,14 +12,13 @@ import type { DevnetClient } from "../../wallet.js";
 import { resolveConnection } from "../connection.js";
 import {
     type Amount,
-    applicationLabel,
     type DepositResult,
-    depositSpinner,
     InsufficientBalanceError,
     InvalidAmountError,
     parseAmount,
     type PortalDepositOptions,
 } from "./common.js";
+import { applicationLabel, depositSpinner } from "./progress.js";
 
 export type DepositErc1155Options = PortalDepositOptions & {
     /** ID of the token to deposit. */

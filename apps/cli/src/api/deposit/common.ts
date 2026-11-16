@@ -1,5 +1,3 @@
-import chalk from "chalk";
-import ora from "ora";
 import { type Address, type Hash, type Hex, parseUnits } from "viem";
 import type { ConnectionOptions } from "../connection.js";
 import type { ProgressOptions } from "../types.js";
@@ -82,14 +80,3 @@ export type DepositResult = {
  */
 export const parseAmount = (amount: Amount, decimals: number): bigint =>
     typeof amount === "bigint" ? amount : parseUnits(amount, decimals);
-
-/**
- * Create the spinner used to report the progress of a deposit, silent unless
- * the caller asked for progress.
- */
-export const depositSpinner = (options: ProgressOptions) =>
-    ora({ isSilent: (options.progress ?? "silent") === "silent" });
-
-/** Label of an application address, used in progress messages. */
-export const applicationLabel = (application: Address) =>
-    chalk.cyan(application);
