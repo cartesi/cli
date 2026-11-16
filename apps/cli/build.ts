@@ -18,9 +18,20 @@ await Bun.build({
     target: "node",
 });
 
+// the library loads its dependencies from node_modules instead of bundling its
+// own copies, so a consumer shares them: an error thrown from viem is an
+// instance of the consumer's viem classes, and viem isn't shipped twice. Keep
+// in sync with the dependencies of package.json. The CLI and the binaries stay
+// self-contained
+const external = ["execa", "semver", "smol-toml", "viem"].flatMap((name) => [
+    name,
+    `${name}/*`,
+]);
+
 await Bun.build({
     define,
     entrypoints: ["./src/lib.ts"],
+    external,
     minify: true,
     outdir: "dist",
     sourcemap: true,
