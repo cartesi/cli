@@ -4,7 +4,9 @@ import {
     BaseError,
     ContractFunctionRevertedError,
     erc721Abi,
+    getAddress,
     type Hash,
+    isAddressEqual,
 } from "viem";
 import {
     erc721PortalAbi,
@@ -86,13 +88,12 @@ export const depositErc721 = async (
     const { application, client, from } = await resolveConnection(options);
 
     const tokenId = parseAmount(options.tokenId, 0);
-    const token = await readErc721Token(client, address);
+    const token = await readErc721Token(client, getAddress(address));
 
     // the test NFT has a different abi, which allows minting
-    const tokenAbi =
-        token.address === testNonFungibleTokenAddress
-            ? testNonFungibleTokenAbi
-            : erc721Abi;
+    const tokenAbi = isAddressEqual(token.address, testNonFungibleTokenAddress)
+        ? testNonFungibleTokenAbi
+        : erc721Abi;
 
     // check ownership
     let currentOwner: Address;
@@ -119,7 +120,7 @@ export const depositErc721 = async (
         throw e;
     }
 
-    if (currentOwner !== from) {
+    if (!isAddressEqual(currentOwner, from)) {
         throw new InsufficientBalanceError();
     }
 

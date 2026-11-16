@@ -1,5 +1,5 @@
 import chalk from "chalk";
-import { type Address, erc20Abi, formatUnits } from "viem";
+import { type Address, erc20Abi, formatUnits, getAddress } from "viem";
 import {
     erc20PortalAbi,
     erc20PortalAddress,
@@ -82,7 +82,7 @@ export const depositErc20 = async (
         options;
     const { application, client, from } = await resolveConnection(options);
 
-    const token = await readErc20Token(client, address);
+    const token = await readErc20Token(client, getAddress(address));
     const { decimals, symbol } = token;
     const amount = parseAmount(options.amount, decimals);
 

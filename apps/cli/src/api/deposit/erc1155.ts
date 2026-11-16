@@ -1,5 +1,5 @@
 import chalk from "chalk";
-import type { Address, Hash } from "viem";
+import { type Address, getAddress, type Hash } from "viem";
 import {
     erc1155BatchPortalAbi,
     erc1155BatchPortalAddress,
@@ -84,8 +84,9 @@ export const depositErc1155 = async (
     const {
         baseLayerData = "0x",
         execLayerData = "0x",
-        token = testMultiTokenAddress,
+        token: tokenAddress = testMultiTokenAddress,
     } = options;
+    const token = getAddress(tokenAddress);
     const { application, client, from } = await resolveConnection(options);
 
     const tokenId = parseAmount(options.tokenId, 0);
@@ -173,8 +174,9 @@ export const depositErc1155Batch = async (
     const {
         baseLayerData = "0x",
         execLayerData = "0x",
-        token = testMultiTokenAddress,
+        token: tokenAddress = testMultiTokenAddress,
     } = options;
+    const token = getAddress(tokenAddress);
     const { application, client, from } = await resolveConnection(options);
 
     const tokenIds = options.tokenIds.map((tokenId) => parseAmount(tokenId, 0));

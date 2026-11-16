@@ -1,4 +1,4 @@
-import type { Address } from "viem";
+import { type Address, getAddress } from "viem";
 import { getProjectName } from "../base.js";
 import { getApplicationAddress } from "../exec/rollups.js";
 import { connect, type DevnetClient, getDefaultSender } from "../wallet.js";
@@ -61,9 +61,11 @@ export const resolveConnection = async (
 ): Promise<Connection> => {
     const projectName = getProjectName(options);
 
-    // resolve the application address from the local node, if not provided
-    const application =
-        options.application ?? (await getApplicationAddress({ projectName }));
+    // resolve the application address from the local node, if not provided.
+    // A given address is checksummed, which also rejects a malformed one
+    const application = options.application
+        ? getAddress(options.application)
+        : await getApplicationAddress({ projectName });
     if (!application) {
         throw new Error(
             `Unable to resolve the address of the application of project '${projectName}', make sure it is deployed, or define 'application'`,
@@ -79,8 +81,11 @@ export const resolveConnection = async (
             rpcUrl: options.rpcUrl,
         }));
 
-    // the transaction sender, impersonated
-    const from = options.from ?? (await getDefaultSender(client));
+    // the transaction sender, impersonated. Checksummed, as the addresses read
+    // from the chain are, for the deposits to compare them
+    const from = options.from
+        ? getAddress(options.from)
+        : await getDefaultSender(client);
 
     return { application, client, from, projectName };
 };
