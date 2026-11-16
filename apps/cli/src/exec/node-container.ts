@@ -100,18 +100,20 @@ export const runNodeCommand = (options: {
  * @returns stdout of the command
  */
 export const execNodeCommand = async (options: {
+    accountIndex?: number;
     command: string[];
+    env?: Record<string, string>;
     input?: string;
     projectName: string;
     service?: string;
     workdir?: string;
 }): Promise<string> => {
-    const { input, ...rest } = options;
+    const { env, input, ...rest } = options;
     try {
         const { stdout } = await execa(
             "docker",
-            nodeExecArgs({ ...rest, interactive: false }),
-            { input },
+            nodeExecArgs({ ...rest, env, interactive: false }),
+            { env, input },
         );
         return stdout;
     } catch (error: unknown) {
@@ -174,12 +176,45 @@ export const nodePathExists = async (options: {
 };
 
 /**
+ * A command run with the terminal attached failed. It already printed its
+ * error to the terminal, so only its exit code is kept.
+ */
+export class NodeCommandError extends Error {
+    readonly exitCode: number;
+
+    constructor(exitCode: number, options?: ErrorOptions) {
+        super(`The node command failed with exit code ${exitCode}`, options);
+        this.name = "NodeCommandError";
+        this.exitCode = exitCode;
+    }
+}
+
+/**
+ * Run a command inside the rollups node container with the terminal attached,
+ * like `runNodeCommand`, failing with a NodeCommandError when it exits with an
+ * error it already printed
+ */
+export const runAttachedNodeCommand = async (
+    options: Parameters<typeof runNodeCommand>[0],
+) => {
+    try {
+        await runNodeCommand(options);
+    } catch (error: unknown) {
+        if (error instanceof ExecaError) {
+            throw new NodeCommandError(error.exitCode ?? 1, { cause: error });
+        }
+        throw error;
+    }
+};
+
+/**
  * Report the failure of a command run with the terminal attached. The command
- * already printed its error, so only its exit code is propagated.
+ * already printed its error, so only its exit code is propagated. Any other
+ * error is thrown, to be printed.
  */
 export const handleNodeCommandError = (error: unknown) => {
-    if (error instanceof ExecaError) {
-        process.exitCode = error.exitCode ?? 1;
+    if (error instanceof NodeCommandError) {
+        process.exitCode = error.exitCode;
         return;
     }
     throw error;
