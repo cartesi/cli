@@ -72,23 +72,23 @@ The proxy prefers port `6751` and picks another free port up to `6761` when it i
 
 ## Commands
 
-| Command                                                     | Purpose                                                                          |
-| ----------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| `create <name> --template <template>`                       | Scaffold an application from a template                                          |
-| `build`                                                     | Build the configured drives and create a machine snapshot                        |
-| `run`                                                       | Start the local environment and deploy the application                           |
-| `send [input]`                                              | Send an input to the application                                                 |
-| `deposit ether \| erc20 \| erc721 \| erc1155-single \| erc1155-batch` | Deposit an asset into the application                                  |
-| `status`                                                    | Show the status of the local environment                                         |
-| `logs`                                                      | Show logs from the local node; use `--follow` to stream them                     |
-| `address-book`                                              | Print the addresses of the deployed contracts                                    |
-| `hash`                                                      | Print the machine hash of the built application                                  |
-| `shell`                                                     | Open a shell inside the application machine                                      |
-| `clean`                                                     | Delete cached build artifacts                                                    |
-| `doctor`                                                    | Check local prerequisites                                                        |
-| `foreclose`                                                 | Foreclose the local application as its guardian so users can withdraw           |
-| `refund <input-index>`                                      | Refund a deposit that was not finalized before the foreclosure                   |
-| `withdraw --account <address>`                              | Withdraw an account's funds from a foreclosed application                        |
+| Command                                                               | Purpose                                                               |
+| --------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `create <name> --template <template>`                                 | Scaffold an application from a template                               |
+| `build`                                                               | Build the configured drives and create a machine snapshot             |
+| `run`                                                                 | Start the local environment and deploy the application                |
+| `send [input]`                                                        | Send an input to the application                                      |
+| `deposit ether \| erc20 \| erc721 \| erc1155-single \| erc1155-batch` | Deposit an asset into the application                                 |
+| `status`                                                              | Show the status of the local environment                              |
+| `logs`                                                                | Show logs from the local node; use `--follow` to stream them          |
+| `address-book`                                                        | Print the addresses of the deployed contracts                         |
+| `hash`                                                                | Print the machine hash of the built application                       |
+| `shell`                                                               | Open a shell inside the application machine                           |
+| `clean`                                                               | Delete cached build artifacts                                         |
+| `doctor`                                                              | Check local prerequisites                                             |
+| `foreclose`                                                           | Foreclose the local application as its guardian so users can withdraw |
+| `refund <input-index>`                                                | Refund a deposit that was not finalized before the foreclosure        |
+| `withdraw --account <address>`                                        | Withdraw an account's funds from a foreclosed application             |
 
 The `deploy` command is deprecated in 2.0. The `cartesi` CLI is meant for application development; `cartesi-rollups-cli`, distributed with the [Cartesi Rollups Node](https://github.com/cartesi/rollups-node), deploys and registers applications on public networks. Follow the [self-hosted deployment guide](https://docs.cartesi.io/cartesi-rollups/2.0/deployment/self-hosted/standard/) for the complete workflow.
 
@@ -156,12 +156,12 @@ Templates are maintained in [cartesi/application-templates](https://github.com/c
 
 This section is for working on the CLI itself. The repository is a [Bun](https://bun.sh/) monorepo managed with [Turborepo](https://turbo.build/repo) and [Biome](https://biomejs.dev/):
 
-| Path                                | Package                             | Purpose                                                                   |
-| ----------------------------------- | ----------------------------------- | ------------------------------------------------------------------------- |
-| `apps/cli`                          | `@cartesi/cli`                      | The CLI, distributed through npm and as native Linux and macOS binaries   |
-| `packages/sdk`                      | `@cartesi/sdk`                      | Docker image used to build and run Cartesi applications                   |
-| `packages/mock-verifying-paymaster` | `@cartesi/mock-verifying-paymaster` | Mock ERC-4337 verifying paymaster used by the optional services           |
-| `packages/tsconfig`                 | `tsconfig`                          | Shared TypeScript configurations                                          |
+| Path                                | Package                             | Purpose                                                                 |
+| ----------------------------------- | ----------------------------------- | ----------------------------------------------------------------------- |
+| `apps/cli`                          | `@cartesi/cli`                      | The CLI, distributed through npm and as native Linux and macOS binaries |
+| `packages/sdk`                      | `@cartesi/sdk`                      | Docker image used to build and run Cartesi applications                 |
+| `packages/mock-verifying-paymaster` | `@cartesi/mock-verifying-paymaster` | Mock ERC-4337 verifying paymaster used by the optional services         |
+| `packages/tsconfig`                 | `tsconfig`                          | Shared TypeScript configurations                                        |
 
 Install dependencies and run the main checks:
 
