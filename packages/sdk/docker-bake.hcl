@@ -20,7 +20,7 @@ target "default" {
     NODE_VERSION                      = "24.22.3"
     NVM_VERSION                       = "4e8758a801eea9479b32a904f31093e410ddaba4" # 0.41.0
     POSTGRES_BASE_IMAGE               = "docker.io/library/postgres:18-trixie@sha256:eb63372c1e05c755f55fa30cbd07aecc443676fc6c0fa90b9002d01537841e1a"
-    SQUASHFS_TOOLS_VERSION            = "bad1d213ab6df587d6fa0ef7286180fbf7b86167" # 4.7.4
+    SQUASHFS_TOOLS_VERSION            = "708c59ae80853b0845017c33b42e56061cc546cd" # 4.7.5
     SU_EXEC_VERSION                   = "0.3"
     TELEGRAF_VERSION                  = "1.40.3"
     TINI_VERSION                      = "0.19.0"
