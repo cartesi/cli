@@ -88,7 +88,7 @@ RUN <<EOF
 mkdir -p /opt/devnet
 curl -fsSL https://github.com/cartesi/dave/releases/download/v${CARTESI_PRT_VERSION}/cartesi-rollups-prt-${CARTESI_PRT_VERSION}-anvil-${FOUNDRY_VERSION}.tar.gz \
   -o /tmp/prt-anvil.tar.gz
-echo "62500dc3558fbb1f289d99584cd8989d7b42d0c0e7e7a13b8f2d309746e9163e /tmp/prt-anvil.tar.gz" | sha256sum --check
+echo "b5ee5ea2b267768755a7b141397fd2298b86abe241938e9b606b8e9a116edf74 /tmp/prt-anvil.tar.gz" | sha256sum --check
 tar -xzO -f /tmp/prt-anvil.tar.gz state.json > /opt/devnet/anvil_state.json
 rm /tmp/prt-anvil.tar.gz
 echo ${CARTESI_PRT_VERSION} > /opt/devnet/PRT_VERSION
@@ -144,11 +144,11 @@ RUN <<EOF
 curl -fsSL https://dl.influxdata.com/telegraf/releases/telegraf-${TELEGRAF_VERSION}_linux_${TARGETARCH}.tar.gz \
     -o ./telegraf.tar.gz;
 case "${TARGETARCH}" in
-    amd64) echo "57e6d733de44335127c06d9d9099c9dee7307beff992783438ce38b9ba1b8e5e /tmp/telegraf.tar.gz" | sha256sum --check ;;
-    arm64) echo "d42aa06b113f15fdc14775a2d1971e31a0adb82a6e0da28e40a17e819ddaeb06 /tmp/telegraf.tar.gz" | sha256sum --check ;;
+    amd64) echo "cbb95c43303db6e75e129a4eb8888ab1468009e61f6615e64a1cb82f50b0f4ce /tmp/telegraf.tar.gz" | sha256sum --check ;;
+    arm64) echo "53aa8a3c5083cd202e2b1140115ee1fd6096d5dc57f455b6dee32d3230432319 /tmp/telegraf.tar.gz" | sha256sum --check ;;
     *) echo "unsupported architecture: ${TARGETARCH}"; exit 1 ;;
 esac
-tar -xvzf /tmp/telegraf.tar.gz -C / --strip-components=2 ./telegraf-${TELEGRAF_VERSION}/usr/bin/telegraf
+tar -xvzf /tmp/telegraf.tar.gz -C / --strip-components=2 telegraf-${TELEGRAF_VERSION}/usr/bin/telegraf
 cp /usr/bin/telegraf /usr/local/bin/telegraf
 telegraf --version
 EOF
@@ -163,8 +163,8 @@ RUN <<EOF
 curl -fsSL https://github.com/cartesi/dave/releases/download/v${CARTESI_PRT_VERSION}/cartesi-sling-node-${CARTESI_PRT_VERSION}-${TARGETARCH}.tar.gz \
     -o ./sling-node.tar.gz;
 case "${TARGETARCH}" in
-    amd64) echo "25c04e29a1c3da2dec1cfc02413cae053b6093fe40c264348aeac69b680a0757 /tmp/sling-node.tar.gz" | sha256sum --check ;;
-    arm64) echo "a15c5df6679186f39c6e634815ecd47d696a947ad0ce66cf1f23b44d81d70b1a /tmp/sling-node.tar.gz" | sha256sum --check ;;
+    amd64) echo "299f283356ae5846d223ec405f1d101fdb9796b88b1c6cc3caf2bcc1b9db19db /tmp/sling-node.tar.gz" | sha256sum --check ;;
+    arm64) echo "e31956a9ebac0e6b1f0bef51df59063b55e1bcd45c9b939afcc743768e2005f6 /tmp/sling-node.tar.gz" | sha256sum --check ;;
     *) echo "unsupported architecture: ${TARGETARCH}"; exit 1 ;;
 esac
 tar -xvzf /tmp/sling-node.tar.gz -C /usr/local/bin
@@ -207,8 +207,8 @@ RUN <<EOF
 curl -fsSL https://github.com/cartesi/machine-emulator/releases/download/v${CARTESI_MACHINE_EMULATOR_VERSION}/machine-emulator_${TARGETARCH}.deb \
     -o /tmp/machine-emulator.deb
 case "${TARGETARCH}" in
-    amd64) echo "906ae4cd0524ef254ea9a83712e6ad353c36123acae21628fb93c1c47955429a  /tmp/machine-emulator.deb" | sha256sum --check ;;
-    arm64) echo "212710b5ad74e469368cd5f54b006eebde1e8620833acca5be9a845cf74ab2cc  /tmp/machine-emulator.deb" | sha256sum --check ;;
+    amd64) echo "75f791753c6724839641a3f1fd7f976fd5631f213485e445a986558ae0ae9dc9  /tmp/machine-emulator.deb" | sha256sum --check ;;
+    arm64) echo "df2fb3b349417b4dc2e70f15a219e043dc95255c2fccebfb30665f223b5195d3  /tmp/machine-emulator.deb" | sha256sum --check ;;
     *) echo "unsupported architecture: ${TARGETARCH}"; exit 1 ;;
 esac
 apt-get install -y --no-install-recommends /tmp/machine-emulator.deb
