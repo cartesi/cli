@@ -7,7 +7,7 @@
 Create, build, run, and interact with [Cartesi](https://cartesi.io) applications from your terminal.
 
 > [!NOTE]
-> This README covers Cartesi CLI 2.0, which is currently published as alpha pre-releases under the npm `alpha` tag. The npm `latest` tag and the Homebrew formula (`brew install cartesi/tap/cartesi`) still install the 1.x line.
+> This README covers Cartesi CLI 2.0, which is currently published as alpha pre-releases under the npm `alpha` tag. The npm `latest` tag still installs the 1.x line.
 
 ## Overview
 
@@ -40,7 +40,7 @@ Install from npm:
 npm install -g @cartesi/cli@alpha
 ```
 
-Alternatively, download a standalone binary, which does not require Node.js, from [GitHub Releases](https://github.com/cartesi/cli/releases): `cartesi-darwin-arm64`, `cartesi-darwin-x64`, `cartesi-linux-arm64`, or `cartesi-linux-x64` (each as a `.tar.gz` archive). Extract it, rename the executable to `cartesi`, and move it to a directory on your `PATH`.
+Alternatively, download a standalone binary, which does not require Node.js, from the latest `@cartesi/cli@2.0.0-alpha.*` pre-release on [GitHub Releases](https://github.com/cartesi/cli/releases): `cartesi-darwin-arm64.tar.gz`, `cartesi-darwin-x64.tar.gz`, `cartesi-linux-arm64.tar.gz`, or `cartesi-linux-x64.tar.gz` (not the `.map.tar.gz` source maps). Extract it, rename the executable to `cartesi`, and move it to a directory on your `PATH`.
 
 Verify the installation:
 
@@ -92,7 +92,7 @@ The proxy prefers port `6751` and picks another free port up to `6761` when it i
 
 The `deploy` command is deprecated in 2.0. The `cartesi` CLI is meant for application development; `cartesi-rollups-cli`, distributed with the [Cartesi Rollups Node](https://github.com/cartesi/rollups-node), deploys and registers applications on public networks. Follow the [self-hosted deployment guide](https://docs.cartesi.io/cartesi-rollups/2.0/deployment/self-hosted/standard/) for the complete workflow.
 
-Run `cartesi <command> --help` for every option. The [CLI command reference](https://docs.cartesi.io/get-started/cli-commands/) gives a general overview.
+Run `cartesi <command> --help` for every option.
 
 ## Configuration
 
@@ -108,7 +108,7 @@ dockerfile = "Dockerfile"
 format = "ext2"
 ```
 
-See the [advanced configuration guide](https://docs.cartesi.io/cartesi-rollups/2.0/development/Advanced-configuration/) for all available settings. Pass `-c, --config <file>` to load additional files on top of `cartesi.toml`; the option can be repeated, and later files extend or override earlier ones.
+See the [advanced configuration guide](https://docs.cartesi.io/cartesi-rollups/2.0/development/Advanced-configuration/) for all available settings. Pass `-c, --config <file>` to `build`, `run` or `shell` to load additional files on top of `cartesi.toml`; the option can be repeated, and later files extend or override earlier ones.
 
 ### `run` options
 
@@ -130,7 +130,6 @@ Enable optional services with `--services`:
 | `bundler`   | ERC-4337 bundler                                 |
 | `paymaster` | Mock verifying paymaster for account abstraction |
 | `passkey`   | Passkey server                                   |
-| `all`       | Start every optional service                     |
 
 ```sh
 cartesi run --services explorer
@@ -150,7 +149,7 @@ cartesi run --services bundler,paymaster,passkey
 | `ruby`                     | Ruby                      |
 | `rust`                     | Rust                      |
 
-Templates are maintained in [cartesi/application-templates](https://github.com/cartesi/application-templates). Pass `--branch <name>` to `cartesi create` to use a branch other than the CLI's default.
+Templates are maintained in [cartesi/application-templates](https://github.com/cartesi/application-templates/tree/prerelease/sdk-12), on the `prerelease/sdk-12` branch that `cartesi create` uses by default. Pass `--branch <name>` to use another branch.
 
 ## Development
 
