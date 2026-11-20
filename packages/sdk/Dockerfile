@@ -207,8 +207,8 @@ RUN <<EOF
 curl -fsSL https://github.com/cartesi/machine-emulator/releases/download/v${CARTESI_MACHINE_EMULATOR_VERSION}/machine-emulator_${TARGETARCH}.deb \
     -o /tmp/machine-emulator.deb
 case "${TARGETARCH}" in
-    amd64) echo "906ae4cd0524ef254ea9a83712e6ad353c36123acae21628fb93c1c47955429a  /tmp/machine-emulator.deb" | sha256sum --check ;;
-    arm64) echo "212710b5ad74e469368cd5f54b006eebde1e8620833acca5be9a845cf74ab2cc  /tmp/machine-emulator.deb" | sha256sum --check ;;
+    amd64) echo "75f791753c6724839641a3f1fd7f976fd5631f213485e445a986558ae0ae9dc9  /tmp/machine-emulator.deb" | sha256sum --check ;;
+    arm64) echo "df2fb3b349417b4dc2e70f15a219e043dc95255c2fccebfb30665f223b5195d3  /tmp/machine-emulator.deb" | sha256sum --check ;;
     *) echo "unsupported architecture: ${TARGETARCH}"; exit 1 ;;
 esac
 apt-get install -y --no-install-recommends /tmp/machine-emulator.deb
