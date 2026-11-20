@@ -22,7 +22,7 @@ target "default" {
     POSTGRES_BASE_IMAGE               = "docker.io/library/postgres:18-trixie@sha256:eb63372c1e05c755f55fa30cbd07aecc443676fc6c0fa90b9002d01537841e1a"
     SQUASHFS_TOOLS_VERSION            = "bad1d213ab6df587d6fa0ef7286180fbf7b86167" # 4.7.4
     SU_EXEC_VERSION                   = "0.3"
-    TELEGRAF_VERSION                  = "1.38.0"
+    TELEGRAF_VERSION                  = "1.40.3"
     TINI_VERSION                      = "0.19.0"
     XGENEXT2_VERSION                  = "1.5.6"
   }

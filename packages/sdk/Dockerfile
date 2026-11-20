@@ -144,11 +144,11 @@ RUN <<EOF
 curl -fsSL https://dl.influxdata.com/telegraf/releases/telegraf-${TELEGRAF_VERSION}_linux_${TARGETARCH}.tar.gz \
     -o ./telegraf.tar.gz;
 case "${TARGETARCH}" in
-    amd64) echo "57e6d733de44335127c06d9d9099c9dee7307beff992783438ce38b9ba1b8e5e /tmp/telegraf.tar.gz" | sha256sum --check ;;
-    arm64) echo "d42aa06b113f15fdc14775a2d1971e31a0adb82a6e0da28e40a17e819ddaeb06 /tmp/telegraf.tar.gz" | sha256sum --check ;;
+    amd64) echo "cbb95c43303db6e75e129a4eb8888ab1468009e61f6615e64a1cb82f50b0f4ce /tmp/telegraf.tar.gz" | sha256sum --check ;;
+    arm64) echo "53aa8a3c5083cd202e2b1140115ee1fd6096d5dc57f455b6dee32d3230432319 /tmp/telegraf.tar.gz" | sha256sum --check ;;
     *) echo "unsupported architecture: ${TARGETARCH}"; exit 1 ;;
 esac
-tar -xvzf /tmp/telegraf.tar.gz -C / --strip-components=2 ./telegraf-${TELEGRAF_VERSION}/usr/bin/telegraf
+tar -xvzf /tmp/telegraf.tar.gz -C / --strip-components=2 telegraf-${TELEGRAF_VERSION}/usr/bin/telegraf
 cp /usr/bin/telegraf /usr/local/bin/telegraf
 telegraf --version
 EOF
