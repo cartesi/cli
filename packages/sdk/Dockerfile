@@ -89,7 +89,7 @@ RUN <<EOF
 mkdir -p /opt/devnet
 curl -fsSL https://github.com/cartesi/dave/releases/download/v${CARTESI_PRT_VERSION}/cartesi-rollups-prt-${CARTESI_PRT_VERSION}-anvil-${FOUNDRY_VERSION}.tar.gz \
   -o /tmp/prt-anvil.tar.gz
-echo "62500dc3558fbb1f289d99584cd8989d7b42d0c0e7e7a13b8f2d309746e9163e /tmp/prt-anvil.tar.gz" | sha256sum --check
+echo "a5e80094ee1556be95685227d07e7d4188a04dd55cc9762bf93e5ea1730c58c2 /tmp/prt-anvil.tar.gz" | sha256sum --check
 tar -xzO -f /tmp/prt-anvil.tar.gz state.json > /opt/devnet/anvil_state.json
 rm /tmp/prt-anvil.tar.gz
 echo ${CARTESI_PRT_VERSION} > /opt/devnet/PRT_VERSION
@@ -149,8 +149,8 @@ RUN <<EOF
 curl -fsSL https://github.com/cartesi/dave/releases/download/v${CARTESI_PRT_VERSION}/cartesi-sling-node-${CARTESI_PRT_VERSION}-${TARGETARCH}.tar.gz \
     -o ./sling-node.tar.gz;
 case "${TARGETARCH}" in
-    amd64) echo "25c04e29a1c3da2dec1cfc02413cae053b6093fe40c264348aeac69b680a0757 /tmp/sling-node.tar.gz" | sha256sum --check ;;
-    arm64) echo "a15c5df6679186f39c6e634815ecd47d696a947ad0ce66cf1f23b44d81d70b1a /tmp/sling-node.tar.gz" | sha256sum --check ;;
+    amd64) echo "01a8ec18ead636e36979a0d83e1ba6b3879b8fc96e7b869ac24c6325e0f0098d /tmp/sling-node.tar.gz" | sha256sum --check ;;
+    arm64) echo "eff13872865f444dd6f0e9ddb6e527ead700059f65dad93a61f1711f62987261 /tmp/sling-node.tar.gz" | sha256sum --check ;;
     *) echo "unsupported architecture: ${TARGETARCH}"; exit 1 ;;
 esac
 tar -xvzf /tmp/sling-node.tar.gz -C /usr/local/bin
