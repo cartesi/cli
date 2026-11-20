@@ -6,7 +6,7 @@ target "docker-platforms" {}
 target "default" {
   inherits = ["docker-platforms"]
   args = {
-    ALTO_VERSION                      = "1.2.7"
+    ALTO_VERSION                      = "1.2.8"
     ALTO_PACKAGE_VERSION              = "0.0.20"
     CARTESI_BASE_IMAGE                = "docker.io/library/debian:trixie-20261104@sha256:9c6e381421d0f48d1b8133e573f33c185ee16cbf505eda9c4a8a4791b25ea8a6"
     CARTESI_LINUX_KERNEL_VERSION      = "6.18.56-ctsi-1"
