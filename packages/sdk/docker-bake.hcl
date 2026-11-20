@@ -11,7 +11,7 @@ target "default" {
     CARTESI_BASE_IMAGE                = "docker.io/library/debian:trixie-20261104@sha256:9c6e381421d0f48d1b8133e573f33c185ee16cbf505eda9c4a8a4791b25ea8a6"
     CARTESI_LINUX_KERNEL_VERSION      = "6.18.56-ctsi-1"
     CARTESI_MACHINE_EMULATOR_VERSION  = "0.22.0"
-    CARTESI_PASSKEY_SERVER_VERSION    = "1.0.1"
+    CARTESI_PASSKEY_SERVER_VERSION    = "1.0.3"
     CARTESI_PAYMASTER_VERSION         = "0.2.0"
     CARTESI_PRT_VERSION               = "3.0.0-alpha.6"
     CARTESI_ROLLUPS_NODE_VERSION      = "2.0.0-alpha.14"
