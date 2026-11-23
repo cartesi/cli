@@ -1,5 +1,4 @@
 import { beforeAll, describe, expect, it } from "bun:test";
-import { type SemVer, satisfies } from "semver";
 import { cartesiMachine } from "../../../src/exec/index.js";
 import { setupIntegrationTests, TEST_SDK } from "../config.js";
 
@@ -16,12 +15,8 @@ describe("cartesi-machine", () => {
             forceDocker: true,
             image: TEST_SDK,
         });
-        expect(version).toBeDefined();
-        expect(
-            satisfies(
-                (version as SemVer).format(),
-                cartesiMachine.requiredVersion,
-            ),
-        ).toBeTruthy();
+        expect(version).not.toBeNull();
+        // the check the CLI applies
+        expect(() => cartesiMachine.assertSupported(version)).not.toThrow();
     });
 });
