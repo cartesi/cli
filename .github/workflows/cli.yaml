@@ -3,7 +3,9 @@ on:
     pull_request:
         paths:
             - ".github/workflows/cli.yaml"
+            - ".github/workflows/sdk.yaml"
             - "apps/cli/**"
+            - "packages/sdk/**"
             - "packages/tsconfig/**"
 concurrency:
     group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
@@ -12,9 +14,17 @@ permissions:
     contents: read
     packages: write
     pull-requests: write
+    id-token: write
+    actions: write
 jobs:
+    # the tests run against the images of this PR, so the sdk images build first
+    sdk:
+        uses: ./.github/workflows/sdk.yaml
+        secrets: inherit
+
     build:
         runs-on: ubuntu-latest
+        needs: sdk
         env:
             TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
             TURBO_TEAM: ${{ vars.TURBO_TEAM }}
@@ -27,6 +37,24 @@ jobs:
 
             - name: Set up Docker Buildx
               uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+            - name: Login to GitHub Container Registry
+              uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+              with:
+                  registry: ghcr.io
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
+            # the CLI composes cartesi/<image>:<tag> from Docker Hub, so the PR
+            # images come in under the devel tag the local build uses too
+            - name: Pull the sdk images of this PR as devel
+              env:
+                  PR_TAG: pr-${{ github.event.number }}
+              run: |
+                  for image in sdk rollups-runtime rollups-database; do
+                      docker pull "ghcr.io/cartesi/${image}:${PR_TAG}"
+                      docker tag "ghcr.io/cartesi/${image}:${PR_TAG}" "cartesi/${image}:devel"
+                  done
 
             - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
 

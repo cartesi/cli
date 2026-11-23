@@ -1,6 +1,7 @@
 # syntax=docker.io/docker/dockerfile:1
 ARG CARTESI_BASE_IMAGE
 ARG POSTGRES_BASE_IMAGE
+ARG TELEGRAF_BASE_IMAGE
 ARG NODE_VERSION
 
 ################################################################################
@@ -88,7 +89,7 @@ RUN <<EOF
 mkdir -p /opt/devnet
 curl -fsSL https://github.com/cartesi/dave/releases/download/v${CARTESI_PRT_VERSION}/cartesi-rollups-prt-${CARTESI_PRT_VERSION}-anvil-${FOUNDRY_VERSION}.tar.gz \
   -o /tmp/prt-anvil.tar.gz
-echo "62500dc3558fbb1f289d99584cd8989d7b42d0c0e7e7a13b8f2d309746e9163e /tmp/prt-anvil.tar.gz" | sha256sum --check
+echo "a5e80094ee1556be95685227d07e7d4188a04dd55cc9762bf93e5ea1730c58c2 /tmp/prt-anvil.tar.gz" | sha256sum --check
 tar -xzO -f /tmp/prt-anvil.tar.gz state.json > /opt/devnet/anvil_state.json
 rm /tmp/prt-anvil.tar.gz
 echo ${CARTESI_PRT_VERSION} > /opt/devnet/PRT_VERSION
@@ -135,23 +136,8 @@ tini --version
 EOF
 
 ################################################################################
-# install telegraf
-FROM base AS telegraf
-ARG TELEGRAF_VERSION
-ARG TARGETARCH
-WORKDIR /tmp
-RUN <<EOF
-curl -fsSL https://dl.influxdata.com/telegraf/releases/telegraf-${TELEGRAF_VERSION}_linux_${TARGETARCH}.tar.gz \
-    -o ./telegraf.tar.gz;
-case "${TARGETARCH}" in
-    amd64) echo "57e6d733de44335127c06d9d9099c9dee7307beff992783438ce38b9ba1b8e5e /tmp/telegraf.tar.gz" | sha256sum --check ;;
-    arm64) echo "d42aa06b113f15fdc14775a2d1971e31a0adb82a6e0da28e40a17e819ddaeb06 /tmp/telegraf.tar.gz" | sha256sum --check ;;
-    *) echo "unsupported architecture: ${TARGETARCH}"; exit 1 ;;
-esac
-tar -xvzf /tmp/telegraf.tar.gz -C / --strip-components=2 ./telegraf-${TELEGRAF_VERSION}/usr/bin/telegraf
-cp /usr/bin/telegraf /usr/local/bin/telegraf
-telegraf --version
-EOF
+# telegraf: the official scratch image ships the static binary, GPG-verified upstream
+FROM ${TELEGRAF_BASE_IMAGE} AS telegraf
 
 ################################################################################
 # install sling-node
@@ -163,8 +149,8 @@ RUN <<EOF
 curl -fsSL https://github.com/cartesi/dave/releases/download/v${CARTESI_PRT_VERSION}/cartesi-sling-node-${CARTESI_PRT_VERSION}-${TARGETARCH}.tar.gz \
     -o ./sling-node.tar.gz;
 case "${TARGETARCH}" in
-    amd64) echo "25c04e29a1c3da2dec1cfc02413cae053b6093fe40c264348aeac69b680a0757 /tmp/sling-node.tar.gz" | sha256sum --check ;;
-    arm64) echo "a15c5df6679186f39c6e634815ecd47d696a947ad0ce66cf1f23b44d81d70b1a /tmp/sling-node.tar.gz" | sha256sum --check ;;
+    amd64) echo "01a8ec18ead636e36979a0d83e1ba6b3879b8fc96e7b869ac24c6325e0f0098d /tmp/sling-node.tar.gz" | sha256sum --check ;;
+    arm64) echo "eff13872865f444dd6f0e9ddb6e527ead700059f65dad93a61f1711f62987261 /tmp/sling-node.tar.gz" | sha256sum --check ;;
     *) echo "unsupported architecture: ${TARGETARCH}"; exit 1 ;;
 esac
 tar -xvzf /tmp/sling-node.tar.gz -C /usr/local/bin
@@ -207,8 +193,8 @@ RUN <<EOF
 curl -fsSL https://github.com/cartesi/machine-emulator/releases/download/v${CARTESI_MACHINE_EMULATOR_VERSION}/machine-emulator_${TARGETARCH}.deb \
     -o /tmp/machine-emulator.deb
 case "${TARGETARCH}" in
-    amd64) echo "906ae4cd0524ef254ea9a83712e6ad353c36123acae21628fb93c1c47955429a  /tmp/machine-emulator.deb" | sha256sum --check ;;
-    arm64) echo "212710b5ad74e469368cd5f54b006eebde1e8620833acca5be9a845cf74ab2cc  /tmp/machine-emulator.deb" | sha256sum --check ;;
+    amd64) echo "6d63f3094228694e2cf01d60e0a96e2f9d1fb8b4f152548f89a8a5646d4b75ca  /tmp/machine-emulator.deb" | sha256sum --check ;;
+    arm64) echo "134fe1b96896e27ed93b74251e6bb0942e19e2b54b9681da13ad696fc5f004b6  /tmp/machine-emulator.deb" | sha256sum --check ;;
     *) echo "unsupported architecture: ${TARGETARCH}"; exit 1 ;;
 esac
 apt-get install -y --no-install-recommends /tmp/machine-emulator.deb
@@ -216,13 +202,15 @@ rm /tmp/machine-emulator.deb
 cartesi-machine --version-json
 EOF
 
-# Install cartesi-rollups-node
+# Install cartesi-rollups-node from the rollups-node main build (run 45906622121),
+# the first generation for emulator 0.23 and dave 3.0.0-beta.1, unreleased:
+# scripts/fetch-rollups-node.sh downloads the debs into artifacts/ before the
+# build. The release URL comes back once rollups-node is tagged.
+COPY artifacts/cartesi-rollups-node-v${CARTESI_ROLLUPS_NODE_VERSION}_${TARGETARCH}.deb /tmp/cartesi-rollups-node.deb
 RUN <<EOF
-curl -fsSL https://github.com/cartesi/rollups-node/releases/download/v${CARTESI_ROLLUPS_NODE_VERSION}/cartesi-rollups-node-v${CARTESI_ROLLUPS_NODE_VERSION}_${TARGETARCH}.deb \
-    -o /tmp/cartesi-rollups-node.deb
 case "${TARGETARCH}" in
-    amd64) echo "ba4d1f5780adc75c46f9f9e4fe53f19e62543a5754104172f0f6aa80a0063fc6 /tmp/cartesi-rollups-node.deb" | sha256sum --check ;;
-    arm64) echo "d37c805f61b3149a418a933c656492775985c8e4a11c08e5a8dd9185900ac5a6 /tmp/cartesi-rollups-node.deb" | sha256sum --check ;;
+    amd64) echo "e2bcb67cebe5474ec1bdca4d381e8ec5c194bacc3800faf8504f8157c649f88f /tmp/cartesi-rollups-node.deb" | sha256sum --check ;;
+    arm64) echo "e29898ca9024f60f8a64febf5b297a369b08df81a87e49ff5060ab22ceb6031f /tmp/cartesi-rollups-node.deb" | sha256sum --check ;;
     *) echo "unsupported architecture: ${TARGETARCH}"; exit 1 ;;
 esac
 apt-get install -y --no-install-recommends /tmp/cartesi-rollups-node.deb
@@ -237,7 +225,7 @@ COPY --from=su-exec /usr/local/bin/su-exec /usr/local/bin/
 COPY --from=nitro /usr/local/src/nitro /usr/local/bin/
 COPY --from=nitro /usr/local/src/nitroctl /usr/local/bin/
 COPY --from=tini /usr/local/bin/tini /usr/local/bin/
-COPY --from=telegraf /usr/local/bin/telegraf /usr/local/bin/
+COPY --from=telegraf /usr/bin/telegraf /usr/local/bin/
 COPY --from=sling-node --chmod=755 /usr/local/bin/cartesi-sling-node /usr/local/bin/cartesi-sling-node
 
 COPY skel/ /

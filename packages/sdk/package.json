@@ -3,6 +3,6 @@
     "private": true,
     "version": "0.12.0-alpha.45",
     "scripts": {
-        "build": "docker buildx bake --load --metadata-file=build.json"
+        "build": "scripts/fetch-rollups-node.sh && docker buildx bake --load --metadata-file=build.json"
     }
 }
