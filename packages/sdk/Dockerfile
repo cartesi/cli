@@ -157,6 +157,69 @@ tar -xvzf /tmp/sling-node.tar.gz -C /usr/local/bin
 EOF
 
 ################################################################################
+# the Lua PRT node, crisium.lua, and the recipe modules it loads: they ship in
+# the machine-emulator source tree (doc/recipes), not in its deb, so they come
+# from the tag's source tarball, which is the same for every architecture. The
+# list is the player's require() closure; a module the tag renamed fails here.
+# It goes once the emulator ships the player as a package of its own.
+FROM base AS lua-prt-recipes
+ARG CARTESI_MACHINE_EMULATOR_VERSION
+RUN <<EOF
+curl -fsSL https://github.com/cartesi/machine-emulator/archive/refs/tags/v${CARTESI_MACHINE_EMULATOR_VERSION}.tar.gz \
+    -o /tmp/machine-emulator-src.tar.gz
+echo "a8136b43648ce32db5e6172a3d59eadafc6e5d7905f8d3589eb3fe71de89995a /tmp/machine-emulator-src.tar.gz" | sha256sum --check
+mkdir -p /opt/prt/recipes
+recipes="machine-emulator-${CARTESI_MACHINE_EMULATOR_VERSION}/doc/recipes"
+tar -xzf /tmp/machine-emulator-src.tar.gz -C /opt/prt/recipes --strip-components=3 \
+    "${recipes}/crisium.lua" \
+    "${recipes}/prt.lua" \
+    "${recipes}/prtu.lua" \
+    "${recipes}/prt-bridge.lua" \
+    "${recipes}/prt-command.lua" \
+    "${recipes}/prt-dishonest.lua" \
+    "${recipes}/prt-epoch.lua" \
+    "${recipes}/prt-ethereum.lua" \
+    "${recipes}/prt-log-history.lua" \
+    "${recipes}/prt-rpc.lua" \
+    "${recipes}/prt-signer.lua" \
+    "${recipes}/prt-stored-player.lua" \
+    "${recipes}/prt-transactions.lua" \
+    "${recipes}/prt-websocket.lua" \
+    "${recipes}/game-clock.lua" \
+    "${recipes}/game-output.lua" \
+    "${recipes}/game-response-queue.lua" \
+    "${recipes}/game-transport.lua"
+rm /tmp/machine-emulator-src.tar.gz
+EOF
+
+################################################################################
+# the forge build artifacts of the dave contracts, which the Lua PRT node reads
+# through --dave=/opt/dave, laid out as a dave source checkout: the same tarball
+# the wagmi plugin generates the CLI's contract bindings from. The release
+# packages dave's own contracts, not the rollups-contracts it depends on, while
+# a source build has both; the player reads only ABIs, and the interfaces dave
+# ships carry everything it calls on Application and InputBox, so copies of them
+# stand in at the names it expects
+FROM base AS dave-contracts
+ARG CARTESI_PRT_VERSION
+RUN <<EOF
+curl -fsSL https://github.com/cartesi/dave/releases/download/v${CARTESI_PRT_VERSION}/cartesi-rollups-prt-${CARTESI_PRT_VERSION}-contract-artifacts.tar.gz \
+    -o /tmp/dave-contracts.tar.gz
+echo "efcb9dacb5785455d0f17e3fb8be14406edec0c141b67b70ee8b4b3a5c49a10c /tmp/dave-contracts.tar.gz" | sha256sum --check
+mkdir -p /opt/dave
+tar -xzf /tmp/dave-contracts.tar.gz -C /opt/dave
+rm /tmp/dave-contracts.tar.gz
+cd /opt/dave/cartesi-rollups/contracts/out
+for contract in Application InputBox; do
+    mkdir "${contract}.sol"
+    cp "I${contract}.sol/I${contract}.json" "${contract}.sol/${contract}.json"
+done
+test -f DaveConsensus.sol/DaveConsensus.json
+test -f /opt/dave/prt/contracts/out/Tournament.sol/Tournament.json
+test -f /opt/dave/prt/contracts/out/MultiLevelTournamentFactory.sol/MultiLevelTournamentFactory.json
+EOF
+
+################################################################################
 # cartesi rollups-runtime target
 FROM base AS rollups-runtime
 ARG CARTESI_MACHINE_EMULATOR_VERSION
@@ -170,6 +233,7 @@ apt-get install -y --no-install-recommends \
     libslirp0 \
     libgomp1 \
     lua5.4 \
+    lua-dkjson \
     lua-lpeg \
     lua-socket
 rm -rf /var/lib/apt/lists/*
@@ -227,6 +291,12 @@ COPY --from=nitro /usr/local/src/nitroctl /usr/local/bin/
 COPY --from=tini /usr/local/bin/tini /usr/local/bin/
 COPY --from=telegraf /usr/bin/telegraf /usr/local/bin/
 COPY --from=sling-node --chmod=755 /usr/local/bin/cartesi-sling-node /usr/local/bin/cartesi-sling-node
+
+# the Lua PRT node: the recipes, the dave contract artifacts it reads, and cast,
+# which signs its transactions
+COPY --from=lua-prt-recipes /opt/prt/recipes /opt/prt/recipes
+COPY --from=dave-contracts /opt/dave /opt/dave
+COPY --from=foundry /usr/local/bin/cast /usr/local/bin/cast
 
 COPY skel/ /
 RUN <<EOF
