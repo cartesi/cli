@@ -128,24 +128,46 @@ export type WithdrawalOptions = {
 
 /**
  * The node of a [prt.nodes.<label>] entry: the rollups-node itself (`reference`, the one
- * entry that is implied when omitted), or a Dave sling node the CLI runs. A type is added
- * once a released node can take part.
+ * entry that is implied when omitted), a Dave sling node the CLI runs, or crisium, the Lua
+ * PRT player of the machine-emulator recipes, run from the runtime image.
  */
-export type PrtNodeType = "reference" | "sling";
+export type PrtNodeType = "reference" | "sling" | "crisium";
+
+/** How a crisium node takes part: watching and reporting, or claiming and disputing. */
+export type CrisiumMode = "sentinel" | "validator";
+
+/** What a crisium validator plays: the honest player, or the vandal, a scripted adversary. */
+export type CrisiumKind = "honest" | "vandal";
+
+/** When crisium acts on a block: at a depth, or at the chain's safe or finalized tag. */
+export type CrisiumPolicy = "safe" | "finalized" | number;
+
+/**
+ * The settings of a crisium entry, each one an option of the player. Only `mode`, and `kind`
+ * for a validator, gets a default here: the others stay unset so the player's own apply.
+ */
+export type CrisiumSettings = {
+    mode: CrisiumMode; // default sentinel, which signs nothing and takes no account
+    kind?: CrisiumKind; // validator only, default honest
+    warningBlocks?: number; // sentinel only: blocks before a deadline to warn at, default 10
+    inputPolicy?: CrisiumPolicy; // when an input counts, default finalized
+    disputePolicy?: CrisiumPolicy; // when a tournament event counts, default 4 blocks deep
+};
 
 /**
  * One [prt.nodes.<label>] entry: a PRT validator, which joins tournaments, stages and accepts
  * results. `sentry` is the optional extra: the address holds a slot on the application's
  * DaveConsensus and submits a sentry claim per epoch. The label is the key and names the
- * container of a node the CLI runs. Without a `type` the entry is appointed only.
+ * container of a node the CLI runs. Without a `type` the entry is appointed only. The crisium
+ * settings are set on a crisium entry only.
  */
 export type PrtNode = {
     type?: PrtNodeType;
     sentry: boolean; // default false
     claim?: boolean; // the reference node only: false runs it in reader mode, default true
     address?: Address; // required without a type; with one, the PRT pool by default
-    privateKeyFile?: string; // the entry's own key, for a sling node; sets the address
-};
+    privateKeyFile?: string; // the entry's own key, for a node the CLI runs; sets the address
+} & Partial<CrisiumSettings>;
 
 /**
  * The optional [prt] section, used by `cartesi run --prt` to deploy the application's

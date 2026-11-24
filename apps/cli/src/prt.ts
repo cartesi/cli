@@ -11,8 +11,10 @@ import {
 import { privateKeyToAccount } from "viem/accounts";
 import { DEVNET_MNEMONIC } from "./compose/node.js";
 import {
+    type CrisiumSettings,
     InvalidPrtConfigError,
     type PrtNode,
+    type PrtNodeType,
     type PrtOptions,
 } from "./config.js";
 import { prtNodeTable } from "./config/toml/prt.js";
@@ -47,20 +49,30 @@ export type PrtNodeSource =
     | { kind: "pool"; index: number } // a devnet account of the PRT pool
     | { kind: "devnet"; index: number } // another devnet account, named in the entry
     | { kind: "key-file"; path: string } // the developer's own key, read from a file
-    | { kind: "external" }; // an address of the developer's own
+    | { kind: "external" } // an address of the developer's own
+    | { kind: "none" }; // a crisium sentinel, which signs nothing
 
 export type ResolvedPrtNode = {
     label: string;
-    address: Address;
-    /** the node the CLI runs, the sling node; none for an appointed-only entry */
-    type?: "sling";
+    /** none for a crisium sentinel, which signs nothing */
+    address?: Address;
+    /** the node the CLI runs; none for an appointed-only entry */
+    type?: Exclude<PrtNodeType, "reference">;
     sentry: boolean;
     /** 1-based position among the sentries, in file order: the sentry's ID on the consensus */
     sentryId?: number;
     source: PrtNodeSource;
     /** the key the CLI runs the node with; only for a devnet account, whose key is public */
     privateKey?: Hex;
+    /** the player's settings, on a crisium entry */
+    crisium?: CrisiumSettings;
 };
+
+/** An entry with an account: every one but a crisium sentinel. */
+export type AddressedPrtNode = ResolvedPrtNode & { address: Address };
+
+const hasAddress = (node: ResolvedPrtNode): node is AddressedPrtNode =>
+    node.address !== undefined;
 
 /** The rollups-node's entry, implied when the config has none. */
 export type ResolvedReference = {
@@ -186,12 +198,34 @@ export const resolvePrtNodes = (
 
     const nodes = entries.map(([label, node]): ResolvedPrtNode => {
         const where = prtNodeTable(label);
+        // the parser sets the mode; a config built in code may not
+        const mode = node.mode ?? "sentinel";
         const resolved = {
             label,
-            ...(node.type === "sling" && { type: node.type }),
+            ...(node.type !== undefined &&
+                node.type !== "reference" && { type: node.type }),
             sentry: node.sentry,
             ...(node.sentry && { sentryId: ++sentries }),
+            ...(node.type === "crisium" && {
+                crisium: {
+                    mode,
+                    ...(node.kind !== undefined && { kind: node.kind }),
+                    ...(node.warningBlocks !== undefined && {
+                        warningBlocks: node.warningBlocks,
+                    }),
+                    ...(node.inputPolicy !== undefined && {
+                        inputPolicy: node.inputPolicy,
+                    }),
+                    ...(node.disputePolicy !== undefined && {
+                        disputePolicy: node.disputePolicy,
+                    }),
+                },
+            }),
         };
+        // a sentinel signs nothing, so it takes no account, from the pool or elsewhere
+        if (node.type === "crisium" && mode === "sentinel") {
+            return { ...resolved, source: { kind: "none" } };
+        }
         if (node.privateKeyFile !== undefined) {
             return { ...resolved, ...resolveKeyFile(node, where) };
         }
@@ -208,8 +242,7 @@ export const resolvePrtNodes = (
                 address: node.address,
                 source,
                 ...(node.type !== undefined &&
-                    source.kind !== "external" &&
-                    source.kind !== "key-file" && {
+                    (source.kind === "pool" || source.kind === "devnet") && {
                         privateKey: getDevnetAccount(source.index).privateKey,
                     }),
             };
@@ -238,9 +271,14 @@ export const resolvePrtNodes = (
 
     // a key file's address is known only now
     nodes.forEach((node, index) => {
+        if (!hasAddress(node)) {
+            return;
+        }
         const same = nodes.find(
             (other, i) =>
-                i < index && isAddressEqual(other.address, node.address),
+                i < index &&
+                other.address !== undefined &&
+                isAddressEqual(other.address, node.address),
         );
         if (same !== undefined) {
             throw new InvalidPrtConfigError(
@@ -253,7 +291,11 @@ export const resolvePrtNodes = (
     // a node the CLI runs sends its own transactions, so it can't be an account the node
     // sends from. Sharing one with the guardian or the default sender only risks a collision
     for (const node of nodes) {
-        if (node.type === undefined || node.source.kind === "pool") {
+        if (
+            node.type === undefined ||
+            node.source.kind === "pool" ||
+            !hasAddress(node)
+        ) {
             continue;
         }
         const where = prtNodeTable(node.label);
@@ -294,10 +336,13 @@ export const resolvePrtNodes = (
 
     // PRT is permissionless, so a claimer may run outside the CLI, but a devnet with
     // nothing claiming settles no epoch
-    const slings = nodes.filter(({ type }) => type === "sling");
-    if (!reference.claim && slings.length === 0) {
+    const claimers = nodes.filter(
+        ({ type, crisium }) =>
+            type === "sling" || crisium?.mode === "validator",
+    );
+    if (!reference.claim && claimers.length === 0) {
         warnings.push(
-            `nothing the CLI runs claims: ${prtNodeTable(reference.label as string)} has claim = false and no entry has type = "sling", so a claimer must run elsewhere`,
+            `nothing the CLI runs claims: ${prtNodeTable(reference.label as string)} has claim = false and no entry is a sling node or a crisium validator, so a claimer must run elsewhere`,
         );
     }
     // the consensus accepts a staged result once every sentry voted for it, and a sling
@@ -336,8 +381,10 @@ export const readerModeChanged = (
 };
 
 /** The sentries, in ID order: what the deploy appoints on the consensus. */
-export const sentriesOf = (prt: ResolvedPrt): ResolvedPrtNode[] =>
-    prt.nodes.filter(({ sentry }) => sentry);
+export const sentriesOf = (prt: ResolvedPrt): AddressedPrtNode[] =>
+    prt.nodes.filter(
+        (node): node is AddressedPrtNode => node.sentry && hasAddress(node),
+    );
 
 /** The entries the CLI runs a node for. */
 export const runnableNodes = (prt: ResolvedPrt): ResolvedPrtNode[] =>
@@ -362,6 +409,10 @@ export const checkPrtNodes = async (
     prt: ResolvedPrt,
 ): Promise<void> => {
     for (const node of runnableNodes(prt)) {
+        // a sentinel sends nothing
+        if (!hasAddress(node)) {
+            continue;
+        }
         if (node.source.kind === "pool") {
             await client.setBalance({
                 address: node.address,
@@ -385,9 +436,9 @@ export const describeReference = (prt: ResolvedPrt): string =>
         : "rollups-node reads (claim = false, no PRT signer)";
 
 /**
- * One line per entry: sentry with its ID or validator, its label and its full address, so it
- * can be copied into other tools. The note says what the CLI does with the entry, then where
- * its account comes from.
+ * One line per entry: sentry with its ID, validator or sentinel, its label and its full
+ * address, so it can be copied into other tools. The note says what the CLI does with the
+ * entry, then where its account comes from.
  */
 export const describePrtNode = (node: ResolvedPrtNode): string => {
     const { source } = node;
@@ -398,11 +449,33 @@ export const describePrtNode = (node: ResolvedPrtNode): string => {
               ? `devnet account ${source.index}`
               : source.kind === "key-file"
                 ? `key in ${source.path}`
-                : undefined;
+                : source.kind === "none"
+                  ? "signs nothing"
+                  : undefined;
+    const player =
+        node.type === "crisium"
+            ? [
+                  "crisium",
+                  ...(node.crisium?.kind ? [node.crisium.kind] : []),
+              ].join(" ")
+            : undefined;
     const origin =
         node.type === undefined
             ? ["appointed only", ...(account ? [account] : [])].join(", ")
-            : (account ?? "");
-    const kind = node.sentry ? `sentry ${node.sentryId}` : "validator";
-    return `${kind} ${chalk.cyan(node.label)} ${node.address} ${chalk.dim(`(${origin})`)}`;
+            : [...(player ? [player] : []), ...(account ? [account] : [])].join(
+                  ", ",
+              );
+    const kind = node.sentry
+        ? `sentry ${node.sentryId}`
+        : node.crisium?.mode === "sentinel"
+          ? "sentinel"
+          : "validator";
+    return [
+        kind,
+        chalk.cyan(node.label),
+        node.address,
+        chalk.dim(`(${origin})`),
+    ]
+        .filter((part) => part !== undefined)
+        .join(" ");
 };

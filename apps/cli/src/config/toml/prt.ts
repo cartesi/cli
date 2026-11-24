@@ -1,11 +1,19 @@
 import type { TomlValue } from "smol-toml";
-import { isAddressEqual, zeroAddress } from "viem";
+import { type Address, isAddressEqual, zeroAddress } from "viem";
 import {
     formatValue,
     InvalidPrtConfigError,
     InvalidTableError,
 } from "../errors.js";
-import type { PrtNode, PrtNodeType, PrtOptions } from "../types.js";
+import type {
+    CrisiumKind,
+    CrisiumMode,
+    CrisiumPolicy,
+    CrisiumSettings,
+    PrtNode,
+    PrtNodeType,
+    PrtOptions,
+} from "../types.js";
 import { assertKnownKeys, isTomlTable } from "./tables.js";
 import {
     parseBoolean,
@@ -18,12 +26,34 @@ export const PRT_KEYS: readonly string[] = ["nodes", "sentry_manager"];
 export const PRT_NODE_KEYS: readonly string[] = [
     "address",
     "claim",
+    "dispute_policy",
+    "input_policy",
+    "kind",
+    "mode",
     "private_key_file",
     "sentry",
     "type",
+    "warning_blocks",
 ];
 
-export const PRT_NODE_TYPES: readonly PrtNodeType[] = ["reference", "sling"];
+export const PRT_NODE_TYPES: readonly PrtNodeType[] = [
+    "reference",
+    "sling",
+    "crisium",
+];
+
+export const CRISIUM_MODES: readonly CrisiumMode[] = ["sentinel", "validator"];
+
+export const CRISIUM_KINDS: readonly CrisiumKind[] = ["honest", "vandal"];
+
+/** The keys only a crisium entry takes: the player's own options. */
+const CRISIUM_KEYS: readonly string[] = [
+    "mode",
+    "kind",
+    "warning_blocks",
+    "input_policy",
+    "dispute_policy",
+];
 
 /**
  * A label is the key of an entry and names its container, so it keeps to what a service name
@@ -50,6 +80,112 @@ const parseChoice = <T extends string>(
     );
 };
 
+/**
+ * A whole number of 0 or more: an epoch index or a number of blocks. Bounded by what a
+ * number holds exactly, so the value reaches the player's command line as written.
+ */
+const parseCount = (value: TomlValue, key: string, where: string): number => {
+    const count = typeof value === "bigint" ? Number(value) : value;
+    if (
+        typeof count === "number" &&
+        Number.isInteger(count) &&
+        count >= 0 &&
+        count <= Number.MAX_SAFE_INTEGER
+    ) {
+        return count;
+    }
+    throw new InvalidPrtConfigError(
+        `${key} must be a whole number from 0 to ${Number.MAX_SAFE_INTEGER}, got ${formatValue(value)}`,
+        where,
+    );
+};
+
+/** A block policy of the player: a tag, or a depth in blocks. */
+const parsePolicy = (
+    value: TomlValue,
+    key: string,
+    where: string,
+): CrisiumPolicy => {
+    if (value === "safe" || value === "finalized") {
+        return value;
+    }
+    if (typeof value === "number" || typeof value === "bigint") {
+        return parseCount(value, key, where);
+    }
+    throw new InvalidPrtConfigError(
+        `${key} ${formatValue(value)} isn't supported, expected safe, finalized or a number of blocks`,
+        where,
+    );
+};
+
+/**
+ * The settings of a crisium entry. A sentinel signs nothing, so it takes no account and no
+ * kind; a validator plays a kind with an account, like a sling node. Neither can be a sentry:
+ * the player submits no sentry claims.
+ */
+const parseCrisium = (
+    value: Record<string, TomlValue>,
+    entry: { sentry: boolean; address?: Address; privateKeyFile?: string },
+    where: string,
+): CrisiumSettings => {
+    if (entry.sentry) {
+        throw new InvalidPrtConfigError(
+            "a crisium node can't be a sentry: it submits no sentry claims",
+            where,
+        );
+    }
+    const mode =
+        value.mode === undefined
+            ? "sentinel"
+            : parseChoice(value.mode, "mode", CRISIUM_MODES, where);
+    if (mode === "sentinel") {
+        if (value.kind !== undefined) {
+            throw new InvalidPrtConfigError(
+                'kind needs mode = "validator": a sentinel computes only honest claims',
+                where,
+            );
+        }
+        if (entry.address !== undefined || entry.privateKeyFile !== undefined) {
+            throw new InvalidPrtConfigError(
+                "a sentinel takes no address or private_key_file: it signs nothing",
+                where,
+            );
+        }
+    } else if (value.warning_blocks !== undefined) {
+        throw new InvalidPrtConfigError(
+            'warning_blocks needs mode = "sentinel": only a sentinel reports missed deadlines',
+            where,
+        );
+    }
+    const kind =
+        mode === "validator"
+            ? value.kind === undefined
+                ? "honest"
+                : parseChoice(value.kind, "kind", CRISIUM_KINDS, where)
+            : undefined;
+    return {
+        mode,
+        ...(kind !== undefined && { kind }),
+        ...(value.warning_blocks !== undefined && {
+            warningBlocks: parseCount(
+                value.warning_blocks,
+                "warning_blocks",
+                where,
+            ),
+        }),
+        ...(value.input_policy !== undefined && {
+            inputPolicy: parsePolicy(value.input_policy, "input_policy", where),
+        }),
+        ...(value.dispute_policy !== undefined && {
+            disputePolicy: parsePolicy(
+                value.dispute_policy,
+                "dispute_policy",
+                where,
+            ),
+        }),
+    };
+};
+
 const parseNode = (label: string, value: TomlValue): PrtNode => {
     const where = prtNodeTable(label);
     if (!LABEL_PATTERN.test(label)) {
@@ -67,6 +203,15 @@ const parseNode = (label: string, value: TomlValue): PrtNode => {
         value.type === undefined
             ? undefined
             : parseChoice(value.type, "type", PRT_NODE_TYPES, where);
+    if (type !== "crisium") {
+        const key = CRISIUM_KEYS.find((key) => value[key] !== undefined);
+        if (key !== undefined) {
+            throw new InvalidPrtConfigError(
+                `${key} needs type = "crisium"`,
+                where,
+            );
+        }
+    }
     const sentry = parseBoolean(value.sentry, false);
     const address =
         value.address === undefined
@@ -104,9 +249,19 @@ const parseNode = (label: string, value: TomlValue): PrtNode => {
         throw new InvalidPrtConfigError(
             type === "sling"
                 ? "claim isn't supported on a sling node yet: it always claims"
-                : 'claim needs type = "reference": only the rollups-node can read instead of claiming',
+                : type === "crisium"
+                  ? 'claim isn\'t supported on a crisium node: mode = "sentinel" reads instead of claiming'
+                  : 'claim needs type = "reference": only the rollups-node can read instead of claiming',
             where,
         );
+    }
+    const crisium =
+        type === "crisium"
+            ? parseCrisium(value, { sentry, address, privateKeyFile }, where)
+            : undefined;
+    // a sentinel has no account: nothing below applies to it
+    if (crisium?.mode === "sentinel") {
+        return { type, sentry, ...crisium };
     }
     if (type === undefined) {
         if (address === undefined) {
@@ -141,6 +296,7 @@ const parseNode = (label: string, value: TomlValue): PrtNode => {
         sentry,
         ...(address !== undefined && { address }),
         ...(privateKeyFile !== undefined && { privateKeyFile }),
+        ...crisium,
     };
 };
 

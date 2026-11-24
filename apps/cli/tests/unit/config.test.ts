@@ -179,6 +179,20 @@ describe("when parsing the fixtures", () => {
                         sentry: true,
                         address: "0x5555555555555555555555555555555555555555",
                     },
+                    watch: {
+                        type: "crisium",
+                        sentry: false,
+                        mode: "sentinel",
+                        warningBlocks: 5,
+                    },
+                    red: {
+                        type: "crisium",
+                        sentry: false,
+                        mode: "validator",
+                        kind: "vandal",
+                        inputPolicy: "safe",
+                        disputePolicy: 2,
+                    },
                 },
             },
             withdrawal: {
@@ -734,7 +748,7 @@ cache_to = ["type=gha,mode=max"]`,
                 prt('[prt.nodes.first]\ntype = "rollups-node"'),
             ).toThrowError(
                 new InvalidPrtConfigError(
-                    "type rollups-node isn't supported, expected one of: reference, sling",
+                    "type rollups-node isn't supported, expected one of: reference, sling, crisium",
                     "[prt.nodes.first]",
                 ),
             );
@@ -777,7 +791,141 @@ cache_to = ["type=gha,mode=max"]`,
             expect(() =>
                 prt('[prt.nodes.first]\ntype = "sling"\nrole = "sentry"'),
             ).toThrowError(
-                "Unknown key 'role' in [prt.nodes.first], expected one of: address, claim, private_key_file, sentry, type",
+                "Unknown key 'role' in [prt.nodes.first], expected one of: address, claim, dispute_policy, input_policy, kind, mode, private_key_file, sentry, type, warning_blocks",
+            );
+        });
+
+        /**
+         * a crisium entry: the Lua PRT player, a sentinel by default
+         */
+        describe("a crisium entry", () => {
+            const entry = (keys: string) =>
+                prt(`[prt.nodes.x]\ntype = "crisium"\n${keys}`)?.nodes.x;
+
+            it("should default to a sentinel, with no account", () => {
+                expect(entry("")).toStrictEqual({
+                    type: "crisium",
+                    sentry: false,
+                    mode: "sentinel",
+                });
+            });
+
+            it("should default a validator to the honest kind", () => {
+                expect(entry('mode = "validator"')).toStrictEqual({
+                    type: "crisium",
+                    sentry: false,
+                    mode: "validator",
+                    kind: "honest",
+                });
+            });
+
+            it("should keep every setting of a validator", () => {
+                expect(
+                    entry(
+                        `mode = "validator"\nkind = "vandal"\ninput_policy = "safe"\ndispute_policy = 3\naddress = "${address("4")}"\nprivate_key_file = "secrets/red.key"`,
+                    ),
+                ).toStrictEqual({
+                    type: "crisium",
+                    sentry: false,
+                    address: address("4"),
+                    privateKeyFile: "secrets/red.key",
+                    mode: "validator",
+                    kind: "vandal",
+                    inputPolicy: "safe",
+                    disputePolicy: 3,
+                });
+            });
+
+            it("should keep a sentinel's settings, zero included", () => {
+                expect(
+                    entry(
+                        'mode = "sentinel"\nwarning_blocks = 0\ninput_policy = 0',
+                    ),
+                ).toStrictEqual({
+                    type: "crisium",
+                    sentry: false,
+                    mode: "sentinel",
+                    warningBlocks: 0,
+                    inputPolicy: 0,
+                });
+            });
+
+            it.each([
+                [
+                    "sentry = true",
+                    "a crisium node can't be a sentry: it submits no sentry claims",
+                ],
+                [
+                    "claim = false",
+                    'claim isn\'t supported on a crisium node: mode = "sentinel" reads instead of claiming',
+                ],
+                [
+                    'kind = "vandal"',
+                    'kind needs mode = "validator": a sentinel computes only honest claims',
+                ],
+                [
+                    `address = "${address("4")}"`,
+                    "a sentinel takes no address or private_key_file: it signs nothing",
+                ],
+                [
+                    'private_key_file = "secrets/x.key"',
+                    "a sentinel takes no address or private_key_file: it signs nothing",
+                ],
+                [
+                    'mode = "validator"\nwarning_blocks = 5',
+                    'warning_blocks needs mode = "sentinel": only a sentinel reports missed deadlines',
+                ],
+                [
+                    'mode = "observer"',
+                    "mode observer isn't supported, expected one of: sentinel, validator",
+                ],
+                [
+                    'mode = "validator"\nkind = "quitter"',
+                    "kind quitter isn't supported, expected one of: honest, vandal",
+                ],
+                [
+                    "warning_blocks = -1",
+                    "warning_blocks must be a whole number from 0 to 9007199254740991, got -1",
+                ],
+                [
+                    "warning_blocks = 1.5",
+                    "warning_blocks must be a whole number from 0 to 9007199254740991, got 1.5",
+                ],
+                [
+                    'warning_blocks = "0"',
+                    "warning_blocks must be a whole number from 0 to 9007199254740991, got 0",
+                ],
+                [
+                    'input_policy = "latest"',
+                    "input_policy latest isn't supported, expected safe, finalized or a number of blocks",
+                ],
+                [
+                    "dispute_policy = -1",
+                    "dispute_policy must be a whole number from 0 to 9007199254740991, got -1",
+                ],
+            ])("should reject %s", (keys, reason) => {
+                expect(() => entry(keys)).toThrowError(
+                    new InvalidPrtConfigError(reason, "[prt.nodes.x]"),
+                );
+            });
+
+            it.each([
+                ['type = "sling"\nmode = "sentinel"', "mode"],
+                ['type = "reference"\nwarning_blocks = 1', "warning_blocks"],
+                [
+                    `sentry = true\naddress = "${address("4")}"\ninput_policy = "safe"`,
+                    "input_policy",
+                ],
+            ])(
+                "should reject a crisium key on another entry: %s",
+                (keys, key) => {
+                    expect(() => prt(`[prt.nodes.a]\n${keys}`)).toThrowError(
+                        new InvalidPrtConfigError(
+                            `${key} needs type = "crisium"`,
+                            "[prt.nodes.a]",
+                        ),
+                    );
+                },
             );
         });
     });

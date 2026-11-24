@@ -225,6 +225,45 @@ type = "reference"
             expect(all).not.toContain("services:");
         });
 
+        // a crisium node submits no sentry claims; the PRT nodes themselves are
+        // composed after the deploy, so a dry run only validates the entries
+        it("should reject a crisium sentry before rendering", async () => {
+            const { all, exitCode } = await dryRun([
+                "--prt",
+                ...config(
+                    '[prt.nodes.watch]\ntype = "crisium"\nsentry = true\n',
+                ),
+            ]);
+
+            expect(exitCode).not.toBe(0);
+            expect(all).toContain(
+                "Invalid [prt.nodes.watch]: a crisium node can't be a sentry: it submits no sentry claims",
+            );
+            expect(all).not.toContain("services:");
+        });
+
+        it("should render the configuration with crisium entries", async () => {
+            const { all, exitCode } = await dryRun([
+                "--prt",
+                ...config(`
+[prt.nodes.reference]
+type = "reference"
+claim = false
+
+[prt.nodes.red]
+type = "crisium"
+mode = "validator"
+kind = "vandal"
+
+[prt.nodes.watch]
+type = "crisium"
+`),
+            ]);
+
+            expect(exitCode, all).toBe(0);
+            expect(all).toContain("services:");
+        });
+
         // an entry the CLI doesn't run is only there to be appointed
         it("should reject an appointed entry without sentry = true", async () => {
             const { all, exitCode } = await dryRun([

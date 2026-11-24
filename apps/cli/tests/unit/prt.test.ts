@@ -15,6 +15,7 @@ import {
     type PrtClient,
     readerModeChanged,
     readKeyFile,
+    type ResolvedPrtNode,
     resolvePrtNodes,
     sentriesOf,
 } from "../../src/prt";
@@ -36,6 +37,21 @@ const validator = (node: Partial<PrtNode> = {}): PrtNode => ({
     ...node,
 });
 const appointed = (address: Address): PrtNode => ({ sentry: true, address });
+// a crisium sentinel, which takes no account
+const sentinel = (node: Partial<PrtNode> = {}): PrtNode => ({
+    type: "crisium",
+    sentry: false,
+    mode: "sentinel",
+    ...node,
+});
+// a crisium validator, honest by default
+const crisium = (node: Partial<PrtNode> = {}): PrtNode => ({
+    type: "crisium",
+    sentry: false,
+    mode: "validator",
+    kind: "honest",
+    ...node,
+});
 const reference = (claim: boolean): PrtNode => ({
     type: "reference",
     sentry: false,
@@ -176,7 +192,7 @@ describe("resolvePrtNodes", () => {
             ["theirs", 2],
             ["last", 3],
         ]);
-        expect(
+        expect<ResolvedPrtNode[]>(
             sentriesOf({ reference: { claim: true }, nodes, warnings: [] }),
         ).toEqual(nodes);
     });
@@ -461,7 +477,7 @@ describe("with a reference entry", () => {
                 theirs: appointed(external),
             }).warnings,
         ).toEqual([
-            'nothing the CLI runs claims: [prt.nodes.reference] has claim = false and no entry has type = "sling", so a claimer must run elsewhere',
+            "nothing the CLI runs claims: [prt.nodes.reference] has claim = false and no entry is a sling node or a crisium validator, so a claimer must run elsewhere",
         ]);
         expect(
             resolve({ reference: reference(false), blue: validator() })
@@ -664,5 +680,165 @@ describe("describePrtNode", () => {
         expect(describe_({ theirs: appointed(devnet(3)) })).toBe(
             `sentry 1 theirs ${devnet(3)} (appointed only, devnet account 3)`,
         );
+    });
+});
+
+describe("with a crisium entry", () => {
+    it("should give a sentinel no account, and no pool slot", () => {
+        const { nodes } = resolve({ watch: sentinel(), a: sling() });
+
+        expect(nodes[0]).toEqual({
+            label: "watch",
+            type: "crisium",
+            sentry: false,
+            source: { kind: "none" },
+            crisium: { mode: "sentinel" },
+        });
+        expect(nodes[1]?.address).toBe(devnet(20));
+    });
+
+    // the parser always sets the mode; a config built in code may leave it out
+    it("should treat a crisium entry without a mode as a sentinel", () => {
+        const [watch, a] = resolve({
+            watch: { type: "crisium", sentry: false },
+            a: sling(),
+        }).nodes;
+
+        expect(watch).toMatchObject({
+            source: { kind: "none" },
+            crisium: { mode: "sentinel" },
+        });
+        expect(watch?.address).toBeUndefined();
+        expect(a?.address).toBe(devnet(20));
+    });
+
+    it("should give a validator a pool account and its key, like a sling node", () => {
+        const [red] = resolve({ red: crisium() }).nodes;
+
+        expect(red).toEqual({
+            label: "red",
+            type: "crisium",
+            sentry: false,
+            address: devnet(20),
+            source: { kind: "pool", index: 20 },
+            privateKey: getDevnetAccount(20).privateKey,
+            crisium: { mode: "validator", kind: "honest" },
+        });
+    });
+
+    it("should carry the player's settings", () => {
+        const [troll] = resolve({
+            troll: crisium({
+                kind: "vandal",
+                inputPolicy: "safe",
+                disputePolicy: 3,
+            }),
+        }).nodes;
+
+        expect(troll?.crisium).toEqual({
+            mode: "validator",
+            kind: "vandal",
+            inputPolicy: "safe",
+            disputePolicy: 3,
+        });
+    });
+
+    it("should take a validator's key file or devnet address as a sling's", () => {
+        const { nodes } = resolve({
+            own: crisium({ privateKeyFile: keyFile(ownKey) }),
+            two: crisium({ address: devnet(2) }),
+        });
+
+        expect(nodes[0]).toMatchObject({
+            address: ownAddress,
+            source: { kind: "key-file" },
+        });
+        expect(nodes[0]?.privateKey).toBeUndefined();
+        expect(nodes[1]).toMatchObject({
+            address: devnet(2),
+            source: { kind: "devnet", index: 2 },
+            privateKey: getDevnetAccount(2).privateKey,
+        });
+    });
+
+    it("should fail for a validator on an address the CLI has no key for", () => {
+        expect(() =>
+            resolve({ x: crisium({ address: external }) }),
+        ).toThrowError(
+            new InvalidPrtConfigError(
+                `the CLI has no key for ${external}: set private_key_file to run the node with it, or drop the type to appoint it only`,
+                "[prt.nodes.x]",
+            ),
+        );
+    });
+
+    it("should fail when a validator repeats another entry's address", () => {
+        expect(() =>
+            resolve({
+                a: crisium({ address: devnet(21) }),
+                b: sling({ address: devnet(21) }),
+            }),
+        ).toThrowError(
+            new InvalidPrtConfigError(
+                `address ${devnet(21)} is also the address of [prt.nodes.a]`,
+                "[prt.nodes.b]",
+            ),
+        );
+    });
+
+    it("should fund a validator and skip a sentinel", async () => {
+        const calls: { method: string; address: Address }[] = [];
+        const client: PrtClient = {
+            getBalance: async ({ address }) => {
+                calls.push({ method: "getBalance", address });
+                return 1n;
+            },
+            setBalance: async ({ address }) => {
+                calls.push({ method: "setBalance", address });
+            },
+        };
+
+        await checkPrtNodes(
+            client,
+            resolve({ watch: sentinel(), red: crisium() }),
+        );
+
+        expect(calls).toEqual([{ method: "setBalance", address: devnet(20) }]);
+    });
+
+    it("should count a validator as a claimer, not a sentinel", () => {
+        expect(
+            resolve({ reference: reference(false), red: crisium() }).warnings,
+        ).toEqual([]);
+        expect(
+            resolve({ reference: reference(false), watch: sentinel() })
+                .warnings,
+        ).toEqual([
+            "nothing the CLI runs claims: [prt.nodes.reference] has claim = false and no entry is a sling node or a crisium validator, so a claimer must run elsewhere",
+        ]);
+    });
+
+    it("should leave crisium nodes out of the sentries", () => {
+        const prt = resolve({ a: sling(), watch: sentinel(), red: crisium() });
+
+        expect(sentriesOf(prt).map(({ label }) => label)).toEqual(["a"]);
+    });
+
+    it("should describe a sentinel, and a validator by its kind", () => {
+        const describe_ = (nodes: Record<string, PrtNode>, index = 0) =>
+            describePrtNode(resolve(nodes).nodes[index]);
+        const file = keyFile(ownKey, "red.key");
+
+        expect(describe_({ watch: sentinel() })).toBe(
+            "sentinel watch (crisium, signs nothing)",
+        );
+        expect(describe_({ red: crisium() })).toBe(
+            `validator red ${devnet(20)} (crisium honest, devnet account 20, funded by the CLI)`,
+        );
+        expect(
+            describe_({
+                red: crisium({ kind: "vandal", privateKeyFile: file }),
+            }),
+        ).toBe(`validator red ${ownAddress} (crisium vandal, key in ${file})`);
     });
 });

@@ -198,3 +198,211 @@ describe("Compose PRT node services", () => {
         });
     });
 });
+
+/**
+ * The crisium player: a sentinel on no account, or a validator signing through
+ * a keystore the init service makes from its key. The init also stores the
+ * checkpoint of epoch 0, so every crisium node has one.
+ */
+describe("Compose crisium services", () => {
+    const application: Address = "0x1111111111111111111111111111111111111111";
+    const ownKey = generatePrivateKey();
+    let keyFile: string;
+
+    beforeAll(() => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), "prt-crisium-"));
+        keyFile = path.join(dir, "red.key");
+        fs.writeFileSync(keyFile, ownKey);
+    });
+
+    afterAll(() => fs.rmSync(path.dirname(keyFile), { recursive: true }));
+
+    const compose = () =>
+        buildPrtNodes({
+            application,
+            blockTime: 2,
+            imageTag: "devel",
+            nodes: resolvePrtNodes({
+                nodes: {
+                    watch: { type: "crisium", sentry: false, mode: "sentinel" },
+                    red: {
+                        type: "crisium",
+                        sentry: false,
+                        mode: "validator",
+                        kind: "honest",
+                    },
+                    own: {
+                        type: "crisium",
+                        sentry: false,
+                        mode: "validator",
+                        kind: "honest",
+                        privateKeyFile: keyFile,
+                    },
+                    troll: {
+                        type: "crisium",
+                        sentry: false,
+                        mode: "validator",
+                        kind: "vandal",
+                        inputPolicy: "safe",
+                        disputePolicy: 3,
+                    },
+                },
+            }).nodes,
+        });
+    const DATA = "/var/lib/cartesi-rollups-node/snapshots";
+    const LUA_PATH = "/opt/prt/recipes/?.lua;;";
+    const args = (label: string, mode: string, pollInterval = 2) => [
+        "lua5.4",
+        "/opt/prt/recipes/crisium.lua",
+        "--rpc=http://anvil:8545",
+        "--ws=ws://anvil:8545",
+        `--application=${application}`,
+        `--label=${label}`,
+        `--poll-interval=${pollInterval}`,
+        "--dave=/opt/dave",
+        `--state=${DATA}/state`,
+        `--checkpoints=${DATA}/checkpoints`,
+        `--mode=${mode}`,
+    ];
+
+    it("should compose a node and its init service per entry", () => {
+        const files = compose();
+
+        expect(files.map((file) => Object.keys(file.services ?? {}))).toEqual([
+            ["prt-node-watch", "secret-init-prt-node-watch"],
+            ["prt-node-red", "secret-init-prt-node-red"],
+            ["prt-node-own", "secret-init-prt-node-own"],
+            ["prt-node-troll", "secret-init-prt-node-troll"],
+        ]);
+        expect(
+            Object.keys(files[0]?.services ?? {}).filter(isPrtNodeService),
+        ).toEqual(["prt-node-watch"]);
+    });
+
+    it("should run a sentinel on its data volume, after the init stored epoch 0", () => {
+        const [file] = compose();
+        const service = file?.services?.["prt-node-watch"];
+        const init = file?.services?.["secret-init-prt-node-watch"];
+
+        expect(service).toEqual({
+            image: "cartesi/rollups-runtime:devel",
+            init: true,
+            depends_on: {
+                anvil: { condition: "service_healthy" },
+                "secret-init-prt-node-watch": {
+                    condition: "service_completed_successfully",
+                },
+            },
+            command: args("watch", "sentinel"),
+            environment: { LUA_PATH },
+            volumes: [`prt_node_watch_data:${DATA}`],
+        });
+        expect(init).toEqual({
+            image: "cartesi/rollups-runtime:devel",
+            user: "root",
+            restart: "no",
+            depends_on: { anvil: { condition: "service_healthy" } },
+            entrypoint: ["sh", "-ec"],
+            command: [
+                [
+                    "find /dst -mindepth 1 -delete",
+                    "install -d -o cartesi -g cartesi /dst/state /dst/checkpoints",
+                    `lua5.4 /opt/prt/store-first-checkpoint.lua http://anvil:8545 ${application} /var/lib/cartesi-rollups-node/template/image /opt/dave /dst/checkpoints/epoch-0`,
+                    "chown -R cartesi:cartesi /dst",
+                ].join("\n"),
+            ],
+            environment: { LUA_PATH },
+            volumes: [
+                "./.cartesi:/var/lib/cartesi-rollups-node/template:ro",
+                "prt_node_watch_data:/dst",
+            ],
+        });
+        expect(file?.volumes).toEqual({ prt_node_watch_data: {} });
+        expect(file?.configs).toBeUndefined();
+    });
+
+    it("should sign a validator with a keystore made from the pool key", () => {
+        const [, file] = compose();
+        const service = file?.services?.["prt-node-red"];
+        const init = file?.services?.["secret-init-prt-node-red"];
+
+        expect(service?.command).toEqual([
+            ...args("red", "validator"),
+            "--kind=honest",
+            `--keystore=${DATA}/keystore/prt-node-red`,
+            `--password-file=${DATA}/password`,
+        ]);
+        expect(service?.environment).toEqual({ LUA_PATH });
+        expect(init?.environment).toEqual({
+            LUA_PATH,
+            PRT_NODE_PRIVATE_KEY: getDevnetAccount(20).privateKey,
+        });
+        // compose would otherwise interpolate the shell's $
+        expect(init?.command).toEqual([
+            expect.stringContaining(
+                'cast wallet import prt-node-red --keystore-dir /dst/keystore --private-key "$$PRT_NODE_PRIVATE_KEY" --unsafe-password "$$(cat /dst/password)" > /dev/null',
+            ),
+        ]);
+        expect(init?.command).toEqual([
+            expect.stringContaining(
+                "chmod 0400 /dst/keystore/prt-node-red /dst/password",
+            ),
+        ]);
+    });
+
+    it("should read a key file in the init service and never copy its key", () => {
+        const [, , file] = compose();
+        const init = file?.services?.["secret-init-prt-node-own"];
+
+        expect(init?.environment).toEqual({ LUA_PATH });
+        expect(init?.command).toEqual([
+            expect.stringContaining(
+                `--private-key "$$(head -n 1 /src/prt-node-own | tr -d '[:space:]')"`,
+            ),
+        ]);
+        expect(init?.volumes).toEqual([
+            {
+                type: "bind",
+                source: keyFile,
+                target: "/src/prt-node-own",
+                read_only: true,
+                bind: { create_host_path: false },
+            },
+            "./.cartesi:/var/lib/cartesi-rollups-node/template:ro",
+            "prt_node_own_data:/dst",
+        ]);
+        expect(JSON.stringify(file)).not.toContain(ownKey.slice(2));
+    });
+
+    it("should pass the player's settings through, polling at least every second", () => {
+        const [, , , file] = compose();
+        const [quiet] = buildPrtNodes({
+            application,
+            blockTime: 0.5,
+            imageTag: "devel",
+            nodes: resolvePrtNodes({
+                nodes: {
+                    quiet: {
+                        type: "crisium",
+                        sentry: false,
+                        mode: "sentinel",
+                        warningBlocks: 0,
+                    },
+                },
+            }).nodes,
+        });
+
+        expect(file?.services?.["prt-node-troll"]?.command).toEqual([
+            ...args("troll", "validator"),
+            "--kind=vandal",
+            `--keystore=${DATA}/keystore/prt-node-troll`,
+            `--password-file=${DATA}/password`,
+            "--input-policy=safe",
+            "--dispute-policy=3",
+        ]);
+        expect(quiet?.services?.["prt-node-quiet"]?.command).toEqual([
+            ...args("quiet", "sentinel", 1),
+            "--warning-blocks=0",
+        ]);
+    });
+});
