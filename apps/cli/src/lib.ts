@@ -45,6 +45,25 @@ export {
     type WithdrawalOptions,
 } from "./config.js";
 
+// the [prt] section, as `run({ prt: true })` reads it from the configuration
+export type {
+    CrisiumKind,
+    CrisiumMode,
+    CrisiumPolicy,
+    CrisiumSettings,
+    PrtNode,
+    PrtNodeType,
+    PrtOptions,
+} from "./config.js";
+
+// the [prt] setup a run deployed with, as `RunResult.prtConfig` returns it
+export type {
+    PrtNodeSource,
+    ResolvedPrt,
+    ResolvedPrtNode,
+    ResolvedReference,
+} from "./prt.js";
+
 // runtime environment
 export {
     AVAILABLE_SERVICES,
