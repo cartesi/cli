@@ -1,4 +1,4 @@
-import { ExecaError, execa } from "execa";
+import { ExecaError, execa, type ResultPromise } from "execa";
 import { type Hex, isHex } from "viem";
 import type { CartesiEnvironmentVariables } from "../base.js";
 
@@ -83,7 +83,7 @@ export const runNodeCommand = (options: {
     env?: Record<string, string>;
     projectName: string;
     stdout?: "stdout" | "stderr";
-}) =>
+}): ResultPromise =>
     execa(
         "docker",
         nodeExecArgs({ ...options, interactive: !!process.stdin.isTTY }),
