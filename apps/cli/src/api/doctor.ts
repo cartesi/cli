@@ -2,13 +2,13 @@ import { execa } from "execa";
 import semver from "semver";
 import { DEFAULT_SDK_IMAGE, DEFAULT_SDK_VERSION } from "../config.js";
 import { cartesiMachine } from "../exec/index.js";
+import { requiredTools } from "../host/environment.js";
+import { findPostgres } from "../host/postgres.js";
+import { assertHostTools } from "../host/tools.js";
 
 const MINIMUM_DOCKER_VERSION = "25.0.0"; // Replace with our minimum required Docker version
-const MINIMUM_DOCKER_COMPOSE_VERSION = "2.24.0"; // Replace with our minimum required Docker Compose version
 const MINIMUM_BUILDX_VERSION = "0.13.0"; // Replace with our minimum required Buildx version
 
-const COMPOSE_NOT_INSTALLED =
-    "Docker Compose is required but not installed or the command execution failed. Please refer to the Docker Compose documentation for installation instructions: https://docs.docker.com/compose/install/";
 const BUILDX_NOT_INSTALLED =
     "Docker Buildx is required but not installed. Please refer to the Docker Desktop documentation for installation instructions: https://docs.docker.com/desktop/";
 
@@ -92,21 +92,6 @@ const checkDocker = async (): Promise<string | undefined> => {
     return v?.version;
 };
 
-const checkCompose = async (): Promise<string | undefined> => {
-    const dockerComposeVersion = await docker(
-        ["compose", "version", "--short"],
-        COMPOSE_NOT_INSTALLED,
-    );
-
-    const v = semver.coerce(dockerComposeVersion);
-    if (v !== null && !semver.gte(v, MINIMUM_DOCKER_COMPOSE_VERSION)) {
-        throw new Error(
-            `Unsupported Docker Compose version. Minimum required version is ${MINIMUM_DOCKER_COMPOSE_VERSION}. Installed version is ${v}.`,
-        );
-    }
-    return dockerComposeVersion;
-};
-
 const checkBuildx = async (): Promise<string | undefined> => {
     const buildxOutput = await docker(
         ["buildx", "version"],
@@ -160,15 +145,21 @@ const checkCartesiMachine = async (): Promise<string | undefined> => {
     return v.format();
 };
 
+/**
+ * `cartesi run` runs the environment on the host, with the tools installed
+ * there: every one of them is required, but for the optional services.
+ */
+const checkRunEnvironment = async (): Promise<string | undefined> => {
+    const postgres = await findPostgres();
+    assertHostTools([...requiredTools([]), postgres.initdb, postgres.postgres]);
+    const { stdout } = await execa("cartesi-rollups-node", ["--version"]);
+    return stdout.trim();
+};
+
 // the Cartesi Machine check requires nothing, as a host cartesi-machine
 // satisfies it without docker
 const checks: Check[] = [
     { name: "Docker Engine", run: checkDocker },
-    {
-        name: "Docker Compose",
-        requires: ["Docker Engine"],
-        run: checkCompose,
-    },
     {
         name: "Docker Buildx",
         requires: ["Docker Engine"],
@@ -180,6 +171,7 @@ const checks: Check[] = [
         run: checkRiscv,
     },
     { name: "Cartesi Machine", run: checkCartesiMachine },
+    { name: "Run environment", run: checkRunEnvironment },
 ];
 
 /**

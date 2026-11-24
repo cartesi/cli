@@ -9,13 +9,14 @@ import {
     numberToHex,
 } from "viem";
 import fs from "node:fs";
+import { stringify } from "yaml";
 import {
     getCartesiEnvironmentVariables,
     getContextPath,
     getMachineHash,
     getProjectName,
 } from "../base.js";
-import { nodePrtAuthVariables } from "../compose/node.js";
+import { nodePrtAuthVariables } from "../host/node.js";
 import {
     DEFAULT_SDK_VERSION,
     type DefaultBlock,
@@ -25,16 +26,17 @@ import {
 } from "../config.js";
 import {
     deployApplication,
-    type EnvironmentOptions,
     host,
     removeApplication,
     type RollupsDeployment,
-    startEnvironment,
-    startPrtNodes,
-    stopEnvironment,
-    stopPrtNodes as stopPrtNodeServices,
-    waitHealthyEnvironment,
 } from "../exec/rollups.js";
+import {
+    type Environment,
+    type EnvironmentOptions,
+    planEnvironment,
+    prepareEnvironment,
+    startEnvironment,
+} from "../host/environment.js";
 import {
     checkPrtNodes,
     describePrtNode,
@@ -46,7 +48,11 @@ import {
     sentriesOf,
 } from "../prt.js";
 import type { ForkConfig } from "../types/chain.js";
-import { assertForkConfig } from "../validations.js";
+import {
+    assertBlockchainEndpoint,
+    assertForkConfig,
+    assertSecretFiles,
+} from "../validations.js";
 import { connect } from "../wallet.js";
 import { DEVNET_GUARDIAN, getWithdrawalConfig } from "../withdrawal.js";
 import {
@@ -78,7 +84,10 @@ export type RunOptions = ConfigOptions &
          */
         claimStagingPeriod?: number;
 
-        /** Number of cpu limits for the rollups-node. */
+        /**
+         * Number of cpu limits for the rollups-node. Ignored: the environment
+         * runs on the host, where nothing limits a process.
+         */
         cpus?: number;
 
         /**
@@ -103,8 +112,8 @@ export type RunOptions = ConfigOptions &
         detach?: boolean;
 
         /**
-         * Do not start the environment, only resolve the docker compose
-         * configuration, returned as {@link RunResult.config}.
+         * Do not start the environment, only describe the processes it would
+         * run, returned as {@link RunResult.config}.
          * @default false
          */
         dryRun?: boolean;
@@ -121,7 +130,7 @@ export type RunOptions = ConfigOptions &
         /** RPC URL to fork from. */
         forkUrl?: string;
 
-        /** Memory limit for the rollups-node, in MB. */
+        /** Memory limit for the rollups-node, in MB. Ignored, as `cpus`. */
         memory?: number;
 
         /**
@@ -131,7 +140,7 @@ export type RunOptions = ConfigOptions &
         port?: number;
 
         /**
-         * Name of the project (used by docker compose and cartesi-rollups-node).
+         * Name of the project (used by cartesi-rollups-node).
          * @default basename of the current working directory
          */
         projectName?: string;
@@ -142,7 +151,10 @@ export type RunOptions = ConfigOptions &
          */
         prt?: boolean;
 
-        /** Version of the Cartesi Rollups Runtime to use. */
+        /**
+         * Version of the Cartesi Rollups Runtime to use. Ignored: the
+         * environment runs the tools installed on the host.
+         */
         runtimeVersion?: string;
 
         /**
@@ -189,7 +201,7 @@ export type RunResult = {
     readonly prtServices: string[];
 
     /**
-     * Docker compose configuration of the environment. Only defined when the
+     * The processes the environment would run, as YAML. Only defined when the
      * `dryRun` option is enabled, in which case nothing is started.
      */
     config?: string;
@@ -217,7 +229,10 @@ export type RunResult = {
      */
     stopPrtNodes(): Promise<void>;
 
-    /** Stop the environment, removing its containers and volumes. */
+    /**
+     * Stop the environment: every process it started, and everything it kept
+     * on the host, its database and logs included.
+     */
     stop(): Promise<void>;
 };
 
@@ -299,15 +314,15 @@ const reportPrtWarnings = (options: {
  * is up and before the deploy they claim for.
  */
 const fundPrtNodes = async (options: {
-    environment: EnvironmentOptions;
+    port: number;
     prtConfig?: ResolvedPrt;
 }) => {
-    const { environment, prtConfig } = options;
+    const { port, prtConfig } = options;
     if (!prtConfig || runnableNodes(prtConfig).length === 0) {
         return;
     }
     const client = await connect({
-        rpcUrl: `${host}:${environment.port}/anvil`,
+        rpcUrl: `${host}:${port}/anvil`,
     });
     await checkPrtNodes(client, prtConfig);
 };
@@ -320,7 +335,7 @@ const fundPrtNodes = async (options: {
  */
 const runPrtNodes = async (options: {
     application: Address;
-    environment: EnvironmentOptions;
+    environment: Environment;
     progress: Progress;
     prtConfig?: ResolvedPrt;
 }): Promise<string[]> => {
@@ -341,10 +356,8 @@ const runPrtNodes = async (options: {
             `starting ${nodes.length === 1 ? "the PRT node" : `${nodes.length} PRT nodes`}...`,
         );
         try {
-            services = await startPrtNodes({
-                ...environment,
+            services = await environment.startPrtNodes({
                 application,
-                imageTag: environment.runtimeVersion,
                 nodes: prtConfig.nodes,
             });
             spinner.stop();
@@ -387,6 +400,7 @@ const deployMachine = async (options: {
     prt?: boolean;
     prtConfig?: ResolvedPrt;
     salt: Hex;
+    snapshotPath: string;
     withdrawalConfig?: WithdrawalConfig;
 }) => {
     const {
@@ -399,6 +413,7 @@ const deployMachine = async (options: {
         prt,
         prtConfig,
         salt,
+        snapshotPath,
         withdrawalConfig,
     } = options;
 
@@ -419,7 +434,7 @@ const deployMachine = async (options: {
         sentries:
             prtConfig && sentriesOf(prtConfig).map(({ address }) => address),
         sentryManager: prtConfig?.sentryManager,
-        snapshotPath: "/var/lib/cartesi-rollups-node/snapshots/image",
+        snapshotPath,
         withdrawalConfig,
     });
     spinner.succeed(
@@ -497,7 +512,6 @@ export const run = async (options: RunOptions = {}): Promise<RunResult> => {
         epochLength,
         memory,
         prt,
-        runtimeVersion,
         services,
         verbose,
         ...resolved
@@ -519,6 +533,8 @@ export const run = async (options: RunOptions = {}): Promise<RunResult> => {
     const port =
         resolved.port ||
         (await getPort({
+            // the environment listens on the loopback interface only
+            host: "127.0.0.1",
             port: portNumbers(PREFERRED_PORT, PREFERRED_PORT + 10),
         }));
 
@@ -584,39 +600,52 @@ export const run = async (options: RunOptions = {}): Promise<RunResult> => {
         }
     }
 
-    const environment: EnvironmentOptions = {
+    // the CARTESI_ variables of the host the node is configured with
+    const cartesiEnvironmentVariables = getCartesiEnvironmentVariables();
+    assertBlockchainEndpoint(cartesiEnvironmentVariables);
+    assertSecretFiles(cartesiEnvironmentVariables);
+
+    // a container could be limited, a process of the host is not
+    if (cpus !== undefined || memory !== undefined) {
+        notify({
+            level: "warning",
+            message:
+                "the cpus and memory limits are ignored, the environment runs on the host",
+        });
+    }
+
+    const environmentOptions: EnvironmentOptions = {
         blockTime,
+        cartesiEnvironmentVariables,
         claimSubmission,
-        cpus,
         defaultBlock,
         forkConfig,
-        memory,
         port,
         projectName,
         prt,
-        runtimeVersion,
         services,
         verbose,
     };
 
-    // run compose environment
-    const { cmd, config } = await startEnvironment({
-        ...environment,
-        detach,
-        dryRun,
-    });
+    let environment: Environment | undefined;
+    const started = (): Environment => {
+        if (!environment) {
+            throw new Error(`${projectName} is not running`);
+        }
+        return environment;
+    };
 
     let deployment: RollupsDeployment | undefined;
     let prtServices: string[] = [];
     let salt = 0;
 
     const stopPrtNodes = async () => {
-        await stopPrtNodeServices({ projectName, services: prtServices });
+        await environment?.stopPrtNodes(prtServices);
         prtServices = [];
     };
 
     const stop = async () => {
-        await stopEnvironment({ projectName });
+        await environment?.stop();
         prtServices = [];
     };
 
@@ -634,6 +663,7 @@ export const run = async (options: RunOptions = {}): Promise<RunResult> => {
      * instead of resolving and reporting it again
      */
     const deployMachineSnapshot = async (options: { initial: boolean }) => {
+        const running = started();
         const machineHash = await getMachineHash({
             sdk: applicationConfig.sdk,
         });
@@ -662,7 +692,7 @@ export const run = async (options: RunOptions = {}): Promise<RunResult> => {
             }
             reportPrtWarnings({ claimStagingPeriod, notify, prtConfig });
         }
-        await fundPrtNodes({ environment, prtConfig });
+        await fundPrtNodes({ port, prtConfig });
 
         // keep the consensus of the previous deployment, if there is one; a
         // PRT deploy ignores it and creates a new one
@@ -679,11 +709,12 @@ export const run = async (options: RunOptions = {}): Promise<RunResult> => {
             prt,
             prtConfig,
             salt: numberToHex(salt++, { size: 32 }),
+            snapshotPath: running.state.templatePath,
             withdrawalConfig,
         });
         prtServices = await runPrtNodes({
             application: deployment.address,
-            environment,
+            environment: running,
             progress,
             prtConfig,
         });
@@ -702,8 +733,6 @@ export const run = async (options: RunOptions = {}): Promise<RunResult> => {
         get prtServices() {
             return prtServices;
         },
-        cmd,
-        config,
         deploy,
         port,
         projectName,
@@ -714,26 +743,39 @@ export const run = async (options: RunOptions = {}): Promise<RunResult> => {
     };
 
     if (dryRun) {
-        // environment was not started, just return the compose configuration
+        // the environment is not started, only described
+        result.config = stringify(await planEnvironment(environmentOptions), {
+            indent: 2,
+            lineWidth: 0,
+        });
         return result;
     }
+
+    // fail before saying anything is starting
+    await prepareEnvironment(environmentOptions);
 
     ora({ isSilent: progress === "silent" }).succeed(
         `${chalk.cyan(projectName)} starting at ${chalk.cyan(url)}`,
     );
 
-    // wait for the environment to be healthy
-    await waitHealthyEnvironment({
-        name: projectName,
-        port,
-        projectName,
+    // start the environment, and wait for it to be healthy
+    environment = await startEnvironment({
+        ...environmentOptions,
         renderer: listrRenderer(progress),
-        services,
     });
+    if (!detach) {
+        result.cmd = environment.exited;
+    }
 
     // deploy the application built at .cartesi/image, if there is one
     if (deployOnStart) {
-        await deployMachineSnapshot({ initial: true });
+        try {
+            await deployMachineSnapshot({ initial: true });
+        } catch (error: unknown) {
+            // nothing is left running for a run that failed
+            await stop();
+            throw error;
+        }
     }
 
     return result;

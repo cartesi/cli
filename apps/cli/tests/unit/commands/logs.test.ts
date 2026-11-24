@@ -1,10 +1,14 @@
 import { describe, expect, it } from "bun:test";
-import { buildLogsArgs, selectLogServices } from "../../../src/api/logs";
+import {
+    linePrefix,
+    selectLogServices,
+    tailLines,
+} from "../../../src/api/logs";
 import { createLogsCommand } from "../../../src/commands/logs";
 
 describe("logs command", () => {
-    // as `docker compose ps --services --all` lists an environment with a
-    // pool node and a key-file node, whose installer has exited
+    // as an environment lists its services, with a pool node and a key-file
+    // node
     const services = [
         "anvil",
         "database",
@@ -58,44 +62,26 @@ describe("logs command", () => {
         );
     });
 
-    it("should pass the log options through, prefixing each service", () => {
-        expect(
-            buildLogsArgs({
-                follow: true,
-                projectName: "app",
-                services: ["rollups_node", "prt-node-first"],
-                since: "42m",
-                tail: "all",
-                until: "1m",
-            }),
-        ).toEqual([
-            "compose",
-            "--project-name",
-            "app",
-            "logs",
-            "--follow",
-            "--since",
-            "42m",
-            "--tail",
-            "all",
-            "--until",
-            "1m",
-            "rollups_node",
-            "prt-node-first",
-        ]);
+    it("should show the last lines of a log", () => {
+        const content = "one\ntwo\nthree\n";
+        expect(tailLines(content, "all")).toEqual(["one", "two", "three"]);
+        expect(tailLines(content, "2")).toEqual(["two", "three"]);
+        expect(tailLines(content, "0")).toEqual([]);
+        expect(tailLines("", "all")).toEqual([]);
     });
 
-    // one service reads as `docker container logs` did
-    it("should drop the prefix for one service", () => {
+    it("should reject a tail that is not a number", () => {
+        expect(() => tailLines("one\n", "some")).toThrow("invalid --tail some");
+    });
+
+    // one service reads as it is, more get a prefix, as compose did
+    it("should prefix each service only when there is more than one", () => {
+        expect(linePrefix(["rollups_node"], "rollups_node")).toBe("");
         expect(
-            buildLogsArgs({ projectName: "app", services: ["rollups_node"] }),
-        ).toEqual([
-            "compose",
-            "--project-name",
-            "app",
-            "logs",
-            "--no-log-prefix",
-            "rollups_node",
-        ]);
+            linePrefix(["rollups_node", "prt-node-first"], "rollups_node"),
+        ).toBe("rollups_node    | ");
+        expect(
+            linePrefix(["rollups_node", "prt-node-first"], "prt-node-first"),
+        ).toBe("prt-node-first  | ");
     });
 });

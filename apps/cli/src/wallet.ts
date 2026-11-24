@@ -18,7 +18,7 @@ import {
 import { mnemonicToAccount } from "viem/accounts";
 import { anvil } from "viem/chains";
 import { getProjectName } from "./base.js";
-import { DEVNET_MNEMONIC } from "./compose/node.js";
+import { DEVNET_MNEMONIC } from "./host/node.js";
 import { PREFERRED_PORT } from "./config.js";
 import { getProjectPort } from "./exec/rollups.js";
 

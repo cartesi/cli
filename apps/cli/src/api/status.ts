@@ -3,7 +3,7 @@ import { getDeployments, type RollupsDeployment } from "../exec/rollups.js";
 
 export type StatusOptions = {
     /**
-     * Name of the project (used by docker compose and cartesi-rollups-node).
+     * Name of the project (used by cartesi-rollups-node).
      * @default basename of the current working directory
      */
     projectName?: string;
@@ -16,7 +16,7 @@ export type StatusResult = {
     /** Whether the rollups node of the environment is running. */
     running: boolean;
 
-    /** State of the rollups node container, as reported by docker compose. */
+    /** State of the rollups node process: `running`, or `exited` once it is gone. */
     state?: string;
 
     /** Applications deployed to the rollups node. */

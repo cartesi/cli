@@ -26,7 +26,7 @@ export const createSendCommand = () => {
         .option("--abi-params <abi-params>", "input abi params")
         .option(
             "--project-name <string>",
-            "name of project (used by docker compose and cartesi-rollups-node)",
+            "name of project (used by cartesi-rollups-node)",
         )
         .option("--rpc-url <url>", "RPC URL of the Cartesi Devnet")
         .action(async (input, options) => {

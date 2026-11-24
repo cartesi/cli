@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { zeroAddress } from "viem";
 import { mnemonicToAccount } from "viem/accounts";
 import { resolveForecloseSigner } from "../../../src/foreclose";
-import { DEVNET_MNEMONIC } from "../../../src/compose/node";
+import { DEVNET_MNEMONIC } from "../../../src/host/node";
 
 // account 1 of the devnet mnemonic
 const guardian = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";

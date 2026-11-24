@@ -6,7 +6,7 @@ import ora from "ora";
 import { build } from "../api/build.js";
 import { logs } from "../api/logs.js";
 import { run, type RunNotice, type RunResult } from "../api/run.js";
-import { nodeAllowedEnvironmentVariables } from "../compose/node.js";
+import { nodeAllowedEnvironmentVariables } from "../host/node.js";
 import {
     AVAILABLE_SERVICES,
     getDeployments,
@@ -102,7 +102,7 @@ const shell = async (options: {
         const controller = new AbortController();
         const watcher = setInterval(() => {
             pollStatus(() => controller.abort()).catch(() => {
-                // a transient docker failure should not interrupt the session
+                // a transient failure should not interrupt the session
             });
         }, STATUS_POLL_INTERVAL);
 
@@ -195,7 +195,7 @@ export const createRunCommand = () => {
         .addOption(
             new Option(
                 "--cpus <number>",
-                "number of cpu limits for the rollups-node",
+                "number of cpu limits for the rollups-node (ignored, the environment runs on the host)",
             ).argParser(Number),
         )
         .addOption(
@@ -204,7 +204,11 @@ export const createRunCommand = () => {
                 "default block to be used when fetching new blocks. (default: latest)",
             ).choices(["latest", "safe", "finalized"]),
         )
-        .option("--dry-run", "show the docker compose configuration", false)
+        .option(
+            "--dry-run",
+            "show the processes the environment would run",
+            false,
+        )
         .option(
             "--list-supported-variables",
             "Returns JSON formatted information about the environment variables allowed and which service will use them.",
@@ -220,7 +224,7 @@ export const createRunCommand = () => {
         .addOption(
             new Option(
                 "--memory <number>",
-                "memory limit for the rollups-node in MB",
+                "memory limit for the rollups-node in MB (ignored, the environment runs on the host)",
             ).argParser(Number),
         )
         .addOption(
@@ -255,7 +259,7 @@ export const createRunCommand = () => {
         )
         .option(
             "--project-name <string>",
-            "name of project (used by docker compose and cartesi-rollups-node)",
+            "name of project (used by cartesi-rollups-node)",
         )
         .option(
             "--services <string>",
@@ -322,7 +326,7 @@ export const createRunCommand = () => {
             });
 
             if (dryRun) {
-                // just show the docker compose configuration and quit
+                // just show the processes of the environment and quit
                 if (node.config) {
                     process.stdout.write(node.config);
                 }

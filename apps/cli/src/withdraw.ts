@@ -14,6 +14,7 @@ import {
 } from "./exec/cartesi-rollups-machine-tool.js";
 import {
     execNodeCommand,
+    getNodePaths,
     nodePathExists,
     removeNodePath,
 } from "./exec/node-container.js";
@@ -21,31 +22,34 @@ import { getLastAcceptedEpoch } from "./exec/rollups.js";
 import { getAnvilClient } from "./node.js";
 
 /**
- * Directory inside the rollups node container where replayed machines and
- * proofs are kept, so further withdrawals of the same application reuse them
+ * Path of the machine replayed up to an epoch, under the work directory of the
+ * environment, where replayed machines and proofs are kept so further
+ * withdrawals of the same application reuse them. Keyed by application and
+ * epoch, so a redeploy or another epoch never reuses a snapshot.
  */
-const WORK_DIR = "/tmp/cartesi-withdraw";
-
-/**
- * Path of the machine replayed up to an epoch. Keyed by application and epoch,
- * so a redeploy or another epoch never reuses a snapshot.
- */
-export const replayStorePath = (application: Address, epochIndex: bigint) =>
-    `${WORK_DIR}/${application}/epoch-${epochIndex}`;
+export const replayStorePath = (
+    workDir: string,
+    application: Address,
+    epochIndex: bigint,
+) => `${workDir}/${application}/epoch-${epochIndex}`;
 
 /**
  * Directory of the proofs generated for an account of an application
  */
-export const proofStorePath = (application: Address, account: Address) =>
-    `${WORK_DIR}/${application}/${account}`;
+export const proofStorePath = (
+    workDir: string,
+    application: Address,
+    account: Address,
+) => `${workDir}/${application}/${account}`;
 
 /**
- * Operations on the rollups node container used to replay and prove, so tests
+ * Operations on the environment used to replay and prove, so tests
  * can run the steps without one
  */
 export type WithdrawIo = {
     execNodeCommand: typeof execNodeCommand;
     getLastAcceptedEpoch: typeof getLastAcceptedEpoch;
+    getNodePaths: typeof getNodePaths;
     nodePathExists: typeof nodePathExists;
     proveAccountsDrive: typeof proveAccountsDrive;
     removeNodePath: typeof removeNodePath;
@@ -55,6 +59,7 @@ export type WithdrawIo = {
 const defaultIo: WithdrawIo = {
     execNodeCommand,
     getLastAcceptedEpoch,
+    getNodePaths,
     nodePathExists,
     proveAccountsDrive,
     removeNodePath,
@@ -172,7 +177,7 @@ const waitForFinalizedEpoch = async (options: {
  * Replay the application up to its last finalized epoch, unless a previous
  * withdrawal already did it. Nothing is finalized after the foreclosure, so
  * the replayed machine never changes.
- * @returns path of the replayed machine inside the rollups node container
+ * @returns path of the replayed machine in the environment
  */
 export const replayLastFinalizedEpoch = async (options: {
     application: Address;
@@ -212,7 +217,8 @@ export const replayLastFinalizedEpoch = async (options: {
         throw error;
     }
 
-    const store = replayStorePath(application, epochIndex);
+    const { work } = await io.getNodePaths({ projectName });
+    const store = replayStorePath(work, application, epochIndex);
     if (await io.nodePathExists({ path: store, projectName })) {
         progress.succeed(
             `Using the machine replayed up to epoch ${chalk.cyan(epochIndex)}`,
@@ -251,7 +257,7 @@ export const replayLastFinalizedEpoch = async (options: {
 /**
  * Generate the accounts drive proofs of an account from the replayed machine,
  * checking they prove the finalized machine root
- * @returns the paths of the proofs inside the rollups node container
+ * @returns the paths of the proofs in the environment
  */
 export const generateAccountProofs = async (options: {
     account: Address;
@@ -281,7 +287,11 @@ export const generateAccountProofs = async (options: {
         .proveAccountsDrive({
             account,
             driveConfig,
-            outDir: proofStorePath(application, account),
+            outDir: proofStorePath(
+                (await io.getNodePaths({ projectName })).work,
+                application,
+                account,
+            ),
             projectName,
             snapshot: store,
         })

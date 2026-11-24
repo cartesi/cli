@@ -50,6 +50,12 @@
         "typescript": "^7.0.2",
         "yaml": "^2.9.1",
       },
+      "optionalDependencies": {
+        "@embedded-postgres/darwin-arm64": "18.7.0-beta.19",
+        "@embedded-postgres/darwin-x64": "18.7.0-beta.19",
+        "@embedded-postgres/linux-arm64": "18.7.0-beta.19",
+        "@embedded-postgres/linux-x64": "18.7.0-beta.19",
+      },
     },
     "packages/mock-verifying-paymaster": {
       "name": "@cartesi/mock-verifying-paymaster",
@@ -156,6 +162,14 @@
     "@commander-js/extra-typings": ["@commander-js/extra-typings@15.0.0", "", { "peerDependencies": { "commander": "~15.0.0" } }, "sha512-yeJlba62xqmkgELUsn7356MEnzLLu/fw2x4lofFqGnXh6YysRdEs2BaLeLtg1+KU0AXvMeqQvTTp+3hBEBK+EA=="],
 
     "@cspotcode/source-map-support": ["@cspotcode/source-map-support@0.8.1", "", { "dependencies": { "@jridgewell/trace-mapping": "0.3.9" } }, "sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw=="],
+
+    "@embedded-postgres/darwin-arm64": ["@embedded-postgres/darwin-arm64@18.7.0-beta.19", "", { "os": "darwin", "cpu": "arm64", "hasInstallScript": true }, "sha512-cUehAUPzwxweDYLrzYDvAQSV7Ie9+19RbT7m+jhOCQoykjjWFInPu0FB+58k/nlyQ8xIkjEzFg/OTMQg4wgRdw=="],
+
+    "@embedded-postgres/darwin-x64": ["@embedded-postgres/darwin-x64@18.7.0-beta.19", "", { "os": "darwin", "cpu": "x64", "hasInstallScript": true }, "sha512-Je4cD+On7Pn78jsMMmtYifYr1GAx+VakJgrEuhjeePwWCFRm+p97UIIlQajBV+fbG2gLhLzp2YurJ8625LgB0w=="],
+
+    "@embedded-postgres/linux-arm64": ["@embedded-postgres/linux-arm64@18.7.0-beta.19", "", { "os": "linux", "cpu": "arm64", "hasInstallScript": true }, "sha512-8Vf8dz6zlaU6KkohjHbMWN4T7/ptHfRIcWP0kh7PTpnXUxAgPGOZAMvud9MFWloM9cEqpHkCYyhWTaXrQodaig=="],
+
+    "@embedded-postgres/linux-x64": ["@embedded-postgres/linux-x64@18.7.0-beta.19", "", { "os": "linux", "cpu": "x64", "hasInstallScript": true }, "sha512-AtioykrKVZ5N+LNJWnxt1GW3p7yol7/s5nfcvnIpYR6jlCk+c3hHyHgc2c4tK5yeXC/+0uS1Wt53giu22C2yOA=="],
 
     "@esbuild/aix-ppc64": ["@esbuild/aix-ppc64@0.25.12", "", { "os": "aix", "cpu": "ppc64" }, "sha512-Hhmwd6CInZ3dwpuGTF8fJG6yoWmsToE+vYgD4nytZVxcu1ulHpUQRAB1UJ8+N1Am3Mz4+xOByoQoSZf4D+CpkA=="],
 

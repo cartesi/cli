@@ -14,7 +14,7 @@ export const createAddressBookCommand = () => {
         .option("--json", "Format output as json.")
         .option(
             "--project-name <string>",
-            "name of project (used by docker compose and cartesi-rollups-node)",
+            "name of project (used by cartesi-rollups-node)",
         )
         .action(async (contract, options, command) => {
             const { json } = options;

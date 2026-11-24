@@ -1,7 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { toHex } from "viem";
 import {
-    NODE_TEMPLATE_PATH,
     parseProveSummary,
     parseReplaySummary,
     proveAccountsDriveArgs,
@@ -14,12 +13,17 @@ const hash = (n: number) => toHex(n, { size: 32 });
 describe("replayArgs", () => {
     it("should replay the published template up to the epoch", () => {
         expect(
-            replayArgs({ application, epochIndex: 108n, store: "/tmp/s" }),
+            replayArgs({
+                application,
+                epochIndex: 108n,
+                store: "/tmp/s",
+                template: "/app/.cartesi/image",
+            }),
         ).toEqual([
             "cartesi-rollups-machine-tool",
             "replay",
             "--template",
-            NODE_TEMPLATE_PATH,
+            "/app/.cartesi/image",
             "--application",
             application,
             "--to-epoch",

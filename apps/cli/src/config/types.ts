@@ -214,7 +214,7 @@ export type RunConfig = {
     port?: number;
 
     /**
-     * Name of the project, used by docker compose and by the rollups node.
+     * Name of the project, which names its environment and the application in the rollups node.
      * @default basename of the current working directory
      */
     projectName?: string;

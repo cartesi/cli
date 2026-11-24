@@ -27,7 +27,7 @@ export const createStatusCommand = () => {
         .configureHelp({ showGlobalOptions: true })
         .option(
             "--project-name <string>",
-            "name of project (used by docker compose and cartesi-rollups-node)",
+            "name of project (used by cartesi-rollups-node)",
         )
         .option("--json", "output in JSON format")
         .action(async (options) => {

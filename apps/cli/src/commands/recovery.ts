@@ -23,7 +23,7 @@ export const addRecoveryOptions = <
         .option("--application <address>", "application address")
         .option(
             "--project-name <string>",
-            "name of project (used by docker compose and cartesi-rollups-node)",
+            "name of project (used by cartesi-rollups-node)",
         )
         .addOption(
             new Option(
