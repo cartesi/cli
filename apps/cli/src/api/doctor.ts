@@ -2,9 +2,8 @@ import { execa } from "execa";
 import semver from "semver";
 import { DEFAULT_SDK_IMAGE, DEFAULT_SDK_VERSION } from "../config.js";
 import { cartesiMachine } from "../exec/index.js";
-import { requiredTools } from "../host/environment.js";
 import { findPostgres } from "../host/postgres.js";
-import { assertHostTools } from "../host/tools.js";
+import { checkTool, HOST_TOOLS } from "../host/tools.js";
 
 const MINIMUM_DOCKER_VERSION = "25.0.0"; // Replace with our minimum required Docker version
 const MINIMUM_BUILDX_VERSION = "0.13.0"; // Replace with our minimum required Buildx version
@@ -17,11 +16,11 @@ export type DoctorCheck = {
     name: string;
 
     /**
-     * Whether the requirement is satisfied (`ok`), is not (`failed`), or could
-     * not be checked because a requirement it depends on is not satisfied
-     * (`skipped`).
+     * Whether the requirement is satisfied (`ok`), is not (`failed`), is
+     * optional and not satisfied (`warning`), or could not be checked because
+     * a requirement it depends on is not satisfied (`skipped`).
      */
-    status: "ok" | "failed" | "skipped";
+    status: "ok" | "failed" | "skipped" | "warning";
 
     /** Detail of a satisfied requirement, usually the installed version. */
     detail?: string;
@@ -31,7 +30,7 @@ export type DoctorCheck = {
 };
 
 export type DoctorResult = {
-    /** Whether all requirements are satisfied. */
+    /** Whether all requirements are satisfied, the optional ones aside. */
     ok: boolean;
 
     /** Every requirement checked, satisfied or not. */
@@ -145,16 +144,38 @@ const checkCartesiMachine = async (): Promise<string | undefined> => {
     return v.format();
 };
 
+/** An optional requirement that is not satisfied. */
+class DoctorWarning extends Error {}
+
 /**
- * `cartesi run` runs the environment on the host, with the tools installed
- * there: every one of them is required, but for the optional services.
+ * Check a tool `cartesi run` runs on the host: installed, and of a supported
+ * version. A tool not every run needs is only a warning.
  */
-const checkRunEnvironment = async (): Promise<string | undefined> => {
-    const postgres = await findPostgres();
-    assertHostTools([...requiredTools([]), postgres.initdb, postgres.postgres]);
-    const { stdout } = await execa("cartesi-rollups-node", ["--version"]);
-    return stdout.trim();
-};
+const checkHostTool =
+    (command: string | (() => Promise<string>)) =>
+    async (): Promise<string | undefined> => {
+        const resolved =
+            typeof command === "string" ? command : await command();
+        const check = await checkTool(resolved);
+        const tool = HOST_TOOLS[check.name];
+        const optional = tool?.neededFor !== undefined;
+        const fail = (message: string) => {
+            throw optional ? new DoctorWarning(message) : new Error(message);
+        };
+        if (!check.path) {
+            fail(
+                `${check.name} not installed, which ${tool?.neededFor ?? "cartesi run"} needs: install ${tool?.install ?? check.name}`,
+            );
+        }
+        if (check.warning) {
+            fail(check.warning);
+        }
+        return check.version;
+    };
+
+/** The postgres of the environment: the embedded one, or the host's. */
+const postgresBinary = async () => (await findPostgres()).postgres;
+const initdbBinary = async () => (await findPostgres()).initdb;
 
 // the Cartesi Machine check requires nothing, as a host cartesi-machine
 // satisfies it without docker
@@ -171,7 +192,31 @@ const checks: Check[] = [
         run: checkRiscv,
     },
     { name: "Cartesi Machine", run: checkCartesiMachine },
-    { name: "Run environment", run: checkRunEnvironment },
+    // cartesi run
+    { name: "anvil", run: checkHostTool("anvil") },
+    {
+        name: "cartesi-rollups-node",
+        run: checkHostTool("cartesi-rollups-node"),
+    },
+    { name: "cartesi-rollups-cli", run: checkHostTool("cartesi-rollups-cli") },
+    {
+        name: "cartesi-jsonrpc-machine",
+        run: checkHostTool("cartesi-jsonrpc-machine"),
+    },
+    { name: "postgres", run: checkHostTool(postgresBinary) },
+    { name: "initdb", run: checkHostTool(initdbBinary) },
+    // what only some commands, or some runs, need
+    {
+        name: "cartesi-rollups-machine-tool",
+        run: checkHostTool("cartesi-rollups-machine-tool"),
+    },
+    { name: "cartesi-sling-node", run: checkHostTool("cartesi-sling-node") },
+    { name: "alto", run: checkHostTool("alto") },
+    {
+        name: "mock-verifying-paymaster",
+        run: checkHostTool("mock-verifying-paymaster"),
+    },
+    { name: "passkey-server", run: checkHostTool("passkey-server") },
 ];
 
 /**
@@ -219,7 +264,7 @@ export const doctor = async (): Promise<DoctorResult> => {
             } catch (e: unknown) {
                 return {
                     name,
-                    status: "failed",
+                    status: e instanceof DoctorWarning ? "warning" : "failed",
                     message: e instanceof Error ? e.message : String(e),
                 };
             }
@@ -228,7 +273,9 @@ export const doctor = async (): Promise<DoctorResult> => {
 
     const resolved = skipUnmetRequirements(checks, results);
     return {
-        ok: resolved.every((check) => check.status === "ok"),
+        ok: resolved.every(
+            (check) => check.status === "ok" || check.status === "warning",
+        ),
         checks: resolved,
     };
 };

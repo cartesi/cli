@@ -26,7 +26,9 @@ node, and the PRT nodes and optional services it is asked for, behind a single
 port the CLI serves itself. `cartesi build` still uses docker to build the
 drives of the machine.
 
-It needs these tools in the `PATH`, which `cartesi doctor` checks:
+It needs these tools in the `PATH`. `cartesi doctor` checks each one, and its
+version; `cartesi run` names every missing one before it starts anything, and
+warns of a version it is not tested with:
 
 | Tool                                                                     | Package                                                                         |
 | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------- |

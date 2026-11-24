@@ -82,6 +82,15 @@ export const findPostgres = async (): Promise<PostgresBinaries> => {
     return { initdb: "initdb", postgres: "postgres" };
 };
 
+/** Postgres refuses to run as root, and says so only once started. */
+export const assertNotRoot = () => {
+    if (typeof process.getuid === "function" && process.getuid() === 0) {
+        throw new Error(
+            "postgres can't run as root, run 'cartesi run' as a regular user",
+        );
+    }
+};
+
 export type Database = {
     process: RunningProcess;
     /** Connection URL of the rollups node database. */
@@ -107,11 +116,7 @@ export const startPostgres = async (options: {
 }): Promise<Database> => {
     const { dir, log, onStart, port } = options;
 
-    if (typeof process.getuid === "function" && process.getuid() === 0) {
-        throw new Error(
-            "postgres can't run as root, run 'cartesi run' as a regular user",
-        );
-    }
+    assertNotRoot();
 
     const binaries = await findPostgres();
     const data = path.join(dir, "postgres");

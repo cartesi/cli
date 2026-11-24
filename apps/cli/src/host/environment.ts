@@ -10,7 +10,12 @@ import type { ForkConfig } from "../types/chain.js";
 import { anvilProcess, anvilReady, devnetState } from "./anvil.js";
 import { httpOk, ServiceStartError, waitReady } from "./health.js";
 import { NODE_SERVICE, nodeEnvironment, nodeProcess } from "./node.js";
-import { findPostgres, migrateDatabase, startPostgres } from "./postgres.js";
+import {
+    assertNotRoot,
+    findPostgres,
+    migrateDatabase,
+    startPostgres,
+} from "./postgres.js";
 import {
     type HostProcess,
     isGroupAlive,
@@ -266,7 +271,10 @@ export const removeStaleEnvironment = async (projectName: string) => {
 };
 
 /** Required tools of the environment, by the services it runs. */
-export const requiredTools = (services: string[]) => [
+export const requiredTools = (
+    services: string[],
+    options: { sling?: boolean } = {},
+) => [
     "anvil",
     "cartesi-rollups-cli",
     "cartesi-rollups-node",
@@ -274,26 +282,38 @@ export const requiredTools = (services: string[]) => [
     ...(services.includes("bundler") ? ["alto"] : []),
     ...(services.includes("paymaster") ? ["mock-verifying-paymaster"] : []),
     ...(services.includes("passkey") ? ["passkey-server"] : []),
+    ...(options.sling ? ["cartesi-sling-node"] : []),
 ];
 
 /**
  * Check the environment can start, before anything is: the services are
  * known, the tools they need are installed, and the project is not running.
  * Removes what is left of a previous run of the project that died.
- * @returns the optional services to start
+ * @param options.sling whether a sling node will run, after the deploy
+ * @param options.versions whether to check the versions of the tools too
+ * @returns the optional services to start, and the warnings of the tools
+ * whose version may not work
+ * @throws {MissingHostToolsError} naming every tool the host is missing
  */
 export const prepareEnvironment = async (
-    options: Pick<EnvironmentOptions, "projectName" | "services">,
-): Promise<string[]> => {
+    options: Pick<EnvironmentOptions, "projectName" | "services"> & {
+        sling?: boolean;
+        versions?: boolean;
+    },
+): Promise<{ services: string[]; warnings: string[] }> => {
     const services = selectServices(options.services);
+    assertNotRoot();
     const postgres = await findPostgres();
-    assertHostTools([
-        ...requiredTools(services),
-        postgres.initdb,
-        postgres.postgres,
-    ]);
+    const warnings = await assertHostTools(
+        [
+            ...requiredTools(services, { sling: options.sling }),
+            postgres.initdb,
+            postgres.postgres,
+        ],
+        { versions: options.versions },
+    );
     await removeStaleEnvironment(options.projectName);
-    return services;
+    return { services, warnings };
 };
 
 /**
@@ -312,7 +332,11 @@ export const startEnvironment = async (
     },
 ): Promise<Environment> => {
     const { port, projectName, renderer = "default" } = options;
-    const services = await prepareEnvironment(options);
+    // the caller checked the versions, and reported them, before
+    const { services } = await prepareEnvironment({
+        ...options,
+        versions: false,
+    });
     fs.mkdirSync(environmentsRoot(), { mode: 0o700, recursive: true });
     const dir = environmentDir(projectName);
     const logs = path.join(dir, "logs");
@@ -586,7 +610,8 @@ export const startEnvironment = async (
             if (specs.length === 0) {
                 return [];
             }
-            assertHostTools(["cartesi-sling-node"]);
+            // a redeploy may have added the first sling node
+            await assertHostTools(["cartesi-sling-node"], { versions: false });
             const children = [];
             for (const spec of specs) {
                 const dataDir = spec.env?.CARTESI_SLING_DATA_DIR;

@@ -751,8 +751,18 @@ export const run = async (options: RunOptions = {}): Promise<RunResult> => {
         return result;
     }
 
-    // fail before saying anything is starting
-    await prepareEnvironment(environmentOptions);
+    // fail before saying anything is starting, naming every missing tool,
+    // and say which ones may not work
+    const { warnings } = await prepareEnvironment({
+        ...environmentOptions,
+        sling: prtConfig?.nodes.some(({ type }) => type === "sling"),
+    });
+    for (const message of warnings) {
+        notify({
+            level: "warning",
+            message: `${message}, the environment may not work`,
+        });
+    }
 
     ora({ isSilent: progress === "silent" }).succeed(
         `${chalk.cyan(projectName)} starting at ${chalk.cyan(url)}`,
