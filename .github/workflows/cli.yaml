@@ -43,6 +43,9 @@ jobs:
             - name: Type check
               run: bun run --cwd apps/cli typecheck:tsc
 
+            - name: Type check declarations
+              run: bun run --cwd apps/cli typecheck:declarations
+
             - name: Test
               run: bun test apps/cli/
 

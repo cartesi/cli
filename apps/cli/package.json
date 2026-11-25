@@ -65,6 +65,7 @@
         "posttest": "bun lint",
         "test": "bun test",
         "typecheck": "run-s codegen typecheck:tsc",
+        "typecheck:declarations": "tsc -p tsconfig.declarations.json",
         "typecheck:tsc": "tsc"
     },
     "engines": {
