@@ -743,6 +743,41 @@ describe("with a crisium entry", () => {
         });
     });
 
+    it("should carry the anomaly handler of a sentinel and a validator", () => {
+        const handler = keyFile("return function() end", "alerts.lua");
+        const { nodes } = resolve({
+            watch: sentinel({ anomalyHandler: handler }),
+            red: crisium({ anomalyHandler: handler }),
+        });
+
+        expect(nodes[0]?.crisium).toEqual({
+            mode: "sentinel",
+            anomalyHandler: handler,
+        });
+        expect(nodes[1]?.crisium).toEqual({
+            mode: "validator",
+            kind: "honest",
+            anomalyHandler: handler,
+        });
+    });
+
+    it("should fail for an anomaly handler that can't be read", () => {
+        const missing = path.join(dir, "missing.lua");
+        const directory = path.join(dir, "folder.lua");
+        fs.mkdirSync(directory);
+
+        for (const file of [missing, directory]) {
+            expect(() =>
+                resolve({ watch: sentinel({ anomalyHandler: file }) }),
+            ).toThrowError(
+                new InvalidPrtConfigError(
+                    `anomaly_handler "${file}" can't be read`,
+                    "[prt.nodes.watch]",
+                ),
+            );
+        }
+    });
+
     it("should take a validator's key file or devnet address as a sling's", () => {
         const { nodes } = resolve({
             own: crisium({ privateKeyFile: keyFile(ownKey) }),
@@ -840,5 +875,20 @@ describe("with a crisium entry", () => {
                 red: crisium({ kind: "vandal", privateKeyFile: file }),
             }),
         ).toBe(`validator red ${ownAddress} (crisium vandal, key in ${file})`);
+    });
+
+    it("should name the anomaly handler of a node", () => {
+        const handler = keyFile("return function() end", "alerts.lua");
+        const describe_ = (nodes: Record<string, PrtNode>) =>
+            describePrtNode(resolve(nodes).nodes[0]);
+
+        expect(
+            describe_({ watch: sentinel({ anomalyHandler: handler }) }),
+        ).toBe(
+            `sentinel watch (crisium, signs nothing, anomalies to ${handler})`,
+        );
+        expect(describe_({ red: crisium({ anomalyHandler: handler }) })).toBe(
+            `validator red ${devnet(20)} (crisium honest, devnet account 20, funded by the CLI, anomalies to ${handler})`,
+        );
     });
 });

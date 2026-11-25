@@ -137,6 +137,26 @@ export const readKeyFile = (file: string, where: string): Hex => {
 };
 
 /**
+ * Asserts an entry's anomaly handler is a readable file, so a wrong path fails before any
+ * container starts, as a key file does. The mount and this check share the base directory,
+ * the one `cartesi run` runs in, which compose takes as its project directory.
+ * @param file path as given in the config, relative to the project directory
+ */
+const assertModuleFile = (file: string, where: string): void => {
+    try {
+        if (!fs.statSync(path.resolve(file)).isFile()) {
+            throw new Error("not a file");
+        }
+        fs.accessSync(path.resolve(file), fs.constants.R_OK);
+    } catch {
+        throw new InvalidPrtConfigError(
+            `anomaly_handler "${file}" can't be read`,
+            where,
+        );
+    }
+};
+
+/**
  * Resolves an entry that brings its own key: the address is the key's, and must match
  * `address` when both are set. The devnet accounts' keys are public and derived by the CLI,
  * so a file holding one is a mistake.
@@ -219,9 +239,15 @@ export const resolvePrtNodes = (
                     ...(node.disputePolicy !== undefined && {
                         disputePolicy: node.disputePolicy,
                     }),
+                    ...(node.anomalyHandler !== undefined && {
+                        anomalyHandler: node.anomalyHandler,
+                    }),
                 },
             }),
         };
+        if (node.type === "crisium" && node.anomalyHandler !== undefined) {
+            assertModuleFile(node.anomalyHandler, where);
+        }
         // a sentinel signs nothing, so it takes no account, from the pool or elsewhere
         if (node.type === "crisium" && mode === "sentinel") {
             return { ...resolved, source: { kind: "none" } };
@@ -459,12 +485,18 @@ export const describePrtNode = (node: ResolvedPrtNode): string => {
                   ...(node.crisium?.kind ? [node.crisium.kind] : []),
               ].join(" ")
             : undefined;
+    const handler =
+        node.crisium?.anomalyHandler !== undefined
+            ? `anomalies to ${node.crisium.anomalyHandler}`
+            : undefined;
     const origin =
         node.type === undefined
             ? ["appointed only", ...(account ? [account] : [])].join(", ")
-            : [...(player ? [player] : []), ...(account ? [account] : [])].join(
-                  ", ",
-              );
+            : [
+                  ...(player ? [player] : []),
+                  ...(account ? [account] : []),
+                  ...(handler ? [handler] : []),
+              ].join(", ");
     const kind = node.sentry
         ? `sentry ${node.sentryId}`
         : node.crisium?.mode === "sentinel"

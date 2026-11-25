@@ -1,3 +1,4 @@
+import path from "node:path";
 import type { Address } from "viem";
 import { anvil } from "viem/chains";
 import type { ResolvedPrtNode } from "../prt.js";
@@ -58,8 +59,21 @@ const WS_URL = "ws://anvil:8545";
 const RECIPES_DIR = "/opt/prt/recipes";
 const DAVE_DIR = "/opt/dave";
 const CRISIUM = `${RECIPES_DIR}/crisium.lua`;
-/** The recipes require each other by module name, so lua finds them here. */
-const LUA_PATH = `${RECIPES_DIR}/?.lua;;`;
+/**
+ * Where an entry's anomaly handler is mounted, read-only: the directory of the
+ * file it names, whole, so the module may `require` helpers next to it. Only
+ * the node service mounts it; the init service runs no player.
+ */
+const HANDLER_DIR = "/opt/prt/handler";
+/**
+ * The recipes require each other by module name, so lua finds them here. The
+ * handler's directory comes after them, so no file of it shadows a recipe.
+ */
+const luaPath = (handler?: string): string =>
+    `${[RECIPES_DIR, ...(handler === undefined ? [] : [HANDLER_DIR])]
+        .map((dir) => `${dir}/?.lua`)
+        .join(";")};;`;
+const LUA_PATH = luaPath();
 
 /**
  * A crisium node's volume, its data directory: its state and checkpoints, and
@@ -192,8 +206,23 @@ const crisiumArgs = (
         ...(settings.disputePolicy !== undefined
             ? [`--dispute-policy=${settings.disputePolicy}`]
             : []),
+        // the file's base name is a module name, so it is safe as an argument
+        ...(settings.anomalyHandler !== undefined
+            ? [
+                  `--anomaly-handler=${path.basename(settings.anomalyHandler, ".lua")}`,
+              ]
+            : []),
     ];
 };
+
+/** The bind mount of an entry's anomaly handler: its directory, read-only. */
+const handlerMount = (handler: string) => ({
+    type: "bind" as const,
+    source: escapeComposeValue(path.dirname(handler)),
+    target: HANDLER_DIR,
+    read_only: true,
+    bind: { create_host_path: false },
+});
 
 /**
  * The service that fills a crisium node's volume before each run: the
@@ -266,6 +295,7 @@ const crisium = (
         node.source.kind === "key-file"
             ? fileSecret(prtNodeServiceName(label), node.source.path)
             : undefined;
+    const handler = node.crisium?.anomalyHandler;
 
     const service: Service = {
         image: `cartesi/rollups-runtime:${imageTag}`,
@@ -278,8 +308,11 @@ const crisium = (
             },
         },
         command: crisiumArgs(options, node),
-        environment: { LUA_PATH },
-        volumes: [`${prtNodeDataVolume(label)}:${DATA_DIR}`],
+        environment: { LUA_PATH: luaPath(handler) },
+        volumes: [
+            `${prtNodeDataVolume(label)}:${DATA_DIR}`,
+            ...(handler === undefined ? [] : [handlerMount(handler)]),
+        ],
     };
 
     return {

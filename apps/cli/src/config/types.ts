@@ -152,6 +152,14 @@ export type CrisiumSettings = {
     warningBlocks?: number; // sentinel only: blocks before a deadline to warn at, default 10
     inputPolicy?: CrisiumPolicy; // when an input counts, default finalized
     disputePolicy?: CrisiumPolicy; // when a tournament event counts, default 4 blocks deep
+    /**
+     * A Lua module the player calls with each anomaly's kind and message, instead of printing
+     * it: the path of a `.lua` file, relative to the directory `cartesi run` runs in, like
+     * `privateKeyFile`. The file's directory is mounted into the node, so the module may
+     * `require` helpers next to it; keeping it in a subdirectory keeps the mount to that
+     * directory.
+     */
+    anomalyHandler?: string;
 };
 
 /**

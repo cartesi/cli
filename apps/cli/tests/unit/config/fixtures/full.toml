@@ -114,6 +114,7 @@ address = "0x5555555555555555555555555555555555555555"
 type = "crisium"
 mode = "sentinel" # the default: it signs nothing, so it takes no address, key or pool account
 warning_blocks = 5 # sentinel only: blocks before a deadline to warn at, 10 by default
+anomaly_handler = "prt/alerts.lua" # a Lua module the player calls with each anomaly, instead of printing it; its directory is mounted into the node
 
 [prt.nodes.red] # a crisium validator claims and disputes with an account, like a sling node
 type = "crisium"

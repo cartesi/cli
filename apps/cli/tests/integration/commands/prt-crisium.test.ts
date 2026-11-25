@@ -46,6 +46,23 @@ const DATA_DIR = "/var/lib/cartesi-rollups-node/snapshots";
 
 const services = ["prt-node-red", "prt-node-watch"];
 
+// the sentinel's anomaly handler, in the project: it records that the player
+// loaded it, then each anomaly, in the node's own data directory. Only the
+// wiring is checked, since an anomaly is the players' behaviour, not the CLI's
+const ANOMALY_HANDLER = "prt/alerts.lua";
+const ANOMALIES_LOG = `${DATA_DIR}/anomalies.log`;
+const HANDLER_MODULE = `local LOG = "${ANOMALIES_LOG}"
+local function append(line)
+    local file = assert(io.open(LOG, "a"))
+    file:write(line, "\\n")
+    file:close()
+end
+append("loaded")
+return function(kind, message)
+    append(kind .. " " .. message)
+end
+`;
+
 // what the player logs, from the recipes. Epochs roll every EPOCH_LENGTH
 // blocks from the deploy on, so the input's epoch is read from the log
 const PROCESSED_INPUT = /Epoch (\d+): processed confirmed InputAdded 0\./;
@@ -136,8 +153,10 @@ input_policy = "safe"
 
 [prt.nodes.watch]
 type = "crisium"
+anomaly_handler = "${ANOMALY_HANDLER}"
 `,
         );
+        await fs.outputFile(path.join(appDir, ANOMALY_HANDLER), HANDLER_MODULE);
 
         console.log("! Building the accounts-withdrawal application...");
         const build = await buildApplication(appDir);
@@ -193,8 +212,37 @@ type = "crisium"
         expect(printed).toContain(
             `validator red ${devnetAccount(20)} (crisium honest, devnet account 20, funded by the CLI)`,
         );
-        expect(printed).toContain("sentinel watch (crisium, signs nothing)");
+        expect(printed).toContain(
+            `sentinel watch (crisium, signs nothing, anomalies to ${ANOMALY_HANDLER})`,
+        );
     });
+
+    // the module reaches the player only if the mount, LUA_PATH and the
+    // argument line up; it writes the marker when crisium requires it
+    it(
+        "should load the sentinel's anomaly handler from the project",
+        async () => {
+            await waitFor(async () => {
+                const { output } = await shell(
+                    "prt-node-watch",
+                    `cat ${ANOMALIES_LOG}`,
+                );
+                if (!output.startsWith("loaded")) {
+                    throw new Error(`handler not loaded yet: ${output}`);
+                }
+            }, 60);
+
+            expect(
+                (
+                    await shell(
+                        "prt-node-red",
+                        `test -e ${ANOMALIES_LOG} || echo none`,
+                    )
+                ).output,
+            ).toBe("none");
+        },
+        TIMEOUT,
+    );
 
     // the init service of each node stores the checkpoint it starts from, and
     // the validator's keystore, for the runtime user only

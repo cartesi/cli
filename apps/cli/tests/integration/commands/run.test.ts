@@ -242,6 +242,22 @@ type = "reference"
             expect(all).not.toContain("services:");
         });
 
+        // the handler's file is checked like a key file, before anything starts
+        it("should reject a missing anomaly handler before rendering", async () => {
+            const { all, exitCode } = await dryRun([
+                "--prt",
+                ...config(
+                    '[prt.nodes.watch]\ntype = "crisium"\nanomaly_handler = "prt/alerts.lua"\n',
+                ),
+            ]);
+
+            expect(exitCode).not.toBe(0);
+            expect(all).toContain(
+                `Invalid [prt.nodes.watch]: anomaly_handler "prt/alerts.lua" can't be read`,
+            );
+            expect(all).not.toContain("services:");
+        });
+
         it("should render the configuration with crisium entries", async () => {
             const { all, exitCode } = await dryRun([
                 "--prt",

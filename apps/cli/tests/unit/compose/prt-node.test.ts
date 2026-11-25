@@ -208,11 +208,15 @@ describe("Compose crisium services", () => {
     const application: Address = "0x1111111111111111111111111111111111111111";
     const ownKey = generatePrivateKey();
     let keyFile: string;
+    let handlerFile: string;
 
     beforeAll(() => {
         const dir = fs.mkdtempSync(path.join(os.tmpdir(), "prt-crisium-"));
         keyFile = path.join(dir, "red.key");
         fs.writeFileSync(keyFile, ownKey);
+        handlerFile = path.join(dir, "handlers", "alerts.lua");
+        fs.mkdirSync(path.dirname(handlerFile));
+        fs.writeFileSync(handlerFile, "return function() end");
     });
 
     afterAll(() => fs.rmSync(path.dirname(keyFile), { recursive: true }));
@@ -246,6 +250,12 @@ describe("Compose crisium services", () => {
                         inputPolicy: "safe",
                         disputePolicy: 3,
                     },
+                    alert: {
+                        type: "crisium",
+                        sentry: false,
+                        mode: "sentinel",
+                        anomalyHandler: handlerFile,
+                    },
                 },
             }).nodes,
         });
@@ -273,6 +283,7 @@ describe("Compose crisium services", () => {
             ["prt-node-red", "secret-init-prt-node-red"],
             ["prt-node-own", "secret-init-prt-node-own"],
             ["prt-node-troll", "secret-init-prt-node-troll"],
+            ["prt-node-alert", "secret-init-prt-node-alert"],
         ]);
         expect(
             Object.keys(files[0]?.services ?? {}).filter(isPrtNodeService),
@@ -404,5 +415,63 @@ describe("Compose crisium services", () => {
             ...args("quiet", "sentinel", 1),
             "--warning-blocks=0",
         ]);
+    });
+
+    // the handler's directory is mounted whole, after the recipes on the path,
+    // so the module may require helpers next to it and shadows no recipe
+    it("should mount an anomaly handler's directory and point the player at it", () => {
+        const [, , , , file] = compose();
+        const service = file?.services?.["prt-node-alert"];
+        const init = file?.services?.["secret-init-prt-node-alert"];
+
+        expect(service?.command).toEqual([
+            ...args("alert", "sentinel"),
+            "--anomaly-handler=alerts",
+        ]);
+        expect(service?.environment).toEqual({
+            LUA_PATH: "/opt/prt/recipes/?.lua;/opt/prt/handler/?.lua;;",
+        });
+        expect(service?.volumes).toEqual([
+            `prt_node_alert_data:${DATA}`,
+            {
+                type: "bind",
+                source: path.dirname(handlerFile),
+                target: "/opt/prt/handler",
+                read_only: true,
+                bind: { create_host_path: false },
+            },
+        ]);
+        // the init service runs no player
+        expect(init?.environment).toEqual({ LUA_PATH });
+        expect(init?.volumes).toEqual([
+            "./.cartesi:/var/lib/cartesi-rollups-node/template:ro",
+            "prt_node_alert_data:/dst",
+        ]);
+    });
+
+    it("should escape a $ in the handler's directory, as compose reads it", () => {
+        const dir = path.join(path.dirname(keyFile), "pay$load");
+        fs.mkdirSync(dir);
+        const handler = path.join(dir, "alerts.lua");
+        fs.writeFileSync(handler, "return function() end");
+        const [file] = buildPrtNodes({
+            application,
+            blockTime: 2,
+            imageTag: "devel",
+            nodes: resolvePrtNodes({
+                nodes: {
+                    alert: {
+                        type: "crisium",
+                        sentry: false,
+                        mode: "sentinel",
+                        anomalyHandler: handler,
+                    },
+                },
+            }).nodes,
+        });
+
+        expect(file?.services?.["prt-node-alert"]?.volumes?.[1]).toMatchObject({
+            source: dir.replace("$", "$$$$"),
+        });
     });
 });

@@ -41,6 +41,7 @@ address = "0x5555555555555555555555555555555555555555" # appointed only
 # [prt.nodes.watch]
 # type = "crisium"
 # mode = "sentinel" # the default
+# anomaly_handler = "prt/alerts.lua" # a Lua module the player calls with each anomaly, instead of printing it
 
 # a crisium validator: a pool account, a devnet address or a key of your own,
 # playing the honest player or the vandal, a scripted adversary that posts a

@@ -25,6 +25,7 @@ export const PRT_KEYS: readonly string[] = ["nodes", "sentry_manager"];
 
 export const PRT_NODE_KEYS: readonly string[] = [
     "address",
+    "anomaly_handler",
     "claim",
     "dispute_policy",
     "input_policy",
@@ -53,7 +54,14 @@ const CRISIUM_KEYS: readonly string[] = [
     "warning_blocks",
     "input_policy",
     "dispute_policy",
+    "anomaly_handler",
 ];
+
+/**
+ * The name of a Lua module the player can `require`: the file's base name without `.lua`
+ * must be an identifier, since a dot would send `require` into a directory.
+ */
+const MODULE_FILE_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*\.lua$/;
 
 /**
  * A label is the key of an entry and names its container, so it keeps to what a service name
@@ -116,6 +124,25 @@ const parsePolicy = (
         `${key} ${formatValue(value)} isn't supported, expected safe, finalized or a number of blocks`,
         where,
     );
+};
+
+/** The anomaly handler: a `.lua` file named after the module the player loads from it. */
+const parseModuleFile = (value: TomlValue, where: string): string => {
+    const file = parseRequiredString(value, "anomaly_handler");
+    if (file === "") {
+        throw new InvalidPrtConfigError(
+            "anomaly_handler must name a file",
+            where,
+        );
+    }
+    const name = file.slice(file.lastIndexOf("/") + 1);
+    if (!MODULE_FILE_PATTERN.test(name)) {
+        throw new InvalidPrtConfigError(
+            `anomaly_handler must name a .lua file whose name is a Lua module name: letters, digits and _, got "${name}"`,
+            where,
+        );
+    }
+    return file;
 };
 
 /**
@@ -182,6 +209,9 @@ const parseCrisium = (
                 "dispute_policy",
                 where,
             ),
+        }),
+        ...(value.anomaly_handler !== undefined && {
+            anomalyHandler: parseModuleFile(value.anomaly_handler, where),
         }),
     };
 };

@@ -184,6 +184,7 @@ describe("when parsing the fixtures", () => {
                         sentry: false,
                         mode: "sentinel",
                         warningBlocks: 5,
+                        anomalyHandler: "prt/alerts.lua",
                     },
                     red: {
                         type: "crisium",
@@ -791,7 +792,7 @@ cache_to = ["type=gha,mode=max"]`,
             expect(() =>
                 prt('[prt.nodes.first]\ntype = "sling"\nrole = "sentry"'),
             ).toThrowError(
-                "Unknown key 'role' in [prt.nodes.first], expected one of: address, claim, dispute_policy, input_policy, kind, mode, private_key_file, sentry, type, warning_blocks",
+                "Unknown key 'role' in [prt.nodes.first], expected one of: address, anomaly_handler, claim, dispute_policy, input_policy, kind, mode, private_key_file, sentry, type, warning_blocks",
             );
         });
 
@@ -822,7 +823,7 @@ cache_to = ["type=gha,mode=max"]`,
             it("should keep every setting of a validator", () => {
                 expect(
                     entry(
-                        `mode = "validator"\nkind = "vandal"\ninput_policy = "safe"\ndispute_policy = 3\naddress = "${address("4")}"\nprivate_key_file = "secrets/red.key"`,
+                        `mode = "validator"\nkind = "vandal"\ninput_policy = "safe"\ndispute_policy = 3\nanomaly_handler = "prt/alerts.lua"\naddress = "${address("4")}"\nprivate_key_file = "secrets/red.key"`,
                     ),
                 ).toStrictEqual({
                     type: "crisium",
@@ -833,13 +834,14 @@ cache_to = ["type=gha,mode=max"]`,
                     kind: "vandal",
                     inputPolicy: "safe",
                     disputePolicy: 3,
+                    anomalyHandler: "prt/alerts.lua",
                 });
             });
 
             it("should keep a sentinel's settings, zero included", () => {
                 expect(
                     entry(
-                        'mode = "sentinel"\nwarning_blocks = 0\ninput_policy = 0',
+                        'mode = "sentinel"\nwarning_blocks = 0\ninput_policy = 0\nanomaly_handler = "alerts.lua"',
                     ),
                 ).toStrictEqual({
                     type: "crisium",
@@ -847,7 +849,53 @@ cache_to = ["type=gha,mode=max"]`,
                     mode: "sentinel",
                     warningBlocks: 0,
                     inputPolicy: 0,
+                    anomalyHandler: "alerts.lua",
                 });
+            });
+
+            // the handler is a module the player requires, so the file's name is its name
+            it.each([
+                ["prt/alerts.lua", "alerts.lua"],
+                ["./prt/_v2.lua", "_v2.lua"],
+                ["/opt/handlers/Alerts9.lua", "Alerts9.lua"],
+            ])("should accept anomaly_handler %s", (file) => {
+                expect(entry(`anomaly_handler = "${file}"`)).toMatchObject({
+                    anomalyHandler: file,
+                });
+            });
+
+            it.each([
+                ['anomaly_handler = ""', "anomaly_handler must name a file"],
+                [
+                    'anomaly_handler = "prt/alerts.txt"',
+                    'anomaly_handler must name a .lua file whose name is a Lua module name: letters, digits and _, got "alerts.txt"',
+                ],
+                [
+                    'anomaly_handler = "prt/my.alerts.lua"',
+                    'anomaly_handler must name a .lua file whose name is a Lua module name: letters, digits and _, got "my.alerts.lua"',
+                ],
+                [
+                    'anomaly_handler = "alerts-v2.lua"',
+                    'anomaly_handler must name a .lua file whose name is a Lua module name: letters, digits and _, got "alerts-v2.lua"',
+                ],
+                [
+                    'anomaly_handler = "9alerts.lua"',
+                    'anomaly_handler must name a .lua file whose name is a Lua module name: letters, digits and _, got "9alerts.lua"',
+                ],
+                [
+                    'anomaly_handler = "prt/"',
+                    'anomaly_handler must name a .lua file whose name is a Lua module name: letters, digits and _, got ""',
+                ],
+            ])("should reject %s", (keys, reason) => {
+                expect(() => entry(keys)).toThrowError(
+                    new InvalidPrtConfigError(reason, "[prt.nodes.x]"),
+                );
+            });
+
+            it("should fail for an anomaly_handler that is not a string", () => {
+                expect(() => entry("anomaly_handler = 1")).toThrowError(
+                    "Invalid string value: 1",
+                );
             });
 
             it.each([
@@ -915,6 +963,10 @@ cache_to = ["type=gha,mode=max"]`,
                 [
                     `sentry = true\naddress = "${address("4")}"\ninput_policy = "safe"`,
                     "input_policy",
+                ],
+                [
+                    'type = "sling"\nanomaly_handler = "prt/alerts.lua"',
+                    "anomaly_handler",
                 ],
             ])(
                 "should reject a crisium key on another entry: %s",
