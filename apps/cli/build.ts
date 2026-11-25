@@ -7,11 +7,22 @@ const define = {
     ),
 };
 
+// the postgres binaries of the environment come in a package per platform,
+// which can't be bundled: they are found at runtime, in node_modules, and are
+// not there for the standalone binaries, which use the postgres of the host
+const postgres = [
+    "@embedded-postgres/darwin-arm64",
+    "@embedded-postgres/darwin-x64",
+    "@embedded-postgres/linux-arm64",
+    "@embedded-postgres/linux-x64",
+];
+
 // build for npm package: the CLI entrypoint (executable) and the library entrypoint
 await Bun.build({
     banner: "#!/usr/bin/env node",
     define,
     entrypoints: ["./src/index.ts"],
+    external: postgres,
     minify: true,
     outdir: "dist",
     sourcemap: true,
@@ -23,10 +34,13 @@ await Bun.build({
 // instance of the consumer's viem classes, and viem isn't shipped twice. Keep
 // in sync with the dependencies of package.json. The CLI and the binaries stay
 // self-contained
-const external = ["execa", "semver", "smol-toml", "viem"].flatMap((name) => [
-    name,
-    `${name}/*`,
-]);
+const external = [
+    ...["execa", "semver", "smol-toml", "viem"].flatMap((name) => [
+        name,
+        `${name}/*`,
+    ]),
+    ...postgres,
+];
 
 await Bun.build({
     define,
@@ -56,6 +70,7 @@ await Promise.all(
             },
             define,
             entrypoints: ["./src/index.ts"],
+            external: postgres,
             minify: true,
             sourcemap: "linked",
             target: "bun",

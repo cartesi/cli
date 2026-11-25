@@ -1,6 +1,11 @@
+import { randomBytes } from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
 import { ExecaError, execa } from "execa";
 import { type Hex, isHex } from "viem";
 import type { CartesiEnvironmentVariables } from "../base.js";
+import { baseEnvironment } from "../host/process.js";
+import { type EnvironmentState, requireState } from "../host/state.js";
 
 /**
  * Transaction options shared by the cartesi-rollups-cli commands that send a
@@ -32,50 +37,50 @@ export const transactionArgs = (options: TransactionOptions): string[] => {
 };
 
 /**
- * Build the docker arguments to run a command inside the rollups node
- * container. Without a terminal attached docker cannot allocate a TTY, so it
- * must be disabled.
+ * How a command runs as it did inside the rollups node container: on the
+ * host, with the environment of the node, so `cartesi-rollups-cli` reaches its
+ * database and chain. Commands run from the environment directory, unless
+ * told otherwise.
  */
-export const nodeExecArgs = (options: {
+export const nodeExecOptions = (options: {
     accountIndex?: number;
     command: string[];
     env?: Record<string, string>;
-    interactive: boolean;
-    projectName: string;
-    service?: string;
+    state: Pick<EnvironmentState, "dir" | "nodeEnv">;
     workdir?: string;
-}): string[] => {
-    const {
-        accountIndex,
-        command,
-        env,
-        interactive,
-        projectName,
-        service = "rollups_node",
-        workdir,
-    } = options;
-    const args = ["compose", "--project-name", projectName, "exec"];
-    if (!interactive) {
-        args.push("-T");
-    }
-    // only the names: docker takes the values from its own environment, so
-    // secrets never show up in the process arguments
-    for (const name of Object.keys(env ?? {})) {
-        args.push("-e", name);
-    }
-    if (accountIndex !== undefined) {
-        args.push("-e", `CARTESI_AUTH_MNEMONIC_ACCOUNT_INDEX=${accountIndex}`);
-    }
-    if (workdir) {
-        args.push("--workdir", workdir);
-    }
-    return [...args, service, ...command];
+}): {
+    file: string;
+    args: string[];
+    cwd: string;
+    env: Record<string, string>;
+} => {
+    const { accountIndex, command, env, state, workdir } = options;
+    const [file = "true", ...args] = command;
+    return {
+        args,
+        cwd: workdir ?? state.dir,
+        env: {
+            ...baseEnvironment(),
+            ...state.nodeEnv,
+            ...env,
+            ...(accountIndex !== undefined && {
+                CARTESI_AUTH_MNEMONIC_ACCOUNT_INDEX: accountIndex.toString(),
+            }),
+        },
+        file,
+    };
 };
 
+const execOptions = (
+    options: Omit<Parameters<typeof nodeExecOptions>[0], "state"> & {
+        projectName: string;
+    },
+) => nodeExecOptions({ ...options, state: requireState(options.projectName) });
+
 /**
- * Run a command inside the rollups node container with the terminal attached,
- * so its prompts and output reach the user directly. Its output can be sent to
- * stderr to keep stdout for the output of a later command.
+ * Run a command with the environment of the rollups node, with the terminal
+ * attached, so its prompts and output reach the user directly. Its output can
+ * be sent to stderr to keep stdout for the output of a later command.
  */
 export const runNodeCommand = (options: {
     accountIndex?: number;
@@ -83,20 +88,21 @@ export const runNodeCommand = (options: {
     env?: Record<string, string>;
     projectName: string;
     stdout?: "stdout" | "stderr";
-}) =>
-    execa(
-        "docker",
-        nodeExecArgs({ ...options, interactive: !!process.stdin.isTTY }),
-        {
-            env: options.env,
-            stdin: "inherit",
-            stdout: options.stdout === "stderr" ? 2 : "inherit",
-            stderr: "inherit",
-        },
-    );
+}) => {
+    const { args, cwd, env, file } = execOptions(options);
+    return execa(file, args, {
+        cwd,
+        env,
+        extendEnv: false,
+        stdin: "inherit",
+        stdout: options.stdout === "stderr" ? 2 : "inherit",
+        stderr: "inherit",
+    });
+};
 
 /**
- * Run a command inside the rollups node container and capture its output
+ * Run a command with the environment of the rollups node and capture its
+ * output
  * @returns stdout of the command
  */
 export const execNodeCommand = async (options: {
@@ -105,16 +111,17 @@ export const execNodeCommand = async (options: {
     env?: Record<string, string>;
     input?: string;
     projectName: string;
-    service?: string;
     workdir?: string;
 }): Promise<string> => {
-    const { env, input, ...rest } = options;
+    const { input, ...rest } = options;
+    const { args, cwd, env, file } = execOptions(rest);
     try {
-        const { stdout } = await execa(
-            "docker",
-            nodeExecArgs({ ...rest, env, interactive: false }),
-            { env, input },
-        );
+        const { stdout } = await execa(file, args, {
+            cwd,
+            env,
+            extendEnv: false,
+            input,
+        });
         return stdout;
     } catch (error: unknown) {
         if (error instanceof ExecaError) {
@@ -127,53 +134,50 @@ export const execNodeCommand = async (options: {
 };
 
 /**
- * Write content to a fresh temporary file inside the rollups node container,
- * so the node tools can read it
- * @returns path of the file inside the container
+ * Directories of the environment of a project the node tools work with: the
+ * machine template the application is deployed from, and where withdrawals
+ * replay machines and keep their proofs.
+ */
+export const getNodePaths = async (options: {
+    projectName: string;
+}): Promise<{ template: string; work: string }> => {
+    const state = requireState(options.projectName);
+    return { template: state.templatePath, work: state.workDir };
+};
+
+/**
+ * Write content to a fresh file of the environment, so the node tools can
+ * read it, and only the user can
+ * @returns path of the file
  */
 export const writeNodeTempFile = async (options: {
     content: string;
     projectName: string;
 }): Promise<string> => {
     const { content, projectName } = options;
-    const stdout = await execNodeCommand({
-        command: ["sh", "-c", 'f=$(mktemp) && cat > "$f" && echo "$f"'],
-        input: content,
-        projectName,
-    });
-    return stdout.trim();
+    const state = requireState(projectName);
+    const file = path.join(state.dir, `tmp-${randomBytes(8).toString("hex")}`);
+    fs.writeFileSync(file, content, { flag: "wx", mode: 0o600 });
+    return file;
 };
 
 /**
- * Remove a file or directory from the rollups node container
+ * Remove a file or directory of the environment
  */
-export const removeNodePath = (options: {
+export const removeNodePath = async (options: {
     path: string;
     projectName: string;
-}) =>
-    execNodeCommand({
-        command: ["rm", "-rf", options.path],
-        projectName: options.projectName,
-    });
+}) => {
+    fs.rmSync(options.path, { force: true, recursive: true });
+};
 
 /**
- * Check whether a path exists inside the rollups node container
+ * Check whether a path of the environment exists
  */
 export const nodePathExists = async (options: {
     path: string;
     projectName: string;
-}): Promise<boolean> => {
-    const { exitCode } = await execa(
-        "docker",
-        nodeExecArgs({
-            command: ["test", "-e", options.path],
-            interactive: false,
-            projectName: options.projectName,
-        }),
-        { reject: false },
-    );
-    return exitCode === 0;
-};
+}): Promise<boolean> => fs.existsSync(options.path);
 
 /**
  * A command run with the terminal attached failed. It already printed its
@@ -190,8 +194,8 @@ export class NodeCommandError extends Error {
 }
 
 /**
- * Run a command inside the rollups node container with the terminal attached,
- * like `runNodeCommand`, failing with a NodeCommandError when it exits with an
+ * Run a command with the environment of the rollups node, with the terminal
+ * attached, like `runNodeCommand`, failing with a NodeCommandError when it exits with an
  * error it already printed
  */
 export const runAttachedNodeCommand = async (
@@ -221,8 +225,8 @@ export const handleNodeCommandError = (error: unknown) => {
 };
 
 /**
- * Signer the rollups node container is configured with. Private keys are never
- * read out of the container, only their kind.
+ * Signer the rollups node is configured with. Private keys are never read out
+ * of its environment, only their kind.
  */
 export type NodeSigner =
     | { kind: "mnemonic"; mnemonic: string }
@@ -270,7 +274,7 @@ export const parseNodeSigner = (stdout: string): NodeSigner => {
 };
 
 /**
- * Read the signer the rollups node container is configured with, which is
+ * Read the signer the rollups node is configured with, which is
  * the one cartesi-rollups-cli signs with unless a command overrides it
  */
 export const getNodeSigner = async (options: {

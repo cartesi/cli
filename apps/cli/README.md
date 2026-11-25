@@ -18,6 +18,39 @@ cartesi --help
 
 More documentation at [https://docs.cartesi.io](https://docs.cartesi.io).
 
+## Local development environment
+
+`cartesi run` runs the local environment as processes of the host, with no
+docker: anvil for the devnet, a throwaway postgres for the node, the rollups
+node, and the PRT nodes and optional services it is asked for, behind a single
+port the CLI serves itself. `cartesi build` still uses docker to build the
+drives of the machine.
+
+It needs these tools in the `PATH`. `cartesi doctor` checks each one, and its
+version; `cartesi run` names every missing one before it starts anything, and
+warns of a version it is not tested with:
+
+| Tool                                                                     | Package                                                                         |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
+| `anvil`                                                                  | [foundry](https://getfoundry.sh) 1.5.1                                          |
+| `cartesi-rollups-node`, `cartesi-rollups-cli`                            | [rollups-node](https://github.com/cartesi/rollups-node/releases) 2.0.0-alpha.14 |
+| `cartesi-jsonrpc-machine`, `cartesi-rollups-machine-tool`                | [machine-emulator](https://github.com/cartesi/machine-emulator/releases) 0.22.0 |
+| `cartesi-sling-node` (with `--prt` and a sling node)                     | [dave](https://github.com/cartesi/dave/releases) 3.0.0-alpha.6                  |
+| `alto`, `mock-verifying-paymaster`, `passkey-server` (with `--services`) | npm                                                                             |
+| `initdb`, `postgres` (standalone binary only)                            | postgres 18                                                                     |
+
+The npm package ships postgres, through `@embedded-postgres`; the standalone
+binaries use the one of the host. The devnet, a state dump of anvil with the
+Cartesi contracts deployed, is downloaded on first use, checked against its
+checksum, and cached; `CARTESI_DEVNET_STATE` points at another one.
+
+Everything else the environment keeps (the database, the logs, the data of the
+PRT nodes and of the withdrawals) lives in one directory of the temporary
+directory of the system, removed when the environment stops: every process of
+the environment is stopped along with the CLI that started it, which owns it.
+A CLI that is killed (`kill -9`) can't clean up, and the next `cartesi run` of
+the project stops what it left behind. The project itself is only read.
+
 ## Configuration
 
 An application is configured by a `cartesi.config.ts` file at its root, which
@@ -185,8 +218,9 @@ A few things to keep in mind:
     `progress: "default"` (or `"verbose"`) to get the same output as the CLI;
 -   functions throw on error, and never terminate the process;
 -   `run` returns a handle of the environment, which keeps running in the
-    background until `stop()` is called. Use `deploy()` to redeploy the
-    application after a rebuild;
+    background until `stop()` is called, and keeps the process up until then.
+    Its processes are stopped when the process exits, if `stop()` was not
+    called. Use `deploy()` to redeploy the application after a rebuild;
 -   `send` and the `deposit*` functions resolve the application address, the
     sender and the RPC URL from the running project, and never prompt for them.
     Amounts are given in the base unit of the asset as a `bigint`, or in its
@@ -194,7 +228,7 @@ A few things to keep in mind:
     `DepositError` (`InsufficientBalanceError`, `InvalidAmountError` or
     `TokenNotFoundError`);
 -   `foreclose`, `refund` and `withdraw` send their transaction with
-    cartesi-rollups-cli in the rollups node container, without asking for
+    cartesi-rollups-cli, with the environment of the rollups node, without asking for
     confirmation, and return its JSON output. With `stream: true` they attach
     it to the terminal instead, as the CLI does.
 

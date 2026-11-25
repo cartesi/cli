@@ -18,11 +18,9 @@ import {
     selfHostedApplicationFactoryAddress,
 } from "../../../src/contracts";
 import {
+    type Environment,
     startEnvironment,
-    stopEnvironment,
-    waitHealthyEnvironment,
-} from "../../../src/exec/rollups";
-import { TEST_RUNTIME_VERSION } from "../config";
+} from "../../../src/host/environment";
 import { createAnvilClient, devnetAccount, runCli } from "../devnet";
 
 // The InputBox only takes inputs for an application contract, but the node
@@ -33,30 +31,28 @@ describe("send", () => {
     const projectName = `cli-send-${process.pid}`;
     let directory: string;
     let originalCwd: string;
+    let environment: Environment | undefined;
 
     beforeAll(async () => {
         originalCwd = process.cwd();
         directory = fs.mkdtempSync(path.join(os.tmpdir(), "send-"));
-        // compose files are written relative to the working directory
+        // the environment reads the machine snapshot of the working directory
         process.chdir(directory);
         const port = await getPort({ port: portNumbers(16762, 16772) });
-        await startEnvironment({
+        environment = await startEnvironment({
             blockTime: 1,
             defaultBlock: "latest",
-            detach: true,
-            dryRun: false,
             port,
             projectName,
-            runtimeVersion: TEST_RUNTIME_VERSION,
+            renderer: "silent",
             services: [],
             verbose: false,
         });
-        await waitHealthyEnvironment({ port, projectName, services: [] });
     }, 300_000);
 
     afterAll(async () => {
         try {
-            await stopEnvironment({ projectName });
+            await environment?.stop();
         } finally {
             process.chdir(originalCwd);
             fs.rmSync(directory, { recursive: true, force: true });

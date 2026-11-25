@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { DEVNET_MNEMONIC } from "../../src/compose/node";
+import { DEVNET_MNEMONIC } from "../../src/host/node";
 import type { Address } from "viem";
 import { mnemonicToAccount } from "viem/accounts";
 import {

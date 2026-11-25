@@ -1,13 +1,7 @@
-import { dirname } from "node:path/posix";
+import fs from "node:fs";
+import { dirname } from "node:path";
 import { type Address, type Hash, isHash, toHex } from "viem";
-import { execNodeCommand } from "./node-container.js";
-
-/**
- * Path of the machine template inside the rollups node container, as
- * published by `cartesi run`
- */
-export const NODE_TEMPLATE_PATH =
-    "/var/lib/cartesi-rollups-node/snapshots/image";
+import { execNodeCommand, getNodePaths } from "./node-container.js";
 
 /**
  * Layout of the accounts drive, as configured in the application contract
@@ -22,11 +16,13 @@ export const replayArgs = (options: {
     application: Address;
     epochIndex: bigint;
     store: string;
+    /** the machine template the application was deployed from */
+    template: string;
 }): string[] => [
     "cartesi-rollups-machine-tool",
     "replay",
     "--template",
-    NODE_TEMPLATE_PATH,
+    options.template,
     "--application",
     options.application,
     "--to-epoch",
@@ -137,7 +133,7 @@ export const parseProveSummary = (stdout: string): ProveSummary => {
 
 /**
  * Replay the accepted inputs of an application up to an epoch, storing the
- * resulting machine inside the rollups node container. The machine writes the
+ * resulting machine in the environment. The machine writes the
  * reports of the inputs to its working directory, which must be writable.
  */
 export const replayMachine = async (options: {
@@ -148,9 +144,10 @@ export const replayMachine = async (options: {
 }): Promise<ReplaySummary> => {
     const { projectName, store } = options;
     const workdir = dirname(store);
-    await execNodeCommand({ command: ["mkdir", "-p", workdir], projectName });
+    fs.mkdirSync(workdir, { recursive: true });
+    const { template } = await getNodePaths({ projectName });
     const stdout = await execNodeCommand({
-        command: replayArgs(options),
+        command: replayArgs({ ...options, template }),
         projectName,
         workdir,
     });
@@ -159,7 +156,7 @@ export const replayMachine = async (options: {
 
 /**
  * Generate the accounts drive root proof and the withdraw proof of an account
- * from a stored machine inside the rollups node container
+ * from a stored machine of the environment
  */
 export const proveAccountsDrive = async (options: {
     account: Address;
@@ -169,7 +166,7 @@ export const proveAccountsDrive = async (options: {
     snapshot: string;
 }): Promise<ProveSummary> => {
     const { outDir, projectName } = options;
-    await execNodeCommand({ command: ["mkdir", "-p", outDir], projectName });
+    fs.mkdirSync(outDir, { recursive: true });
     const stdout = await execNodeCommand({
         command: proveAccountsDriveArgs(options),
         projectName,

@@ -1,5 +1,4 @@
 import { InvalidArgumentError } from "@commander-js/extra-typings";
-import { execa } from "execa";
 import fs from "node:fs";
 import path from "node:path";
 import { loadConfig } from "./config/load.js";
@@ -33,7 +32,7 @@ import {
 } from "./contracts.js";
 import { cartesiMachineStoredHash } from "./exec/index.js";
 import { getApplicationAddress, getForkConfig } from "./exec/rollups.js";
-import type { PsResponse } from "./types/docker.js";
+import { readState, serviceState } from "./host/state.js";
 import { assertForkConfig } from "./validations.js";
 
 export const getContextPath = (...paths: string[]): string => {
@@ -162,42 +161,16 @@ export const getAddressBook = async (options: {
     return contracts;
 };
 
-export const getServiceInfo = async (options: {
-    projectName: string;
-    service: string;
-}): Promise<PsResponse | undefined> => {
-    const { projectName, service } = options;
-
-    // get service information
-    const { stdout } = await execa("docker", [
-        "compose",
-        "--project-name",
-        projectName,
-        "ps",
-        // --all so an exited container is still reported, instead of the
-        // service simply vanishing from the output
-        "--all",
-        service,
-        "--format",
-        "json",
-    ]);
-    return stdout ? (JSON.parse(stdout) as PsResponse) : undefined;
-};
-
+/**
+ * State of a service of the environment of a project: `running`, `exited`
+ * once its process is gone, or undefined when it never ran.
+ */
 export const getServiceState = async (options: {
     projectName: string;
     service: string;
 }): Promise<string | undefined> => {
-    const info = await getServiceInfo(options);
-    return info?.State;
-};
-
-export const getServiceHealth = async (options: {
-    projectName: string;
-    service: string;
-}): Promise<string | undefined> => {
-    const info = await getServiceInfo(options);
-    return info?.Health;
+    const { projectName, service } = options;
+    return serviceState(readState(projectName), service);
 };
 
 export const parseAddress = (value: string): Address | undefined => {

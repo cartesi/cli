@@ -17,6 +17,8 @@ export const createDoctorCommand = () => {
                         ? `${check.name} ${chalk.cyan(check.detail)}`
                         : check.name,
                 );
+            } else if (check.status === "warning") {
+                progress.warn(check.message ?? `${check.name} not found`);
             } else if (check.status === "failed") {
                 progress.fail(check.message ?? `${check.name} not found`);
             }

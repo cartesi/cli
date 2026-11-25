@@ -15,7 +15,10 @@ import {
     getNodeInput,
     getNodeWithdrawalConfig,
 } from "../../../src/exec/rollups";
-import { execNodeCommand } from "../../../src/exec/node-container";
+import {
+    execNodeCommand,
+    getNodePaths,
+} from "../../../src/exec/node-container";
 import { proveAccountsDrive } from "../../../src/exec/cartesi-rollups-machine-tool";
 import { TEST_SDK } from "../config";
 import {
@@ -106,11 +109,11 @@ describe("fund recovery", () => {
     const cli = (args: string[], env?: Record<string, string>) =>
         runCli({ appDir, projectName }, args, env);
 
-    // temporary files written into the node container with mktemp
+    // temporary files written into the environment for the node tools
     const nodeTempFiles = async () =>
         Number(
             await execNodeCommand({
-                command: ["sh", "-c", "ls /tmp/tmp.* 2>/dev/null | wc -l"],
+                command: ["sh", "-c", "ls tmp-* 2>/dev/null | wc -l"],
                 projectName,
             }),
         );
@@ -392,9 +395,17 @@ guardian = "${guardian}"
                 const proof = await proveAccountsDrive({
                     account: erin,
                     driveConfig,
-                    outDir: `/tmp/recovery-test/${erin}`,
+                    outDir: path.join(
+                        (await getNodePaths({ projectName })).work,
+                        "recovery-test",
+                        erin,
+                    ),
                     projectName,
-                    snapshot: replayStorePath(application, 0n),
+                    snapshot: replayStorePath(
+                        (await getNodePaths({ projectName })).work,
+                        application,
+                        0n,
+                    ),
                 });
                 const proofFile = path.join(appDir, "erin-proof.json");
                 await fs.writeFile(

@@ -1,7 +1,3 @@
-import chalk from "chalk";
-import { execa } from "execa";
-import { Listr, type ListrTask } from "listr2";
-import pRetry, { AbortError } from "p-retry";
 import {
     type Address,
     type Hash,
@@ -13,31 +9,12 @@ import {
     http,
     isAddressEqual,
 } from "viem";
-import { stringify } from "yaml";
-import {
-    getCartesiEnvironmentVariables,
-    getContextPath,
-    getMachineHash,
-    getProjectName,
-    getServiceInfo,
-} from "../base.js";
-import anvil from "../compose/anvil.js";
-import { concat } from "../compose/builder.js";
-import bundler from "../compose/bundler.js";
-import database from "../compose/database.js";
-import explorer from "../compose/explorer.js";
-import node from "../compose/node.js";
-import passkey from "../compose/passkey.js";
-import paymaster from "../compose/paymaster.js";
-import proxy from "../compose/proxy.js";
-import prtNodes, {
-    type PrtNodeServiceOptions,
-    prtNodeServiceName,
-} from "../compose/prt-node.js";
+import { getMachineHash, getProjectName } from "../base.js";
 import type { WithdrawalConfig } from "../config.js";
+import { removeStaleEnvironment } from "../host/environment.js";
+import { jsonRpc } from "../host/health.js";
+import { isRunning, readState, requireState } from "../host/state.js";
 import type { ForkConfig } from "../types/chain.js";
-import type { ComposeFile } from "../types/compose.js";
-import { assertBlockchainEndpoint, assertSecretFiles } from "../validations.js";
 import type { AccountsDriveConfig } from "./cartesi-rollups-machine-tool.js";
 import { execNodeCommand } from "./node-container.js";
 
@@ -393,412 +370,24 @@ export const getForkConfig = async (options: {
     return undefined;
 };
 
-type Service = {
-    name: string; // name of the service
-    healthySemaphore?: string; // service to check if the service is healthy
-    healthyTitle?: string | ((port: number, name?: string) => string); // title of the service when it is healthy
-    waitTitle?: string; // title of the service when it is starting
-    errorTitle?: string; // title of the service when it is not healthy
-};
-
-export const host = "http://127.0.0.1";
+export { AVAILABLE_SERVICES, host } from "../host/environment.js";
 
 /**
- * Upper bound for the delay between health checks. Without it the 1.1 growth
- * factor reaches a 104 minute sleep by the last of the 100 attempts, so a
- * service that never becomes healthy would hold the command for 19 hours.
- */
-const SERVICE_HEALTH_MAX_INTERVAL = 5_000;
-
-// services configuration
-const baseServices: Service[] = [
-    {
-        name: "anvil",
-        healthySemaphore: "anvil",
-        healthyTitle: (port) =>
-            `${chalk.cyan("anvil")} service ready at ${chalk.cyan(`${host}:${port}/anvil`)}`,
-        waitTitle: `${chalk.cyan("anvil")} service starting...`,
-        errorTitle: `${chalk.red("anvil")} service failed`,
-    },
-    {
-        name: "proxy",
-    },
-    {
-        name: "database",
-    },
-    {
-        name: "rpc",
-        healthySemaphore: "rollups_node",
-        healthyTitle: (port) =>
-            `${chalk.cyan("rpc")} service ready at ${chalk.cyan(`${host}:${port}/rpc`)}`,
-        waitTitle: `${chalk.cyan("rpc")} service starting...`,
-        errorTitle: `${chalk.red("rpc")} service failed`,
-    },
-    {
-        name: "inspect",
-        healthySemaphore: "rollups_node",
-        healthyTitle: (port, name) =>
-            `${chalk.cyan("inspect")} service ready at ${chalk.cyan(`${host}:${port}/inspect/${name ?? "<application_address>"}`)}`,
-        waitTitle: `${chalk.cyan("inspect")} service starting...`,
-        errorTitle: `${chalk.red("inspect")} service failed`,
-    },
-];
-
-const availableServices: Service[] = [
-    {
-        name: "bundler",
-        healthySemaphore: "bundler",
-        healthyTitle: (port) =>
-            `${chalk.cyan("bundler")} service ready at ${chalk.cyan(`${host}:${port}/bundler/rpc`)}`,
-        waitTitle: `${chalk.cyan("bundler")} service starting...`,
-        errorTitle: `${chalk.red("bundler")} service failed`,
-    },
-    {
-        name: "explorer",
-        healthySemaphore: "explorer",
-        healthyTitle: (port) =>
-            `${chalk.cyan("explorer")} service ready at ${chalk.cyan(`${host}:${port}/explorer`)}`,
-        waitTitle: `${chalk.cyan("explorer")} service starting...`,
-        errorTitle: `${chalk.red("explorer")} service failed`,
-    },
-    {
-        name: "paymaster",
-        healthySemaphore: "paymaster",
-        healthyTitle: (port) =>
-            `${chalk.cyan("paymaster")} service ready at ${chalk.cyan(`${host}:${port}/paymaster`)}`,
-        waitTitle: `${chalk.cyan("paymaster")} service starting...`,
-        errorTitle: `${chalk.red("paymaster")} service failed`,
-    },
-    {
-        name: "passkey",
-        healthySemaphore: "passkey_server",
-        healthyTitle: (port) =>
-            `${chalk.cyan("passkey")} service ready at ${chalk.cyan(`${host}:${port}/passkey`)}`,
-        waitTitle: `${chalk.cyan("passkey")} service starting...`,
-        errorTitle: `${chalk.red("passkey")} service failed`,
-    },
-];
-
-export const AVAILABLE_SERVICES = availableServices.map(({ name }) => name);
-
-const serviceMonitorTask = (options: {
-    projectName: string;
-    errorTitle?: string;
-    healthyTitle?: string;
-    service: string;
-    waitTitle?: string;
-}): ListrTask => {
-    const { errorTitle, healthyTitle, service, waitTitle } = options;
-
-    return {
-        task: async (_ctx, task) => {
-            await pRetry(
-                async () => {
-                    const info = await getServiceInfo(options);
-
-                    // An exited container never becomes healthy, so stop
-                    // retrying instead of spending the whole budget on it.
-                    if (info?.State === "exited" || info?.State === "dead") {
-                        throw new AbortError(
-                            errorTitle ??
-                                `Service ${chalk.cyan(service)} exited`,
-                        );
-                    }
-
-                    if (info?.Health !== "healthy") {
-                        throw new Error(
-                            errorTitle ??
-                                `Service ${chalk.cyan(service)} is not healthy`,
-                        );
-                    }
-                },
-                {
-                    retries: 100,
-                    minTimeout: 500,
-                    maxTimeout: SERVICE_HEALTH_MAX_INTERVAL,
-                    factor: 1.1,
-                },
-            );
-            task.title =
-                healthyTitle ?? `Service ${chalk.cyan(service)} is ready`;
-        },
-        title: waitTitle ?? `Starting ${chalk.cyan(service)}...`,
-    };
-};
-
-export type EnvironmentOptions = {
-    blockTime: number;
-    cpus?: number;
-    defaultBlock: "latest" | "safe" | "finalized";
-    forkConfig?: ForkConfig;
-    memory?: number;
-    port: number;
-    projectName: string;
-    prt?: boolean;
-    /** false puts the node in reader mode, when a sling node claims */
-    claimSubmission?: boolean;
-    runtimeVersion: string;
-    services: string[];
-    verbose: boolean;
-};
-
-/**
- * Composes the environment: the compose file of the project and the variables
- * it is rendered with. The PRT nodes, composed only after the deploy, are added
- * to the same file so compose sees one project.
- */
-const composeEnvironment = (
-    options: EnvironmentOptions,
-    extraFiles: ComposeFile[] = [],
-) => {
-    const {
-        blockTime,
-        cpus,
-        defaultBlock,
-        forkConfig,
-        memory,
-        port,
-        projectName,
-        prt,
-        claimSubmission,
-        runtimeVersion,
-        services,
-        verbose,
-    } = options;
-
-    // setup the environment variable used in docker compose
-    const env: NodeJS.ProcessEnv = {
-        CARTESI_BLOCKCHAIN_DEFAULT_BLOCK: defaultBlock,
-        CARTESI_LISTEN_PORT: port.toString(),
-        CARTESI_LOG_LEVEL: verbose ? "debug" : "info",
-    };
-
-    // local dev environment, we don't need security
-    const databasePassword = "password";
-
-    // Load all environment variables from the host that start with CARTESI_.
-    const hostVars = getCartesiEnvironmentVariables();
-    assertBlockchainEndpoint(hostVars);
-    assertSecretFiles(hostVars);
-
-    const files = [
-        anvil({
-            blockTime,
-            forkConfig,
-            imageTag: runtimeVersion,
-        }),
-        database({ imageTag: runtimeVersion, password: databasePassword }),
-        node({
-            cpus,
-            databasePassword,
-            defaultBlock,
-            forkChainId: forkConfig?.chainId,
-            imageTag: runtimeVersion,
-            logLevel: verbose ? "debug" : "info",
-            memory,
-            prt,
-            claimSubmission,
-            cartesiEnvironmentVariables: hostVars,
-        }),
-        proxy({ imageTag: "v3.3.4", port }),
-    ];
-
-    if (services.includes("explorer")) {
-        files.push(
-            explorer({
-                imageTag: "2.0.0-alpha.6",
-                port,
-            }),
-        );
-    }
-    if (services.includes("bundler")) {
-        files.push(bundler({ imageTag: runtimeVersion }));
-    }
-    if (services.includes("paymaster")) {
-        files.push(paymaster({ imageTag: runtimeVersion }));
-    }
-    if (services.includes("passkey")) {
-        files.push(passkey({ imageTag: runtimeVersion }));
-    }
-
-    // merge files, following Docker Compose merge rules
-    const composeFile = concat([
-        { name: projectName },
-        ...files,
-        ...extraFiles,
-    ]);
-
-    return {
-        env,
-        input: stringify(composeFile, { lineWidth: 0, indent: 2 }),
-    };
-};
-
-const composeArgs = ["compose", "-f", "-", "--project-directory", "."];
-
-export const startEnvironment = async (
-    options: EnvironmentOptions & { detach: boolean; dryRun: boolean },
-) => {
-    const { detach, dryRun } = options;
-    const { env, input } = composeEnvironment(options);
-
-    // run in detached mode (background)
-    const upArgs = detach ? ["--detach"] : [];
-
-    // if only dry run, just return the config
-    if (dryRun) {
-        // parse, resolve and render compose file in canonical format
-        const { stdout: config } = await execa(
-            "docker",
-            [...composeArgs, "config", "--format", "yaml"],
-            { env, input },
-        );
-
-        return { config };
-    }
-
-    // run compose
-    const cmd = execa("docker", [...composeArgs, "up", ...upArgs], {
-        env,
-        input,
-    });
-
-    // if detached, wait to finish
-    if (detach) {
-        await cmd;
-    }
-
-    return { cmd };
-};
-
-/**
- * Starts the PRT nodes the CLI runs for a deployed application, in the running
- * environment. The file sent is the environment's plus the node services, so
- * compose treats them as one project and recreates only the nodes, whose
- * application changed. Their dependencies are already running, except the init
- * service of a key file, which runs first.
- * @returns the names of the services started
- */
-export const startPrtNodes = async (
-    options: EnvironmentOptions & PrtNodeServiceOptions,
-): Promise<string[]> => {
-    const names = options.nodes
-        .filter(({ type }) => type !== undefined)
-        .map(({ label }) => prtNodeServiceName(label));
-    if (names.length === 0) {
-        return [];
-    }
-    const { env, input } = composeEnvironment(options, prtNodes(options));
-    // --wait: a node that exits at once, e.g. on a bad key, fails here
-    await execa(
-        "docker",
-        [...composeArgs, "up", "--detach", "--wait", ...names],
-        { env, input },
-    );
-    return names;
-};
-
-/**
- * Stops and removes the PRT node containers, before the application they
- * claim for is undeployed. Their secret volumes stay until the environment
- * stops.
- */
-export const stopPrtNodes = async (options: {
-    projectName: string;
-    services: string[];
-}) => {
-    const { projectName, services } = options;
-    if (services.length === 0) {
-        return;
-    }
-    await execa("docker", [
-        "compose",
-        "--project-name",
-        projectName,
-        "rm",
-        "--stop",
-        "--force",
-        ...services,
-    ]);
-};
-
-/**
- * Wait for the environment to be healthy
- * @param options
- */
-export const waitHealthyEnvironment = async (options: {
-    name?: string;
-    port: number;
-    projectName: string;
-    renderer?: "default" | "silent" | "verbose";
-    services: string[];
-}) => {
-    const { name, port, projectName, renderer = "default", services } = options;
-
-    // select subset of optional services
-    const optionalServices =
-        services.length === 1 && services[0] === "all"
-            ? availableServices
-            : availableServices.filter(({ name }) => services.includes(name));
-
-    // create tasks to monitor services startup
-    const monitorTasks = [...baseServices, ...optionalServices]
-        .filter(({ healthySemaphore }) => !!healthySemaphore) // only services with a healthy semaphore
-        .map((service) => {
-            const healthyTitle =
-                typeof service.healthyTitle === "function"
-                    ? service.healthyTitle(port, name)
-                    : service.healthyTitle;
-            return serviceMonitorTask({
-                projectName,
-                service: service.healthySemaphore as string,
-                errorTitle: service.errorTitle,
-                waitTitle: service.waitTitle,
-                healthyTitle,
-            });
-        });
-
-    const tasks = new Listr(monitorTasks, { concurrent: true, renderer });
-    await tasks.run();
-};
-
-/**
- * Publish machine snapshot to rollups node by copying it to the rollups node container
- * @param options
- * @returns path to the snapshot in the rollups node
- */
-export const publishMachine = async (options: {
-    projectName: string;
-    templateHash: Hash;
-}): Promise<string> => {
-    const { projectName, templateHash } = options;
-    const snapshotPath = getContextPath("image");
-    const containerSnapshotPath = `/var/lib/cartesi-rollups-node/snapshots/${templateHash}/`;
-    await execa("docker", [
-        "compose",
-        "--project-name",
-        projectName,
-        "cp",
-        snapshotPath,
-        `rollups_node:${containerSnapshotPath}`,
-    ]);
-    return containerSnapshotPath;
-};
-
-/**
- * Stop an environment by removing the containers and volumes
- * @param options
- * @returns
+ * Stop the environment of a project, which the CLI process that started it
+ * owns: it gets asked to stop, as a Ctrl+C would, and what is left of it once
+ * it exits is removed.
  */
 export const stopEnvironment = async (options: { projectName: string }) => {
     const { projectName } = options;
-    return execa("docker", [
-        "compose",
-        "--project-name",
-        projectName,
-        "down",
-        "--volumes",
-    ]);
+    const state = readState(projectName);
+    if (state && isRunning(state) && state.pid !== process.pid) {
+        process.kill(state.pid, "SIGTERM");
+        const deadline = Date.now() + 30_000;
+        while (isRunning(state) && Date.now() < deadline) {
+            await new Promise((resolve) => setTimeout(resolve, 200));
+        }
+    }
+    await removeStaleEnvironment(projectName);
 };
 
 /**
@@ -991,21 +580,13 @@ export const removeApplication = async (options: {
 };
 
 /**
- * Get the host and port of the docker compose project entrypoint
+ * Get the host and port of the entrypoint of the environment of a project
  * @param options
- * @returns port of the proxy service
+ * @returns host and port of the proxy of the environment
  */
 export const getProjectPort = async (options: { projectName: string }) => {
-    const { projectName } = options;
-    const { stdout } = await execa("docker", [
-        "compose",
-        "--project-name",
-        projectName,
-        "port",
-        "proxy",
-        "8088",
-    ]);
-    return stdout;
+    const state = requireState(options.projectName);
+    return `127.0.0.1:${state.port}`;
 };
 
 /**
@@ -1014,11 +595,8 @@ export const getProjectPort = async (options: { projectName: string }) => {
  * @returns anvil node info
  */
 export const getAnvilNodeInfo = async (options: { projectName: string }) => {
-    const { projectName } = options;
-    const stdout = await execNodeCommand({
-        command: ["cast", "rpc", "anvil_nodeInfo"],
-        projectName,
-        service: "anvil",
-    });
-    return JSON.parse(stdout);
+    const state = requireState(options.projectName);
+    return jsonRpc<{
+        forkConfig?: { forkUrl?: string; forkBlockNumber?: number };
+    }>(state.anvilUrl, "anvil_nodeInfo");
 };

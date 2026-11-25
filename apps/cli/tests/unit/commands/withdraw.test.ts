@@ -17,6 +17,9 @@ const fastRetry = { retries: 2, minTimeout: 1, maxTimeout: 1 };
  * I/O that records its calls, with the given cache state and results. The
  * node reports the given (epoch index, machine hash) as last accepted in turn.
  */
+/** Work directory of the environment the tests run against. */
+const WORK_DIR = "/tmp/cartesi-0/app/withdraw";
+
 const recordingIo = (options: {
     cached?: boolean;
     epochs?: [bigint, Hash][];
@@ -31,6 +34,10 @@ const recordingIo = (options: {
             calls.push(command.join(" "));
             return "";
         },
+        getNodePaths: async () => ({
+            template: "/app/.cartesi/image",
+            work: WORK_DIR,
+        }),
         getLastAcceptedEpoch: async () => {
             const epoch = epochs[Math.min(epochCall++, epochs.length - 1)];
             return epoch && { index: epoch[0], machineHash: epoch[1] };
@@ -51,7 +58,6 @@ const recordingIo = (options: {
         },
         removeNodePath: async ({ path }) => {
             calls.push(`rm ${path}`);
-            return "";
         },
         replayMachine: async ({ epochIndex }) => {
             calls.push(`replay ${epochIndex}`);
@@ -67,22 +73,22 @@ const recordingIo = (options: {
 
 describe("store paths", () => {
     it("should key the proofs by application and account", () => {
-        expect(proofStorePath(application, account)).toBe(
-            `/tmp/cartesi-withdraw/${application}/${account}`,
+        expect(proofStorePath(WORK_DIR, application, account)).toBe(
+            `${WORK_DIR}/${application}/${account}`,
         );
     });
 });
 
 describe("replayStorePath", () => {
     it("should key the snapshot by application and epoch", () => {
-        expect(replayStorePath(application, 7n)).toBe(
-            `/tmp/cartesi-withdraw/${application}/epoch-7`,
+        expect(replayStorePath(WORK_DIR, application, 7n)).toBe(
+            `${WORK_DIR}/${application}/epoch-7`,
         );
     });
 });
 
 describe("replayLastFinalizedEpoch", () => {
-    const store = replayStorePath(application, 1n);
+    const store = replayStorePath(WORK_DIR, application, 1n);
 
     it("should stop when nothing was finalized on chain", async () => {
         const { calls, io } = recordingIo({});
@@ -187,7 +193,7 @@ describe("replayLastFinalizedEpoch", () => {
 });
 
 describe("generateAccountProofs", () => {
-    const store = replayStorePath(application, 1n);
+    const store = replayStorePath(WORK_DIR, application, 1n);
     const driveConfig = {
         accountsDriveStartIndex: 0x240n,
         log2LeavesPerAccount: 0n,

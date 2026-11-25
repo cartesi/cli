@@ -7,7 +7,7 @@ import {
     getHostSigner,
     hostSignerEnv,
     NODE_SIGNER_SCRIPT,
-    nodeExecArgs,
+    nodeExecOptions,
     parseNodeSigner,
     transactionArgs,
 } from "../../../src/exec/node-container";
@@ -33,129 +33,71 @@ describe("transactionArgs", () => {
     });
 });
 
-describe("nodeExecArgs", () => {
-    it("should exec in another service when given", () => {
-        expect(
-            nodeExecArgs({
-                command: ["cast", "rpc", "anvil_nodeInfo"],
-                interactive: false,
-                projectName: "dapp",
-                service: "anvil",
-            }),
-        ).toEqual([
-            "compose",
-            "--project-name",
-            "dapp",
-            "exec",
-            "-T",
-            "anvil",
-            "cast",
-            "rpc",
-            "anvil_nodeInfo",
-        ]);
+describe("nodeExecOptions", () => {
+    const state = {
+        dir: "/tmp/cartesi-0/dapp",
+        nodeEnv: {
+            CARTESI_AUTH_MNEMONIC_ACCOUNT_INDEX: "0",
+            CARTESI_DATABASE_CONNECTION: "postgres://node",
+        },
+    };
+
+    it("should run the command on the host, from the environment directory", () => {
+        const options = nodeExecOptions({
+            command: ["cartesi-rollups-cli", "app", "list"],
+            state,
+        });
+        expect(options.file).toBe("cartesi-rollups-cli");
+        expect(options.args).toEqual(["app", "list"]);
+        expect(options.cwd).toBe(state.dir);
     });
 
-    it("should forward environment variables by name only", () => {
-        const args = nodeExecArgs({
+    it("should run with the environment of the node", () => {
+        const { env } = nodeExecOptions({ command: ["true"], state });
+        expect(env.CARTESI_DATABASE_CONNECTION).toBe("postgres://node");
+    });
+
+    it("should leave the CARTESI_ variables of the host out", () => {
+        const previous = process.env.CARTESI_LOG_LEVEL;
+        process.env.CARTESI_LOG_LEVEL = "debug";
+        try {
+            const { env } = nodeExecOptions({ command: ["true"], state });
+            expect(env.CARTESI_LOG_LEVEL).toBeUndefined();
+            expect(env.PATH).toBe(process.env.PATH as string);
+        } finally {
+            if (previous === undefined) {
+                delete process.env.CARTESI_LOG_LEVEL;
+            } else {
+                process.env.CARTESI_LOG_LEVEL = previous;
+            }
+        }
+    });
+
+    it("should let the variables given override the node's", () => {
+        const { env } = nodeExecOptions({
             command: ["true"],
-            env: {
-                CARTESI_AUTH_KIND: "mnemonic",
-                CARTESI_AUTH_MNEMONIC: "a b c",
-            },
-            interactive: false,
-            projectName: "dapp",
+            env: { CARTESI_AUTH_KIND: "private_key" },
+            state,
         });
-        expect(args).toEqual([
-            "compose",
-            "--project-name",
-            "dapp",
-            "exec",
-            "-T",
-            "-e",
-            "CARTESI_AUTH_KIND",
-            "-e",
-            "CARTESI_AUTH_MNEMONIC",
-            "rollups_node",
-            "true",
-        ]);
-        expect(args.join(" ")).not.toContain("a b c");
+        expect(env.CARTESI_AUTH_KIND).toBe("private_key");
     });
 
     it("should run the command in the working directory", () => {
-        expect(
-            nodeExecArgs({
-                command: ["true"],
-                interactive: true,
-                projectName: "dapp",
-                workdir: "/tmp/work",
-            }),
-        ).toEqual([
-            "compose",
-            "--project-name",
-            "dapp",
-            "exec",
-            "--workdir",
-            "/tmp/work",
-            "rollups_node",
-            "true",
-        ]);
-    });
-
-    it("should exec the command in the rollups node service", () => {
-        expect(
-            nodeExecArgs({
-                command: ["cartesi-rollups-cli", "app", "list"],
-                interactive: true,
-                projectName: "dapp",
-            }),
-        ).toEqual([
-            "compose",
-            "--project-name",
-            "dapp",
-            "exec",
-            "rollups_node",
-            "cartesi-rollups-cli",
-            "app",
-            "list",
-        ]);
-    });
-
-    it("should disable the TTY when not interactive", () => {
-        expect(
-            nodeExecArgs({
-                command: ["true"],
-                interactive: false,
-                projectName: "dapp",
-            }),
-        ).toEqual([
-            "compose",
-            "--project-name",
-            "dapp",
-            "exec",
-            "-T",
-            "rollups_node",
-            "true",
-        ]);
+        const { cwd } = nodeExecOptions({
+            command: ["true"],
+            state,
+            workdir: "/tmp/work",
+        });
+        expect(cwd).toBe("/tmp/work");
     });
 
     it("should select the signer account index", () => {
-        expect(
-            nodeExecArgs({
-                accountIndex: 1,
-                command: ["true"],
-                interactive: true,
-                projectName: "dapp",
-            }),
-        ).toEqual([
-            "compose",
-            "--project-name",
-            "dapp",
-            "exec",
-            "-e",
-            "CARTESI_AUTH_MNEMONIC_ACCOUNT_INDEX=1",
-            "rollups_node",
-            "true",
-        ]);
+        const { env } = nodeExecOptions({
+            accountIndex: 3,
+            command: ["true"],
+            state,
+        });
+        expect(env.CARTESI_AUTH_MNEMONIC_ACCOUNT_INDEX).toBe("3");
     });
 });
 

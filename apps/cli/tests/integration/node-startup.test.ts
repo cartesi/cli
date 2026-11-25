@@ -1,19 +1,15 @@
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
-import { execa } from "execa";
 import getPort, { portNumbers } from "get-port";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { toHex } from "viem";
 import { mnemonicToAccount } from "viem/accounts";
-import { DEVNET_MNEMONIC } from "../../src/compose/node.js";
-import { execNodeCommand } from "../../src/exec/node-container.js";
 import {
+    type Environment,
     startEnvironment,
-    stopEnvironment,
-    waitHealthyEnvironment,
-} from "../../src/exec/rollups.js";
-import { TEST_RUNTIME_VERSION } from "./config.js";
+} from "../../src/host/environment.js";
+import { DEVNET_MNEMONIC } from "../../src/host/node.js";
 
 // The node starts its PRT service on every run and refuses to boot without a
 // signer, so a healthy environment is the regression test for the CLI always
@@ -25,19 +21,27 @@ describe("rollups node startup", () => {
     let port: number;
     let directory: string;
     let originalCwd: string;
+    const environments: Environment[] = [];
+
+    /** The node's log, read before the environment stops and removes it. */
+    const nodeLog = (environment: Environment) => {
+        const node = environment.state.processes.find(
+            ({ name }) => name === "rollups_node",
+        );
+        return fs.readFileSync(node?.log ?? "", "utf-8");
+    };
 
     beforeAll(async () => {
         originalCwd = process.cwd();
         directory = fs.mkdtempSync(path.join(os.tmpdir(), "node-startup-"));
-        // compose files are written relative to the working directory
+        // the environment reads the machine snapshot of the working directory
         process.chdir(directory);
         port = await getPort({ port: portNumbers(16751, 16761) });
     });
 
     afterAll(async () => {
         try {
-            await stopEnvironment({ projectName });
-            await stopEnvironment({ projectName: keysProjectName });
+            await Promise.all(environments.map((e) => e.stop()));
         } finally {
             process.chdir(originalCwd);
             fs.rmSync(directory, { recursive: true, force: true });
@@ -45,38 +49,28 @@ describe("rollups node startup", () => {
     });
 
     it("should reach a healthy node without prt", async () => {
-        await startEnvironment({
+        // throws when any base service fails to become healthy
+        const environment = await startEnvironment({
             blockTime: 1,
             defaultBlock: "latest",
-            detach: true,
-            dryRun: false,
             port,
             projectName,
             prt: false,
-            runtimeVersion: TEST_RUNTIME_VERSION,
+            renderer: "silent",
             services: [],
             verbose: false,
         });
-
-        // throws when any base service fails to become healthy
-        await waitHealthyEnvironment({ port, projectName, services: [] });
-
-        const { stdout } = await execa("docker", [
-            "compose",
-            "--project-name",
-            projectName,
-            "logs",
-            "rollups_node",
-        ]);
+        environments.push(environment);
+        const stdout = nodeLog(environment);
 
         // the node logs the identity it derived from the PRT mnemonic, which
         // proves the signer was used and not merely that the node booted
         expect(stdout).toContain("PRT submitter identity");
     }, 300_000);
 
-    // the node runs as uid 102 and a key file is usually its owner's alone, so
-    // the CLI hands the node a copy it owns; a PRT identity of the key file's
-    // account, not the mnemonic's account 0, proves the node read it
+    // the node runs as the user, so it reads a key file that is the user's
+    // alone, from where it is; a PRT identity of the key file's account, not
+    // the mnemonic's account 0, proves the node read it
     it("should reach a healthy node with owner-only key files", async () => {
         const writeKey = (name: string, addressIndex: number) => {
             const account = mnemonicToAccount(DEVNET_MNEMONIC, {
@@ -100,60 +94,25 @@ describe("rollups node startup", () => {
         };
         const keysPort = await getPort({ port: portNumbers(16751, 16761) });
 
-        Object.assign(process.env, keyVars);
-        try {
-            await startEnvironment({
-                blockTime: 1,
-                defaultBlock: "latest",
-                detach: true,
-                dryRun: false,
-                port: keysPort,
-                projectName: keysProjectName,
-                prt: false,
-                runtimeVersion: TEST_RUNTIME_VERSION,
-                services: [],
-                verbose: false,
-            });
-        } finally {
-            for (const name of Object.keys(keyVars)) {
-                delete process.env[name];
-            }
-        }
-
-        await waitHealthyEnvironment({
+        const environment = await startEnvironment({
+            blockTime: 1,
+            cartesiEnvironmentVariables: keyVars,
+            defaultBlock: "latest",
             port: keysPort,
             projectName: keysProjectName,
+            prt: false,
+            renderer: "silent",
             services: [],
+            verbose: false,
         });
-
-        const { stdout } = await execa("docker", [
-            "compose",
-            "--project-name",
-            keysProjectName,
-            "logs",
-            "rollups_node",
-        ]);
+        environments.push(environment);
+        const stdout = nodeLog(environment);
 
         expect(stdout).toMatch(
             new RegExp(`PRT submitter identity.*${prt.address}`, "i"),
         );
 
-        // the copy is what makes an owner-only file readable: owned by the
-        // node's user, read-only, and the host file is left as it was
-        const stat = (file: string) =>
-            execNodeCommand({
-                command: ["stat", "-c", "%U:%G %a", file],
-                projectName: keysProjectName,
-            });
-        expect(await stat("/run/secrets/cartesi_auth_private_key_file")).toBe(
-            "cartesi:cartesi 400",
-        );
-        expect(
-            await stat("/run/secrets/cartesi_prt_auth_private_key_file"),
-        ).toBe("cartesi:cartesi 400");
-
-        // the init service mounts the host files read-only and copies them,
-        // so their owner and mode don't change
+        // the host files are only read, their owner and mode don't change
         for (const { file } of [claimer, prt]) {
             const { uid, mode } = fs.statSync(file);
             expect(uid).toBe(process.getuid?.() ?? uid);

@@ -10,7 +10,7 @@ import {
     walletActions,
 } from "viem";
 import { mnemonicToAccount } from "viem/accounts";
-import { DEVNET_MNEMONIC } from "../../src/compose/node";
+import { DEVNET_MNEMONIC } from "../../src/host/node";
 import {
     erc20PortalAbi,
     erc20PortalAddress,

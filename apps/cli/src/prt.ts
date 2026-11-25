@@ -9,7 +9,7 @@ import {
     parseEther,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { DEVNET_MNEMONIC } from "./compose/node.js";
+import { DEVNET_MNEMONIC } from "./host/node.js";
 import {
     InvalidPrtConfigError,
     type PrtNode,

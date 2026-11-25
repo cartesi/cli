@@ -2,7 +2,7 @@ import { type AddressBook, getAddressBook, getProjectName } from "../base.js";
 
 export type AddressBookOptions = {
     /**
-     * Name of the project (used by docker compose and cartesi-rollups-node).
+     * Name of the project (used by cartesi-rollups-node).
      * @default basename of the current working directory
      */
     projectName?: string;
