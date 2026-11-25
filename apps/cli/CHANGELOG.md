@@ -1,5 +1,23 @@
 # Changelog
 
+## 2.0.0-alpha.43
+
+### Minor Changes
+
+- 3fade8e: expose the fund recovery commands as library functions: `foreclose`, `refund` and `withdraw`
+- 606c6bc: add --cache-from and --cache-to options to cartesi build
+  
+  Expose Docker Buildx cache backend options via `--cache-from <spec>` and
+  `--cache-to <spec>` CLI flags (repeatable). The same options can also be
+  set per-drive in `cartesi.toml` via `cache_from` and `cache_to` arrays.
+  CLI flags override the TOML values when provided.
+- 7686307: expose the deposit commands as library functions: `depositEther`, `depositErc20`, `depositErc721`, `depositErc1155` and `depositErc1155Batch`
+- c8889b9: expose the CLI as a library, so `build`, `run`, `hash` and the other commands can be called programmatically from a script: `import { build } from "@cartesi/cli"`
+
+### Patch Changes
+
+- 9396152: fix the `runNodeCommand` declaration, which a consumer compiling with `exactOptionalPropertyTypes` rejected
+
 ## 2.0.0-alpha.42
 
 ### Minor Changes
