@@ -1,0 +1,15 @@
+{
+    // type-check the published declarations as a strict consumer would, with
+    // exact optional types and the library check on: our own build skips both
+    "compilerOptions": {
+        "target": "ES2022",
+        "module": "NodeNext",
+        "moduleResolution": "NodeNext",
+        "strict": true,
+        "exactOptionalPropertyTypes": true,
+        "skipLibCheck": false,
+        "noEmit": true,
+        "types": ["node"]
+    },
+    "files": ["dist/types/lib.d.ts"]
+}
