@@ -168,9 +168,9 @@ RUN <<EOF
 curl -fsSL https://github.com/cartesi/machine-emulator/archive/refs/tags/v${CARTESI_MACHINE_EMULATOR_VERSION}.tar.gz \
     -o /tmp/machine-emulator-src.tar.gz
 echo "a8136b43648ce32db5e6172a3d59eadafc6e5d7905f8d3589eb3fe71de89995a /tmp/machine-emulator-src.tar.gz" | sha256sum --check
-mkdir -p /opt/prt/recipes
+mkdir -p /opt/cartesi/prt/recipes
 recipes="machine-emulator-${CARTESI_MACHINE_EMULATOR_VERSION}/doc/recipes"
-tar -xzf /tmp/machine-emulator-src.tar.gz -C /opt/prt/recipes --strip-components=3 \
+tar -xzf /tmp/machine-emulator-src.tar.gz -C /opt/cartesi/prt/recipes --strip-components=3 \
     "${recipes}/crisium.lua" \
     "${recipes}/prt.lua" \
     "${recipes}/prtu.lua" \
@@ -194,29 +194,29 @@ EOF
 
 ################################################################################
 # the forge build artifacts of the dave contracts, which the Lua PRT node reads
-# through --dave=/opt/dave, laid out as a dave source checkout: the same tarball
-# the wagmi plugin generates the CLI's contract bindings from. The release
-# packages dave's own contracts, not the rollups-contracts it depends on, while
-# a source build has both; the player reads only ABIs, and the interfaces dave
-# ships carry everything it calls on Application and InputBox, so copies of them
-# stand in at the names it expects
+# through --dave=/opt/cartesi/dave, laid out as a dave source checkout: the
+# same tarball the wagmi plugin generates the CLI's contract bindings from. The
+# release packages dave's own contracts, not the rollups-contracts it depends
+# on, while a source build has both; the player reads only ABIs, and the
+# interfaces dave ships carry everything it calls on Application and InputBox,
+# so copies of them stand in at the names it expects
 FROM base AS dave-contracts
 ARG CARTESI_PRT_VERSION
 RUN <<EOF
 curl -fsSL https://github.com/cartesi/dave/releases/download/v${CARTESI_PRT_VERSION}/cartesi-rollups-prt-${CARTESI_PRT_VERSION}-contract-artifacts.tar.gz \
     -o /tmp/dave-contracts.tar.gz
 echo "efcb9dacb5785455d0f17e3fb8be14406edec0c141b67b70ee8b4b3a5c49a10c /tmp/dave-contracts.tar.gz" | sha256sum --check
-mkdir -p /opt/dave
-tar -xzf /tmp/dave-contracts.tar.gz -C /opt/dave
+mkdir -p /opt/cartesi/dave
+tar -xzf /tmp/dave-contracts.tar.gz -C /opt/cartesi/dave
 rm /tmp/dave-contracts.tar.gz
-cd /opt/dave/cartesi-rollups/contracts/out
+cd /opt/cartesi/dave/cartesi-rollups/contracts/out
 for contract in Application InputBox; do
     mkdir "${contract}.sol"
     cp "I${contract}.sol/I${contract}.json" "${contract}.sol/${contract}.json"
 done
 test -f DaveConsensus.sol/DaveConsensus.json
-test -f /opt/dave/prt/contracts/out/Tournament.sol/Tournament.json
-test -f /opt/dave/prt/contracts/out/MultiLevelTournamentFactory.sol/MultiLevelTournamentFactory.json
+test -f /opt/cartesi/dave/prt/contracts/out/Tournament.sol/Tournament.json
+test -f /opt/cartesi/dave/prt/contracts/out/MultiLevelTournamentFactory.sol/MultiLevelTournamentFactory.json
 EOF
 
 ################################################################################
@@ -294,8 +294,8 @@ COPY --from=sling-node --chmod=755 /usr/local/bin/cartesi-sling-node /usr/local/
 
 # the Lua PRT node: the recipes, the dave contract artifacts it reads, and cast,
 # which signs its transactions
-COPY --from=lua-prt-recipes /opt/prt/recipes /opt/prt/recipes
-COPY --from=dave-contracts /opt/dave /opt/dave
+COPY --from=lua-prt-recipes /opt/cartesi/prt/recipes /opt/cartesi/prt/recipes
+COPY --from=dave-contracts /opt/cartesi/dave /opt/cartesi/dave
 COPY --from=foundry /usr/local/bin/cast /usr/local/bin/cast
 
 COPY skel/ /

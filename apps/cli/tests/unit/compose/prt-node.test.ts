@@ -260,16 +260,16 @@ describe("Compose crisium services", () => {
             }).nodes,
         });
     const DATA = "/var/lib/cartesi-rollups-node/snapshots";
-    const LUA_PATH = "/opt/prt/recipes/?.lua;;";
+    const LUA_PATH = "/opt/cartesi/prt/recipes/?.lua;;";
     const args = (label: string, mode: string, pollInterval = 2) => [
         "lua5.4",
-        "/opt/prt/recipes/crisium.lua",
+        "/opt/cartesi/prt/recipes/crisium.lua",
         "--rpc=http://anvil:8545",
         "--ws=ws://anvil:8545",
         `--application=${application}`,
         `--label=${label}`,
         `--poll-interval=${pollInterval}`,
-        "--dave=/opt/dave",
+        "--dave=/opt/cartesi/dave",
         `--state=${DATA}/state`,
         `--checkpoints=${DATA}/checkpoints`,
         `--mode=${mode}`,
@@ -318,7 +318,7 @@ describe("Compose crisium services", () => {
                 [
                     "find /dst -mindepth 1 -delete",
                     "install -d -o cartesi -g cartesi /dst/state /dst/checkpoints",
-                    `lua5.4 /opt/prt/store-first-checkpoint.lua http://anvil:8545 ${application} /var/lib/cartesi-rollups-node/template/image /opt/dave /dst/checkpoints/epoch-0`,
+                    `lua5.4 /opt/cartesi/prt/store-first-checkpoint.lua http://anvil:8545 ${application} /var/lib/cartesi-rollups-node/template/image /opt/cartesi/dave /dst/checkpoints/epoch-0`,
                     "chown -R cartesi:cartesi /dst",
                 ].join("\n"),
             ],
@@ -429,14 +429,15 @@ describe("Compose crisium services", () => {
             "--anomaly-handler=alerts",
         ]);
         expect(service?.environment).toEqual({
-            LUA_PATH: "/opt/prt/recipes/?.lua;/opt/prt/handler/?.lua;;",
+            LUA_PATH:
+                "/opt/cartesi/prt/recipes/?.lua;/opt/cartesi/prt/handler/?.lua;;",
         });
         expect(service?.volumes).toEqual([
             `prt_node_alert_data:${DATA}`,
             {
                 type: "bind",
                 source: path.dirname(handlerFile),
-                target: "/opt/prt/handler",
+                target: "/opt/cartesi/prt/handler",
                 read_only: true,
                 bind: { create_host_path: false },
             },

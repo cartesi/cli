@@ -56,15 +56,15 @@ const WS_URL = "ws://anvil:8545";
  * The crisium player and its recipes in the runtime image, and the dave
  * contract artifacts it reads (`packages/sdk/Dockerfile`).
  */
-const RECIPES_DIR = "/opt/prt/recipes";
-const DAVE_DIR = "/opt/dave";
+const RECIPES_DIR = "/opt/cartesi/prt/recipes";
+const DAVE_DIR = "/opt/cartesi/dave";
 const CRISIUM = `${RECIPES_DIR}/crisium.lua`;
 /**
  * Where an entry's anomaly handler is mounted, read-only: the directory of the
  * file it names, whole, so the module may `require` helpers next to it. Only
  * the node service mounts it; the init service runs no player.
  */
-const HANDLER_DIR = "/opt/prt/handler";
+const HANDLER_DIR = "/opt/cartesi/prt/handler";
 /**
  * The recipes require each other by module name, so lua finds them here. The
  * handler's directory comes after them, so no file of it shadows a recipe.
@@ -93,7 +93,7 @@ const PASSWORD_FILE = `${DATA_DIR}/password`;
  * the player's own checkpoints are. It lives next to the recipes it calls,
  * since the checkpoint format moves with them.
  */
-const INIT_SCRIPT = "/opt/prt/store-first-checkpoint.lua";
+const INIT_SCRIPT = "/opt/cartesi/prt/store-first-checkpoint.lua";
 /** A devnet account's key, for the init service that imports it; public. */
 const INIT_KEY_VARIABLE = "PRT_NODE_PRIVATE_KEY";
 
