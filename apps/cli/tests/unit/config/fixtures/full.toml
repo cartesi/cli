@@ -109,3 +109,16 @@ address = "0x4444444444444444444444444444444444444444" # an account of your own
 [prt.nodes.theirs]
 sentry = true # no type: appointed only, run elsewhere
 address = "0x5555555555555555555555555555555555555555"
+
+[prt.nodes.watch] # crisium, the Lua PRT player of the machine-emulator recipes, as a sentinel
+type = "crisium"
+mode = "sentinel" # the default: it signs nothing, so it takes no address, key or pool account
+warning_blocks = 5 # sentinel only: blocks before a deadline to warn at, 10 by default
+anomaly_handler = "prt/alerts.lua" # a Lua module the player calls with each anomaly, instead of printing it; its directory is mounted into the node
+
+[prt.nodes.red] # a crisium validator claims and disputes with an account, like a sling node
+type = "crisium"
+mode = "validator" # no address: devnet account 22, the next of the pool
+kind = "vandal" # "honest" by default; the vandal posts a made-up claim for epoch 0, loses, then idles
+input_policy = "safe" # when an input counts: "safe", "finalized" (the default) or a depth in blocks
+dispute_policy = 2 # the same for tournament events, 4 blocks deep by default

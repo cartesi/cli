@@ -179,6 +179,21 @@ describe("when parsing the fixtures", () => {
                         sentry: true,
                         address: "0x5555555555555555555555555555555555555555",
                     },
+                    watch: {
+                        type: "crisium",
+                        sentry: false,
+                        mode: "sentinel",
+                        warningBlocks: 5,
+                        anomalyHandler: "prt/alerts.lua",
+                    },
+                    red: {
+                        type: "crisium",
+                        sentry: false,
+                        mode: "validator",
+                        kind: "vandal",
+                        inputPolicy: "safe",
+                        disputePolicy: 2,
+                    },
                 },
             },
             withdrawal: {
@@ -734,7 +749,7 @@ cache_to = ["type=gha,mode=max"]`,
                 prt('[prt.nodes.first]\ntype = "rollups-node"'),
             ).toThrowError(
                 new InvalidPrtConfigError(
-                    "type rollups-node isn't supported, expected one of: reference, sling",
+                    "type rollups-node isn't supported, expected one of: reference, sling, crisium",
                     "[prt.nodes.first]",
                 ),
             );
@@ -777,7 +792,192 @@ cache_to = ["type=gha,mode=max"]`,
             expect(() =>
                 prt('[prt.nodes.first]\ntype = "sling"\nrole = "sentry"'),
             ).toThrowError(
-                "Unknown key 'role' in [prt.nodes.first], expected one of: address, claim, private_key_file, sentry, type",
+                "Unknown key 'role' in [prt.nodes.first], expected one of: address, anomaly_handler, claim, dispute_policy, input_policy, kind, mode, private_key_file, sentry, type, warning_blocks",
+            );
+        });
+
+        /**
+         * a crisium entry: the Lua PRT player, a sentinel by default
+         */
+        describe("a crisium entry", () => {
+            const entry = (keys: string) =>
+                prt(`[prt.nodes.x]\ntype = "crisium"\n${keys}`)?.nodes.x;
+
+            it("should default to a sentinel, with no account", () => {
+                expect(entry("")).toStrictEqual({
+                    type: "crisium",
+                    sentry: false,
+                    mode: "sentinel",
+                });
+            });
+
+            it("should default a validator to the honest kind", () => {
+                expect(entry('mode = "validator"')).toStrictEqual({
+                    type: "crisium",
+                    sentry: false,
+                    mode: "validator",
+                    kind: "honest",
+                });
+            });
+
+            it("should keep every setting of a validator", () => {
+                expect(
+                    entry(
+                        `mode = "validator"\nkind = "vandal"\ninput_policy = "safe"\ndispute_policy = 3\nanomaly_handler = "prt/alerts.lua"\naddress = "${address("4")}"\nprivate_key_file = "secrets/red.key"`,
+                    ),
+                ).toStrictEqual({
+                    type: "crisium",
+                    sentry: false,
+                    address: address("4"),
+                    privateKeyFile: "secrets/red.key",
+                    mode: "validator",
+                    kind: "vandal",
+                    inputPolicy: "safe",
+                    disputePolicy: 3,
+                    anomalyHandler: "prt/alerts.lua",
+                });
+            });
+
+            it("should keep a sentinel's settings, zero included", () => {
+                expect(
+                    entry(
+                        'mode = "sentinel"\nwarning_blocks = 0\ninput_policy = 0\nanomaly_handler = "alerts.lua"',
+                    ),
+                ).toStrictEqual({
+                    type: "crisium",
+                    sentry: false,
+                    mode: "sentinel",
+                    warningBlocks: 0,
+                    inputPolicy: 0,
+                    anomalyHandler: "alerts.lua",
+                });
+            });
+
+            // the handler is a module the player requires, so the file's name is its name
+            it.each([
+                ["prt/alerts.lua", "alerts.lua"],
+                ["./prt/_v2.lua", "_v2.lua"],
+                ["/opt/handlers/Alerts9.lua", "Alerts9.lua"],
+            ])("should accept anomaly_handler %s", (file) => {
+                expect(entry(`anomaly_handler = "${file}"`)).toMatchObject({
+                    anomalyHandler: file,
+                });
+            });
+
+            it.each([
+                ['anomaly_handler = ""', "anomaly_handler must name a file"],
+                [
+                    'anomaly_handler = "prt/alerts.txt"',
+                    'anomaly_handler must name a .lua file whose name is a Lua module name: letters, digits and _, got "alerts.txt"',
+                ],
+                [
+                    'anomaly_handler = "prt/my.alerts.lua"',
+                    'anomaly_handler must name a .lua file whose name is a Lua module name: letters, digits and _, got "my.alerts.lua"',
+                ],
+                [
+                    'anomaly_handler = "alerts-v2.lua"',
+                    'anomaly_handler must name a .lua file whose name is a Lua module name: letters, digits and _, got "alerts-v2.lua"',
+                ],
+                [
+                    'anomaly_handler = "9alerts.lua"',
+                    'anomaly_handler must name a .lua file whose name is a Lua module name: letters, digits and _, got "9alerts.lua"',
+                ],
+                [
+                    'anomaly_handler = "prt/"',
+                    'anomaly_handler must name a .lua file whose name is a Lua module name: letters, digits and _, got ""',
+                ],
+            ])("should reject %s", (keys, reason) => {
+                expect(() => entry(keys)).toThrowError(
+                    new InvalidPrtConfigError(reason, "[prt.nodes.x]"),
+                );
+            });
+
+            it("should fail for an anomaly_handler that is not a string", () => {
+                expect(() => entry("anomaly_handler = 1")).toThrowError(
+                    "Invalid string value: 1",
+                );
+            });
+
+            it.each([
+                [
+                    "sentry = true",
+                    "a crisium node can't be a sentry: it submits no sentry claims",
+                ],
+                [
+                    "claim = false",
+                    'claim isn\'t supported on a crisium node: mode = "sentinel" reads instead of claiming',
+                ],
+                [
+                    'kind = "vandal"',
+                    'kind needs mode = "validator": a sentinel computes only honest claims',
+                ],
+                [
+                    `address = "${address("4")}"`,
+                    "a sentinel takes no address or private_key_file: it signs nothing",
+                ],
+                [
+                    'private_key_file = "secrets/x.key"',
+                    "a sentinel takes no address or private_key_file: it signs nothing",
+                ],
+                [
+                    'mode = "validator"\nwarning_blocks = 5',
+                    'warning_blocks needs mode = "sentinel": only a sentinel reports missed deadlines',
+                ],
+                [
+                    'mode = "observer"',
+                    "mode observer isn't supported, expected one of: sentinel, validator",
+                ],
+                [
+                    'mode = "validator"\nkind = "quitter"',
+                    "kind quitter isn't supported, expected one of: honest, vandal",
+                ],
+                [
+                    "warning_blocks = -1",
+                    "warning_blocks must be a whole number from 0 to 9007199254740991, got -1",
+                ],
+                [
+                    "warning_blocks = 1.5",
+                    "warning_blocks must be a whole number from 0 to 9007199254740991, got 1.5",
+                ],
+                [
+                    'warning_blocks = "0"',
+                    "warning_blocks must be a whole number from 0 to 9007199254740991, got 0",
+                ],
+                [
+                    'input_policy = "latest"',
+                    "input_policy latest isn't supported, expected safe, finalized or a number of blocks",
+                ],
+                [
+                    "dispute_policy = -1",
+                    "dispute_policy must be a whole number from 0 to 9007199254740991, got -1",
+                ],
+            ])("should reject %s", (keys, reason) => {
+                expect(() => entry(keys)).toThrowError(
+                    new InvalidPrtConfigError(reason, "[prt.nodes.x]"),
+                );
+            });
+
+            it.each([
+                ['type = "sling"\nmode = "sentinel"', "mode"],
+                ['type = "reference"\nwarning_blocks = 1', "warning_blocks"],
+                [
+                    `sentry = true\naddress = "${address("4")}"\ninput_policy = "safe"`,
+                    "input_policy",
+                ],
+                [
+                    'type = "sling"\nanomaly_handler = "prt/alerts.lua"',
+                    "anomaly_handler",
+                ],
+            ])(
+                "should reject a crisium key on another entry: %s",
+                (keys, key) => {
+                    expect(() => prt(`[prt.nodes.a]\n${keys}`)).toThrowError(
+                        new InvalidPrtConfigError(
+                            `${key} needs type = "crisium"`,
+                            "[prt.nodes.a]",
+                        ),
+                    );
+                },
             );
         });
     });

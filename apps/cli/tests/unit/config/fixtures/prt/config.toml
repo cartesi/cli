@@ -9,6 +9,8 @@
 # prt-node-<label>. every entry is a validator; sentry = true also appoints it
 # on the consensus, in file order, with IDs from 1. an entry with a type is run
 # by the CLI; one with only an address is appointed and run elsewhere
+# type = "crisium" runs the Lua PRT player of the machine-emulator recipes
+# instead of a sling node, as a sentinel that signs nothing or a validator
 
 # the rollups-node's own entry, implied when omitted. claim = false runs it in
 # reader mode, following the tournaments while the sling nodes claim
@@ -33,3 +35,19 @@ sentry = true
 [prt.nodes.theirs]
 sentry = true
 address = "0x5555555555555555555555555555555555555555" # appointed only
+
+# a crisium sentinel: no account. it computes the honest claims and reports
+# what a validator should have done and has not
+# [prt.nodes.watch]
+# type = "crisium"
+# mode = "sentinel" # the default
+# anomaly_handler = "prt/alerts.lua" # a Lua module the player calls with each anomaly, instead of printing it
+
+# a crisium validator: a pool account, a devnet address or a key of your own,
+# playing the honest player or the vandal, a scripted adversary that posts a
+# made-up claim for epoch 0, loses the dispute and then idles
+# [prt.nodes.red]
+# type = "crisium"
+# mode = "validator"
+# kind = "honest" # the default
+# private_key_file = "secrets/red.key"

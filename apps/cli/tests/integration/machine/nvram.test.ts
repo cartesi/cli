@@ -1,9 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import fs from "fs-extra";
 import path from "node:path";
-import { satisfies } from "semver";
 import { parse } from "../../../src/config.js";
-import { cartesiMachine } from "../../../src/exec/index.js";
 import { bootMachine } from "../../../src/machine.js";
 import {
     createTemporaryCartesiApplication,
@@ -12,17 +10,6 @@ import {
 } from "../config.js";
 
 await ensureDockerImage(TEST_SDK);
-
-// --nvram only exists from cartesi-machine 0.21.0. gating on the version rather than on
-// CARTESI_TEST_SDK means this starts running on its own once DEFAULT_SDK_VERSION points at an
-// image that supports it.
-const found = await cartesiMachine.version({
-    image: TEST_SDK,
-    forceDocker: true,
-});
-
-const supported =
-    found !== null && satisfies(found.format(), cartesiMachine.requiredVersion);
 
 // no sdk key here: the helper writes `sdk = "${TEST_SDK}"` before this config, and TOML rejects duplicates
 const CONFIG = `[nvrams.input]
@@ -34,7 +21,7 @@ shared = true
 user = "dapp"
 ` as const;
 
-describe.skipIf(!supported)("when booting a machine with nvrams", () => {
+describe("when booting a machine with nvrams", () => {
     let app: Awaited<ReturnType<typeof createTemporaryCartesiApplication>>;
     let context: string;
 
