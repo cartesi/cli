@@ -313,11 +313,21 @@ sentry = true
                 (await getDaveConsensus({ application, projectName }))
                     .allSentriesAgree;
 
+            // a sentry claims an epoch as soon as it is sealed, so epoch 1,
+            // sealed when epoch 0 was accepted, carries both claims already:
+            // it is accepted once staged, and that seals epoch 2, the first
+            // one the stopped sentry misses
             await sentry("stop");
+            let settled: number;
             let staged: number;
             try {
-                // epoch 1, sealed with the deposit above when epoch 0 was
-                // accepted: the node's claim wins its tournament by timeout
+                settled = await mineUntil(
+                    anvil,
+                    async () => (await lastAccepted()) === 1n,
+                );
+                expect(await lastAccepted(), await sentryLogs()).toBe(1n);
+
+                // the node's claim for epoch 2 wins its tournament by timeout
                 // and gets staged, which is when the consensus reports the
                 // sentries' agreement
                 staged = await mineUntil(
@@ -327,26 +337,26 @@ sentry = true
                 expect(await allSentriesAgree(), await sentryLogs()).toBe(
                     false,
                 );
-                expect(await lastAccepted()).toBe(0n);
+                expect(await lastAccepted()).toBe(1n);
 
                 // nobody may accept it: the staging period is out of reach
                 await anvil.mine({ blocks: GRACE_BLOCKS });
                 await new Promise((resolve) => setTimeout(resolve, 2000));
-                expect(await lastAccepted()).toBe(0n);
+                expect(await lastAccepted()).toBe(1n);
             } finally {
                 await sentry("start");
             }
 
             const accepted = await mineUntil(
                 anvil,
-                async () => (await lastAccepted()) === 1n,
+                async () => (await lastAccepted()) === 2n,
             );
             console.log(
-                `! Epoch 1 staged after ${staged} mined blocks without sentry 2, accepted ${accepted} blocks after it came back`,
+                `! Epoch 1 accepted after ${settled} mined blocks, epoch 2 staged ${staged} blocks later without sentry 2, accepted ${accepted} blocks after it came back`,
             );
 
-            expect(await lastAccepted(), await sentryLogs()).toBe(1n);
-            expect(staged + GRACE_BLOCKS + accepted).toBeLessThan(
+            expect(await lastAccepted(), await sentryLogs()).toBe(2n);
+            expect(settled + staged + GRACE_BLOCKS + accepted).toBeLessThan(
                 CLAIM_STAGING_PERIOD,
             );
         },
