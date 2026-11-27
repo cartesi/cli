@@ -150,7 +150,7 @@ address = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8"
 
             expect(exitCode, all).toBe(0);
             expect(all).toContain(
-                "[prt] in cartesi.toml is ignored without --prt",
+                "the 'prt' configuration is ignored without --prt",
             );
             expect(all).toContain("services:");
         });

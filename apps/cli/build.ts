@@ -30,7 +30,7 @@ const external = ["execa", "semver", "smol-toml", "viem"].flatMap((name) => [
 
 await Bun.build({
     define,
-    entrypoints: ["./src/lib.ts"],
+    entrypoints: ["./src/lib.ts", "./src/defineConfig.ts"],
     external,
     minify: true,
     outdir: "dist",

@@ -180,8 +180,8 @@ export const build = async (
         progress = "silent",
     } = options;
 
-    // get application configuration, from a Config object or 'cartesi.toml'
-    const config = resolveConfig(options.config);
+    // get application configuration, written inline or read from a file
+    const config = await resolveConfig(options.config, "build");
 
     // destination directory for image and intermediate files
     const destination = path.resolve(getContextPath());

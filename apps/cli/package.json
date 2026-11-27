@@ -15,6 +15,10 @@
             "types": "./dist/types/lib.d.ts",
             "default": "./dist/lib.js"
         },
+        "./config": {
+            "types": "./dist/types/defineConfig.d.ts",
+            "default": "./dist/defineConfig.js"
+        },
         "./package.json": "./package.json"
     },
     "repository": "cartesi/cli",
